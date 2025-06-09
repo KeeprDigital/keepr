@@ -1,0 +1,30 @@
+packages:
+  - apps/*
+  - packages/*
+  - tools/*
+catalog:
+  '@cloudflare/workers-types': 4.20250607.0
+  cheerio: ^1.0.0-rc.12
+catalogs:
+  cli:
+    '@antfu/eslint-config': ^4.14.1
+    '@prettier/plugin-xml': ^3.4.1
+    eslint: ^9.28.0
+    eslint-config-turbo: ^2.5.4
+    eslint-plugin-format: ^1.0.1
+    typescript: ^5.8.3
+    unbuild: ^3.5.0
+    wrangler: ^4.19.1
+  core:
+    turbo: ^2.5.4
+  types:
+    '@types/node': ^22.13.10
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@tailwindcss/oxide'
+  - better-sqlite3
+  - esbuild
+  - sharp
+  - unrs-resolver
+  - vue-demi
+  - workerd

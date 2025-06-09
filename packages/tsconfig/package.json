@@ -1,0 +1,11 @@
+{
+  "name": "@keepr/tsconfig",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared Typescript configuration for @keepr",
+  "exports": {
+    "./base": "./base.json"
+  },
+  "devDependencies": {
+  }
+}

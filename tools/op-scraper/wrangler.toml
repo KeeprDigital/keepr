@@ -1,0 +1,8 @@
+name = "op-scraper"
+compatibility_date = "2024-06-09"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "op-tcg-cards"
+database_id = "d223f57b-e1f8-4bc6-b4d8-43ff3a2983f0"
+migrations_dir = "./migrations"

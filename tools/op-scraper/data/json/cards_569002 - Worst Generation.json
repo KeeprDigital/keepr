@@ -1,0 +1,361 @@
+[
+  {
+    "id": "ST02-001",
+    "packId": "569002",
+    "name": "Eustass\"Captain\"Kid",
+    "rarity": "leader",
+    "category": "leader",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-001.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 5,
+    "attributes": [
+      "special"
+    ],
+    "power": 5000,
+    "types": [
+      "Supernovas",
+      "Kid Pirates"
+    ],
+    "effect": "[Activate: Main] [Once Per Turn]  ③ (You may rest the specified number of DON!! cards in your cost area.) You may trash 1 card from your hand: Set this Leader as active."
+  },
+  {
+    "id": "ST02-002",
+    "packId": "569002",
+    "name": "Vito",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-002.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 3,
+    "attributes": [
+      "ranged"
+    ],
+    "power": 5000,
+    "counter": 1000,
+    "types": [
+      "Firetank Pirates"
+    ],
+    "effect": "-"
+  },
+  {
+    "id": "ST02-003",
+    "packId": "569002",
+    "name": "Urouge",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-003.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 2,
+    "attributes": [
+      "strike"
+    ],
+    "power": 3000,
+    "counter": 1000,
+    "types": [
+      "Supernovas",
+      "Fallen Monk Pirates"
+    ],
+    "effect": "[DON!! x1] If you have 3 or more Characters, this card gains +2000 power."
+  },
+  {
+    "id": "ST02-004",
+    "packId": "569002",
+    "name": "Capone\"Gang\"Bege",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-004.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 1,
+    "attributes": [
+      "special"
+    ],
+    "power": 1000,
+    "types": [
+      "Supernovas",
+      "Firetank Pirates"
+    ],
+    "effect": "[Blocker] (After your opponent declares an attack, you may rest this card to make it the new target of the attack.)"
+  },
+  {
+    "id": "ST02-005",
+    "packId": "569002",
+    "name": "Killer",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-005.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 3,
+    "attributes": [
+      "slash"
+    ],
+    "power": 3000,
+    "counter": 1000,
+    "types": [
+      "Supernovas",
+      "Kid Pirates"
+    ],
+    "effect": "[On Play] K.O. up to 1 of your opponent's rested Characters with a cost of 3 or less.",
+    "trigger": "[Trigger] Play this card."
+  },
+  {
+    "id": "ST02-006",
+    "packId": "569002",
+    "name": "Koby",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-006.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 4,
+    "attributes": [
+      "strike"
+    ],
+    "power": 6000,
+    "counter": 1000,
+    "types": [
+      "Navy"
+    ],
+    "effect": "-"
+  },
+  {
+    "id": "ST02-007",
+    "packId": "569002",
+    "name": "Jewelry Bonney",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-007.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 1,
+    "attributes": [
+      "special"
+    ],
+    "power": 1000,
+    "counter": 1000,
+    "types": [
+      "Supernovas",
+      "Bonney Pirates"
+    ],
+    "effect": "[Activate: Main] ➀ (You may rest the specified number of DON!! cards in your cost area.) You may rest this Character: Look at 5 cards from the top of your deck; reveal up to 1 {Supernovas} type card and add it to your hand. Then, place the rest at the bottom of your deck in any order."
+  },
+  {
+    "id": "ST02-008",
+    "packId": "569002",
+    "name": "Scratchmen Apoo",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-008.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 2,
+    "attributes": [
+      "ranged"
+    ],
+    "power": 3000,
+    "counter": 2000,
+    "types": [
+      "Supernovas",
+      "On-Air Pirates"
+    ],
+    "effect": "[DON!! x1] [When Attacking] Rest up to 1 of your opponent's DON!! cards."
+  },
+  {
+    "id": "ST02-009",
+    "packId": "569002",
+    "name": "Trafalgar Law",
+    "rarity": "super_rare",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-009.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 5,
+    "attributes": [
+      "slash"
+    ],
+    "power": 6000,
+    "counter": 1000,
+    "types": [
+      "Supernovas",
+      "Heart Pirates"
+    ],
+    "effect": "[On Play] Set up to 1 of your {Supernovas} or {Heart Pirates} type rested Characters with a cost of 5 or less as active."
+  },
+  {
+    "id": "ST02-010",
+    "packId": "569002",
+    "name": "Basil Hawkins",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-010.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 5,
+    "attributes": [
+      "slash"
+    ],
+    "power": 6000,
+    "types": [
+      "Supernovas",
+      "Hawkins Pirates"
+    ],
+    "effect": "[DON!! x1] [Once Per Turn] [Your Turn] If this Character battles your opponent's Character, set this card as active."
+  },
+  {
+    "id": "ST02-011",
+    "packId": "569002",
+    "name": "Heat",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-011.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 2,
+    "attributes": [
+      "special"
+    ],
+    "power": 4000,
+    "counter": 1000,
+    "types": [
+      "Kid Pirates"
+    ],
+    "effect": "-"
+  },
+  {
+    "id": "ST02-012",
+    "packId": "569002",
+    "name": "Bepo",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-012.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 1,
+    "attributes": [
+      "strike"
+    ],
+    "power": 3000,
+    "counter": 1000,
+    "types": [
+      "Minks",
+      "Heart Pirates"
+    ],
+    "effect": "-"
+  },
+  {
+    "id": "ST02-013",
+    "packId": "569002",
+    "name": "Eustass\"Captain\"Kid",
+    "rarity": "super_rare",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-013.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 7,
+    "attributes": [
+      "special"
+    ],
+    "power": 7000,
+    "types": [
+      "Supernovas",
+      "Kid Pirates"
+    ],
+    "effect": "[Blocker] (After your opponent declares an attack, you may rest this card to make it the new target of the attack.)<br>[DON!! x1] [End of Your Turn] Set this Character as active."
+  },
+  {
+    "id": "ST02-014",
+    "packId": "569002",
+    "name": "X.Drake",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-014.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 4,
+    "attributes": [
+      "slash"
+    ],
+    "power": 5000,
+    "counter": 1000,
+    "types": [
+      "Navy",
+      "Supernovas",
+      "Drake Pirates"
+    ],
+    "effect": "[DON!! x1] [Your Turn] If this Character is rested, your {Supernovas} or {Navy} type Leaders and Characters gain +1000 power."
+  },
+  {
+    "id": "ST02-015",
+    "packId": "569002",
+    "name": "Scalpel",
+    "rarity": "common",
+    "category": "event",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-015.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 1,
+    "attributes": [],
+    "types": [
+      "Supernovas",
+      "Heart Pirates"
+    ],
+    "effect": "[Counter] Up to 1 of your Leader or Character cards gains +2000 power during this battle. Then, set up to 1 of your DON!! cards as active.",
+    "trigger": "[Trigger] Set up to 2 of your DON!! cards as active."
+  },
+  {
+    "id": "ST02-016",
+    "packId": "569002",
+    "name": "Repel",
+    "rarity": "common",
+    "category": "event",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-016.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 2,
+    "attributes": [],
+    "types": [
+      "Supernovas",
+      "Kid Pirates"
+    ],
+    "effect": "[Counter] Up to 1 of your Leader or Character cards gains +4000 power during this battle. Then, set up to 1 of your DON!! cards as active."
+  },
+  {
+    "id": "ST02-017",
+    "packId": "569002",
+    "name": "Straw Sword",
+    "rarity": "common",
+    "category": "event",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST02-017.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 2,
+    "attributes": [],
+    "types": [
+      "Supernovas",
+      "Hawkins Pirates"
+    ],
+    "effect": "[Main] Rest up to 1 of your opponent's Characters.",
+    "trigger": "[Trigger] Play up to 1 {Supernovas} type card with a cost of 2 or less from your hand."
+  }
+]

@@ -1,0 +1,331 @@
+[
+  {
+    "id": "OP06-022_p3",
+    "packId": "569028",
+    "name": "Yamato",
+    "rarity": "leader",
+    "category": "leader",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP06-022_p3.png?250530",
+    "colors": [
+      "green",
+      "yellow"
+    ],
+    "cost": 4,
+    "attributes": [
+      "strike"
+    ],
+    "power": 5000,
+    "types": [
+      "Land of Wano"
+    ],
+    "effect": "[Double Attack] (This card deals 2 damage.)<br>[Activate: Main] [Once Per Turn] If your opponent has 3 or less Life cards, give up to 2 rested DON!! cards to 1 of your Characters."
+  },
+  {
+    "id": "OP06-100_r2",
+    "packId": "569028",
+    "name": "Inuarashi",
+    "rarity": "uncommon",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP06-100_r2.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 4,
+    "attributes": [
+      "slash"
+    ],
+    "power": 5000,
+    "counter": 1000,
+    "types": [
+      "Minks",
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "[DON!! x2] [When Attacking] You may trash 1 card from your hand: K.O. up to 1 of your opponent's Characters with a cost equal to or less than the number of your opponent's Life cards.",
+    "trigger": "[Trigger] If your opponent has 3 or less Life cards, play this card."
+  },
+  {
+    "id": "OP06-103_r1",
+    "packId": "569028",
+    "name": "Kawamatsu",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP06-103_r1.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 3,
+    "attributes": [
+      "slash"
+    ],
+    "power": 5000,
+    "types": [
+      "Fish-Man",
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "[When Attacking] You may trash 2 cards from your hand: Add up to 1 of your Characters with 0 power to the top or bottom of the owner's Life cards face-up.",
+    "trigger": "[Trigger] If your opponent has 3 or less Life cards, play this card."
+  },
+  {
+    "id": "OP06-104_r1",
+    "packId": "569028",
+    "name": "Kikunojo",
+    "rarity": "rare",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP06-104_r1.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 4,
+    "attributes": [
+      "slash"
+    ],
+    "power": 6000,
+    "types": [
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "[On K.O.] If your opponent has 3 or less Life cards, add up to 1 card from the top of your deck to the top of your Life cards.",
+    "trigger": "[Trigger] If your opponent has 3 or less Life cards, play this card."
+  },
+  {
+    "id": "OP06-109_r1",
+    "packId": "569028",
+    "name": "Denjiro",
+    "rarity": "uncommon",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP06-109_r1.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 5,
+    "attributes": [
+      "slash"
+    ],
+    "power": 6000,
+    "types": [
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "[DON!! x2] If your opponent has 3 or less Life cards, this Character cannot be K.O.'d by effects.",
+    "trigger": "[Trigger] If your opponent has 3 or less Life cards, play this card."
+  },
+  {
+    "id": "OP06-110_r2",
+    "packId": "569028",
+    "name": "Nekomamushi",
+    "rarity": "uncommon",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP06-110_r2.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 4,
+    "attributes": [
+      "slash"
+    ],
+    "power": 5000,
+    "counter": 1000,
+    "types": [
+      "Minks",
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "[DON!! x2] This Character can also attack your opponent's active Characters.",
+    "trigger": "[Trigger] If your opponent has 3 or less Life cards, play this card."
+  },
+  {
+    "id": "OP06-112_r1",
+    "packId": "569028",
+    "name": "Raizo",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP06-112_r1.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 3,
+    "attributes": [
+      "slash"
+    ],
+    "power": 4000,
+    "counter": 1000,
+    "types": [
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "[When Attacking] You may trash 1 card from your hand: Rest up to 1 of your opponent's DON!! cards.",
+    "trigger": "[Trigger] If your opponent has 3 or less Life cards, play this card."
+  },
+  {
+    "id": "OP07-116_p1",
+    "packId": "569028",
+    "name": "Blaze Slice",
+    "rarity": "rare",
+    "category": "event",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP07-116_p1.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 1,
+    "attributes": [],
+    "types": [
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "[Main]/[Counter] Up to 1 of your Leader or Character cards gains +1000 power during this turn. Then, if your opponent has 2 or less Life cards, rest up to 1 of your opponent's Characters with a cost of 4 or less.",
+    "trigger": "[Trigger] Rest up to 1 of your opponent's Characters with a cost of 4 or less."
+  },
+  {
+    "id": "OP09-035_r1",
+    "packId": "569028",
+    "name": "Portgas.D.Ace",
+    "rarity": "uncommon",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/OP09-035_r1.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 5,
+    "attributes": [
+      "special"
+    ],
+    "power": 5000,
+    "counter": 2000,
+    "types": [
+      "ODYSSEY",
+      "Whitebeard Pirates"
+    ],
+    "effect": "[On Play] If you have 2 or more rested Characters, rest up to 1 of your opponent's Characters with a cost of 5 or less."
+  },
+  {
+    "id": "ST13-016_r1",
+    "packId": "569028",
+    "name": "Yamato",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST13-016_r1.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 5,
+    "attributes": [
+      "strike"
+    ],
+    "power": 4000,
+    "counter": 2000,
+    "types": [
+      "Land of Wano"
+    ],
+    "effect": "[Rush] (This card can attack on the turn in which it is played.)<br>[On Play] Look at all your Life cards; place 1 at the top of your deck and place the rest back in your Life area in any order."
+  },
+  {
+    "id": "ST28-001",
+    "packId": "569028",
+    "name": "Ashura Doji",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST28-001.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 3,
+    "attributes": [
+      "slash"
+    ],
+    "power": 3000,
+    "counter": 1000,
+    "types": [
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "[On Play] If your Leader has the {Land of Wano} type and your opponent has 3 or more Life cards, K.O. up to 1 of your opponent's Characters with a base cost of 5 or less."
+  },
+  {
+    "id": "ST28-002",
+    "packId": "569028",
+    "name": "Izo",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST28-002.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 2,
+    "attributes": [
+      "ranged"
+    ],
+    "power": 1000,
+    "counter": 1000,
+    "types": [
+      "Land of Wano",
+      "Former Whitebeard Pirates"
+    ],
+    "effect": "[DON!! x2] This Character gains [Blocker].<br>[On Play] Your {Land of Wano} type Leader gains [Banish] during this turn."
+  },
+  {
+    "id": "ST28-003",
+    "packId": "569028",
+    "name": "Kin'emon",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST28-003.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 4,
+    "attributes": [
+      "slash"
+    ],
+    "power": 5000,
+    "counter": 2000,
+    "types": [
+      "Land of Wano",
+      "The Akazaya Nine"
+    ],
+    "effect": "-",
+    "trigger": "[Trigger] If your Leader has the {Land of Wano} type and your opponent has 3 or less Life cards, play this card."
+  },
+  {
+    "id": "ST28-004",
+    "packId": "569028",
+    "name": "Kouzuki Momonosuke",
+    "rarity": "super_rare",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST28-004.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 6,
+    "attributes": [
+      "slash"
+    ],
+    "power": 7000,
+    "types": [
+      "Land of Wano",
+      "Kouzuki Clan"
+    ],
+    "effect": "[Your Turn] If you have 2 or less Life cards, your Leader gains +1000 power.<br>[Activate: Main] [Once Per Turn] You may return 2 total of your currently given DON!! cards to your cost area rested: This Character gains [Rush] and +1000 power during this turn.<br>(This card can attack on the turn in which it is played.)"
+  },
+  {
+    "id": "ST28-005",
+    "packId": "569028",
+    "name": "Yamato",
+    "rarity": "super_rare",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST28-005.png?250530",
+    "colors": [
+      "yellow"
+    ],
+    "cost": 1,
+    "attributes": [
+      "strike"
+    ],
+    "counter": 1000,
+    "types": [
+      "Land of Wano"
+    ],
+    "effect": "[DON!! x2] [Your Turn] This Character gains +3000 power.<br>[On Play] Look at 5 cards from the top of your deck; reveal up to 1 {Land of Wano} type card with a cost of 2 or more and add it to your hand. Then, place the rest at the bottom of your deck in any order."
+  }
+]

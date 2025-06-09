@@ -1,0 +1,37 @@
+{
+  "name": "@keepr/op-scraper",
+  "type": "module",
+  "version": "1.0.0",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "bin": {
+    "op-scraper": "./dist/bin/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "dev": "unbuild --watch",
+    "type-check": "tsc --noEmit",
+    "cli": "node dist/bin/cli.mjs",
+    "postbuild": "chmod +x dist/bin/cli.mjs",
+    "d1:create": "wrangler d1 create op-tcg-cards",
+    "d1:migrate": "wrangler d1 migrations apply op-tcg-cards"
+  },
+  "dependencies": {
+    "cheerio": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@keepr/tsconfig": "workspace:*",
+    "@types/node": "catalog:types",
+    "typescript": "catalog:cli",
+    "unbuild": "catalog:cli",
+    "wrangler": "catalog:cli"
+  }
+}

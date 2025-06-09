@@ -1,0 +1,355 @@
+[
+  {
+    "id": "ST12-001",
+    "packId": "569012",
+    "name": "Roronoa Zoro &amp; Sanji",
+    "rarity": "leader",
+    "category": "leader",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-001.png?250530",
+    "colors": [
+      "green",
+      "blue"
+    ],
+    "cost": 4,
+    "attributes": [
+      "slash",
+      "strike"
+    ],
+    "power": 5000,
+    "types": [
+      "Straw Hat Crew"
+    ],
+    "effect": "[DON!! x1] [When Attacking] [Once Per Turn] You may return 1 of your Characters with a cost of 2 or more to the owner's hand: Set up to 1 of your Characters with 7000 power or less as active."
+  },
+  {
+    "id": "ST12-002",
+    "packId": "569012",
+    "name": "Kuina",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-002.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 3,
+    "attributes": [
+      "slash"
+    ],
+    "power": 2000,
+    "counter": 1000,
+    "types": [
+      "Frost Moon Village"
+    ],
+    "effect": "[Activate: Main] You may rest this Character: Rest up to 1 of your opponent's Characters with a cost of 4 or less.",
+    "trigger": "[Trigger] Play this card."
+  },
+  {
+    "id": "ST12-003",
+    "packId": "569012",
+    "name": "Dracule Mihawk",
+    "rarity": "super_rare",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-003.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 3,
+    "attributes": [
+      "slash"
+    ],
+    "power": 4000,
+    "counter": 2000,
+    "types": [
+      "The Seven Warlords of the Sea",
+      "Muggy Kingdom"
+    ],
+    "effect": "[On Play] If you have 2 or less Characters, play up to 1 {Muggy Kingdom} type or &lt;Slash&gt; attribute Character card with a cost of 4 or less other than [Dracule Mihawk] from your hand rested."
+  },
+  {
+    "id": "ST12-004",
+    "packId": "569012",
+    "name": "Humandrill",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-004.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 3,
+    "attributes": [
+      "wisdom"
+    ],
+    "power": 5000,
+    "counter": 1000,
+    "types": [
+      "Animal",
+      "Muggy Kingdom"
+    ],
+    "effect": "-"
+  },
+  {
+    "id": "ST12-005",
+    "packId": "569012",
+    "name": "Perona",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-005.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 4,
+    "attributes": [
+      "special"
+    ],
+    "power": 6000,
+    "counter": 1000,
+    "types": [
+      "Muggy Kingdom",
+      "Thriller Bark Pirates"
+    ],
+    "effect": "-"
+  },
+  {
+    "id": "ST12-006",
+    "packId": "569012",
+    "name": "Yosaku &amp; Johnny",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-006.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 2,
+    "attributes": [
+      "slash"
+    ],
+    "power": 3000,
+    "counter": 1000,
+    "types": [
+      "East Blue"
+    ],
+    "effect": "[DON!! x1] [When Attacking] Choose one:<br>• Rest up to 1 of your opponent's Characters with a cost of 2 or less.<br>• K.O. up to 1 of your opponent's rested Characters with a cost of 2 or less."
+  },
+  {
+    "id": "ST12-007",
+    "packId": "569012",
+    "name": "Rika",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-007.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 2,
+    "attributes": [
+      "wisdom"
+    ],
+    "counter": 2000,
+    "types": [
+      "East Blue"
+    ],
+    "effect": "[On Play] ➁ (You may rest the specified number of DON!! cards in your cost area.): If your opponent has 3 or more Life cards, set up to 1 of your &lt;Slash&gt; attribute Characters with a cost of 4 or less as active."
+  },
+  {
+    "id": "ST12-008",
+    "packId": "569012",
+    "name": "Roronoa Zoro",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-008.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 4,
+    "attributes": [
+      "slash"
+    ],
+    "power": 6000,
+    "types": [
+      "Straw Hat Crew"
+    ],
+    "effect": "[DON!! x1] [When Attacking] Rest up to 1 of your opponent's Characters with a cost of 6 or less."
+  },
+  {
+    "id": "ST12-009",
+    "packId": "569012",
+    "name": "Elephant True Bluefin",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-009.png?250530",
+    "colors": [
+      "blue"
+    ],
+    "cost": 1,
+    "attributes": [
+      "strike"
+    ],
+    "power": 3000,
+    "counter": 1000,
+    "types": [
+      "Animal"
+    ],
+    "effect": "-"
+  },
+  {
+    "id": "ST12-010",
+    "packId": "569012",
+    "name": "Emporio.Ivankov",
+    "rarity": "super_rare",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-010.png?250530",
+    "colors": [
+      "blue"
+    ],
+    "cost": 3,
+    "attributes": [
+      "special"
+    ],
+    "power": 4000,
+    "counter": 1000,
+    "types": [
+      "Impel Down",
+      "Revolutionary Army"
+    ],
+    "effect": "[On Play] Reveal 1 card from the top of your deck and play up to 1 Character card with a cost of 2. Then, place the rest at the top or bottom of your deck.<br>[When Attacking] [Once Per Turn] Draw 1 card if you have 6 or less cards in your hand."
+  },
+  {
+    "id": "ST12-011",
+    "packId": "569012",
+    "name": "Sanji",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-011.png?250530",
+    "colors": [
+      "blue"
+    ],
+    "cost": 2,
+    "attributes": [
+      "strike"
+    ],
+    "power": 3000,
+    "types": [
+      "Straw Hat Crew"
+    ],
+    "effect": "[DON!! x1] [When Attacking] If you have 5 or less cards in your hand, this Character gains +2000 power until the start of your next turn."
+  },
+  {
+    "id": "ST12-012",
+    "packId": "569012",
+    "name": "Charlotte Pudding",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-012.png?250530",
+    "colors": [
+      "blue"
+    ],
+    "cost": 2,
+    "attributes": [
+      "wisdom"
+    ],
+    "power": 2000,
+    "counter": 2000,
+    "types": [
+      "Big Mom Pirates"
+    ],
+    "effect": "[Activate: Main] Return this Character to the owner's hand."
+  },
+  {
+    "id": "ST12-013",
+    "packId": "569012",
+    "name": "Zeff",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-013.png?250530",
+    "colors": [
+      "blue"
+    ],
+    "cost": 5,
+    "attributes": [
+      "strike"
+    ],
+    "power": 5000,
+    "counter": 1000,
+    "types": [
+      "East Blue"
+    ],
+    "effect": "[On Play] Look at 3 cards from the top of your deck and place them at the top or bottom of the deck in any order.<br>[When Attacking] Reveal 1 card from the top of your deck and play up to 1 Character card with a cost of 2 rested. Then, place the rest at the top or bottom of your deck."
+  },
+  {
+    "id": "ST12-014",
+    "packId": "569012",
+    "name": "Duval",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-014.png?250530",
+    "colors": [
+      "blue"
+    ],
+    "cost": 2,
+    "attributes": [
+      "strike"
+    ],
+    "power": 1000,
+    "counter": 1000,
+    "types": [
+      "The Flying Fish Riders"
+    ],
+    "effect": "[Blocker] (After your opponent declares an attack, you may rest this card to make it the new target of the attack.)<br>[On Play] Look at 3 cards from the top of your deck and place them at the top or bottom of the deck in any order."
+  },
+  {
+    "id": "ST12-015",
+    "packId": "569012",
+    "name": "Patty &amp; Carne",
+    "rarity": "common",
+    "category": "character",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-015.png?250530",
+    "colors": [
+      "blue"
+    ],
+    "cost": 2,
+    "attributes": [
+      "slash"
+    ],
+    "power": 4000,
+    "counter": 1000,
+    "types": [
+      "East Blue"
+    ],
+    "effect": "-"
+  },
+  {
+    "id": "ST12-016",
+    "packId": "569012",
+    "name": "Lion Strike",
+    "rarity": "common",
+    "category": "event",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-016.png?250530",
+    "colors": [
+      "green"
+    ],
+    "cost": 2,
+    "attributes": [],
+    "types": [
+      "Straw Hat Crew"
+    ],
+    "effect": "[Main]/[Counter] Rest up to 1 of your opponent's Leader or Character cards with a cost of 4 or less.",
+    "trigger": "[Trigger] Activate this card's [Main] effect."
+  },
+  {
+    "id": "ST12-017",
+    "packId": "569012",
+    "name": "Plastic Surgery Shot",
+    "rarity": "common",
+    "category": "event",
+    "imgUrl": "https://en.onepiece-cardgame.com/images/cardlist/card/ST12-017.png?250530",
+    "colors": [
+      "blue"
+    ],
+    "cost": 1,
+    "attributes": [],
+    "types": [
+      "Straw Hat Crew"
+    ],
+    "effect": "[Counter] Up to 1 of your Leader or Character cards gains +2000 power during this battle. Then, reveal 1 card from the top of your deck, play up to 1 Character card with a cost of 2, and place the rest at the top or bottom of your deck."
+  }
+]

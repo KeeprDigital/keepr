@@ -1,0 +1,23 @@
+{
+  "name": "@keepr/eslint",
+  "type": "module",
+  "version": "1.0.0",
+  "exports": {
+    ".": "./index.js",
+    "./nuxt": "./nuxt.js"
+  },
+  "main": "./index.js",
+  "files": [
+    "index.js",
+    "nuxt.js"
+  ],
+  "peerDependencies": {
+    "eslint": ">=9.0.0"
+  },
+  "dependencies": {
+    "@antfu/eslint-config": "catalog:cli",
+    "@prettier/plugin-xml": "catalog:cli",
+    "eslint-config-turbo": "catalog:cli",
+    "eslint-plugin-format": "catalog:cli"
+  }
+}
