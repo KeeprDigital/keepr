@@ -1,9 +1,9 @@
-name: Deploy to NuxtHub
+name: Deploy Commander
 on: push
 
 jobs:
   deploy:
-    name: "Deploy to NuxtHub"
+    name: "Deploy Commander"
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }}
@@ -35,6 +35,8 @@ jobs:
 
       - name: Build application
         run: pnpm build
+        env:
+          NUXT_UI_PRO_LICENSE: ${{ secrets.NUXT_UI_PRO_LICENSE}}
 
       - name: Deploy to NuxtHub
         uses: nuxt-hub/action@v1
