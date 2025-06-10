@@ -1,0 +1,9 @@
+name = "root-api"
+main = "src/index.ts"
+compatibility_date = "2024-05-01"
+routes = [ { pattern = "api.keepr.digital", custom_domain = true } ]
+preview_urls = false
+
+[[services]]
+binding = "OP_CARDS_SERVICE"
+service = "op-cards-api"
