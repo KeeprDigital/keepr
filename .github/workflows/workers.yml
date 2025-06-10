@@ -45,7 +45,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build worker
-        run: pnpm turbo build --filter=${{ matrix.worker }}
+        run: pnpm turbo build --filter=@keepr/${{ matrix.worker }}
 
       - name: Deploy worker
         uses: cloudflare/wrangler-action@v3
