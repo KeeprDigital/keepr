@@ -1,0 +1,10 @@
+name = "op-cards-api"
+main = "src/index.ts"
+compatibility_date = "2024-05-01"
+routes = [ { pattern = "op-api.keepr.digital/*", zone_name = "keepr.digital" } ]
+preview_urls = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "op-cards-db"
+database_id = "d223f57b-e1f8-4bc6-b4d8-43ff3a2983f0"

@@ -1,0 +1,10 @@
+{
+  "extends": "@keepr/tsconfig/base",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "types": ["@cloudflare/workers-types"],
+    "outDir": "./dist"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}
