@@ -1,5 +1,4 @@
-// @ts-check
-import { createBaseConfig } from './index'
+import { createBaseConfig } from './index.mjs'
 
 export function createNuxtConfig(options = {}) {
   const {

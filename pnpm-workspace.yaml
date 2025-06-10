@@ -5,7 +5,16 @@ packages:
 
 catalog:
   '@cloudflare/workers-types': 4.20250607.0
+  '@scryfall/api-types': 1.0.0-alpha.4
+  '@types/better-sqlite3': ^7.6.13
+  '@types/ws': ^8.18.1
+  better-sqlite3: ^11.10.0
   cheerio: ^1.0.0-rc.12
+  defu: ^6.1.4
+  socket.io: ^4.8.1
+  socket.io-client: ^4.8.1
+  ws: ^8.18.2
+  zod: ^3.25.56
 
 catalogs:
   cli:

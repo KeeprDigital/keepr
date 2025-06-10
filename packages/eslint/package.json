@@ -3,13 +3,13 @@
   "type": "module",
   "version": "1.0.0",
   "exports": {
-    ".": "./index.js",
-    "./nuxt": "./nuxt.js"
+    ".": "./index.mjs",
+    "./nuxt": "./nuxt.mjs"
   },
-  "main": "./index.js",
+  "main": "./index.mjs",
   "files": [
-    "index.js",
-    "nuxt.js"
+    "index.mjs",
+    "nuxt.mjs"
   ],
   "peerDependencies": {
     "eslint": ">=9.0.0"

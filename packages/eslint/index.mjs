@@ -1,4 +1,3 @@
-// @ts-check
 import antfu from '@antfu/eslint-config'
 import turboConfig from 'eslint-config-turbo/flat'
 
