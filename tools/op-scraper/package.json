@@ -24,10 +24,10 @@
     "d1:migrate": "wrangler d1 migrations apply op-tcg-cards"
   },
   "dependencies": {
-    "cheerio": "catalog:"
+    "cheerio": "catalog:tools"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "catalog:",
+    "@cloudflare/workers-types": "catalog:types",
     "@keepr/tsconfig": "workspace:*",
     "@types/node": "catalog:types",
     "typescript": "catalog:cli",

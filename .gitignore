@@ -12,6 +12,7 @@ coverage
 out/
 build
 dist
+.wrangler
 
 # misc
 .DS_Store
