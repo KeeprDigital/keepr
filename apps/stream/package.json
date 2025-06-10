@@ -20,30 +20,30 @@
     "@nuxt/image": "catalog:nuxt",
     "@nuxt/ui-pro": "catalog:nuxt",
     "@pinia/nuxt": "catalog:nuxt",
-    "@scryfall/api-types": "1.0.0-alpha.4",
+    "@scryfall/api-types": "catalog:",
     "@vueuse/core": "catalog:nuxt",
     "@vueuse/nuxt": "catalog:nuxt",
-    "better-sqlite3": "^11.10.0",
-    "defu": "^6.1.4",
+    "better-sqlite3": "catalog:",
+    "defu": "catalog:",
     "nuxt": "catalog:nuxt",
     "pinia": "catalog:nuxt",
-    "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
+    "socket.io": "catalog:",
+    "socket.io-client": "catalog:",
     "vue": "catalog:nuxt",
     "vue-router": "catalog:nuxt",
-    "zod": "^3.25.56"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@keepr/eslint": "workspace:*",
     "@nuxt/eslint": "catalog:nuxt",
     "@nuxt/test-utils": "catalog:nuxt",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/ws": "^8.18.1",
+    "@types/better-sqlite3": "catalog:",
+    "@types/ws": "catalog:",
     "@vue/test-utils": "catalog:nuxt",
     "happy-dom": "catalog:nuxt",
     "playwright-core": "catalog:nuxt",
     "vitest": "catalog:nuxt",
     "vue-tsc": "catalog:nuxt",
-    "ws": "^8.18.2"
+    "ws": "catalog:"
   }
 }
