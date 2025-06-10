@@ -1,15 +1,17 @@
 {
-  "name": "nuxt-app",
+  "name": "@keepr/commander",
   "type": "module",
   "private": true,
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "npx nuxthub preview",
     "deploy": "npx nuxthub deploy",
-    "postinstall": "nuxt prepare",
-    "lint": "eslint ."
+    "check": "nuxt typecheck",
+    "clean": "rm -rf .nuxt node_modules pnpm-lock.yaml",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@nuxt/eslint": "catalog:nuxt",

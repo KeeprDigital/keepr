@@ -110,9 +110,6 @@ catalogs:
       specifier: ^3.25.56
       version: 3.25.56
   types:
-    '@cloudflare/workers-types':
-      specifier: 4.20250607.0
-      version: 4.20250607.0
     '@scryfall/api-types':
       specifier: 1.0.0-alpha.4
       version: 1.0.0-alpha.4
@@ -272,9 +269,6 @@ importers:
         specifier: catalog:tools
         version: 1.0.0
     devDependencies:
-      '@cloudflare/workers-types':
-        specifier: catalog:types
-        version: 4.20250607.0
       '@keepr/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
@@ -303,9 +297,6 @@ importers:
         specifier: catalog:tools
         version: 3.25.56
     devDependencies:
-      '@cloudflare/workers-types':
-        specifier: catalog:types
-        version: 4.20250607.0
       '@keepr/eslint':
         specifier: workspace:*
         version: link:../../packages/eslint

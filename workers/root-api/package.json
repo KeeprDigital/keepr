@@ -4,11 +4,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "build": "tsc"
+    "build": "wrangler deploy --dry-run --outdir=dist",
+    "check": "wrangler types && tsc",
+    "push": "tsc && wrangler deploy",
+    "clean": "rm -rf dist node_modules pnpm-lock.yaml .wrangler .dist"
   },
-  "dependencies": {},
   "devDependencies": {
     "@keepr/eslint": "workspace:*",
     "@keepr/tsconfig": "workspace:*",

@@ -1,20 +1,17 @@
 {
-  "name": "stream-keepr",
+  "name": "@keepr/stream",
   "type": "module",
-  "version": "0.0.1",
   "private": true,
-  "packageManager": "pnpm@10.11.1+sha512.e519b9f7639869dc8d5c3c5dfef73b3f091094b0a006d7317353c72b124e80e1afd429732e28705ad6bfa1ee879c1fce46c128ccebd3192101f43dd67c667912",
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
-    "generate": "nuxt generate",
-    "preview": "nuxt preview",
-    "postinstall": "nuxt prepare",
+    "deploy": "npx nuxthub deploy",
     "check": "nuxt typecheck",
     "clean": "rm -rf .nuxt node_modules pnpm-lock.yaml",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest"
+    "test": "vitest",
+    "postinstall": "nuxt prepare"
   },
   "dependencies": {
     "@nuxt/image": "catalog:nuxt",

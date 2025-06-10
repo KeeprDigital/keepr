@@ -17,9 +17,10 @@
   "scripts": {
     "build": "unbuild",
     "dev": "unbuild --watch",
-    "type-check": "tsc --noEmit",
+    "check": "wrangler types && tsc --noEmit",
     "cli": "node dist/bin/cli.mjs",
     "postbuild": "chmod +x dist/bin/cli.mjs",
+    "clean": "rm -rf dist node_modules pnpm-lock.yaml",
     "d1:create": "wrangler d1 create op-tcg-cards",
     "d1:migrate": "wrangler d1 migrations apply op-tcg-cards"
   },
@@ -27,7 +28,6 @@
     "cheerio": "catalog:tools"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "catalog:types",
     "@keepr/tsconfig": "workspace:*",
     "@types/node": "catalog:types",
     "typescript": "catalog:cli",
