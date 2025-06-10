@@ -5,10 +5,13 @@ export default defineNuxtConfig({
     '@nuxt/image',
     '@nuxt/test-utils/module',
     '@nuxt/ui-pro',
+    '@nuxthub/core',
     '@pinia/nuxt',
     '@pinia/nuxt',
     '@vueuse/nuxt',
   ],
+  hub: {
+  },
   eslint: {
     config: {
       standalone: false,
