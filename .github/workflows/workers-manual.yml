@@ -1,0 +1,82 @@
+name: Manual Deploy Workers
+
+on:
+  workflow_dispatch:
+    inputs:
+      workers:
+        description: 'Workers to deploy (comma-separated or "all")'
+        required: true
+        default: 'all'
+        type: string
+      environment:
+        description: 'Environment to deploy to'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+jobs:
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set deployment matrix
+        id: set-matrix
+        run: |
+          if [ "${{ github.event.inputs.workers }}" = "all" ]; then
+            workers=$(find workers -maxdepth 1 -type d -not -path workers | sed 's|workers/||' | jq -R . | jq -s .)
+            echo "matrix=$workers" >> $GITHUB_OUTPUT
+          else
+            # Convert comma-separated string to JSON array
+            workers="${{ github.event.inputs.workers }}"
+            json_array=$(echo "$workers" | sed 's/,/","/g' | sed 's/^/["/' | sed 's/$/"]/')
+            echo "matrix=$json_array" >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: prepare-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        worker: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build worker
+        run: pnpm turbo build --filter=@keepr/${{ matrix.worker }}
+
+      - name: Deploy worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: ./workers/${{ matrix.worker }}
+          command: deploy ${{ github.event.inputs.environment != 'production' && format('--env {0}', github.event.inputs.environment) || '' }}
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+  notify:
+    needs: [prepare-matrix, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Deployment Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workers**: ${{ github.event.inputs.workers }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ${{ needs.deploy.result }}" >> $GITHUB_STEP_SUMMARY
