@@ -1,4 +1,4 @@
-import type { ApiResponse } from '@keepr/types'
+import type { ApiResponse, OpCardData } from '@keepr/types'
 import type { z } from 'zod/v4'
 import { OpCardSchema } from '@keepr/types'
 import { sharedCardTimeoutDataSchema } from '../schemas/shared'
@@ -20,5 +20,5 @@ const _opCardSchema = OpCardSchema.extend({
   timeoutData: sharedCardTimeoutDataSchema.optional(),
 })
 
-export type OPCard = z.infer<typeof _opCardSchema>
-export type OpCardAPIData = ApiResponse<OPCard[]>
+export type OpCard = z.infer<typeof _opCardSchema>
+export type OpCardAPIData = ApiResponse<OpCardData[]>

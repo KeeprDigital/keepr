@@ -22,7 +22,7 @@ export const opCardHandler: NamespaceHandler<'opCard'> = (namespace) => {
           clearStore('opCard')
           namespace.emit('sync', null)
           activeTimeout = null
-        }, card.timeoutData.timeoutDuration * 1000)
+        }, card.timeoutData.timeoutDuration)
       }
 
       namespace.except(socket.id).emit('sync', card)

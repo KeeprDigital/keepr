@@ -44,22 +44,47 @@ export const defaultPlayerData: PlayerData = {
   },
 }
 
-export const defaultOpCardData: OpCardData = {
+export const defaultMtgCardData: MtgCard = {
   id: '',
-  code: '',
-  rarity: '',
-  type: '',
   name: '',
-  cost: 0,
+  set: '',
+  layout: 'normal',
+  points: 0,
+  imageData: {
+    front: null,
+    back: null,
+  },
+  orientationData: {
+    flipable: false,
+    turnable: false,
+    rotateable: false,
+    counterRotateable: false,
+  },
+  displayData: {
+    flipped: false,
+    rotated: false,
+    counterRotated: false,
+    turnedOver: false,
+  },
+}
+
+export const defaultOpCardData: OpCard = {
+  id: '',
+  pack_id: '',
+  name: '',
+  rarity: '',
+  category: '',
+  img_url: '',
+  colors: null,
+  cost: null,
+  attributes: null,
   power: null,
   counter: null,
-  color: '',
-  family: '',
-  ability: '',
-  trigger: '',
-  set_name: '',
-  image_url: '',
-  attribute_name: '',
+  types: null,
+  trigger: null,
+  created_at: '',
+  updated_at: '',
+  effect: '',
 }
 
 export const defaultMatchData: MatchData = {

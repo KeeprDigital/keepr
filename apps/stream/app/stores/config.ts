@@ -26,15 +26,15 @@ export const useConfigStore = defineStore('Config', () => {
       tournamentFormData.value = JSON.parse(JSON.stringify(
         {
           ...state.value.tournament,
-          defaultClockDuration: durationUtils.msToMinutes(state.value.tournament.defaultClockDuration),
-          swissRoundTime: durationUtils.msToMinutes(state.value.tournament.swissRoundTime),
-          cutRoundTime: durationUtils.msToMinutes(state.value.tournament.cutRoundTime),
+          defaultClockDuration: durationUtils.msToSeconds(state.value.tournament.defaultClockDuration),
+          swissRoundTime: durationUtils.msToSeconds(state.value.tournament.swissRoundTime),
+          cutRoundTime: durationUtils.msToSeconds(state.value.tournament.cutRoundTime),
         },
       ))
 
       overlayFormData.value = JSON.parse(JSON.stringify({
         ...state.value.overlay,
-        cardTimeout: durationUtils.msToMinutes(state.value.overlay.cardTimeout),
+        cardTimeout: durationUtils.msToSeconds(state.value.overlay.cardTimeout),
       }))
       talentFormData.value = JSON.parse(JSON.stringify(state.value.talent))
     }
@@ -48,9 +48,9 @@ export const useConfigStore = defineStore('Config', () => {
       return false
     const formDataInMs = {
       ...tournamentFormData.value,
-      defaultClockDuration: durationUtils.minutesToMs(tournamentFormData.value.defaultClockDuration),
-      swissRoundTime: durationUtils.minutesToMs(tournamentFormData.value.swissRoundTime),
-      cutRoundTime: durationUtils.minutesToMs(tournamentFormData.value.cutRoundTime),
+      defaultClockDuration: durationUtils.secondsToMs(tournamentFormData.value.defaultClockDuration),
+      swissRoundTime: durationUtils.secondsToMs(tournamentFormData.value.swissRoundTime),
+      cutRoundTime: durationUtils.secondsToMs(tournamentFormData.value.cutRoundTime),
     }
     return JSON.stringify(state.value.tournament) !== JSON.stringify(formDataInMs)
   })
@@ -60,7 +60,7 @@ export const useConfigStore = defineStore('Config', () => {
       return false
     const formDataInMs = {
       ...overlayFormData.value,
-      cardTimeout: durationUtils.minutesToMs(overlayFormData.value.cardTimeout),
+      cardTimeout: durationUtils.secondsToMs(overlayFormData.value.cardTimeout),
     }
     return JSON.stringify(state.value.overlay) !== JSON.stringify(formDataInMs)
   })
@@ -146,9 +146,9 @@ export const useConfigStore = defineStore('Config', () => {
     if (tournamentFormData.value) {
       const updatedTournament = {
         ...tournamentFormData.value,
-        defaultClockDuration: durationUtils.minutesToMs(tournamentFormData.value.defaultClockDuration),
-        swissRoundTime: durationUtils.minutesToMs(tournamentFormData.value.swissRoundTime),
-        cutRoundTime: durationUtils.minutesToMs(tournamentFormData.value.cutRoundTime),
+        defaultClockDuration: durationUtils.secondsToMs(tournamentFormData.value.defaultClockDuration),
+        swissRoundTime: durationUtils.secondsToMs(tournamentFormData.value.swissRoundTime),
+        cutRoundTime: durationUtils.secondsToMs(tournamentFormData.value.cutRoundTime),
       }
       saveSection('tournament', updatedTournament, 'Tournament Settings Updated')
     }
@@ -158,7 +158,7 @@ export const useConfigStore = defineStore('Config', () => {
     if (overlayFormData.value) {
       const updatedOverlay = {
         ...overlayFormData.value,
-        cardTimeout: durationUtils.minutesToMs(overlayFormData.value.cardTimeout),
+        cardTimeout: durationUtils.secondsToMs(overlayFormData.value.cardTimeout),
       }
       saveSection('overlay', updatedOverlay, 'Overlay Settings Updated')
     }

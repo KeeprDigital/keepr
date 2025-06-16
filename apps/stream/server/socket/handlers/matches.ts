@@ -33,7 +33,6 @@ export const matchesHandler: NamespaceHandler<'matches'> = (namespace) => {
           mode: roundInfo.mode,
           totalDuration: roundInfo.mode === 'countup' ? Number.MAX_SAFE_INTEGER : roundInfo.duration,
         }
-        console.log('Round info:', roundInfo)
       }
 
       const newMatch = {
@@ -119,8 +118,6 @@ export const matchesHandler: NamespaceHandler<'matches'> = (namespace) => {
 
         // Broadcast updated matches to all other clients
         namespace.except(socket.id).emit('sync', matches)
-
-        console.log(`Clock action '${payload.action}' applied to match ${payload.id}`)
       }
       catch (error) {
         console.error('Error processing clock action:', error)

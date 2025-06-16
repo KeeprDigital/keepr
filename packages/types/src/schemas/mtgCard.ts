@@ -1,41 +1,41 @@
 import type { ScryfallCardFields, ScryfallImageUris } from '@scryfall/api-types'
 import { z } from 'zod/v4'
-import { sharedCardTimeoutDataSchema } from './shared'
 
-export const mtgCardDisplayDataSchema = z.object({
+export const MtgCardDisplayDataSchema = z.object({
   flipped: z.boolean(),
   rotated: z.boolean(),
   counterRotated: z.boolean(),
   turnedOver: z.boolean(),
 })
 
-export const mtgCardImageDataSchema = z.object({
+export const MtgCardImageDataSchema = z.object({
   front: z.custom<ScryfallImageUris>().nullable(),
   back: z.custom<ScryfallImageUris>().nullable(),
 })
 
-export const mtgCardOrientationDataSchema = z.object({
+export const MtgCardOrientationDataSchema = z.object({
   flipable: z.boolean(),
   turnable: z.boolean(),
   rotateable: z.boolean(),
   counterRotateable: z.boolean(),
 })
 
-export const mtgCardMeldDataSchema = z.object({
+export const MtgCardMeldDataSchema = z.object({
   meldPartOne: z.string().nullable(),
   meldPartTwo: z.string().nullable(),
   meldResult: z.string().nullable(),
 })
 
-export const mtgCardDataSchema = z.object({
+export const MtgCardDataSchema = z.object({
   id: z.string(),
   name: z.string(),
   set: z.string(),
   layout: z.custom<ScryfallCardFields.Core.All['layout']>(),
   points: z.number(),
-  imageData: mtgCardImageDataSchema,
-  orientationData: mtgCardOrientationDataSchema,
-  displayData: mtgCardDisplayDataSchema,
-  meldData: mtgCardMeldDataSchema.optional(),
-  timeoutData: sharedCardTimeoutDataSchema.optional(),
+  imageData: MtgCardImageDataSchema,
+  orientationData: MtgCardOrientationDataSchema,
+  displayData: MtgCardDisplayDataSchema,
+  meldData: MtgCardMeldDataSchema.optional(),
 })
+
+export type MtgCardData = z.infer<typeof MtgCardDataSchema>

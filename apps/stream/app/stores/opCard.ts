@@ -4,15 +4,15 @@ export const useOpCardStore = defineStore('OpCard', () => {
   const toast = useToast()
   const configStore = useConfigStore()
   const timeout = useCountdown(0)
-  const selectionHistory = useStorage<OPCard[]>('opCard-history', [])
+  const selectionHistory = useStorage<OpCard[]>('opCard-history', [])
 
-  const previewCard = ref<OPCard | null>(null)
-  const previewCardPrintings = ref<OPCard[]>([])
+  const previewCard = ref<OpCard | null>(null)
+  const previewCardPrintings = ref<OpCard[]>([])
 
-  const activeCard = ref<OPCard | null>(null)
+  const activeCard = ref<OpCard | null>(null)
 
   const searching = ref(false)
-  const searchResults = ref<OPCard[]>([])
+  const searchResults = ref<OpCard[]>([])
   const selectedColour = ref('any')
   const selectedCost = ref<number | null>(null)
 
@@ -30,7 +30,7 @@ export const useOpCardStore = defineStore('OpCard', () => {
     },
   })
 
-  function updateTimeout(cardData: OPCard | null) {
+  function updateTimeout(cardData: OpCard | null) {
     if (!cardData || !cardData.timeoutData) {
       timeout.reset()
       return
@@ -39,7 +39,7 @@ export const useOpCardStore = defineStore('OpCard', () => {
     const { timeoutStartTimestamp, timeoutDuration } = cardData.timeoutData
 
     const elapsedMs = Date.now() - timeoutStartTimestamp
-    const remainingMs = (timeoutDuration * 1000) - elapsedMs
+    const remainingMs = (timeoutDuration) - elapsedMs
 
     if (remainingMs <= 0) {
       timeout.reset()
@@ -78,7 +78,7 @@ export const useOpCardStore = defineStore('OpCard', () => {
     })
   }
 
-  async function selectPreviewCard(cardData: OPCard) {
+  async function selectPreviewCard(cardData: OpCard) {
     previewCard.value = cardData
     previewCardPrintings.value = []
     pushToHistory(cardData)
@@ -155,7 +155,7 @@ export const useOpCardStore = defineStore('OpCard', () => {
     }
   }
 
-  function pushToHistory(cardData: OPCard) {
+  function pushToHistory(cardData: OpCard) {
     const existingIndex = selectionHistory.value.findIndex(card => card.id === cardData.id)
     if (existingIndex !== -1) {
       selectionHistory.value.splice(existingIndex, 1)

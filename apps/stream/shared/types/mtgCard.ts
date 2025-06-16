@@ -1,8 +1,7 @@
-import  type { z } from 'zod/v4'
-import type { mtgCardDataSchema, mtgCardDisplayDataSchema } from '../schemas/mtgCard'
-
-export type MtgCardData = z.infer<typeof mtgCardDataSchema>
-export type MtgCardDisplayData = z.infer<typeof mtgCardDisplayDataSchema>
+import type { MtgCardDisplayDataSchema } from '@keepr/types'
+import type { z } from 'zod/v4'
+import { MtgCardDataSchema } from '@keepr/types'
+import { sharedCardTimeoutDataSchema } from '../schemas/shared'
 
 export type MtgCardServerEvents = {
   connected: (card: TopicData<'mtgCard'> | null) => void
@@ -15,13 +14,20 @@ export type MtgCardClientEvents = {
   clear: () => void
 }
 
-export type MtgActiveCardAction =
-  | 'clear'
+export type MtgActiveCardAction
+  = | 'clear'
 
-export type MtgPreviewCardAction =
-  | 'show'
-  | 'clear'
-  | 'rotate'
-  | 'counterRotate'
-  | 'flip'
-  | 'turnOver'
+export type MtgPreviewCardAction
+  = | 'show'
+    | 'clear'
+    | 'rotate'
+    | 'counterRotate'
+    | 'flip'
+    | 'turnOver'
+
+const _mtgCardSchema = MtgCardDataSchema.extend({
+  timeoutData: sharedCardTimeoutDataSchema.optional(),
+})
+
+export type MtgCard = z.infer<typeof _mtgCardSchema>
+export type MtgCardDisplay = z.infer<typeof MtgCardDisplayDataSchema>

@@ -1,7 +1,7 @@
 import type { ScryfallCard } from '@scryfall/api-types'
 import { defu } from 'defu'
 
-export function parseMtgCard(card: ScryfallCard.Any): MtgCardData {
+export function parseMtgCard(card: ScryfallCard.Any): MtgCard {
   const cardData = defu({
     id: card.id,
     name: card.name,

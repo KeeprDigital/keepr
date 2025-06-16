@@ -1,8 +1,20 @@
 export const durationUtils = {
+  secondsToMs: (seconds: number): number => {
+    if (seconds < 0)
+      throw new Error('Seconds cannot be negative')
+    return Math.round(seconds * 1000)
+  },
+
   minutesToMs: (minutes: number): number => {
     if (minutes < 0)
       throw new Error('Minutes cannot be negative')
     return Math.round(minutes * 60 * 1000)
+  },
+
+  msToSeconds: (ms: number): number => {
+    if (ms < 0)
+      throw new Error('Milliseconds cannot be negative')
+    return Math.round(ms / 1000)
   },
 
   msToMinutes: (ms: number): number => {

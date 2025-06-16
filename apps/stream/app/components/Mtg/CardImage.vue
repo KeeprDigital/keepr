@@ -1,7 +1,7 @@
 <script setup lang="ts">
 type Props = {
-  card: MtgCardData
-  display: MtgCardDisplayData
+  card: MtgCard
+  display: MtgCardDisplay
   displayMode: MtgCardDisplayMode
 }
 
@@ -28,7 +28,7 @@ const canPreviewBack = computed(() => {
     && backLoaded.value
 })
 
-const scaleFactor = computed(() => {  
+const scaleFactor = computed(() => {
   if (!show.value)
     return 1
 

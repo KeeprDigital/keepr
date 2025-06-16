@@ -1,5 +1,4 @@
 /* eslint-disable ts/no-empty-object-type */
-import type { OpCardData } from '@keepr/types'
 import type { EventNames } from '@socket.io/component-emitter'
 import type { Namespace } from 'socket.io'
 import type { Socket } from 'socket.io-client'
@@ -30,8 +29,8 @@ export type Topic = typeof TopicNames[number]
 type TopicDataMap = {
   time: void
   config: ConfigData
-  mtgCard: MtgCardData
-  opCard: OpCardData
+  mtgCard: MtgCard
+  opCard: OpCard
   matches: MatchData[]
   event: EventData
 }

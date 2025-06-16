@@ -6,15 +6,15 @@ export const useMtgCardStore = defineStore('MtgCard', () => {
   const toast = useToast()
   const configStore = useConfigStore()
   const timeout = useCountdown(0)
-  const selectionHistory = useStorage<MtgCardData[]>('mtgCard-history', [])
+  const selectionHistory = useStorage<MtgCard[]>('mtgCard-history', [])
 
-  const previewCard = ref<MtgCardData | null>(null)
-  const previewCardPrintings = ref<MtgCardData[]>([])
+  const previewCard = ref<MtgCard | null>(null)
+  const previewCardPrintings = ref<MtgCard[]>([])
 
-  const activeCard = ref<MtgCardData | null>(null)
+  const activeCard = ref<MtgCard | null>(null)
 
   const searching = ref(false)
-  const searchResults = ref<MtgCardData[]>([])
+  const searchResults = ref<MtgCard[]>([])
   const selectedSearchFormat = ref<MtgFormat>('all')
 
   const { optimisticEmit } = useWS({
@@ -89,7 +89,7 @@ export const useMtgCardStore = defineStore('MtgCard', () => {
     })
   }
 
-  async function selectPreviewCard(cardData: MtgCardData, turnedOver: boolean) {
+  async function selectPreviewCard(cardData: MtgCard, turnedOver: boolean) {
     let shouldSearchPrintings = true
 
     if (cardData.id === previewCard.value?.id) {
@@ -193,7 +193,7 @@ export const useMtgCardStore = defineStore('MtgCard', () => {
     }
   }
 
-  function updateTimeout(cardData: MtgCardData | null) {
+  function updateTimeout(cardData: MtgCard | null) {
     if (!cardData || !cardData.timeoutData) {
       timeout.reset()
       return
@@ -202,7 +202,7 @@ export const useMtgCardStore = defineStore('MtgCard', () => {
     const { timeoutStartTimestamp, timeoutDuration } = cardData.timeoutData
 
     const elapsedMs = Date.now() - timeoutStartTimestamp
-    const remainingMs = (timeoutDuration * 1000) - elapsedMs
+    const remainingMs = (timeoutDuration) - elapsedMs
 
     if (remainingMs <= 0) {
       timeout.reset()
@@ -214,7 +214,7 @@ export const useMtgCardStore = defineStore('MtgCard', () => {
     timeout.start(remainingSeconds)
   }
 
-  function pushToHistory(cardData: MtgCardData) {
+  function pushToHistory(cardData: MtgCard) {
     const cardCopy = structuredClone(toRaw(cardData))
     const existingIndex = selectionHistory.value.findIndex(card => card.name === cardData.name)
     if (existingIndex !== -1) {
