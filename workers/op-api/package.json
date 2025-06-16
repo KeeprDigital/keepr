@@ -17,6 +17,7 @@
   "devDependencies": {
     "@keepr/eslint": "workspace:*",
     "@keepr/tsconfig": "workspace:*",
+    "@keepr/types": "workspace:*",
     "typescript": "catalog:cli",
     "wrangler": "catalog:cli"
   }

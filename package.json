@@ -10,8 +10,12 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:stream": "turbo run dev --filter=@keepr/stream",
+    "dev:commander": "turbo run dev --filter=@keepr/commander",
+    "clean": "turbo run clean",
     "lint": "turbo run lint",
-    "lint:fix": "turbo run lint:fix"
+    "lint:fix": "turbo run lint:fix",
+    "check": "turbo run check"
   },
   "devDependencies": {
     "@keepr/eslint": "workspace:*",

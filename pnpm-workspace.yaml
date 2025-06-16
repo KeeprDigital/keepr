@@ -4,19 +4,16 @@ packages:
   - tools/*
   - workers/*
 
-patchedDependencies:
-  '@scryfall/api-types@1.0.0-alpha.4': patches/@scryfall__api-types@1.0.0-alpha.4.patch
-
 catalogs:
   cli:
     '@antfu/eslint-config': ^4.14.1
     '@prettier/plugin-xml': ^3.4.1
-    eslint: ^9.28.0
+    eslint: ^9.29.0
     eslint-config-turbo: ^2.5.4
     eslint-plugin-format: ^1.0.1
     typescript: ^5.8.3
     unbuild: ^3.5.0
-    wrangler: ^4.19.1
+    wrangler: ^4.20.0
   core:
     turbo: ^2.5.4
   nuxt:
@@ -59,3 +56,6 @@ onlyBuiltDependencies:
   - unrs-resolver
   - vue-demi
   - workerd
+
+patchedDependencies:
+  '@scryfall/api-types@1.0.0-alpha.4': patches/@scryfall__api-types@1.0.0-alpha.4.patch

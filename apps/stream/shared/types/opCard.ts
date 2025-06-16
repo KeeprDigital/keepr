@@ -1,7 +1,7 @@
-import  type { z } from 'zod/v4'
-import type { opCardSchema } from '../schemas/opCard'
-
-export type OpCardData = z.infer<typeof opCardSchema>
+import type { ApiResponse } from '@keepr/types'
+import type { z } from 'zod/v4'
+import { OpCardSchema } from '@keepr/types'
+import { sharedCardTimeoutDataSchema } from '../schemas/shared'
 
 export type OpCardServerEvents = {
   connected: (card: TopicData<'opCard'> | null) => void
@@ -15,3 +15,10 @@ export type OpCardClientEvents = {
 
 export type OpPreviewCardAction = 'show'
 export type OpActiveCardAction = 'clear'
+
+const _opCardSchema = OpCardSchema.extend({
+  timeoutData: sharedCardTimeoutDataSchema.optional(),
+})
+
+export type OPCard = z.infer<typeof _opCardSchema>
+export type OpCardAPIData = ApiResponse<OPCard[]>

@@ -1,4 +1,5 @@
-import type { Env, OpCardData } from '../types'
+import type { OpCardData } from '@keepr/types'
+import type { Env } from '../types'
 import { zValidator } from '@hono/zod-validator'
 import { Hono } from 'hono'
 import { cache } from 'hono/cache'

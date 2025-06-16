@@ -20,7 +20,7 @@ const loaded = ref(false)
   >
     <NuxtImg
       class="image"
-      :src="props.card.image_url"
+      :src="props.card.img_url"
       loading="lazy"
       placeholder
       @load="loaded = true"

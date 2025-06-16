@@ -1,0 +1,23 @@
+{
+  "name": "@keepr/types",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared Typescript types and schemas for @keepr",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "clean": "rm -rf dist node_modules pnpm-lock.yaml",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "catalog:tools"
+  },
+  "devDependencies": {
+    "@keepr/tsconfig": "workspace:*",
+    "typescript": "catalog:cli"
+  }
+}

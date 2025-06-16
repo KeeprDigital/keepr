@@ -1,4 +1,5 @@
 /* eslint-disable ts/no-empty-object-type */
+import type { OpCardData } from '@keepr/types'
 import type { EventNames } from '@socket.io/component-emitter'
 import type { Namespace } from 'socket.io'
 import type { Socket } from 'socket.io-client'
@@ -168,8 +169,8 @@ export type NameSpaceClient<T extends Topic> = Socket<NameSpaceServerEvents<T>, 
  * @template E - The specific event name within the topic
  * @example ClientEventParams<'matches', 'joinMatch'> // Returns the parameters for joinMatch event
  */
-export type ClientEventParams<TTopic extends Topic, E extends keyof ClientEventsMap[TTopic]> =
-  ClientEventsMap[TTopic][E] extends (...args: infer P) => any ? P : never
+export type ClientEventParams<TTopic extends Topic, E extends keyof ClientEventsMap[TTopic]>
+  = ClientEventsMap[TTopic][E] extends (...args: infer P) => any ? P : never
 
 /**
  * Utility type that extends specified methods in a base event interface to include acknowledgment callbacks.
@@ -239,8 +240,8 @@ export type ExtendAckCallback<
  * @template TEvent - The specific event name within the topic
  * @example GetResponseType<'matches', 'add'> // Returns the response type for the add event
  */
-export type GetResponseType<TTopic extends Topic, TEvent extends keyof ClientEventsMap[TTopic]> =
-  TTopic extends keyof ExtendedAckClientEventsMap
+export type GetResponseType<TTopic extends Topic, TEvent extends keyof ClientEventsMap[TTopic]>
+  = TTopic extends keyof ExtendedAckClientEventsMap
     ? TEvent extends keyof ExtendedAckClientEventsMap[TTopic]
       ? ExtendedAckClientEventsMap[TTopic][TEvent] extends (ack: (response: infer R) => void) => void
         ? R

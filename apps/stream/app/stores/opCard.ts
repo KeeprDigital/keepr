@@ -1,19 +1,18 @@
 import { useCountdown, useStorage } from '@vueuse/core'
-import { opCardSchema } from '~~/shared/schemas/opCard'
 
 export const useOpCardStore = defineStore('OpCard', () => {
   const toast = useToast()
   const configStore = useConfigStore()
   const timeout = useCountdown(0)
-  const selectionHistory = useStorage<OpCardData[]>('opCard-history', [])
+  const selectionHistory = useStorage<OPCard[]>('opCard-history', [])
 
-  const previewCard = ref<OpCardData | null>(null)
-  const previewCardPrintings = ref<OpCardData[]>([])
+  const previewCard = ref<OPCard | null>(null)
+  const previewCardPrintings = ref<OPCard[]>([])
 
-  const activeCard = ref<OpCardData | null>(null)
+  const activeCard = ref<OPCard | null>(null)
 
   const searching = ref(false)
-  const searchResults = ref<OpCardData[]>([])
+  const searchResults = ref<OPCard[]>([])
   const selectedColour = ref('any')
   const selectedCost = ref<number | null>(null)
 
@@ -31,7 +30,7 @@ export const useOpCardStore = defineStore('OpCard', () => {
     },
   })
 
-  function updateTimeout(cardData: OpCardData | null) {
+  function updateTimeout(cardData: OPCard | null) {
     if (!cardData || !cardData.timeoutData) {
       timeout.reset()
       return
@@ -59,7 +58,7 @@ export const useOpCardStore = defineStore('OpCard', () => {
       return
     }
 
-    await $fetch<Omit<OpCardData, 'displayData'>[]>('/api/op/card', {
+    await $fetch<OpCardAPIData>('https://api.keepr.digital/op/cards', {
       query: {
         name,
         cost: selectedCost.value ?? undefined,
@@ -70,15 +69,16 @@ export const useOpCardStore = defineStore('OpCard', () => {
         searchResults.value = []
         return
       }
-      searchResults.value = data.map(card => opCardSchema.parse(card))
-    }).catch(() => {
+      searchResults.value = data.data
+    }).catch((error) => {
+      console.error(error)
       searchResults.value = []
     }).finally(() => {
       searching.value = false
     })
   }
 
-  async function selectPreviewCard(cardData: OpCardData) {
+  async function selectPreviewCard(cardData: OPCard) {
     previewCard.value = cardData
     previewCardPrintings.value = []
     pushToHistory(cardData)
@@ -155,8 +155,8 @@ export const useOpCardStore = defineStore('OpCard', () => {
     }
   }
 
-  function pushToHistory(cardData: OpCardData) {
-    const existingIndex = selectionHistory.value.findIndex(card => card.id === cardData.id && card.code === cardData.code)
+  function pushToHistory(cardData: OPCard) {
+    const existingIndex = selectionHistory.value.findIndex(card => card.id === cardData.id)
     if (existingIndex !== -1) {
       selectionHistory.value.splice(existingIndex, 1)
     }
