@@ -6,7 +6,7 @@ const { activeCard } = storeToRefs(cardStore)
 
 <template>
   <div v-if="activeCard" class="active-card">
-    <h2 class="text-center font-bold">
+    <h2 class="text-center font-bold mb-2">
       {{ activeCard.name }}
     </h2>
     <OpCardImage

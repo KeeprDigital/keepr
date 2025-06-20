@@ -22,7 +22,7 @@ const config = useConfigStore()
   </UDashboardPanel>
   <UDashboardPanel
     id="controls"
-    :default-size="20"
+    :default-size="15"
     :resizable="false"
     :ui="{
       // remove padding to give full control to the card controls
