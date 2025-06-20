@@ -20,6 +20,7 @@
     "@vueuse/core": "catalog:nuxt",
     "@vueuse/nuxt": "catalog:nuxt",
     "defu": "catalog:tools",
+    "nanoid": "catalog:tools",
     "nuxt": "catalog:nuxt",
     "pinia": "catalog:nuxt",
     "socket.io": "catalog:tools",

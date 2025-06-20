@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid'
+
 export const useMatchStore = defineStore('Match', () => {
   const formData = ref<MatchData[]>([])
   const state = shallowRef<MatchData[]>([])
@@ -75,7 +77,7 @@ export const useMatchStore = defineStore('Match', () => {
     optimisticEmit('add', {
       initialState: state.value,
       action: () => {
-        const id = crypto.randomUUID()
+        const id = nanoid()
         const match = createDefaultMatch({
           id,
         })

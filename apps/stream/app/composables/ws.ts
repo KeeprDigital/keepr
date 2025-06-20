@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid'
+
 type OptimisticOptions<TState = any, TResponse = AckResponse, TActionResult = any> = {
   initialState: TState
   action: (initialState: TState) => TActionResult
@@ -57,7 +59,7 @@ export function useWS<TTopic extends Topic = never>(params: Params<TTopic>) {
     options: OptimisticOptions<TState, TResponse, TActionResult>,
     ...args: ClientEventParams<TTopic, TEvent>
   ): Promise<void> {
-    const operationId = crypto.randomUUID()
+    const operationId = nanoid()
     const timeout = options.timeout ?? 5000
 
     // Store initial state for potential rollback

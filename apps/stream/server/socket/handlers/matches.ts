@@ -1,3 +1,5 @@
+import { nanoid } from 'nanoid'
+
 export const matchesHandler: NamespaceHandler<'matches'> = (namespace) => {
   namespace.on('connection', async (socket) => {
     socket.emit('connected', await getStore('matches') ?? [])
@@ -37,7 +39,7 @@ export const matchesHandler: NamespaceHandler<'matches'> = (namespace) => {
 
       const newMatch = {
         ...defaultMatchData,
-        id: crypto.randomUUID(),
+        id: nanoid(),
         name: `Match ${matches.length + 1}`,
         clock,
       }
