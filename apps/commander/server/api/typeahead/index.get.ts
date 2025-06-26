@@ -14,6 +14,10 @@ export default defineEventHandler(async (event) => {
     query: {
       q: `${name} is:commander`,
     },
+    headers: {
+      'User-Agent': 'Commander-Keepr/1.0.0',
+      'Accept': 'application/json',
+    },
   }).then((res) => {
     const mappedCards = res.data.map((card) => {
       const image = getCardImageUri(card, 'art_crop' as ScryfallImageSize)
