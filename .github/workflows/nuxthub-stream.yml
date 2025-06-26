@@ -41,4 +41,4 @@ jobs:
         id: deploy
         with:
           project-key: stream-e2p2
-          directory: apps/stream/dist
+          directory: apps/stream

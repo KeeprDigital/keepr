@@ -31,4 +31,4 @@ jobs:
         uses: nuxt-hub/action@v2
         with:
           project-key: commander-q798
-          directory: apps/commander/dist
+          directory: apps/commander
