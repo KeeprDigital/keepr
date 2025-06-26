@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import type { CommanderSubmission } from '../../shared/types/ws'
-
-const { $ws } = useNuxtApp() as any
-const submissions = ref<CommanderSubmission[]>([])
-const isSubscribed = ref(false)
+const { submissions } = useCommanderWS()
 
 // Format timestamp to relative time
 function formatRelativeTime(timestamp: number) {
@@ -18,58 +14,6 @@ function formatRelativeTime(timestamp: number) {
     return `${Math.floor(diff / 3600)}h ago`
   return `${Math.floor(diff / 86400)}d ago`
 }
-
-// Subscribe to real-time updates
-async function subscribe() {
-  try {
-    const socket = $ws.getCommanderSocket()
-
-    // Subscribe to updates
-    const success = await $ws.subscribe()
-    if (success) {
-      isSubscribed.value = true
-
-      // Get initial recent submissions
-      const recentSubmissions = await $ws.getRecentSubmissions()
-      submissions.value = recentSubmissions
-
-      // Listen for new submissions
-      socket.on('newSubmission', (submission: CommanderSubmission) => {
-        // Add to beginning and keep only 10
-        submissions.value = [submission, ...submissions.value].slice(0, 10)
-      })
-    }
-  }
-  catch (error) {
-    console.error('Failed to subscribe:', error)
-  }
-}
-
-// Unsubscribe from updates
-async function unsubscribe() {
-  try {
-    const socket = $ws.getCommanderSocket()
-
-    await $ws.unsubscribe()
-    isSubscribed.value = false
-
-    // Remove event listeners
-    socket.off('newSubmission')
-  }
-  catch (error) {
-    console.error('Failed to unsubscribe:', error)
-  }
-}
-
-onMounted(() => {
-  subscribe()
-})
-
-onUnmounted(() => {
-  if (isSubscribed.value) {
-    unsubscribe()
-  }
-})
 </script>
 
 <template>
@@ -93,7 +37,6 @@ onUnmounted(() => {
             :src="submission.commander_image"
             :alt="submission.commander_name"
             class="w-12 h-12 rounded-lg object-cover"
-            @error="(e) => { if (e.target && 'src' in e.target) (e.target as any).src = '/empty.png' }"
           >
           <div class="flex-1">
             <p class="font-medium text-gray-900 dark:text-white">

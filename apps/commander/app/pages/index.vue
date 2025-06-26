@@ -59,6 +59,7 @@ onMounted(() => {
 })
 
 const toast = useToast()
+const { refresh: refreshWS } = useCommanderWS()
 
 function startCooldownTimer() {
   const timer = setInterval(() => {
@@ -110,6 +111,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       description: 'The form has been submitted.',
       color: 'success',
     })
+
+    // Trigger WebSocket refresh to update all connected clients
+    refreshWS()
   }
   catch (error) {
     toast.add({
@@ -174,14 +178,6 @@ const formattedCooldownTime = computed(() => {
   const seconds = cooldownTimeLeft.value % 60
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`
 })
-
-// Handle image loading errors
-function handleImageError(event: Event) {
-  const target = event.target
-  if (target && 'src' in target) {
-    (target as any).src = '/empty.png'
-  }
-}
 </script>
 
 <template>
@@ -197,7 +193,6 @@ function handleImageError(event: Event) {
             :src="state.commander.image"
             :alt="state.commander.name"
             class="w-full h-full object-cover"
-            @error="handleImageError"
           >
         </div>
         <div class="text-center">

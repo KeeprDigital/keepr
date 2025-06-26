@@ -1,5 +1,3 @@
-import type { AddAckToActions } from './ack'
-
 // Commander submission data
 export type CommanderSubmission = {
   id: number
@@ -20,25 +18,9 @@ export type StatsUpdate = {
   last_played: number
 }
 
-// Server events (what the server can emit to clients)
-export type CommanderServerEvents = {
-  // When a new commander is submitted
-  newSubmission: (data: CommanderSubmission) => void
-  // When stats are updated
-  statsUpdated: (data: StatsUpdate[]) => void
-  // Recent submissions history
-  recentSubmissions: (data: CommanderSubmission[]) => void
-}
-
-// Client events (what clients can emit to server)
-export type CommanderClientEvents = {
-  // Subscribe to real-time updates
-  subscribe: () => void
-  // Unsubscribe from updates
-  unsubscribe: () => void
-  // Request recent submissions
-  getRecentSubmissions: () => void
-}
-
-// Enhanced client events with acknowledgments
-export type CommanderClientEventsWithAck = AddAckToActions<CommanderClientEvents>
+// WebSocket message types
+export type WSMessage
+  = | { type: 'recentSubmissions', data: CommanderSubmission[] }
+    | { type: 'newSubmission', data: CommanderSubmission }
+    | { type: 'statsUpdated', data: StatsUpdate[] }
+    | { type: 'getRecentSubmissions' }

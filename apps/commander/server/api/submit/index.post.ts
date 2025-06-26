@@ -1,5 +1,3 @@
-import { getIO } from '~~/server/plugins/ws.server'
-
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
@@ -26,50 +24,6 @@ export default defineEventHandler(async (event) => {
         statusCode: 500,
         statusMessage: 'Failed to save submission',
       })
-    }
-
-    // Emit WebSocket event for new submission
-    try {
-      const io = getIO()
-      const commanderNamespace = io.of('/commander')
-
-      // Create submission object
-      const submission: CommanderSubmission = {
-        id: Number(result.meta.last_row_id),
-        email: body.email,
-        commander_id: body.commander.id,
-        commander_name: body.commander.name,
-        commander_image: body.commander.image,
-        submitted_at: Math.floor(Date.now() / 1000),
-      }
-
-      // Emit to all subscribed clients
-      commanderNamespace.to('updates').emit('newSubmission', submission)
-
-      // Also get and emit updated stats
-      const statsResult = await db
-        .prepare(`
-          SELECT
-            commander_id,
-            MAX(commander_name) as commander_name,
-            MAX(commander_image) as commander_image,
-            COUNT(*) as play_count,
-            COUNT(DISTINCT email) as unique_players,
-            MAX(submitted_at) as last_played
-          FROM submissions
-          GROUP BY commander_id
-          ORDER BY play_count DESC
-          LIMIT 10
-        `)
-        .all()
-
-      if (statsResult.results) {
-        commanderNamespace.to('updates').emit('statsUpdated', statsResult.results as StatsUpdate[])
-      }
-    }
-    catch (wsError) {
-      // Log WebSocket error but don't fail the submission
-      console.error('WebSocket emit error:', wsError)
     }
 
     return {

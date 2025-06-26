@@ -12,21 +12,12 @@ import {
 } from 'chart.js'
 import { Bar } from 'vue-chartjs'
 
-const props = defineProps<{
-  commanders: Commander[]
-}>()
+const { commanders } = useCommanderWS()
 
 // Register Chart.js components
 ChartJS.register(Title, Tooltip, Legend, BarElement, CategoryScale, LinearScale)
 
-type Commander = {
-  commander_name: string
-  commander_image: string
-  play_count: number
-}
-
-// Get top 10 commanders
-const topCommanders = computed(() => props.commanders.slice(0, 10))
+const topCommanders = computed(() => commanders.value.slice(0, 10))
 
 // Prepare chart data for horizontal bar
 const chartData = computed<ChartData<'bar'>>(() => {
@@ -183,7 +174,6 @@ watchEffect(() => {
             :src="commander.commander_image"
             :alt="commander.commander_name"
             class="w-10 h-10 rounded-lg object-cover border border-gray-300 dark:border-gray-600 shadow-sm"
-            @error="(e) => { if (e.target && 'src' in e.target) (e.target as any).src = '/empty.png' }"
           >
           <div class="flex-1 min-w-0">
             <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
