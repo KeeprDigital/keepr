@@ -66,6 +66,8 @@ function startCooldownTimer() {
     if (cooldownTimeLeft.value <= 0) {
       clearInterval(timer)
       cooldownActive.value = false
+      // Clear the currently playing commander when timeout expires
+      state.commander = undefined
     }
   }, 1000)
 }
