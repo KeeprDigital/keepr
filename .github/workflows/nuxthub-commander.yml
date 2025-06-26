@@ -32,5 +32,3 @@ jobs:
         with:
           project-key: commander-q798
           directory: apps/commander
-        env:
-          NUXT_UI_PRO_LICENSE: ${{ secrets.NUXT_UI_PRO_LICENSE }}
