@@ -1,48 +1,100 @@
 <script setup lang="ts">
-const runtimeConfig = useRuntimeConfig()
-const colors = ['#f87171', '#fb923c', '#fbbf24', '#facc15', '#a3e635', '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#38bdf8', '#60a5fa', '#818cf8', '#a78bfa', '#c084fc', '#e879f9', '#f472b6', '#fb7185']
-const color = useState('color', () => colors[Math.floor(Math.random() * colors.length)])
+import type { FormSubmitEvent } from '@nuxt/ui'
+import { z } from 'zod/v4'
+
+const schema = z.object({
+  email: z.email('Invalid email'),
+  commander: z.string().min(1, 'Commander name is required'),
+})
+
+type Schema = z.output<typeof schema>
+
+const commanderQuery = ref('')
+const commanderQueryDebounced = refDebounced(commanderQuery, 200)
+
+const state = reactive<Partial<Schema>>({
+  email: undefined,
+  commander: undefined,
+})
+
+const toast = useToast()
+
+async function onSubmit(_event: FormSubmitEvent<Schema>) {
+  toast.add({ title: 'Success', description: 'The form has been submitted.', color: 'success' })
+}
+
+async function fetchCommanders() {
+  const data = await $fetch('/api/typeahead', {
+    params: { q: commanderQueryDebounced.value },
+    immediate: false,
+  })
+  if (data.length !== 0) {
+    return data.map(commander => ({
+      label: commander.name,
+      id: String(commander.id),
+      avatar: { src: commander.image },
+    }))
+  }
+
+  return data
+}
+
+const { data: commanders, status, execute } = useLazyAsyncData(
+  () => fetchCommanders(),
+  { immediate: false },
+)
+
+watch(commanderQueryDebounced, (newQuery) => {
+  if (newQuery.length >= 3) {
+    execute()
+  }
+  else {
+    commanders.value = []
+  }
+}, { immediate: true })
 </script>
 
 <template>
-  <div class="centered">
-    <h1 :style="{ color }">
-      {{ runtimeConfig.public.helloText }}
-    </h1>
-    <NuxtLink
-      to="/"
-      external
+  <section class="flex flex-col items-center justify-center h-screen">
+    <UForm
+      :schema="schema"
+      :state="state"
+      class="space-y-4"
+      :validate-on="['input']"
+      @submit="onSubmit"
     >
-      refresh
-    </NuxtLink>
-  </div>
-</template>
+      <UFormField
+        label="Email"
+        name="email"
+        size="xl"
+        class="w-full"
+      >
+        <UInput
+          v-model="state.email"
+          class="w-full"
+        />
+      </UFormField>
 
-<style scoped>
-.centered {
-  position: absolute;
-  width: 100%;
-  text-align: center;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-}
-h1 {
-  font-size: 32px;
-}
-@media (min-width: 768px) {
-  h1 {
-    font-size: 64px;
-  }
-}
-a {
-  color: #888;
-  text-decoration: none;
-  font-size: 18px;
-}
-a:hover {
-  text-decoration: underline;
-}
-</style>
+      <UFormField label="Commander" name="commander" size="xl">
+        <UInputMenu
+          v-model="state.commander"
+          v-model:search-term="commanderQuery"
+          :items="commanders"
+          :loading="status === 'pending'"
+          ignore-filter
+          reset-search-term-on-blur
+          reset-search-term-on-select
+          value-key="id"
+        />
+      </UFormField>
+      <UButton
+        type="submit"
+        size="xl"
+        block
+        variant="outline"
+      >
+        Submit
+      </UButton>
+    </UForm>
+  </section>
+</template>

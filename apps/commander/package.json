@@ -15,12 +15,16 @@
   },
   "dependencies": {
     "@nuxt/eslint": "catalog:nuxt",
+    "@nuxt/ui-pro": "catalog:nuxt",
     "@nuxthub/core": "catalog:nuxt",
+    "@vueuse/core": "catalog:nuxt",
+    "@vueuse/nuxt": "catalog:nuxt",
     "nuxt": "catalog:nuxt",
     "vue": "catalog:nuxt",
     "vue-router": "catalog:nuxt"
   },
   "devDependencies": {
+    "@scryfall/api-types": "catalog:types",
     "eslint": "catalog:cli",
     "typescript": "catalog:cli",
     "vue-tsc": "catalog:nuxt",
