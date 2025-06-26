@@ -28,10 +28,10 @@ type Commander = {
 // Get top 10 commanders
 const topCommanders = computed(() => props.commanders.slice(0, 10))
 
-// Prepare chart data
+// Prepare chart data for horizontal bar
 const chartData = computed<ChartData<'bar'>>(() => {
   return {
-    labels: topCommanders.value.map((_, index) => `${index + 1}`),
+    labels: topCommanders.value.map(c => c.commander_name),
     datasets: [
       {
         label: 'Times Played',
@@ -39,13 +39,15 @@ const chartData = computed<ChartData<'bar'>>(() => {
         borderColor: '#2563eb',
         borderWidth: 1,
         data: topCommanders.value.map(c => c.play_count),
+        barThickness: 30,
       },
     ],
   }
 })
 
-// Chart options
+// Chart options for horizontal layout
 const chartOptions = computed<ChartOptions<'bar'>>(() => ({
+  indexAxis: 'y', // This makes the bar chart horizontal
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
@@ -65,28 +67,14 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
     },
     tooltip: {
       callbacks: {
-        title: (tooltipItems) => {
-          if (!tooltipItems.length || !tooltipItems[0])
-            return ''
-          const index = tooltipItems[0].dataIndex
-          return topCommanders.value[index]?.commander_name || ''
-        },
         label: (context) => {
-          return `Played: ${context.parsed.y} times`
+          return `Played: ${context.parsed.x} times`
         },
       },
     },
   },
   scales: {
     x: {
-      grid: {
-        display: false,
-      },
-      ticks: {
-        display: false, // Hide the x-axis labels since we'll show images
-      },
-    },
-    y: {
       beginAtZero: true,
       ticks: {
         stepSize: 1,
@@ -95,10 +83,18 @@ const chartOptions = computed<ChartOptions<'bar'>>(() => ({
         color: 'rgba(0, 0, 0, 0.1)',
       },
     },
+    y: {
+      grid: {
+        display: false,
+      },
+      ticks: {
+        display: false, // Hide labels as we'll show custom ones with images
+      },
+    },
   },
   layout: {
     padding: {
-      bottom: 80, // Add padding for the images
+      left: 200, // Space for images and names
     },
   },
 }))
@@ -158,38 +154,44 @@ watchEffect(() => {
   <div class="w-full">
     <div class="relative">
       <!-- Chart Container -->
-      <div class="h-[400px]">
+      <div class="h-[500px]">
         <Bar
           :data="chartData"
           :options="chartOptions"
         />
       </div>
 
-      <!-- Commander Images Row -->
-      <div class="absolute bottom-0 left-0 right-0 flex items-end pointer-events-none" style="padding-left: 50px; padding-right: 12px; padding-bottom: 20px;">
+      <!-- Commander Labels (Images + Names) -->
+      <div
+        class="absolute left-0 top-0 bottom-0 flex flex-col justify-center pointer-events-none"
+        :style="{
+          width: '190px',
+          paddingTop: '60px', // Account for title
+          paddingBottom: '20px',
+        }"
+      >
         <div
           v-for="commander in topCommanders"
           :key="commander.commander_name"
-          class="flex flex-col items-center justify-center"
+          class="flex items-center space-x-3 pointer-events-auto"
           :style="{
-            width: `${100 / topCommanders.length}%`,
+            height: `${100 / topCommanders.length}%`,
+            maxHeight: '50px',
           }"
         >
-          <div class="relative group pointer-events-auto">
-            <img
-              :src="commander.commander_image"
-              :alt="commander.commander_name"
-              class="w-12 h-12 rounded-lg object-cover border-2 border-gray-300 dark:border-gray-600 shadow-md hover:scale-110 transition-transform cursor-pointer"
-              :title="commander.commander_name"
-              @error="(e) => { if (e.target && 'src' in e.target) (e.target as any).src = '/empty.png' }"
-            >
-            <!-- Hover tooltip -->
-            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+          <img
+            :src="commander.commander_image"
+            :alt="commander.commander_name"
+            class="w-10 h-10 rounded-lg object-cover border border-gray-300 dark:border-gray-600 shadow-sm"
+            @error="(e) => { if (e.target && 'src' in e.target) (e.target as any).src = '/empty.png' }"
+          >
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
               {{ commander.commander_name }}
-              <div class="text-xs opacity-75">
-                {{ commander.play_count }} plays
-              </div>
-            </div>
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              {{ commander.play_count }} plays
+            </p>
           </div>
         </div>
       </div>

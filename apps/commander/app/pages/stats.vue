@@ -24,14 +24,41 @@ const { data: stats, pending, error, refresh } = await useFetch<StatsResponse>('
   },
 })
 
-// Format the last played date
-function formatDate(timestamp: number) {
-  return new Date(timestamp * 1000).toLocaleString()
-}
+const { $ws } = useNuxtApp() as any
+
+// Subscribe to real-time stats updates
+onMounted(async () => {
+  try {
+    const socket = $ws.getCommanderSocket()
+    await $ws.subscribe()
+
+    // Listen for stats updates
+    socket.on('statsUpdated', (updatedStats: StatsUpdate[]) => {
+      if (stats.value) {
+        stats.value.data = updatedStats
+      }
+    })
+  }
+  catch (error) {
+    console.error('Failed to subscribe to updates:', error)
+  }
+})
+
+// Unsubscribe on unmount
+onUnmounted(async () => {
+  try {
+    const socket = $ws.getCommanderSocket()
+    socket.off('statsUpdated')
+    await $ws.unsubscribe()
+  }
+  catch (error) {
+    console.error('Failed to unsubscribe:', error)
+  }
+})
 </script>
 
 <template>
-  <section class="container mx-auto p-4 max-w-6xl">
+  <section class="p-4">
     <h1 class="text-3xl font-bold mb-8 text-center">
       Commander Play Statistics
     </h1>
@@ -47,57 +74,13 @@ function formatDate(timestamp: number) {
       </UButton>
     </div>
 
-    <div v-else-if="stats?.data && stats.data.length > 0" class="space-y-8">
+    <div v-else-if="stats?.data && stats.data.length > 0" class="grid gap-8 lg:grid-cols-2">
+      <!-- Recent Submissions Section -->
+      <RecentSubmissions />
+
       <!-- Bar Chart Section -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <CommanderBarChart :commanders="stats.data" />
-      </div>
-
-      <!-- Cards Grid Section -->
-      <div>
-        <h2 class="text-2xl font-semibold mb-4 text-center">
-          All Commanders
-        </h2>
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <UCard
-            v-for="commander in stats.data"
-            :key="commander.commander_id"
-            class="hover:shadow-lg transition-shadow"
-          >
-            <div class="flex items-start space-x-4">
-              <img
-                :src="commander.commander_image"
-                :alt="commander.commander_name"
-                class="w-16 h-16 rounded-lg object-cover"
-                @error="(e) => { if (e.target && 'src' in e.target) (e.target as any).src = '/empty.png' }"
-              >
-              <div class="flex-1">
-                <h3 class="font-semibold text-lg">
-                  {{ commander.commander_name }}
-                </h3>
-                <div class="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                  <p>
-                    <UIcon name="i-heroicons-play" class="inline mr-1" />
-                    Played {{ commander.play_count }} times
-                  </p>
-                  <p>
-                    <UIcon name="i-heroicons-users" class="inline mr-1" />
-                    {{ commander.unique_players }} unique players
-                  </p>
-                  <p v-if="commander.last_played" class="text-xs">
-                    Last played: {{ formatDate(commander.last_played) }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </UCard>
-        </div>
-
-        <div class="text-center mt-8">
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            Showing top {{ stats.data.length }} commanders
-          </p>
-        </div>
       </div>
     </div>
 

@@ -21,6 +21,8 @@
     "@vueuse/nuxt": "catalog:nuxt",
     "chart.js": "catalog:tools",
     "nuxt": "catalog:nuxt",
+    "socket.io": "catalog:tools",
+    "socket.io-client": "catalog:tools",
     "vue": "catalog:nuxt",
     "vue-chartjs": "catalog:tools",
     "vue-router": "catalog:nuxt"
