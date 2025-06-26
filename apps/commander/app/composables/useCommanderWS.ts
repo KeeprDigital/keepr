@@ -24,15 +24,36 @@ export function useCommanderWS() {
     })
   }
 
-  watch(wsInstance.data, (data) => {
+  watch(wsInstance.data, async (data) => {
     if (data) {
       const message = JSON.parse(data as string)
-      if (message.type === 'update') {
-        submissions.value = message.submissions
-        stats.value = message.stats
+
+      if (message.type === 'connected') {
+        // Fetch initial data when connected
+        await fetchData()
+      }
+      else if (message.type === 'refresh') {
+        // Fetch fresh data when refresh signal received
+        await fetchData()
       }
     }
   })
+
+  // Fetch data from API endpoints
+  async function fetchData() {
+    try {
+      const [submissionsRes, statsRes] = await Promise.all([
+        $fetch('/api/stats/recent-submissions'),
+        $fetch<{ data: any[] }>('/api/stats/commanders'),
+      ])
+
+      submissions.value = submissionsRes as any[]
+      stats.value = statsRes.data || []
+    }
+    catch (error) {
+      console.error('[ws] Failed to fetch data:', error)
+    }
+  }
 
   const refresh = () => {
     wsInstance?.send(JSON.stringify({ type: 'refresh' }))

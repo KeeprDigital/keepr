@@ -102,8 +102,11 @@ watchEffect(() => {
     if (chartOptions.value.scales?.x) {
       chartOptions.value.scales.x.ticks = {
         ...chartOptions.value.scales.x.ticks,
-        display: false,
+        stepSize: 1,
         color: '#9ca3af',
+      }
+      chartOptions.value.scales.x.grid = {
+        color: 'rgba(255, 255, 255, 0.1)',
       }
     }
     if (chartOptions.value.scales?.y) {
@@ -124,7 +127,7 @@ watchEffect(() => {
     if (chartOptions.value.scales?.x) {
       chartOptions.value.scales.x.ticks = {
         ...chartOptions.value.scales.x.ticks,
-        display: false,
+        stepSize: 1,
         color: '#4b5563',
       }
     }
@@ -142,10 +145,10 @@ watchEffect(() => {
 </script>
 
 <template>
-  <div class="w-full">
-    <div class="relative">
+  <div class="w-full h-full">
+    <div class="relative h-full">
       <!-- Chart Container -->
-      <div class="h-[500px]">
+      <div class="h-full min-h-[400px]">
         <Bar
           :data="chartData"
           :options="chartOptions"
@@ -154,20 +157,24 @@ watchEffect(() => {
 
       <!-- Commander Labels (Images + Names) -->
       <div
-        class="absolute left-0 top-0 bottom-0 flex flex-col justify-center pointer-events-none"
+        class="absolute left-0 flex flex-col pointer-events-none"
         :style="{
           width: '190px',
-          paddingTop: '60px', // Account for title
-          paddingBottom: '20px',
+          top: '70px', // Account for title and top padding
+          bottom: '40px', // Account for x-axis and bottom padding
         }"
       >
         <div
-          v-for="commander in topCommanders"
+          v-for="(commander, index) in topCommanders"
           :key="commander.commander_name"
           class="flex items-center space-x-3 pointer-events-auto"
           :style="{
+            position: 'absolute',
+            top: `${(index / topCommanders.length) * 100}%`,
             height: `${100 / topCommanders.length}%`,
-            maxHeight: '50px',
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
           }"
         >
           <img
