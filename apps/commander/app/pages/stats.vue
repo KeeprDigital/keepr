@@ -1,5 +1,24 @@
 <script setup lang="ts">
-const { data: stats, pending, error, refresh } = await useFetch('/api/stats/commanders', {
+type Commander = {
+  commander_id: string
+  commander_name: string
+  commander_image: string
+  play_count: number
+  unique_players: number
+  last_played?: number
+}
+
+type StatsResponse = {
+  success: boolean
+  data: Commander[]
+  pagination: {
+    limit: number
+    offset: number
+    total: number
+  }
+}
+
+const { data: stats, pending, error, refresh } = await useFetch<StatsResponse>('/api/stats/commanders', {
   query: {
     limit: 20,
   },
@@ -28,46 +47,57 @@ function formatDate(timestamp: number) {
       </UButton>
     </div>
 
-    <div v-else-if="stats?.data && stats.data.length > 0" class="space-y-4">
-      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <UCard
-          v-for="commander in stats.data"
-          :key="commander.commander_id"
-          class="hover:shadow-lg transition-shadow"
-        >
-          <div class="flex items-start space-x-4">
-            <img
-              :src="commander.commander_image"
-              :alt="commander.commander_name"
-              class="w-16 h-16 rounded-lg object-cover"
-              @error="(e) => { if (e.target && 'src' in e.target) (e.target as any).src = '/empty.png' }"
-            >
-            <div class="flex-1">
-              <h3 class="font-semibold text-lg">
-                {{ commander.commander_name }}
-              </h3>
-              <div class="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                <p>
-                  <UIcon name="i-heroicons-play" class="inline mr-1" />
-                  Played {{ commander.play_count }} times
-                </p>
-                <p>
-                  <UIcon name="i-heroicons-users" class="inline mr-1" />
-                  {{ commander.unique_players }} unique players
-                </p>
-                <p v-if="commander.last_played" class="text-xs">
-                  Last played: {{ formatDate(commander.last_played) }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </UCard>
+    <div v-else-if="stats?.data && stats.data.length > 0" class="space-y-8">
+      <!-- Bar Chart Section -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+        <CommanderBarChart :commanders="stats.data" />
       </div>
 
-      <div class="text-center mt-8">
-        <p class="text-sm text-gray-600 dark:text-gray-400">
-          Showing top {{ stats.data.length }} commanders
-        </p>
+      <!-- Cards Grid Section -->
+      <div>
+        <h2 class="text-2xl font-semibold mb-4 text-center">
+          All Commanders
+        </h2>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <UCard
+            v-for="commander in stats.data"
+            :key="commander.commander_id"
+            class="hover:shadow-lg transition-shadow"
+          >
+            <div class="flex items-start space-x-4">
+              <img
+                :src="commander.commander_image"
+                :alt="commander.commander_name"
+                class="w-16 h-16 rounded-lg object-cover"
+                @error="(e) => { if (e.target && 'src' in e.target) (e.target as any).src = '/empty.png' }"
+              >
+              <div class="flex-1">
+                <h3 class="font-semibold text-lg">
+                  {{ commander.commander_name }}
+                </h3>
+                <div class="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                  <p>
+                    <UIcon name="i-heroicons-play" class="inline mr-1" />
+                    Played {{ commander.play_count }} times
+                  </p>
+                  <p>
+                    <UIcon name="i-heroicons-users" class="inline mr-1" />
+                    {{ commander.unique_players }} unique players
+                  </p>
+                  <p v-if="commander.last_played" class="text-xs">
+                    Last played: {{ formatDate(commander.last_played) }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </UCard>
+        </div>
+
+        <div class="text-center mt-8">
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Showing top {{ stats.data.length }} commanders
+          </p>
+        </div>
       </div>
     </div>
 

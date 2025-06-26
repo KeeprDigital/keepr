@@ -19,8 +19,10 @@
     "@nuxthub/core": "catalog:nuxt",
     "@vueuse/core": "catalog:nuxt",
     "@vueuse/nuxt": "catalog:nuxt",
+    "chart.js": "catalog:tools",
     "nuxt": "catalog:nuxt",
     "vue": "catalog:nuxt",
+    "vue-chartjs": "catalog:tools",
     "vue-router": "catalog:nuxt"
   },
   "devDependencies": {

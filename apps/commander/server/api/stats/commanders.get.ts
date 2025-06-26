@@ -12,13 +12,13 @@ export default defineEventHandler(async (event) => {
       .prepare(`
         SELECT
           commander_id,
-          commander_name,
-          commander_image,
+          MAX(commander_name) as commander_name,
+          MAX(commander_image) as commander_image,
           COUNT(*) as play_count,
           COUNT(DISTINCT email) as unique_players,
           MAX(submitted_at) as last_played
         FROM submissions
-        GROUP BY commander_id, commander_name, commander_image
+        GROUP BY commander_id
         ORDER BY play_count DESC
         LIMIT ?1 OFFSET ?2
       `)
