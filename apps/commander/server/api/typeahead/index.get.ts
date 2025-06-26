@@ -36,7 +36,8 @@ export default defineEventHandler(async (event) => {
         return 1
       return a.name.localeCompare(b.name)
     })
-  }).catch(() => {
+  }).catch((error) => {
+    console.error(error)
     return []
   })
 
