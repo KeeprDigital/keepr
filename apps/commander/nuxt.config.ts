@@ -7,7 +7,10 @@ export default defineNuxtConfig({
     '@vueuse/nuxt',
   ],
 
-  hub: {},
+  hub: {
+    workers: true,
+    database: true,
+  },
 
   eslint: {
     config: {

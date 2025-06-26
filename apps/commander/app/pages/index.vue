@@ -185,7 +185,7 @@ function handleImageError(event: Event) {
 </script>
 
 <template>
-  <section class="flex flex-col items-center justify-center h-screen">
+  <section class="flex flex-col items-center justify-center h-screen p-4">
     <!-- Currently Selected Commander Display -->
     <div v-if="state.commander" class="mb-8 p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-md max-w-sm w-full">
       <h3 class="text-lg font-semibold mb-4 text-center text-gray-900 dark:text-white">
@@ -259,6 +259,12 @@ function handleImageError(event: Event) {
       >
         Submit
       </UButton>
+
+      <div class="mt-4 text-center">
+        <UButton to="/stats" variant="link" size="sm">
+          View Commander Statistics
+        </UButton>
+      </div>
     </UForm>
   </section>
 </template>
