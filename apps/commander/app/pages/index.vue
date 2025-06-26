@@ -4,7 +4,11 @@ import { z } from 'zod/v4'
 
 const schema = z.object({
   email: z.email('Invalid email'),
-  commander: z.string().min(1, 'Commander name is required'),
+  commander: z.object({
+    id: z.string(),
+    name: z.string(),
+    image: z.string(),
+  }),
 })
 
 type Schema = z.output<typeof schema>
@@ -12,14 +16,30 @@ type Schema = z.output<typeof schema>
 const commanderQuery = ref('')
 const commanderQueryDebounced = refDebounced(commanderQuery, 200)
 
+// Initialize state with email from localStorage if available
 const state = reactive<Partial<Schema>>({
   email: undefined,
   commander: undefined,
 })
 
+// Load email from localStorage on component mount
+onMounted(() => {
+  if (import.meta.client) {
+    const savedEmail = localStorage.getItem('userEmail')
+    if (savedEmail) {
+      state.email = savedEmail
+    }
+  }
+})
+
 const toast = useToast()
 
-async function onSubmit(_event: FormSubmitEvent<Schema>) {
+async function onSubmit(event: FormSubmitEvent<Schema>) {
+  // Save email to localStorage when form is submitted
+  if (import.meta.client && event.data.email) {
+    localStorage.setItem('userEmail', event.data.email)
+  }
+
   toast.add({ title: 'Success', description: 'The form has been submitted.', color: 'success' })
 }
 
@@ -59,7 +79,7 @@ watch(commanderQueryDebounced, (newQuery) => {
     <UForm
       :schema="schema"
       :state="state"
-      class="space-y-4"
+      class="space-y-4 w-80"
       :validate-on="['input']"
       @submit="onSubmit"
     >
@@ -74,8 +94,12 @@ watch(commanderQueryDebounced, (newQuery) => {
           class="w-full"
         />
       </UFormField>
-
-      <UFormField label="Commander" name="commander" size="xl">
+      <UFormField
+        label="Commander"
+        name="commander"
+        size="xl"
+        class="w-full"
+      >
         <UInputMenu
           v-model="state.commander"
           v-model:search-term="commanderQuery"
@@ -84,7 +108,8 @@ watch(commanderQueryDebounced, (newQuery) => {
           ignore-filter
           reset-search-term-on-blur
           reset-search-term-on-select
-          value-key="id"
+          trailing-icon=""
+          class="w-full"
         />
       </UFormField>
       <UButton
