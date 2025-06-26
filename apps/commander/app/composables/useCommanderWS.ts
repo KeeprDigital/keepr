@@ -1,6 +1,6 @@
 import { useWebSocket } from '@vueuse/core'
 
-const submissions = ref<CommanderSubmission[]>([])
+const submissions = ref<any[]>([])
 const stats = ref<any[]>([])
 let wsInstance: ReturnType<typeof useWebSocket> | null = null
 
