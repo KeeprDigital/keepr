@@ -60,6 +60,7 @@ onMounted(() => {
 
 const toast = useToast()
 const { refresh: refreshWS } = useCommanderWS()
+const colorMode = useColorMode()
 
 function startCooldownTimer() {
   const timer = setInterval(() => {
@@ -178,10 +179,16 @@ const formattedCooldownTime = computed(() => {
   const seconds = cooldownTimeLeft.value % 60
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`
 })
+
+// Determine which logo to display based on color mode
+const logoSrc = computed(() => {
+  return colorMode.value === 'dark' ? '/logo-dark.png' : '/logo-light.png'
+})
 </script>
 
 <template>
   <section class="flex flex-col items-center justify-center h-screen p-4">
+    <img :src="logoSrc" alt="Commander Logo" class="max-w-sm w-full">
     <!-- Currently Selected Commander Display -->
     <div v-if="state.commander" class="mb-8 p-6 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 shadow-md max-w-sm w-full">
       <h3 class="text-lg font-semibold mb-4 text-center text-gray-900 dark:text-white">
@@ -256,8 +263,8 @@ const formattedCooldownTime = computed(() => {
       </UButton>
 
       <div class="mt-4 text-center">
-        <UButton to="/stats" variant="link" size="sm">
-          View Commander Statistics
+        <UButton href="https://forms.gle/WjexdKdn1FGjd9tm9" variant="link">
+          Event Feedback Form
         </UButton>
       </div>
     </UForm>
