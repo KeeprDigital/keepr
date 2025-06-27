@@ -16,11 +16,5 @@
         <CommanderBarChart />
       </div>
     </div>
-
-    <div class="mt-8 text-center">
-      <UButton to="/" variant="outline">
-        Back to Form
-      </UButton>
-    </div>
   </section>
 </template>
