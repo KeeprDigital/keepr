@@ -71,6 +71,8 @@ const screenContext = screenContextOf({
 	eventId: computed(() => mockEventId.value),
 	assetCapability: mockAssetCapability,
 	cardDataHealth: mockCardDataHealth,
+	// A 1080p output of the default Event Canvas: one output pixel per canvas pixel.
+	viewport: ref({ width: 1920, height: 1080 }),
 });
 /** The Deck List's board settings, beside its Deck Source. */
 const mockBoards = ref<Record<string, unknown>>({});
@@ -125,7 +127,10 @@ function createEnrichedCard(name: string, imageUrl = `https://img.test/${name}.j
 		highlanderPoints: null,
 		mtgCard: {
 			imageData: {
-				front: { normal: imageUrl },
+				front: {
+					small: imageUrl.replace('.jpg', '-small.jpg'),
+					normal: imageUrl,
+				},
 			},
 		},
 	};
@@ -316,6 +321,20 @@ describe('useDeckModeData', () => {
 		images.release(art);
 		await flushPromises();
 		expect(hasDisplayedDeck.value).toBe(true);
+	});
+
+	// A hundred-card grid draws Scryfall's small image, which its cards are no wider than (#1201).
+	it('preloads a hundred-card grid\'s small art and draws it', async () => {
+		mockReadDeck.mockResolvedValue(createDeckResponse(Array.from({ length: 100 }, (_, index) =>
+			createDeckCard({ name: `Card ${index}`, quantity: 1 }))));
+		mockPlayerId.value = 5;
+		const { art, hasDisplayedDeck } = mountDeckModeData();
+		await flushPromises();
+
+		expect(hasDisplayedDeck.value).toBe(true);
+		expect(art.value.mainboard).toBe('small');
+		expect(images.requested).toContain('https://img.test/Card 0-small.jpg');
+		expect(images.requested).not.toContain('https://img.test/Card 0.jpg');
 	});
 
 	it('warms a listed board\'s art only once the art on show has loaded', async () => {

@@ -38,6 +38,7 @@ const {
 	displayedDeckVersion,
 	pendingSwapVersion,
 	commitPendingDeck,
+	art,
 } = useDeckModeData(useScreenContext(), { followsSeat: props.followsSeat });
 
 const primaryTextStyle = {
@@ -578,6 +579,13 @@ const highlanderPointedCardAccentStyle = {
 
 const showQuantities = computed(() => config.value.showQuantities ?? false);
 
+/** The Scryfall image a card draws: its board's, the companion its own, as its deck preloaded them. */
+function cardArt(section: VisibleBoard, card: DeckListCardWithData) {
+	return card === shownCompanion.value
+		? art.value.companion
+		: art.value[section.name];
+}
+
 /** A board's card badges, sized to its solved card width; until it is measured, its cards have no size. */
 function boardBadgeProps(key: BoardKey) {
 	const cardWidth = solvedBoards.value[key]?.cardWidth ?? 0;
@@ -736,6 +744,7 @@ function stackCardStyle(section: VisibleBoard, index: number) {
 										v-for="(card, index) in section.cards"
 										:key="`${section.name}-${index}`"
 										:card="card"
+										:art="cardArt(section, card)"
 										:tag="card === shownCompanion ? 'Companion' : undefined"
 										v-bind="cardBadgeProps[section.key]"
 										:show-quantity="section.name !== 'companion' && section.name !== 'commanders' && showQuantities"
@@ -757,6 +766,7 @@ function stackCardStyle(section: VisibleBoard, index: number) {
 									>
 										<ScreenModesDeckCard
 											:card="card"
+											:art="cardArt(section, card)"
 											:tag="card === shownCompanion ? 'Companion' : undefined"
 											v-bind="cardBadgeProps[section.key]"
 										/>

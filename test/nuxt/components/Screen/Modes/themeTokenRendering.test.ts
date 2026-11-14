@@ -788,6 +788,12 @@ mockNuxtImport('useDeckModeData', () => () => ({
 	displayedDeckVersion: ref(1),
 	pendingSwapVersion: ref(0),
 	commitPendingDeck: () => {},
+	art: ref({
+		commanders: 'normal',
+		mainboard: 'normal',
+		sideboard: 'normal',
+		companion: 'normal',
+	}),
 }));
 
 const spotlightCard = {
