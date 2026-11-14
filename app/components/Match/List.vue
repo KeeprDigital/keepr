@@ -71,10 +71,7 @@ function getFeatureMatchMenuItems(matchId: number): DropdownMenuItem[][] {
 		featureMatchItems.value.map(item => ({
 			label: item.label,
 			icon: 'i-lucide-tv' as const,
-			player1DeckName: item.player1DeckName,
-			player1Colors: item.player1Colors,
-			player2DeckName: item.player2DeckName,
-			player2Colors: item.player2Colors,
+			decks: item.decks,
 			onSelect: () => handlePromote(item.value, matchId),
 		})),
 	];

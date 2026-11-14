@@ -5,40 +5,36 @@ import { featureMatchSidePlayer } from '~~/shared/utils/featureMatchSidePlayer';
 import { getMtgGameData, getOpGameData } from '~~/shared/utils/gameData';
 import { playerDisplayName } from '~~/shared/utils/playerName';
 
+/** One Seat's deck as a picker names it under its Slot. */
+export interface FeatureMatchMenuSeatDeck {
+	deckName: string | null;
+	colors: string | null;
+	/** A One Piece Seat's Leader, which names its deck. */
+	leader: OpLeader | null;
+}
+
 export interface FeatureMatchMenuItem {
 	label: string;
 	value: number;
-	player1Name: string | null;
-	player1DeckName: string | null;
-	player1Colors: string | null;
-	/** A One Piece side's Leader, which names its deck. */
-	player1Leader: OpLeader | null;
-	player2Name: string | null;
-	player2DeckName: string | null;
-	player2Colors: string | null;
-	player2Leader: OpLeader | null;
+	/** Each Seat that holds a deck or a Leader, in Seat order. */
+	decks: FeatureMatchMenuSeatDeck[];
 }
 
-function getPlayerLabel(
+function seatDeck(
 	playerData: { name?: string | null; nickname?: string | null; gameData?: unknown } | null | undefined,
-): { name: string | null; deckName: string | null; colors: string | null; leader: OpLeader | null } {
-	const name = playerDisplayName(playerData);
-	if (!playerData || !name) {
-		return {
-			name: null,
-			deckName: null,
-			colors: null,
-			leader: null,
-		};
-	}
+): FeatureMatchMenuSeatDeck | null {
+	if (!playerData || !playerDisplayName(playerData))
+		return null;
 	const gameData = playerData.gameData as Parameters<typeof getMtgGameData>[0];
 	const mtg = getMtgGameData(gameData);
-	return {
-		name,
+	const deck = {
 		deckName: mtg.deckName ?? null,
 		colors: mtg.deckColors ?? null,
 		leader: getOpGameData(gameData).leader ?? null,
 	};
+	return deck.deckName || deck.leader
+		? deck
+		: null;
 }
 
 /**
@@ -59,7 +55,7 @@ function formatMatchLabel(names: Array<string | null>, kind: EventKind | undefin
 /**
  * Each Feature Match Slot as a picker offers it, "A vs B", its players in the
  * order its followed Session seats them (ADR-0058), and a Commander Slot's
- * filled Seats in Seat order.
+ * filled Seats in Seat order; under it, each of those Seats' decks.
  */
 export function useFeatureMatchMenuItems() {
 	const featureMatchStore = useFeatureMatchStore();
@@ -69,23 +65,13 @@ export function useFeatureMatchMenuItems() {
 	const items = computed<FeatureMatchMenuItem[]>(() => {
 		return featureMatchStore.featureMatches.map((match, index) => {
 			const slot = withFollowedFeatureMatchSession(match, featureMatchStateStore);
-			const p1 = getPlayerLabel(featureMatchSidePlayer(slot, 'player1').data);
-			const p2 = getPlayerLabel(featureMatchSidePlayer(slot, 'player2').data);
-
-			const names = eventSeats(eventKind.value ?? 'mtg-two-player')
-				.map(seat => playerDisplayName(featureMatchSidePlayer(slot, seat).data) || null);
+			const players = eventSeats(eventKind.value ?? 'mtg-two-player')
+				.map(seat => featureMatchSidePlayer(slot, seat).data);
 
 			return {
-				label: formatMatchLabel(names, eventKind.value, index),
+				label: formatMatchLabel(players.map(player => playerDisplayName(player) || null), eventKind.value, index),
 				value: match.id,
-				player1Name: p1.name,
-				player1DeckName: p1.deckName,
-				player1Colors: p1.colors,
-				player1Leader: p1.leader,
-				player2Name: p2.name,
-				player2DeckName: p2.deckName,
-				player2Colors: p2.colors,
-				player2Leader: p2.leader,
+				decks: players.map(seatDeck).filter((deck): deck is FeatureMatchMenuSeatDeck => !!deck),
 			};
 		});
 	});

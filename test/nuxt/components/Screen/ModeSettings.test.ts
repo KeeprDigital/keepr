@@ -114,7 +114,7 @@ mockNuxtImport('useFeatureMatchStore', () => () => ({
 	loadFeatureMatchesByEventId: vi.fn(),
 }));
 mockNuxtImport('useFeatureMatchMenuItems', () => () => ref([
-	{ label: 'Table 1', value: 4 },
+	{ label: 'Table 1', value: 4, decks: [] },
 ]));
 mockNuxtImport('useFeatureMatchStateStore', () => () => ({
 	...loaded,

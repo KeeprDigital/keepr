@@ -78,7 +78,7 @@ mockNuxtImport('useFeatureMatchStore', () => () => ({
 	loadFeatureMatchesByEventId: vi.fn(),
 }));
 mockNuxtImport('useFeatureMatchMenuItems', () => () => ref([
-	{ label: 'Table 1', value: 4 },
+	{ label: 'Table 1', value: 4, decks: [] },
 ]));
 
 // ── Controls, each found by the label of the form field around it ──

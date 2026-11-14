@@ -468,12 +468,12 @@ describe('screen config page — the Screen header', () => {
 	let wrapper: Awaited<ReturnType<typeof mountPage>> | null = null;
 
 	const resetConfig = vi.fn();
-	const modeSettings = { resetBlocked: false };
+	const modeSettings = { resetBlockedReason: undefined as string | undefined };
 
 	/** A mode's settings, exposing what the header's Reset reaches. */
 	const ModeSettingsStub = defineComponent({
 		setup(_, { expose }) {
-			expose({ resetConfig, resetBlocked: modeSettings.resetBlocked, saving: false });
+			expose({ resetConfig, resetBlockedReason: modeSettings.resetBlockedReason, saving: false });
 			return {};
 		},
 		template: '<div data-testid="mode-editor" />',
@@ -484,7 +484,7 @@ describe('screen config page — the Screen header', () => {
 		route.params.screenId = '1';
 		mockScreenStore.screens = [];
 		mockScreenStore.sendScreenCommand.mockClear();
-		modeSettings.resetBlocked = false;
+		modeSettings.resetBlockedReason = undefined;
 		resetConfig.mockClear();
 		stubModePolicy({ displayType: 'overlay', outputs: [] });
 		vi.mocked(getScreenModeSettingsComponent).mockImplementation(() => ModeSettingsStub as never);
@@ -612,9 +612,8 @@ describe('screen config page — the Screen header', () => {
 		expect(page.find('[role="dialog"]').exists()).toBe(true);
 	});
 
-	// A graphics host's reset is an authoring write: without the lease it is not offered.
 	it('disables Reset mode settings, with the reason, while the mode\'s settings block it', async () => {
-		modeSettings.resetBlocked = true;
+		modeSettings.resetBlockedReason = 'Another session is editing this Screen\'s graphics';
 		const page = await mountLoadedPage();
 
 		await page.get(MORE_MENU).trigger('click');

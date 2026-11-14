@@ -83,7 +83,7 @@ mockNuxtImport('usePlayerStore', () => () => mockPlayerStore);
 mockNuxtImport('useFeatureMatchStore', () => () => mockFeatureMatchStore);
 mockNuxtImport('useFeatureMatchStateStore', () => () => mockFeatureMatchStateStore);
 mockNuxtImport('useFeatureMatchMenuItems', () => () => ref([
-	{ label: 'Alice vs Bob', value: 11 },
+	{ label: 'Alice vs Bob', value: 11, decks: [] },
 ]));
 mockNuxtImport('useEventStore', () => () => mockEventStore);
 mockNuxtImport('useBroadcastDeckListStore', () => () => mockBroadcastDeckListStore);

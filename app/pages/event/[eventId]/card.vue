@@ -249,14 +249,9 @@ const matchOptions = computed(() => {
 			return {
 				label: `${slotLabel}${match.player1Data?.name ?? 'TBD'} vs ${match.player2Data?.name ?? 'TBD'}`,
 				value: match.id,
-				player1Name: match.player1Data?.name ?? null,
-				player1DeckName: p1.deckName ?? null,
-				player1Colors: p1.deckColors ?? null,
-				player1Leader: null,
-				player2Name: match.player2Data?.name ?? null,
-				player2DeckName: p2.deckName ?? null,
-				player2Colors: p2.deckColors ?? null,
-				player2Leader: null,
+				decks: [p1, p2]
+					.filter(deck => deck.deckName)
+					.map(deck => ({ deckName: deck.deckName ?? null, colors: deck.deckColors ?? null, leader: null })),
 			};
 		});
 });

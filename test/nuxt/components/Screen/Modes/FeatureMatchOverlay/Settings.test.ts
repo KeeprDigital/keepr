@@ -64,6 +64,7 @@ function applyRemoteUpdate(screenId: number, change: () => void) {
 const mockSaveState = ref<'idle' | 'saving' | 'committed' | 'failed'>('idle');
 const mockRetry = vi.fn();
 const mockResetConfig = vi.fn();
+const mockResetReady = ref(true);
 const mockDiscard = vi.fn();
 const mockFlush = vi.fn(async () => true);
 const mockToastAdd = vi.fn();
@@ -94,7 +95,7 @@ mockNuxtImport('useFeatureMatchStore', () => () => mockFeatureMatchStore);
 mockNuxtImport('useScreenStore', () => () => mockScreenStore);
 mockNuxtImport('useEventStore', () => () => mockEventStore);
 mockNuxtImport('useFeatureMatchMenuItems', () => () => computed(() => [
-	{ label: 'Feature Match 1', value: 1 },
+	{ label: 'Feature Match 1', value: 1, decks: [] },
 ]));
 mockNuxtImport('useModeConfigUpdate', () => () => ({
 	config: mockConfig,
@@ -103,6 +104,7 @@ mockNuxtImport('useModeConfigUpdate', () => () => ({
 	saveError: ref('Screen refused the layout'),
 	updateConfig: mockUpdateConfig,
 	resetConfig: mockResetConfig,
+	resetReady: mockResetReady,
 	retry: mockRetry,
 	discard: mockDiscard,
 	flush: mockFlush,
@@ -298,12 +300,41 @@ describe('featureMatchOverlaySettings', () => {
 		mockConfig.value = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 		mockSaveState.value = 'idle';
 		mockLeaseWritable.value = true;
+		mockResetReady.value = true;
 		actionListeners.length = 0;
 		mockApiFetch.mockReset();
 		mockApiFetch.mockResolvedValue({
 			outcome: 'available',
 			lifecycleState: 'active',
 		});
+	});
+
+	// The header's Reset says why it is held: the layout it lands on waits for the Event, and it is an authoring write.
+	it.each([
+		{
+			held: 'nothing',
+			ready: true,
+			writable: true,
+			reason: undefined,
+		},
+		{
+			held: 'an unloaded Event',
+			ready: false,
+			writable: true,
+			reason: 'Waiting for this Event to load',
+		},
+		{
+			held: 'another session\'s lease',
+			ready: true,
+			writable: false,
+			reason: 'Another session is editing this Screen\'s graphics',
+		},
+	])('holds the header\'s Reset for $held', async ({ ready, writable, reason }) => {
+		mockResetReady.value = ready;
+		mockLeaseWritable.value = writable;
+		const wrapper = await mountComponent();
+
+		expect((wrapper.vm as unknown as { resetBlockedReason: string | undefined }).resetBlockedReason).toBe(reason);
 	});
 
 	it('selects a Source Item clicked in the preview, and edits it in the host inspector', async () => {
@@ -612,14 +643,14 @@ describe('featureMatchOverlaySettings', () => {
 		it('holds authoring while it is in flight, leaving the library, the lease notice and the unsaved layout as they were', async () => {
 			const { wrapper, library } = await mountWithLibrary();
 			const authoring = () => wrapper.get('[data-testid="layer-inspector"]').attributes('data-writable');
-			const exposed = wrapper.vm as unknown as { resetConfig: () => void; resetBlocked: boolean };
+			const exposed = wrapper.vm as unknown as { resetConfig: () => void; resetBlockedReason: string | undefined };
 			expect(authoring()).toBe('true');
 
 			library.vm.$emit('update:placing', true);
 			await nextTick();
 			expect(authoring()).toBe('false');
 			expect(preview(wrapper).props('selectionFrame')).toBeNull();
-			expect(exposed.resetBlocked).toBe(true);
+			expect(exposed.resetBlockedReason).toBe('Another session is editing this Screen\'s graphics');
 			preview(wrapper).vm.$emit('manipulate', { x: 1, y: 2, width: 3, height: 4 }, 1);
 			exposed.resetConfig();
 			expect(mockUpdateConfig).not.toHaveBeenCalled();
@@ -921,6 +952,7 @@ describe('featureMatchOverlaySettings — Graphics Authoring Lease', () => {
 		mockApiFetch.mockReset();
 		mockApiFetch.mockResolvedValue({ outcome: 'available', lifecycleState: 'active' });
 		mockLeaseWritable.value = false;
+		mockResetReady.value = true;
 	});
 
 	async function mountObserver() {
@@ -1001,7 +1033,6 @@ describe('featureMatchOverlaySettings — Graphics Authoring Lease', () => {
 		expect(wrapper.get('[data-testid="layer-inspector"]').attributes('data-writable')).toBe('false');
 		expect(wrapper.get('[data-testid="template-library"]').attributes('data-writable')).toBe('false');
 		expect(wrapper.get('[data-testid="layout-undo"]').attributes('disabled')).toBeDefined();
-		expect((wrapper.vm as unknown as { resetBlocked: boolean }).resetBlocked).toBe(true);
 
 		preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId: mockConfig.value.layout.composition.items[0]!.id });
 		await nextTick();
