@@ -23,7 +23,8 @@ import {
  * A Commander Seat's pasted deck (ADR-0087), read from any of Moxfield's four
  * copies. Its own copy carries printings and marks the Commander only by
  * putting it first; the Arena copy heads it `Commander`; the MTGO and
- * plain-text copies put it last, after the Sideboard and a blank line. Which
+ * plain-text copies put it last, after a blank line, with the Sideboard
+ * between when the deck has one. Which
  * cards are the Commanders is an offer the operator confirms, so each of
  * these is safe to be wrong about. The Sideboard is dropped and counted.
  */
@@ -77,6 +78,10 @@ export async function importCommanderDeckList(
 	let commanderHeading: SourceLine | null = null;
 	/** Card lines read since the Sideboard heading: a blank line ends the Sideboard only after one. */
 	let sideboardLines = 0;
+	/** Whether any heading was read: a list with none may end on a blank line and its Commanders. */
+	let headed = false;
+	/** Where the cards after the last blank line of a list with no heading begin. */
+	let lastBlockStart: number | null = null;
 	const kept: KeptRow[] = [];
 	let sideboardDropped = 0;
 	const errors: CommanderDeckListImportError[] = [];
@@ -86,17 +91,20 @@ export async function importCommanderDeckList(
 		if (sourceText.length === 0) {
 			if (section === 'sideboard' && sideboardLines > 0)
 				section = 'trailing';
+			else if (kept.length > 0)
+				lastBlockStart = kept.length;
 			continue;
 		}
 		// The Arena copy opens with `About` and the deck's `Name`.
 		if (/^(?:about|name)(?:\s|$)/i.test(sourceText))
 			continue;
 		const heading = headingKey(sourceText);
-		const headed = HEADINGS.get(heading);
-		if (headed) {
-			section = headed;
+		const headingSection = HEADINGS.get(heading);
+		if (headingSection) {
+			section = headingSection;
 			sideboardLines = 0;
-			if (headed === 'commander')
+			headed = true;
+			if (headingSection === 'commander')
 				commanderHeading ??= line;
 			continue;
 		}
@@ -127,11 +135,17 @@ export async function importCommanderDeckList(
 
 	const headedCommanders = kept.filter(row => row.section === 'commander');
 	const trailing = kept.filter(row => row.section === 'trailing');
+	// A deck with no Sideboard: its MTGO and plain-text copies end on a blank line and the Commanders.
+	const lastBlock = !headed && lastBlockStart !== null
+		? kept.slice(lastBlockStart)
+		: [];
 	const offered = commanderHeading
 		? headedCommanders
 		: trailing.length > 0
 			? trailing
-			: kept.slice(0, 1);
+			: lastBlock.length > 0 && lastBlock.length <= MAX_SEAT_COMMANDERS
+				? lastBlock
+				: kept.slice(0, 1);
 	if (commanderHeading && headedCommanders.length === 0)
 		errors.push(lineError(commanderHeading, 'NO_COMMANDER', 'A Commander heading needs a card under it'));
 	const extra = offered[MAX_SEAT_COMMANDERS];
