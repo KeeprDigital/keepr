@@ -14,6 +14,7 @@ export const scryfallCardFaceSchema = z.object({
 	/** null on back faces of some DFCs */
 	mana_cost: z.string().max(500).nullable().optional(),
 	oracle_text: z.string().max(50_000).nullable().optional(),
+	flavor_name: z.string().max(500).nullable().optional(),
 }).passthrough();
 
 const scryfallRelatedCardSchema = z.object({
@@ -31,6 +32,8 @@ export const scryfallCardSchema = z.object({
 	id: z.string().min(1).max(100),
 	/** Card name — may include " // " for double-faced cards */
 	name: z.string().min(1).max(500),
+	/** The name a Universes Within printing is printed with, which deck sites name it by. */
+	flavor_name: z.string().max(500).nullable().optional(),
 	/** Three-letter set code */
 	set: z.string().min(1).max(20),
 	/** Printing identity within the set. */

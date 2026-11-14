@@ -13,6 +13,8 @@ export interface FakeScryfallCard {
 	type_line?: string;
 	/** Colour identity letters, alphabetical as Scryfall lists them; none where a test does not name it. */
 	color_identity?: string[];
+	/** The name a Universes Within printing is printed with. */
+	flavor_name?: string;
 }
 
 /** What `/cards/collection` is asked for: a name, in a set or not, or one exact printing. */
@@ -45,6 +47,9 @@ function toScryfallJson(card: FakeScryfallCard) {
 		cmc: 1,
 		color_identity: card.color_identity ?? [],
 		type_line: card.type_line ?? 'Sorcery',
+		...(card.flavor_name
+			? { flavor_name: card.flavor_name }
+			: {}),
 	};
 }
 

@@ -184,6 +184,35 @@ describe('broadcast Deck List Scryfall resolver', () => {
 		}
 	});
 
+	// Moxfield's own copy names a Universes Within printing by its printed name (#1201).
+	it('resolves an exact printing named by the name printed on it, as the card it is', async () => {
+		vi.stubGlobal('fetch', createScryfallFake([
+			{
+				id: 'ragavan-fca-43',
+				name: 'Ragavan, Nimble Pilferer',
+				set: 'fca',
+				collector_number: '43',
+				flavor_name: 'Zidane Tribal',
+			},
+		]).fetch);
+
+		try {
+			const result = await createBroadcastDeckListScryfallResolver().resolve([
+				{ name: 'Zidane Tribal', setCode: 'FCA', collectorNumber: '43' },
+			]);
+
+			expect(result).toEqual([
+				{
+					status: 'resolved',
+					card: expect.objectContaining({ canonicalName: 'Ragavan, Nimble Pilferer', scryfallId: 'ragavan-fca-43' }),
+				},
+			]);
+		}
+		finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
 	it('asks for every exact printing in one lookup, a printing pasted twice asked for once', async () => {
 		const lookupPrintings = vi.fn(async (requests: ReadonlyArray<{ setCode: string; collectorNumber: string }>) =>
 			requests.map(request => scryfallCard({ ...request, id: `printing-${request.collectorNumber}` })));

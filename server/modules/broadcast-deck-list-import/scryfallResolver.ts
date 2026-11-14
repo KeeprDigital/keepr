@@ -78,8 +78,11 @@ function cardMatchesName(card: ScryfallCardData, name: string): boolean {
 	if (expected === canonical)
 		return true;
 
-	return card.name
-		.split(' // ')
+	// A Universes Within printing is named by the name printed on it, as Moxfield's own copy names it (#1201).
+	return [
+		...card.name.split(' // '),
+		...(card.flavorNames ?? []),
+	]
 		.some(faceName => normalizeImportedCardName(faceName) === expected);
 }
 

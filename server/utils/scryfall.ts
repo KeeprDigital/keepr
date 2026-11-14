@@ -245,7 +245,17 @@ function mapScryfallCardData(card: ScryfallCard.Any): ScryfallCardData {
 		typeLine,
 		deckCounterTypes: deriveDeckCounterTypesFromScryfallCard(card),
 		deckTokens: deriveDeckTokensFromScryfallCard(card),
+		flavorNames: flavorNamesOf(card),
 	};
+}
+
+function flavorNamesOf(card: ScryfallCard.Any): string[] {
+	const named = card as { flavor_name?: string | null; card_faces?: Array<{ flavor_name?: string | null }> | null };
+	return [
+		named.flavor_name,
+		...(named.card_faces ?? []).map(face => face.flavor_name),
+	]
+		.filter((name): name is string => typeof name === 'string' && name.length > 0);
 }
 
 /**
@@ -268,6 +278,8 @@ export interface ScryfallCardData {
 	deckCounterTypes: string[];
 	/** Linked token cards this card can create */
 	deckTokens: DeckTokenRequirement[];
+	/** The names this printing is printed with in place of its own, card or faces; none for most. */
+	flavorNames?: readonly string[];
 }
 
 export async function fetchScryfallCardById(id: string): Promise<ScryfallCardData> {
