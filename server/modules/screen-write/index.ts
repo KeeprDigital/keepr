@@ -5,7 +5,7 @@ import type { CreateScreenInput, UpdateScreenInput } from '~~/server/schemas/api
 import type { ScreenResponse } from '~~/shared/api';
 import type { ScreenMode } from '~~/shared/types/enums';
 import type { BroadcastGraphicConfig } from '~~/shared/types/graphics';
-import type { ModeConfigsMap } from '~~/shared/types/screenConfig';
+import type { FeatureMatchLayoutConfig, ModeConfigsMap } from '~~/shared/types/screenConfig';
 import { eq } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { events } from '~~/server/db/schema';
@@ -28,6 +28,7 @@ import {
 	validateScreenModeConfigsReferences,
 } from '~~/server/utils/routeGuards';
 import { eventKind, isOfferedToEvent } from '~~/shared/config/games';
+import { isFeatureMatchLayoutHeldBy } from '~~/shared/featureMatchLayoutSeats';
 import { SCREEN_MODES } from '~~/shared/screenModes';
 import { parseScreenThemeOverrideWrite, SCREEN_THEME_OVERRIDE_REFUSALS } from '~~/shared/screenThemeOverrides';
 import { storedThemeTokenGraphicAssetReferences } from '~~/shared/themeAssetReferences';
@@ -267,6 +268,34 @@ function requireScreenModeOffered(event: EventKindFields, mode: ScreenMode): voi
 	}
 }
 
+/** A Feature Match Overlay's layout in a mode configuration, or `undefined` where it carries none. */
+function featureMatchLayoutOf(config: unknown): FeatureMatchLayoutConfig | undefined {
+	const layout = (config as { layout?: unknown } | null | undefined)?.layout;
+	return layout && typeof layout === 'object'
+		? layout as FeatureMatchLayoutConfig
+		: undefined;
+}
+
+/**
+ * Refuses a Feature Match Layout naming a third or fourth Seat, or a Commander
+ * term, on a Screen of any Event but a Commander Event (ADR-0087). Asked only of
+ * a layout the write changes, so a Screen already holding one keeps saving.
+ * Its Event is read only then.
+ */
+async function requireFeatureMatchLayoutHeld(eventId: number, current: unknown, next: unknown): Promise<void> {
+	const layout = featureMatchLayoutOf(next);
+	if (!layout || sameJson(featureMatchLayoutOf(current), layout))
+		return;
+	const event = await readEventKindFields(eventId);
+	if (event && !isFeatureMatchLayoutHeldBy(layout, eventKind(event))) {
+		throw createError({
+			statusCode: 422,
+			message: 'This layout names a third or fourth Seat or a Commander, which only a Commander Event holds',
+			data: { code: 'FOUR_SEAT_LAYOUT_COMMANDER_ONLY' },
+		});
+	}
+}
+
 /**
  * The `modeConfigs` a Screen entering Deck List mode on a One Piece Card Game
  * Event or a Commander Event is written with, its Deck Source on a Feature
@@ -333,6 +362,7 @@ export function screenWriteModule() {
 			: undefined;
 		if (input.currentMode)
 			requireScreenModeOffered(event, input.currentMode);
+		await requireFeatureMatchLayoutHeld(eventId, undefined, input.modeConfigs?.['feature-match-overlay']);
 		await validateScreenModeConfigsReferences(eventId, input.modeConfigs);
 		rejectUnindexedGraphicAssetReferencesOnCreate(input.modeConfigs);
 
@@ -377,6 +407,11 @@ export function screenWriteModule() {
 			: undefined;
 		if (data.currentMode && data.currentMode !== existingScreen.currentMode)
 			requireScreenModeOffered(event, data.currentMode);
+		await requireFeatureMatchLayoutHeld(
+			eventId,
+			existingScreen.modeConfigs?.['feature-match-overlay'],
+			data.modeConfigs?.['feature-match-overlay'],
+		);
 
 		// Decided against the row just read, and the write is versioned on the
 		// client's `stateVersion`: a commit that succeeds is one against this very
@@ -538,6 +573,9 @@ export function screenWriteModule() {
 		 * write path without anyone having to remember to wire it up. See #85.
 		 */
 		parseModeConfigPatchResult(existing.modeConfigs, mode, config);
+
+		if (mode === 'feature-match-overlay')
+			await requireFeatureMatchLayoutHeld(eventId, existing.modeConfigs?.[mode], config);
 
 		if (mode === 'broadcast-graphics')
 			await refuseOnAirGraphicEdit(existing, mergeScreenModeConfig(existing.modeConfigs ?? {}, mode, config));
