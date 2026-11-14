@@ -659,6 +659,9 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
  * whoever sits there now, and that player's Deck List read by the id their
  * Seat names. A re-paste gives the list a new id and Swap Seats moves it, each
  * announced with the Slot, so a list is read again only when the id changes.
+ *
+ * A Theme preview shows the Commander sample's Slot, read once, and holds no
+ * Slot in the stores.
  */
 function useSeatDeckRead(
 	context: ScreenContext,
@@ -668,14 +671,16 @@ function useSeatDeckRead(
 	const outputReads = useScreenOutputReads(context);
 	const slotId = () => source()?.slotId ?? null;
 
-	const slotRead = useScreenFeatureMatchSlot<null>(context, {
-		mode: 'deck',
-		config: () => config.value,
-		slotId,
-		keep: () => null,
-		initialData: null,
-		errorMessage: DECK_LOAD_FAILED,
-	});
+	const slotRead = context.sampleDataset
+		? useSampleFeatureMatchSlot(context, slotId, DECK_LOAD_FAILED)
+		: useScreenFeatureMatchSlot<null>(context, {
+				mode: 'deck',
+				config: () => config.value,
+				slotId,
+				keep: () => null,
+				initialData: null,
+				errorMessage: DECK_LOAD_FAILED,
+			});
 
 	const seated = computed(() => {
 		const shown = source();

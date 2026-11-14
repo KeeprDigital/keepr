@@ -107,3 +107,35 @@ export function useScreenFeatureMatchSlot<T, M extends ScreenMode = ScreenMode>(
 		answered: freshness.answered,
 	};
 }
+
+/**
+ * A Theme preview's Slot: the sample's, read once and held here. The Feature
+ * Match store holds the loaded Event's Slots, and a preview has no Event.
+ */
+export function useSampleFeatureMatchSlot(context: ScreenContext, slotId: () => number | null, errorMessage: string) {
+	const outputReads = useScreenOutputReads(context);
+	const slot = shallowRef<FeatureMatch | null>(null);
+	const error = ref<string | null>(null);
+	const answered = ref(false);
+	const id = slotId();
+	if (id === null) {
+		answered.value = true;
+	}
+	else {
+		outputReads.featureMatchSlot(id).then(
+			(read) => {
+				slot.value = read.slot;
+			},
+			() => {
+				error.value = errorMessage;
+			},
+		).finally(() => {
+			answered.value = true;
+		});
+	}
+	return {
+		slot: computed(() => slot.value),
+		error: computed(() => error.value),
+		answered: computed(() => answered.value),
+	};
+}

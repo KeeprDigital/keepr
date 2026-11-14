@@ -4,7 +4,6 @@ import type { DeckModeConfig } from '~~/shared/types/screenConfig';
 import type { ScreenOutputOpPlayerDeckListResponse } from '~~/shared/types/screenOutputReads';
 import type { OpDeckLayout } from '~~/shared/utils/opDeckLayout';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
-import type { FeatureMatch } from '~/types';
 import { catalogueOpLeader } from '~~/shared/utils/card/op';
 import { featureMatchSidePlayer } from '~~/shared/utils/featureMatchSidePlayer';
 import { getOpGameData } from '~~/shared/utils/gameData';
@@ -17,38 +16,6 @@ import { preloadImages } from '~/utils/preloadImage';
 
 const DECK_LOAD_FAILED = 'Failed to load deck';
 const SLOT_LOAD_FAILED = 'Failed to load Feature Match Slot';
-
-/**
- * A Theme preview's Slot: the sample's, read once and held here. The Feature
- * Match store holds the loaded Event's Slots, and a preview has no Event.
- */
-function holdSampleSlot(context: ScreenContext, slotId: () => number | null) {
-	const outputReads = useScreenOutputReads(context);
-	const slot = shallowRef<FeatureMatch | null>(null);
-	const error = ref<string | null>(null);
-	const answered = ref(false);
-	const id = slotId();
-	if (id === null) {
-		answered.value = true;
-	}
-	else {
-		outputReads.featureMatchSlot(id).then(
-			(read) => {
-				slot.value = read.slot;
-			},
-			() => {
-				error.value = SLOT_LOAD_FAILED;
-			},
-		).finally(() => {
-			answered.value = true;
-		});
-	}
-	return {
-		slot: computed(() => slot.value),
-		error: computed(() => error.value),
-		answered: computed(() => answered.value),
-	};
-}
 
 /** Who the Deck Source shows, and the Deck List they hold. */
 interface SideShown {
@@ -113,7 +80,7 @@ function useSlotSideSource(context: ScreenContext, config: ComputedRef<DeckModeC
 	const slotId = () => source.value?.slotId ?? null;
 
 	const slotRead = sampleDataset
-		? holdSampleSlot(context, slotId)
+		? useSampleFeatureMatchSlot(context, slotId, SLOT_LOAD_FAILED)
 		: useScreenFeatureMatchSlot<null>(context, {
 				mode: 'deck',
 				config: () => config.value,
