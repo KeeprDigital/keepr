@@ -189,6 +189,18 @@ describe('a Commander Slot\'s Controls', () => {
 		expect(stateStore.adjustCommanderDamage).toHaveBeenCalledWith(EVENT_ID, SLOT_ID, 'player2', { seat: 'player3', commander: 2 }, 1);
 	});
 
+	// Two Seats may play the same Commander, so each stepper names whose it is.
+	it('names each Commander Damage stepper by the Seat whose Commander dealt it', () => {
+		const { wrapper } = mountTable();
+
+		expect(seat(wrapper, 'player1').findAll('[data-commander-damage] [data-counter]').map(counter => counter.attributes('data-label')))
+			.toEqual([
+				'Ana Commander Damage from Ben\'s Tymna the Weaver',
+				'Ana Commander Damage from Cleo\'s Tymna the Weaver',
+				'Ana Commander Damage from Cleo\'s Kraum, Ludevic\'s Opus',
+			]);
+	});
+
 	it('hands each Seat\'s counters to its counter list', () => {
 		const opened = createInitialFeatureMatchSessionStateFromSnapshot(snapshot);
 		const { wrapper } = mountTable({

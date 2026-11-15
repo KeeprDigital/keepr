@@ -190,7 +190,7 @@ const counterTypes = getCounterTypeConfigs('mtg');
 				</span>
 				<UINumericCounter
 					:value="dealt.damage"
-					:accessible-label="`${playerName} Commander Damage from ${dealt.name}`"
+					:accessible-label="`${playerName} Commander Damage from ${dealt.owner}'s ${dealt.name}`"
 					:min="0"
 					compact
 					:touch="touch"
@@ -372,6 +372,84 @@ const counterTypes = getCounterTypeConfigs('mtg');
 	align-items: center;
 	justify-items: center;
 	column-gap: 1.5rem;
+}
+
+/* A table too narrow for two Seats abreast (CommanderTable) has no room beside the life either: stack it. */
+@container (width < 40rem) {
+	.commander-seat.is-touch {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: none;
+		grid-template-areas:
+			'header'
+			'meta'
+			'life'
+			'damage'
+			'counters'
+			'actions';
+		row-gap: 0.75rem;
+	}
+}
+
+/*
+ * Short of a wall-sized table there is no room for life and three touch-sized
+ * steppers abreast: life stands upright (+ over −) and every stepper tightens a
+ * little, so each Commander's name still reads beside its stepper. The sizes
+ * reach into UINumericCounter's touch scale, which knows nothing of the Seat.
+ */
+@container (40rem <= width < 92rem) {
+	.commander-seat.is-touch {
+		grid-template-rows: auto;
+		grid-template-areas:
+			'header header'
+			'meta meta'
+			'life damage'
+			'life counters'
+			'actions actions';
+		row-gap: 0.25rem;
+		padding-block: 0.25rem;
+	}
+
+	.is-touch .seat-life :deep(> div) {
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+
+	.is-touch .seat-life :deep(> div > :first-child:not(:last-child)) {
+		order: 3;
+	}
+
+	.is-touch .seat-life :deep(> div > :last-child:not(:first-child)) {
+		order: 1;
+	}
+
+	.is-touch .seat-life :deep(> div > :not(:first-child, :last-child)) {
+		order: 2;
+	}
+
+	.is-touch .seat-life :deep(button) {
+		padding: 1rem;
+	}
+}
+
+@container (width < 92rem) {
+	/* A Commander's name with less than 6rem beside its stepper takes the line above it. */
+	.is-touch .damage-row {
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.25rem 0.5rem;
+	}
+
+	.is-touch .damage-source {
+		flex: 1 1 6rem;
+	}
+
+	.is-touch .seat-damage :deep(button) {
+		padding: 0.875rem;
+	}
+
+	.is-touch .seat-damage :deep(input) {
+		width: 4rem;
+	}
 }
 
 .is-touch .seat-header {

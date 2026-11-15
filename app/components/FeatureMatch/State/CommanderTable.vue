@@ -92,62 +92,78 @@ function setOutcome(declared: { winner: Seat | null } | null) {
 <template>
 	<div
 		v-if="matchState"
-		class="commander-table"
+		class="commander-table-frame"
 		:class="{ 'is-touch': touch }"
 	>
-		<FeatureMatchStateCommanderSeat
-			v-for="seat in SEAT_VALUES"
-			:key="seat"
-			:match-id="matchId"
-			:seat="seat"
-			:config="seatConfig(seat)"
-			:choosing-first="choosingFirst"
-			:complete="!!outcome || !mayDeclareOutcome"
-			:winner="outcome?.winner === seat"
-			:touch="touch"
-			:data-table-position="SEAT_TABLE_POSITION[seat]"
-			@go-first="handleSelectFirstPlayer(seat)"
-			@declare-winner="setOutcome({ winner: seat })"
-		/>
-
-		<div class="table-middle">
-			<span v-if="choosingFirst" class="text-sm text-muted">
-				Which Seat goes first?
-			</span>
-			<FeatureMatchStateTurnCounter
-				v-else-if="showTurnControls && showTurnCounter"
-				:label="turnCounterLabel"
-				:left-disabled="stepBackDisabled"
+		<div
+			class="commander-table"
+			:class="{ 'is-touch': touch }"
+		>
+			<FeatureMatchStateCommanderSeat
+				v-for="seat in SEAT_VALUES"
+				:key="seat"
+				:match-id="matchId"
+				:seat="seat"
+				:config="seatConfig(seat)"
+				:choosing-first="choosingFirst"
+				:complete="!!outcome || !mayDeclareOutcome"
+				:winner="outcome?.winner === seat"
 				:touch="touch"
-				@change="handleTurnChange"
+				:data-table-position="SEAT_TABLE_POSITION[seat]"
+				@go-first="handleSelectFirstPlayer(seat)"
+				@declare-winner="setOutcome({ winner: seat })"
 			/>
 
-			<div v-if="outcome" class="outcome" data-outcome>
-				<UIcon name="i-lucide-trophy" class="text-warning size-4 shrink-0" />
-				<span class="font-semibold">{{ outcomeText }}</span>
+			<div class="table-middle">
+				<span v-if="choosingFirst" class="text-sm text-muted">
+					Which Seat goes first?
+				</span>
+				<FeatureMatchStateTurnCounter
+					v-else-if="showTurnControls && showTurnCounter"
+					:label="turnCounterLabel"
+					:left-disabled="stepBackDisabled"
+					:touch="touch"
+					@change="handleTurnChange"
+				/>
+
+				<div v-if="outcome" class="outcome" data-outcome>
+					<UIcon name="i-lucide-trophy" class="text-warning size-4 shrink-0" />
+					<span class="font-semibold">{{ outcomeText }}</span>
+					<UButton
+						v-if="mayDeclareOutcome"
+						label="Undo"
+						color="neutral"
+						variant="ghost"
+						:size="touch ? 'lg' : 'xs'"
+						@click="setOutcome(null)"
+					/>
+				</div>
 				<UButton
-					v-if="mayDeclareOutcome"
-					label="Undo"
+					v-else-if="mayDeclareOutcome"
+					label="Declare Draw"
+					icon="i-lucide-handshake"
 					color="neutral"
-					variant="ghost"
+					variant="soft"
 					:size="touch ? 'lg' : 'xs'"
-					@click="setOutcome(null)"
+					@click="setOutcome({ winner: null })"
 				/>
 			</div>
-			<UButton
-				v-else-if="mayDeclareOutcome"
-				label="Declare Draw"
-				icon="i-lucide-handshake"
-				color="neutral"
-				variant="soft"
-				:size="touch ? 'lg' : 'xs'"
-				@click="setOutcome({ winner: null })"
-			/>
 		</div>
 	</div>
 </template>
 
 <style scoped>
+/* The table's own width, not the window's, decides whether its Seats fit two abreast. */
+.commander-table-frame {
+	container-type: inline-size;
+}
+
+/* A touch screen's table fills its window, and scrolls once its Seats stack. */
+.commander-table-frame.is-touch {
+	height: 100%;
+	overflow-y: auto;
+}
+
 .commander-table {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -192,6 +208,26 @@ function setOutcome(declared: { winner: Seat | null } | null) {
 	justify-content: center;
 	flex-wrap: wrap;
 	gap: 0.5rem 1.5rem;
+}
+
+/* Too narrow for two Seats abreast: one column, in Seat order, the turn and outcome above them. */
+@container (width < 40rem) {
+	.commander-table,
+	.commander-table.is-touch {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: none;
+		grid-template-areas:
+			'middle'
+			'top-left'
+			'top-right'
+			'bottom-right'
+			'bottom-left';
+		height: auto;
+	}
+
+	.commander-table.is-touch > [data-seat] {
+		overflow-y: visible;
+	}
 }
 
 .outcome {

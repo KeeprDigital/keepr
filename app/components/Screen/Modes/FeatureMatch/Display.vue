@@ -137,7 +137,7 @@ function playerDisplayConfig(side: PlayerSide): PlayerDisplayConfig {
 		<div
 			v-if="match && matchState"
 			class="match-layout"
-			:class="{ 'match-layout--with-counters': showCounters }"
+			:class="{ 'match-layout--with-counters': showCounters, 'match-layout--commander': isCommander }"
 		>
 			<header class="match-header">
 				<span v-if="gameLabel" class="game-label">
@@ -239,6 +239,11 @@ function playerDisplayConfig(side: PlayerSide): PlayerDisplayConfig {
 
 	&.match-layout--with-counters {
 		grid-template-rows: min-content min-content min-content minmax(0, 2.5fr) minmax(0, 2.4fr);
+	}
+
+	/* The Commander Table spans the window, so it keeps no two-player side columns that would hold it wider. */
+	&.match-layout--commander {
+		grid-template-columns: minmax(0, 1fr);
 	}
 
 	.match-header {
