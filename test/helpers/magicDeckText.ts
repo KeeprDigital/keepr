@@ -51,6 +51,46 @@ export const MTGO_COPY = [
 	'1 Ashling, the Limitless',
 ].join('\n');
 
+/**
+ * A partner pair's deck in each of Moxfield's copies, trimmed from a real export
+ * (moxfield.com, 2026-11-15) with lines and order as Moxfield wrote them. The
+ * deck has no Sideboard, so the MTGO and plain-text copies name none.
+ */
+export const PARTNER_MOXFIELD_COPY = [
+	'1 Kraum, Ludevic\'s Opus (C16) 34 *F*',
+	'1 Tymna the Weaver (C16) 48 *F*',
+	'1 Ad Nauseam (SOA) 25',
+	'1 Badlands (OLGC) 2016NA',
+	'1 Birgi, God of Storytelling / Harnfel, Horn of Bounty (KHM) 311',
+	'1 Cavern of Souls (LCI) 410a *F*',
+	'1 Mana Vault (SLD) 796★ *F*',
+	'1 Mox Opal (PRM) 82856',
+	'1 Zidane Tribal (FCA) 43',
+].join('\n');
+
+export const PARTNER_ARENA_COPY = [
+	'About',
+	'Name Kraum & Tymna',
+	'',
+	'Commander',
+	'1 Kraum, Ludevic\'s Opus',
+	'1 Tymna the Weaver',
+	'',
+	'Deck',
+	'1 Ad Nauseam',
+	'1 Wishclaw Talisman',
+].join('\n');
+
+/** The MTGO copy; the plain-text copy differs only in which cards it lists. */
+export const PARTNER_MTGO_COPY = [
+	'1 Ad Nauseam',
+	'1 Badlands',
+	'1 Wishclaw Talisman',
+	'',
+	'1 Kraum, Ludevic\'s Opus',
+	'1 Tymna the Weaver',
+].join('\n');
+
 /** The printings the three copies name, as Scryfall holds them; a name alone answers the first of that name. */
 export const MOXFIELD_CARDS = {
 	ashling: {

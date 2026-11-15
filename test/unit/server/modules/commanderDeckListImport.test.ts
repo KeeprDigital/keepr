@@ -1,6 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { importCommanderDeckList } from '~~/server/modules/broadcast-deck-list-import';
-import { ARENA_COPY, MOXFIELD_COPY, MTGO_COPY, printingId, resolvingAllCards } from '~~/test/helpers/magicDeckText';
+import {
+	ARENA_COPY,
+	MOXFIELD_COPY,
+	MTGO_COPY,
+	PARTNER_ARENA_COPY,
+	PARTNER_MOXFIELD_COPY,
+	PARTNER_MTGO_COPY,
+	printingId,
+	resolvingAllCards,
+} from '~~/test/helpers/magicDeckText';
 
 // A Commander Seat's paste (ADR-0087): each of Moxfield's copies offers Ashling as the
 // Commander, keeps every other card and drops the Sideboard, counting what went.
@@ -114,8 +123,13 @@ describe('commander Deck List import', () => {
 			offered: ['Sol Ring'],
 		},
 		{
-			rule: 'offers the first card where a blank line parts the list with no Sideboard',
-			source: '1 Sol Ring\n\n1 Tymna the Weaver',
+			rule: 'offers the cards after the last blank line of a list with no heading',
+			source: '1 Sol Ring\n\n1 Tymna the Weaver\n1 Kraum, Ludevic\'s Opus',
+			offered: ['Tymna the Weaver', 'Kraum, Ludevic\'s Opus'],
+		},
+		{
+			rule: 'offers the first card where more than two follow the last blank line',
+			source: '1 Sol Ring\n\n1 Tymna the Weaver\n1 Kraum, Ludevic\'s Opus\n1 Forest',
 			offered: ['Sol Ring'],
 		},
 		{
@@ -125,6 +139,55 @@ describe('commander Deck List import', () => {
 		},
 	])('$rule', async ({ source, offered }) => {
 		expect((await document(source)).offeredCommanders).toEqual(offered.map(name => printingId(name)));
+	});
+
+	// Where a real export of a partner pair puts it (#1201): Moxfield's own copy
+	// puts both first, so only the first is offered and the operator adds the other.
+	it.each([
+		{
+			copy: 'Moxfield\'s own',
+			source: PARTNER_MOXFIELD_COPY,
+			offered: [
+				printingId('Kraum, Ludevic\'s Opus', 'c16', '34'),
+			],
+		},
+		{
+			copy: 'Arena',
+			source: PARTNER_ARENA_COPY,
+			offered: [
+				printingId('Kraum, Ludevic\'s Opus'),
+				printingId('Tymna the Weaver'),
+			],
+		},
+		{
+			copy: 'MTGO and plain-text',
+			source: PARTNER_MTGO_COPY,
+			offered: [
+				printingId('Kraum, Ludevic\'s Opus'),
+				printingId('Tymna the Weaver'),
+			],
+		},
+	])('reads a partner pair from the $copy copy', async ({ source, offered }) => {
+		const deckList = await document(source);
+
+		expect(deckList.offeredCommanders).toEqual(offered);
+		expect(deckList.entries.map(entry => entry.canonicalName)).toEqual(expect.arrayContaining(['Kraum, Ludevic\'s Opus', 'Tymna the Weaver']));
+	});
+
+	it('asks for each printing a real Moxfield copy names, its letters and star kept', async () => {
+		const { resolver } = await imported(PARTNER_MOXFIELD_COPY);
+
+		expect(vi.mocked(resolver.resolve).mock.calls[0]![0].map(request => `${request.setCode} ${request.collectorNumber}`)).toEqual([
+			'c16 34',
+			'c16 48',
+			'soa 25',
+			'olgc 2016NA',
+			'khm 311',
+			'lci 410a',
+			'sld 796\u2605',
+			'prm 82856',
+			'fca 43',
+		]);
 	});
 
 	it.each([
