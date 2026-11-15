@@ -1,4 +1,5 @@
 import type { SocialProfileProjectionValue } from '../../types/graphics';
+import { projectInterval } from '../../utils/interval';
 import { projectSocialProfileRotation } from '../broadcast-graphics-live-session/socialProfiles';
 
 /**
@@ -33,6 +34,6 @@ export function projectTalentScreenSocialProfile(
  * Milliseconds until the rotation next steps: every Talent steps at once, so a
  * rendering schedules one re-evaluation for its whole lineup.
  */
-export function msUntilNextTalentScreenProfile(rotation: { dwellMs: number; now: number }): number {
-	return rotation.dwellMs - (Math.max(0, rotation.now) % rotation.dwellMs);
+export function msUntilNextTalentScreenProfile(rotation: { dwellMs: number; now: number }): number | null {
+	return projectInterval(0, rotation.dwellMs, rotation.now).nextStepInMs;
 }

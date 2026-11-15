@@ -11,6 +11,7 @@ import {
 	socialProfileValues,
 	SUPPORTED_SOCIAL_NETWORKS,
 } from '../../socialProfiles';
+import { projectInterval } from '../../utils/interval';
 import { resolveGraphicSourceSelections } from '../graphics';
 
 /** The accepted Talent identity shown beside one projection in Live Control. */
@@ -244,10 +245,9 @@ export function projectSocialProfileRotation(
 		};
 	}
 
-	const stepDuration = transitionMs + dwellMs;
-	const afterInitialDwell = elapsed - dwellMs;
-	const completedSteps = Math.floor(afterInitialDwell / stepDuration);
-	const withinStep = afterInitialDwell % stepDuration;
+	// Past the anchor profile's dwell, every step is one period of an interval:
+	// its transition, then its dwell.
+	const { step: completedSteps, elapsedInStepMs: withinStep } = projectInterval(dwellMs, transitionMs + dwellMs, elapsed);
 	const outgoing = state.acceptedProfiles[(anchorIndex + completedSteps) % state.acceptedProfiles.length]!;
 	const current = state.acceptedProfiles[(anchorIndex + completedSteps + 1) % state.acceptedProfiles.length]!;
 

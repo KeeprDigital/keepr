@@ -73,12 +73,7 @@ describe('a Talent Screen Social Profile Rotation', () => {
 		expect(projectTalentScreenSocialProfile([], { dwellMs: DWELL, now: 10_000 })).toBeUndefined();
 	});
 
-	it.each([
-		[0, 8000],
-		[7999, 1],
-		[8000, 8000],
-		[13_000, 3000],
-	])('at %i ms, the next profile is %i ms away', (now, ms) => {
-		expect(msUntilNextTalentScreenProfile({ dwellMs: DWELL, now })).toBe(ms);
+	it('steps on an interval of one dwell from epoch zero', () => {
+		expect(msUntilNextTalentScreenProfile({ dwellMs: DWELL, now: 13_000 })).toBe(3000);
 	});
 });

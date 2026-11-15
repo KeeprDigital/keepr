@@ -7,7 +7,12 @@
  * broadcast-graphics phase projection follows: current state is a pure
  * function of persisted state and the synchronized server instant, so
  * renderings agree by construction and nothing writes as the rotation runs.
+ *
+ * Its pages are the steps of an interval (`shared/utils/interval.ts`): this
+ * module owns what a step means here, a page among a count of them.
  */
+
+import { intervalAnchorForStep, projectInterval } from '../../utils/interval';
 
 export interface PageRotationInputs {
 	/**
@@ -22,12 +27,16 @@ export interface PageRotationInputs {
 	now: number;
 }
 
+/** The interval a Page Rotation's pages are counted on: one page duration a step, from its anchor. */
+function rotationInterval(inputs: PageRotationInputs) {
+	return projectInterval(inputs.rotationAnchor ?? 0, inputs.pageDurationMs, inputs.now);
+}
+
 /** The 1-based page a Page Rotation shows at the given instant. */
 export function projectRotationPage(inputs: PageRotationInputs): number {
-	if (inputs.totalPages <= 1 || inputs.pageDurationMs <= 0)
+	if (inputs.totalPages <= 1)
 		return 1;
-	const elapsed = Math.max(0, inputs.now - (inputs.rotationAnchor ?? 0));
-	return (Math.floor(elapsed / inputs.pageDurationMs) % inputs.totalPages) + 1;
+	return (rotationInterval(inputs).step % inputs.totalPages) + 1;
 }
 
 /**
@@ -39,7 +48,7 @@ export function projectRotationPage(inputs: PageRotationInputs): number {
  * while a stored anchor is an integer timestamp.
  */
 export function rotationAnchorForPage(inputs: { page: number; pageDurationMs: number; now: number }): number {
-	return Math.round(inputs.now - (inputs.page - 1) * inputs.pageDurationMs);
+	return Math.round(intervalAnchorForStep(inputs.page - 1, inputs.pageDurationMs, inputs.now));
 }
 
 /**
@@ -48,12 +57,9 @@ export function rotationAnchorForPage(inputs: { page: number; pageDurationMs: nu
  * instead of polling.
  */
 export function msUntilNextRotationFlip(inputs: PageRotationInputs): number | null {
-	if (inputs.totalPages <= 1 || inputs.pageDurationMs <= 0)
+	if (inputs.totalPages <= 1)
 		return null;
-	const elapsed = inputs.now - (inputs.rotationAnchor ?? 0);
-	if (elapsed < 0)
-		return -elapsed + inputs.pageDurationMs;
-	return inputs.pageDurationMs - (elapsed % inputs.pageDurationMs);
+	return rotationInterval(inputs).nextStepInMs;
 }
 
 /**
