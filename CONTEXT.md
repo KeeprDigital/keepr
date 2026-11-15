@@ -261,6 +261,14 @@ _Avoid_: round timer (the Feature Match Session clock is a Match's, not a Round'
 What a clock shows at one instant, as a pure function of its stored state and server time: the value, and how long until that value next changes on its own. A Feature Match Session clock's display, a Round Clock, Page Rotation, a Talent Screen's Social Profile Rotation and Card Timeout are each one. Every rendering computes the same answer, nothing writes as it runs, and one scheduler re-evaluates each exactly when it next changes, when its inputs change and when server time re-syncs (ADR-0088).
 _Avoid_: ticker, timer (nothing ticks; a projection is re-evaluated when it changes).
 
+**Interval**:
+Equal periods counted from an anchor instant: which period is current, and when the next begins, is a pure function of the anchor, the period and server time. A Page Rotation counts its pages on one, and a Social Profile Rotation its steps.
+_Avoid_: cycle, loop (a Graphic Animation loops).
+
+**Frame clock**:
+The instant motion is read at: server time, read again on every animation frame while anything read at it is in motion, and left where it stopped once all of it has settled. Where a Clock projection waits for its next change, motion changes on every frame. Broadcast Graphics playout is read on one.
+_Avoid_: animation timer, render loop.
+
 **Page Rotation**:
 The deterministic projection of a paginated Screen Mode's current page from its Rotation Anchor and server time, computed identically by every rendering (ADR-0009). A paginated Screen Mode Definition declares it, naming its page size field, which holds a number of rows or, where the mode allows, is absent for Auto: every row on one page. An edit of the page size or page duration changes the rotation's shape, restarting it from page 1 (ADR-0039).
 _Avoid_: Auto-paging when naming the projection itself — auto-page is the operator toggle that turns rotation on.

@@ -60,7 +60,8 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	 * them at two instants is how an output composites a frame that never existed. The
 	 * clock that advances it sits further down, beside the preview clock it parallels.
 	 */
-	const liveNow = ref(Date.now());
+	const liveClock = useFrameClock(() => sessionStore.serverNow(), hasLiveMotion);
+	const liveNow = liveClock.now;
 
 	/**
 	 * An editor preview composes the whole authored stack, exactly as an on-air
@@ -183,46 +184,30 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	 * It runs only while something is actually moving. An on-screen Graphic Animation
 	 * Recipe may cycle indefinitely, so "moving" cannot mean "a finite phase is
 	 * running"; it means the Live Session has a projection to offer at all, which
-	 * settles to nothing when every graphic is off or resting.
+	 * settles to nothing when every graphic is off or resting. The frames are a
+	 * frame clock's (`useFrameClock`), declared above with the instant it advances.
 	 */
-	let liveFrame: number | null = null;
 
-	/** Whether the Live Session still has a phase to project at the current instant. */
-	function hasLiveMotion(): boolean {
+	/**
+	 * Whether the Live Session still has a phase to project at `now`. Settled means
+	 * settled: a broadcast machine must not be asked to wake up sixty times a second
+	 * to redraw a frame that cannot change. Leaving the instant where it stopped is
+	 * safe precisely because everything is at rest there — the same saturation that
+	 * lets a stale start time be read literally.
+	 */
+	function hasLiveMotion(now: number): boolean {
 		const screenId = screen.value?.id;
 		if (previewState.value || !screenId)
 			return false;
 
 		return sessionStore.hasActiveSocialProfileRotation(screenId, graphics.value) || Object.keys(
-			sessionStore.animationProjection(screenId, graphics.value, liveNow.value, channels.value),
+			sessionStore.animationProjection(screenId, graphics.value, now, channels.value),
 		).length > 0;
 	}
 
-	function stopLiveClock() {
-		if (liveFrame !== null && import.meta.client)
-			cancelAnimationFrame(liveFrame);
-		liveFrame = null;
-	}
-
-	function advanceLiveClock() {
-		liveNow.value = sessionStore.serverNow();
-		// Settled means settled: a broadcast machine must not be asked to wake up sixty
-		// times a second to redraw a frame that cannot change. Leaving the instant where
-		// it stopped is safe precisely because everything is at rest there — the same
-		// saturation that lets a stale start time be read literally.
-		if (!hasLiveMotion()) {
-			stopLiveClock();
-			return;
-		}
-		liveFrame = requestAnimationFrame(advanceLiveClock);
-	}
-
 	function startLiveClock() {
-		if (!import.meta.client || previewState.value)
-			return;
-		liveNow.value = sessionStore.serverNow();
-		if (liveFrame === null)
-			liveFrame = requestAnimationFrame(advanceLiveClock);
+		if (!previewState.value)
+			liveClock.start();
 	}
 
 	// Every accepted command reaches this client as a new snapshot, and a new snapshot
@@ -373,7 +358,6 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 
 	onBeforeUnmount(() => {
 		window.removeEventListener('message', handlePreviewStateMessage);
-		stopLiveClock();
 	});
 
 	/**

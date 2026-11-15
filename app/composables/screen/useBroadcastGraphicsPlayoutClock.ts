@@ -10,7 +10,8 @@ import type { BroadcastGraphicConfig, GraphicChannelConfig } from '~~/shared/typ
  * projection a component makes must read this one instant.
  *
  * Each caller holds its own clock; what is shared is the authority it advances
- * from — the session store's serverNow — and the rule for when it runs.
+ * from — the session store's serverNow — and the rule for when it runs, which
+ * is a frame clock's (`useFrameClock`).
  *
  * The clock advances while anything is in flight and stops when everything is
  * settled, because a settled phase cannot change and an operator's browser has
@@ -23,33 +24,17 @@ export function useBroadcastGraphicsPlayoutClock(
 	channels?: MaybeRefOrGetter<readonly GraphicChannelConfig[] | undefined>,
 ): Readonly<Ref<number>> {
 	const sessionStore = useBroadcastGraphicsLiveSessionStore();
-	const now = ref(sessionStore.serverNow());
 
-	let frame: number | null = null;
-
-	function stopClock() {
-		if (frame !== null && import.meta.client)
-			cancelAnimationFrame(frame);
-		frame = null;
-	}
-
-	function advance() {
-		now.value = sessionStore.serverNow();
-		const projection = sessionStore.animationProjection(
+	/** In flight while the Live Session has a phase to project, or a Social Profile Rotation runs. */
+	const clock = useFrameClock(
+		() => sessionStore.serverNow(),
+		now => Object.keys(sessionStore.animationProjection(
 			toValue(screenId),
 			toValue(graphics),
-			now.value,
+			now,
 			toValue(channels),
-		);
-		if (
-			Object.keys(projection).length === 0
-			&& !sessionStore.hasActiveSocialProfileRotation(toValue(screenId), toValue(graphics))
-		) {
-			stopClock();
-			return;
-		}
-		frame = requestAnimationFrame(advance);
-	}
+		)).length > 0 || sessionStore.hasActiveSocialProfileRotation(toValue(screenId), toValue(graphics)),
+	);
 
 	// The stored graphics and channels restart it too: a looping recipe saved onto
 	// a graphic resting on air starts motion with no session command. A change that
@@ -65,17 +50,9 @@ export function useBroadcastGraphicsPlayoutClock(
 			() => toValue(graphics),
 			() => toValue(channels),
 		],
-		() => {
-			if (!import.meta.client)
-				return;
-			now.value = sessionStore.serverNow();
-			if (frame === null)
-				frame = requestAnimationFrame(advance);
-		},
+		() => clock.start(),
 		{ immediate: true },
 	);
 
-	onBeforeUnmount(stopClock);
-
-	return readonly(now);
+	return clock.now;
 }
