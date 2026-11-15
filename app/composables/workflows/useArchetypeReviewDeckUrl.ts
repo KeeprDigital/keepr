@@ -18,43 +18,42 @@ export function useArchetypeReviewDeckUrl({ loading, queue }: UseArchetypeReview
 	const router = useRouter();
 
 	const requestedDeckId = computed(() => {
-		const raw = Array.isArray(route.query.deckId)
-			? route.query.deckId[0]
-			: route.query.deckId;
+		const raw = Array.isArray(route.query.deckId) ? route.query.deckId[0] : route.query.deckId;
 		const deckId = Number(raw);
-		return raw && Number.isInteger(deckId)
-			? deckId
-			: null;
+		return raw && Number.isInteger(deckId) ? deckId : null;
 	});
 	const shownDeckId = computed(() => queue.currentEntry.value?.deck.id ?? null);
 
 	/** The URL's deck as last read or written here; `undefined` until the first read. */
 	let reconciledDeckId: number | null | undefined;
 
-	watch([loading, requestedDeckId, shownDeckId], ([isLoading, requested]) => {
-		if (isLoading)
-			return;
+	watch(
+		[loading, requestedDeckId, shownDeckId],
+		([isLoading, requested]) => {
+			if (isLoading) return;
 
-		if (requested !== reconciledDeckId) {
-			// The page opening on a deck is no step to go back from; a link followed later is.
-			const arriving = reconciledDeckId === undefined;
-			reconciledDeckId = requested;
-			if (requested != null && requested !== shownDeckId.value)
-				queue.jumpToDeck(requested, { history: !arriving });
-		}
+			if (requested !== reconciledDeckId) {
+				// The page opening on a deck is no step to go back from; a link followed later is.
+				const arriving = reconciledDeckId === undefined;
+				reconciledDeckId = requested;
+				if (requested != null && requested !== shownDeckId.value)
+					queue.jumpToDeck(requested, { history: !arriving });
+			}
 
-		const shown = shownDeckId.value;
-		if (shown === requested)
-			return;
-		reconciledDeckId = shown;
-		const { deckId: _deckId, ...query } = route.query;
-		void router.replace({
-			query: shown == null
-				? query
-				: {
-						...query,
-						deckId: String(shown),
-					},
-		});
-	}, { immediate: true });
+			const shown = shownDeckId.value;
+			if (shown === requested) return;
+			reconciledDeckId = shown;
+			const { deckId: _deckId, ...query } = route.query;
+			void router.replace({
+				query:
+					shown == null
+						? query
+						: {
+								...query,
+								deckId: String(shown),
+							},
+			});
+		},
+		{ immediate: true },
+	);
 }

@@ -12,15 +12,15 @@ import { useFeatureMatchStateStore } from '~/stores/featureMatchState';
  * beside the two notices Screen Mode Data Freshness and the display session
  * answer by re-reading (`server/modules/screen-output-publication`).
  */
-type ScreenChannelMessageType
-	= | 'screen:updated'
-		| 'screen:deleted'
-		| 'card:updated'
-		| 'card:cleared'
-		| 'featureMatchSession:eventApplied'
-		| 'broadcastGraphicsLiveSession:commandApplied'
-		| 'broadcastGraphicsLiveSession:epochEnded'
-		| 'output:eventContextChanged';
+type ScreenChannelMessageType =
+	| 'screen:updated'
+	| 'screen:deleted'
+	| 'card:updated'
+	| 'card:cleared'
+	| 'featureMatchSession:eventApplied'
+	| 'broadcastGraphicsLiveSession:commandApplied'
+	| 'broadcastGraphicsLiveSession:epochEnded'
+	| 'output:eventContextChanged';
 
 interface ScreenChannelSessionOptions {
 	realtime: Pick<RealtimeTransport, 'onChannel' | 'connectionId'>;
@@ -51,30 +51,37 @@ export function useScreenChannelSession(options: ScreenChannelSessionOptions) {
 	const { accept } = useRealtimeMessageGate(computed(() => realtime.connectionId));
 
 	const handlers: { [K in ScreenChannelMessageType]: RealtimeHandler<K> } = {
-		'screen:updated': accept('screen:updated', data => screenStore.applyRemoteUpdated(data)),
-		'screen:deleted': accept('screen:deleted', data => screenStore.applyRemoteDeleted(data)),
-		'card:updated': accept('card:updated', data => useCardStore().applyRemoteUpdated(data)),
-		'card:cleared': accept('card:cleared', data => useCardStore().applyRemoteCleared(data)),
-		'featureMatchSession:eventApplied': accept('featureMatchSession:eventApplied', data => useFeatureMatchStateStore().applyRemoteSessionEvent(data)),
+		'screen:updated': accept('screen:updated', (data) => screenStore.applyRemoteUpdated(data)),
+		'screen:deleted': accept('screen:deleted', (data) => screenStore.applyRemoteDeleted(data)),
+		'card:updated': accept('card:updated', (data) => useCardStore().applyRemoteUpdated(data)),
+		'card:cleared': accept('card:cleared', (data) => useCardStore().applyRemoteCleared(data)),
+		'featureMatchSession:eventApplied': accept('featureMatchSession:eventApplied', (data) =>
+			useFeatureMatchStateStore().applyRemoteSessionEvent(data),
+		),
 		'broadcastGraphicsLiveSession:commandApplied': accept(
 			'broadcastGraphicsLiveSession:commandApplied',
-			data => useBroadcastGraphicsLiveSessionStore().applyRemoteCommand(data),
+			(data) => useBroadcastGraphicsLiveSessionStore().applyRemoteCommand(data),
 		),
 		'broadcastGraphicsLiveSession:epochEnded': accept(
 			'broadcastGraphicsLiveSession:epochEnded',
-			data => useBroadcastGraphicsLiveSessionStore().applyEpochEnded(data),
+			(data) => useBroadcastGraphicsLiveSessionStore().applyEpochEnded(data),
 		),
-		'output:eventContextChanged': accept('output:eventContextChanged', () => options.onEventContextChanged()),
+		'output:eventContextChanged': accept('output:eventContextChanged', () =>
+			options.onEventContextChanged(),
+		),
 	};
 
-	watch(options.channel, (channel, _previous, onCleanup) => {
-		if (!channel)
-			return;
-		const stops = (Object.keys(handlers) as ScreenChannelMessageType[]).map(type =>
-			realtime.onChannel(channel, type, handlers[type] as RealtimeHandler<MessageType>));
-		onCleanup(() => {
-			for (const stop of stops)
-				stop();
-		});
-	}, { immediate: true });
+	watch(
+		options.channel,
+		(channel, _previous, onCleanup) => {
+			if (!channel) return;
+			const stops = (Object.keys(handlers) as ScreenChannelMessageType[]).map((type) =>
+				realtime.onChannel(channel, type, handlers[type] as RealtimeHandler<MessageType>),
+			);
+			onCleanup(() => {
+				for (const stop of stops) stop();
+			});
+		},
+		{ immediate: true },
+	);
 }

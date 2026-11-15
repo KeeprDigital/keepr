@@ -40,7 +40,11 @@ const graphics: BroadcastGraphicConfig[] = [
 
 describe('graphicsSelection', () => {
 	it('resolves a Graphic Item target to its Broadcast Graphic and item', () => {
-		const selection = resolveGraphicsSelection(graphics, { type: 'item', graphicId: 'lower-third', itemId: 'bar' });
+		const selection = resolveGraphicsSelection(graphics, {
+			type: 'item',
+			graphicId: 'lower-third',
+			itemId: 'bar',
+		});
 
 		expect(selection.kind).toBe('item');
 		expect(selection.kind === 'item' && selection.graphic.id).toBe('lower-third');
@@ -48,8 +52,13 @@ describe('graphicsSelection', () => {
 	});
 
 	it('reports a target whose Broadcast Graphic or Graphic Item no longer exists as missing', () => {
-		expect(resolveGraphicsSelection(graphics, { type: 'graphic', graphicId: 'gone' }).kind).toBe('missing');
-		expect(resolveGraphicsSelection(graphics, { type: 'item', graphicId: 'lower-third', itemId: 'gone' }).kind).toBe('missing');
+		expect(resolveGraphicsSelection(graphics, { type: 'graphic', graphicId: 'gone' }).kind).toBe(
+			'missing',
+		);
+		expect(
+			resolveGraphicsSelection(graphics, { type: 'item', graphicId: 'lower-third', itemId: 'gone' })
+				.kind,
+		).toBe('missing');
 	});
 
 	it('keys targets distinctly so surfaces can compare selections', () => {

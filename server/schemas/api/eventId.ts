@@ -13,8 +13,5 @@ export const EVENT_ID_PATTERN = /^[1-9]\d*$/;
  * has already resolved one.
  */
 export const eventIdParamSchema = z
-	.union([
-		z.number(),
-		z.string().regex(EVENT_ID_PATTERN).transform(Number),
-	])
+	.union([z.number(), z.string().regex(EVENT_ID_PATTERN).transform(Number)])
 	.pipe(z.number().int().positive());

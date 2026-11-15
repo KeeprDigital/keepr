@@ -19,15 +19,22 @@ vi.doMock('~~/server/utils/scryfall', () => ({ fetchScryfallCardById }));
 vi.doMock('~~/server/modules/event-data-publication', () => ({
 	eventDataPublicationModule: () => ({ playerDeckCardsResolved }),
 }));
-vi.stubGlobal('createError', (input: { statusCode: number; message?: string; statusMessage?: string; cause?: unknown }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; message?: string; statusMessage?: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage), input),
+);
 vi.stubGlobal('setResponseHeader', setResponseHeader);
 
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params),
+);
 
 const { deckListResolutionModule } = await import('~~/server/modules/deck-list-resolution');
-const listRoute = (await import('~~/server/api/events/[id]/melee/unresolved-deck-cards.get')).default as unknown as (event: H3Event) => Promise<unknown>;
+const listRoute = (await import('~~/server/api/events/[id]/melee/unresolved-deck-cards.get'))
+	.default as unknown as (event: H3Event) => Promise<unknown>;
 
 afterAll(async () => await harness.close());
 
@@ -53,61 +60,78 @@ const bolt = {
 };
 
 async function createEvent(game: 'mtg' | 'op' = 'mtg') {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Resolution Open', game, featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	return event!.id;
 }
 
 async function createPlayer(eventId: number) {
-	const [player] = await db.insert(schema.players).values({ eventId, name: 'Player' }).returning({ id: schema.players.id });
+	const [player] = await db
+		.insert(schema.players)
+		.values({ eventId, name: 'Player' })
+		.returning({ id: schema.players.id });
 	return player!.id;
 }
 
 let deckSequence = 0;
 async function createDeck(eventId: number, playerId: number, isPrimary = true) {
-	const [deck] = await db.insert(schema.playerDecks).values({
-		eventId,
-		playerId,
-		externalId: `deck-${++deckSequence}`,
-		externalSource: 'melee',
-		formatExternalId: 'modern',
-		name: 'Deck',
-		isPrimary,
-	}).returning({ id: schema.playerDecks.id });
+	const [deck] = await db
+		.insert(schema.playerDecks)
+		.values({
+			eventId,
+			playerId,
+			externalId: `deck-${++deckSequence}`,
+			externalSource: 'melee',
+			formatExternalId: 'modern',
+			name: 'Deck',
+			isPrimary,
+		})
+		.returning({ id: schema.playerDecks.id });
 	return deck!.id;
 }
 
 /** The card catalogue is global, so a name another test already added is reused. */
 async function catalogueCard(name: string) {
 	await db.insert(schema.cards).values({ name, game: 'mtg' }).onConflictDoNothing();
-	const [card] = await db.select({ id: schema.cards.id }).from(schema.cards).where(and(eq(schema.cards.name, name), eq(schema.cards.game, 'mtg')));
+	const [card] = await db
+		.select({ id: schema.cards.id })
+		.from(schema.cards)
+		.where(and(eq(schema.cards.name, name), eq(schema.cards.game, 'mtg')));
 	return card!.id;
 }
 
-async function unresolved(deckId: number, overrides: Partial<DbPlayerDeckUnresolvedCardInsert> = {}) {
-	const [entry] = await db.insert(schema.playerDeckUnresolvedCards).values({
-		deckId,
-		entryType: 'card',
-		originalName: 'Lightnng Bolt',
-		normalizedOriginalName: 'lightnng bolt',
-		setCode: 'M11',
-		normalizedSetCode: 'm11',
-		quantity: 4,
-		compartment: 'mainboard',
-		sortOrder: 2,
-		...overrides,
-	}).returning({ id: schema.playerDeckUnresolvedCards.id });
+async function unresolved(
+	deckId: number,
+	overrides: Partial<DbPlayerDeckUnresolvedCardInsert> = {},
+) {
+	const [entry] = await db
+		.insert(schema.playerDeckUnresolvedCards)
+		.values({
+			deckId,
+			entryType: 'card',
+			originalName: 'Lightnng Bolt',
+			normalizedOriginalName: 'lightnng bolt',
+			setCode: 'M11',
+			normalizedSetCode: 'm11',
+			quantity: 4,
+			compartment: 'mainboard',
+			sortOrder: 2,
+			...overrides,
+		})
+		.returning({ id: schema.playerDeckUnresolvedCards.id });
 	return entry!.id;
 }
 
 async function deckCards(deckId: number) {
-	return await db.select({
-		name: schema.cards.name,
-		quantity: schema.playerDeckCards.quantity,
-		compartment: schema.playerDeckCards.compartment,
-		sortOrder: schema.playerDeckCards.sortOrder,
-	})
+	return await db
+		.select({
+			name: schema.cards.name,
+			quantity: schema.playerDeckCards.quantity,
+			compartment: schema.playerDeckCards.compartment,
+			sortOrder: schema.playerDeckCards.sortOrder,
+		})
 		.from(schema.playerDeckCards)
 		.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
 		.where(eq(schema.playerDeckCards.deckId, deckId))
@@ -115,7 +139,10 @@ async function deckCards(deckId: number) {
 }
 
 async function remainingUnresolved(deckId: number) {
-	return await db.select().from(schema.playerDeckUnresolvedCards).where(eq(schema.playerDeckUnresolvedCards.deckId, deckId));
+	return await db
+		.select()
+		.from(schema.playerDeckUnresolvedCards)
+		.where(eq(schema.playerDeckUnresolvedCards.deckId, deckId));
 }
 
 function resolve(eventId: number, unresolvedCardId: number, originConnectionId?: string) {
@@ -182,15 +209,19 @@ describe('resolving an unresolved card entry', () => {
 		for (const deckId of [alicePrimary, aliceSecondary, bobDeck])
 			expect(await remainingUnresolved(deckId)).toEqual([]);
 
-		const [card] = await db.select().from(schema.cards).where(eq(schema.cards.name, 'Lightning Bolt'));
+		const [card] = await db
+			.select()
+			.from(schema.cards)
+			.where(eq(schema.cards.name, 'Lightning Bolt'));
 		expect(card).toMatchObject({
 			scryfallId: bolt.id,
 			cardType: 'Instant',
-			deckTokens: [
-				expect.objectContaining({ id: 'treasure' }),
-			],
+			deckTokens: [expect.objectContaining({ id: 'treasure' })],
 		});
-		const [override] = await db.select().from(schema.eventCardNameOverrides).where(eq(schema.eventCardNameOverrides.eventId, eventId));
+		const [override] = await db
+			.select()
+			.from(schema.eventCardNameOverrides)
+			.where(eq(schema.eventCardNameOverrides.eventId, eventId));
 		expect(override).toMatchObject({
 			inputName: 'Lightnng Bolt',
 			normalizedInputName: 'lightnng bolt',
@@ -208,7 +239,7 @@ describe('resolving an unresolved card entry', () => {
 		expect(playerDeckCardsResolved.mock.calls[0]?.[0].playerIds).toHaveLength(2);
 	});
 
-	it('leaves another Event\'s matching entry unresolved', async () => {
+	it("leaves another Event's matching entry unresolved", async () => {
 		const eventId = await createEvent();
 		const otherEventId = await createEvent();
 		const requested = await unresolved(await createDeck(eventId, await createPlayer(eventId)));
@@ -221,7 +252,7 @@ describe('resolving an unresolved card entry', () => {
 		expect(await deckCards(otherDeck)).toEqual([]);
 	});
 
-	it('merges into the Deck List\'s existing rows for the card, collapsing duplicates into the earliest', async () => {
+	it("merges into the Deck List's existing rows for the card, collapsing duplicates into the earliest", async () => {
 		const eventId = await createEvent();
 		const deckId = await createDeck(eventId, await createPlayer(eventId));
 		const boltId = await catalogueCard('Lightning Bolt');
@@ -265,8 +296,14 @@ describe('resolving an unresolved companion entry', () => {
 
 		await resolve(eventId, requested);
 
-		const [companion] = await db.select().from(schema.playerDeckCompanions).where(eq(schema.playerDeckCompanions.deckId, deckId));
-		expect(companion).toMatchObject({ source: 'melee', companionCardId: await catalogueCard('Lightning Bolt') });
+		const [companion] = await db
+			.select()
+			.from(schema.playerDeckCompanions)
+			.where(eq(schema.playerDeckCompanions.deckId, deckId));
+		expect(companion).toMatchObject({
+			source: 'melee',
+			companionCardId: await catalogueCard('Lightning Bolt'),
+		});
 		expect(await remainingUnresolved(deckId)).toEqual([]);
 	});
 
@@ -274,12 +311,17 @@ describe('resolving an unresolved companion entry', () => {
 		const eventId = await createEvent();
 		const deckId = await createDeck(eventId, await createPlayer(eventId));
 		const manual = await catalogueCard('Lurrus of the Dream-Den');
-		await db.insert(schema.playerDeckCompanions).values({ deckId, companionCardId: manual, source: 'manual' });
+		await db
+			.insert(schema.playerDeckCompanions)
+			.values({ deckId, companionCardId: manual, source: 'manual' });
 		const requested = await unresolved(deckId, { entryType: 'companion', compartment: null });
 
 		await resolve(eventId, requested);
 
-		const [companion] = await db.select().from(schema.playerDeckCompanions).where(eq(schema.playerDeckCompanions.deckId, deckId));
+		const [companion] = await db
+			.select()
+			.from(schema.playerDeckCompanions)
+			.where(eq(schema.playerDeckCompanions.deckId, deckId));
 		expect(companion).toMatchObject({ source: 'manual', companionCardId: manual });
 		expect(await remainingUnresolved(deckId)).toEqual([]);
 	});
@@ -307,11 +349,15 @@ describe('resolving an unresolved companion entry', () => {
 });
 
 describe('when the card provider cannot answer', () => {
-	it('refuses with a 502 and a retry-after, keeping the provider\'s body private and writing nothing', async () => {
+	it("refuses with a 502 and a retry-after, keeping the provider's body private and writing nothing", async () => {
 		const eventId = await createEvent();
 		const deckId = await createDeck(eventId, await createPlayer(eventId));
 		const requested = await unresolved(deckId);
-		fetchScryfallCardById.mockRejectedValue({ code: 'SCRYFALL_UPSTREAM_FAILURE', notFound: false, message: 'private upstream response body' });
+		fetchScryfallCardById.mockRejectedValue({
+			code: 'SCRYFALL_UPSTREAM_FAILURE',
+			notFound: false,
+			message: 'private upstream response body',
+		});
 
 		const refusal = await refusalFrom(resolve(eventId, requested));
 
@@ -326,7 +372,10 @@ describe('when the card provider cannot answer', () => {
 		const requested = await unresolved(await createDeck(eventId, await createPlayer(eventId)));
 		fetchScryfallCardById.mockRejectedValue({ code: 'SCRYFALL_UPSTREAM_FAILURE', notFound: true });
 
-		await expect(resolve(eventId, requested)).rejects.toMatchObject({ statusCode: 400, message: 'The selected Scryfall card was not found' });
+		await expect(resolve(eventId, requested)).rejects.toMatchObject({
+			statusCode: 400,
+			message: 'The selected Scryfall card was not found',
+		});
 		expect(setResponseHeader).not.toHaveBeenCalled();
 	});
 });
@@ -334,36 +383,42 @@ describe('when the card provider cannot answer', () => {
 it('refuses an entry another Event owns with a 404', async () => {
 	const eventId = await createEvent();
 	const otherEventId = await createEvent();
-	const foreign = await unresolved(await createDeck(otherEventId, await createPlayer(otherEventId)));
+	const foreign = await unresolved(
+		await createDeck(otherEventId, await createPlayer(otherEventId)),
+	);
 
 	await expect(resolve(eventId, foreign)).rejects.toMatchObject({ statusCode: 404 });
 	expect(fetchScryfallCardById).not.toHaveBeenCalled();
 });
 
 it('refuses an Event that does not exist with a 404', async () => {
-	await expect(resolve(999_999, 1)).rejects.toMatchObject({ statusCode: 404, message: 'Event not found' });
+	await expect(resolve(999_999, 1)).rejects.toMatchObject({
+		statusCode: 404,
+		message: 'Event not found',
+	});
 	expect(fetchScryfallCardById).not.toHaveBeenCalled();
 });
 
 // A One Piece Deck List takes cards only through the OP Deck List write (ADR-0074).
 describe('on a One Piece Card Game Event', () => {
 	it.each([
-		[
-			'resolving an entry',
-			(eventId: number, entryId: number) => resolve(eventId, entryId),
-		],
+		['resolving an entry', (eventId: number, entryId: number) => resolve(eventId, entryId)],
 		[
 			'listing the entries',
-			(eventId: number) => listRoute({
-				params: {
-					id: String(eventId),
-				},
-			} as unknown as H3Event),
+			(eventId: number) =>
+				listRoute({
+					params: {
+						id: String(eventId),
+					},
+				} as unknown as H3Event),
 		],
 	])('refuses %s, writing nothing', async (_case, act) => {
 		const eventId = await createEvent('op');
 		const deckId = await createDeck(eventId, await createPlayer(eventId));
-		const entryId = await unresolved(deckId, { originalName: 'OP99-999', normalizedOriginalName: 'OP99-999' });
+		const entryId = await unresolved(deckId, {
+			originalName: 'OP99-999',
+			normalizedOriginalName: 'OP99-999',
+		});
 
 		await expect(act(eventId, entryId)).rejects.toMatchObject({
 			statusCode: 422,

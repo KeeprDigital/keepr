@@ -54,7 +54,10 @@ const PAIR_LIVE_FIELDS = [
 ];
 
 /** A Slot seating its snapshot's players, with that Session active when `state` is given. */
-function slot(snapshot: FeatureMatchSourceSnapshot, state?: FeatureMatchState | null): FeatureMatchResponse {
+function slot(
+	snapshot: FeatureMatchSourceSnapshot,
+	state?: FeatureMatchState | null,
+): FeatureMatchResponse {
 	return {
 		player1Id: null,
 		player2Id: null,
@@ -62,24 +65,28 @@ function slot(snapshot: FeatureMatchSourceSnapshot, state?: FeatureMatchState | 
 		player2Data: snapshot.player2?.data ?? null,
 		player3Data: snapshot.player3?.data ?? null,
 		player4Data: snapshot.player4?.data ?? null,
-		activeSession: state
-			? { sourceSnapshot: snapshot, currentState: state }
-			: null,
+		activeSession: state ? { sourceSnapshot: snapshot, currentState: state } : null,
 	} as FeatureMatchResponse;
 }
 
 function rowOf(event: RowEvent, featureMatch: FeatureMatchResponse) {
-	return featureMatchPublicRow({
-		event,
-		featureMatch,
-		sourceMatch: null,
-		round: null,
-		phase: null,
-	}, NOW);
+	return featureMatchPublicRow(
+		{
+			event,
+			featureMatch,
+			sourceMatch: null,
+			round: null,
+			phase: null,
+		},
+		NOW,
+	);
 }
 
 /** A Slot with its Session as it opens, changed by `change`. */
-function inSession(snapshot: FeatureMatchSourceSnapshot, change: (state: FeatureMatchState) => void = () => {}) {
+function inSession(
+	snapshot: FeatureMatchSourceSnapshot,
+	change: (state: FeatureMatchState) => void = () => {},
+) {
 	const state = createInitialFeatureMatchSessionStateFromSnapshot(snapshot);
 	change(state);
 	return slot(snapshot, state);
@@ -89,7 +96,7 @@ describe('the public Feature Match row', () => {
 	// A vMix title binds by field name, so each kind of Event has a fixed list (ADR-0056, ADR-0087).
 	it.each([
 		{
-			name: 'a Two-Player Event the pair\'s life and game wins',
+			name: "a Two-Player Event the pair's life and game wins",
 			event: TWO_PLAYER_EVENT,
 			featureMatch: inSession(twoPlayerSnapshot()),
 			live: PAIR_LIVE_FIELDS,
@@ -101,7 +108,7 @@ describe('the public Feature Match row', () => {
 			live: PAIR_LIVE_FIELDS,
 		},
 		{
-			name: 'a Commander Event each Seat\'s life and Eliminated state, and no game win',
+			name: "a Commander Event each Seat's life and Eliminated state, and no game win",
 			event: COMMANDER_EVENT,
 			featureMatch: inSession(commanderSnapshot()),
 			live: [
@@ -127,25 +134,27 @@ describe('the public Feature Match row', () => {
 
 		expect(Object.entries(rowOf(event, featureMatch))).toEqual([
 			...Object.entries(tokens),
-			...live.map(field => [
-				field,
-				expect.any(String),
-			]),
+			...live.map((field) => [field, expect.any(String)]),
 		]);
 	});
 
 	describe('of a Two-Player Slot', () => {
-		it('reads the pair\'s life, game wins and the clock as of now from its Session', () => {
-			expect(rowOf(TWO_PLAYER_EVENT, inSession(twoPlayerSnapshot(), (state) => {
-				state.player1.lifeTotal = 12;
-				state.player2.gameWins = 1;
-				state.clock = {
-					...state.clock,
-					durationMs: 600_000,
-					isRunning: true,
-					lastStartedAt: NOW - 90_000,
-				};
-			}))).toMatchObject({
+		it("reads the pair's life, game wins and the clock as of now from its Session", () => {
+			expect(
+				rowOf(
+					TWO_PLAYER_EVENT,
+					inSession(twoPlayerSnapshot(), (state) => {
+						state.player1.lifeTotal = 12;
+						state.player2.gameWins = 1;
+						state.clock = {
+							...state.clock,
+							durationMs: 600_000,
+							isRunning: true,
+							lastStartedAt: NOW - 90_000,
+						};
+					}),
+				),
+			).toMatchObject({
 				clock: '8:30',
 				player1Life: '12',
 				player1GameWins: '0',
@@ -172,24 +181,37 @@ describe('the public Feature Match row', () => {
 			{ gameWins: 0, game1: TRANSPARENT, game2: TRANSPARENT },
 			{ gameWins: 1, game1: WHITE, game2: TRANSPARENT },
 			{ gameWins: 2, game1: WHITE, game2: WHITE },
-		])('colours each game white once won, transparent before ($gameWins won)', ({ gameWins, game1, game2 }) => {
-			expect(rowOf(TWO_PLAYER_EVENT, inSession(twoPlayerSnapshot(), (state) => {
-				state.player2.gameWins = gameWins;
-			}))).toMatchObject({
-				player1Game1Win: TRANSPARENT,
-				player2Game1Win: game1,
-				player2Game2Win: game2,
-			});
-		});
+		])(
+			'colours each game white once won, transparent before ($gameWins won)',
+			({ gameWins, game1, game2 }) => {
+				expect(
+					rowOf(
+						TWO_PLAYER_EVENT,
+						inSession(twoPlayerSnapshot(), (state) => {
+							state.player2.gameWins = gameWins;
+						}),
+					),
+				).toMatchObject({
+					player1Game1Win: TRANSPARENT,
+					player2Game1Win: game1,
+					player2Game2Win: game2,
+				});
+			},
+		);
 	});
 
 	describe('of a Commander Slot', () => {
-		it('reads each Seat\'s life, and colours a Seat white while it is Eliminated', () => {
-			expect(rowOf(COMMANDER_EVENT, inSession(commanderSnapshot(), (state) => {
-				state.player2.lifeTotal = 31;
-				state.player3!.eliminated = true;
-				state.player4!.lifeTotal = -2;
-			}))).toMatchObject({
+		it("reads each Seat's life, and colours a Seat white while it is Eliminated", () => {
+			expect(
+				rowOf(
+					COMMANDER_EVENT,
+					inSession(commanderSnapshot(), (state) => {
+						state.player2.lifeTotal = 31;
+						state.player3!.eliminated = true;
+						state.player4!.lifeTotal = -2;
+					}),
+				),
+			).toMatchObject({
 				player1Life: '40',
 				player1Eliminated: TRANSPARENT,
 				player2Life: '31',
@@ -203,9 +225,14 @@ describe('the public Feature Match row', () => {
 
 		// An empty Seat is not in the game, though the Session holds a state for it (ADR-0087).
 		it('reads an empty Seat as no life and not Eliminated', () => {
-			expect(rowOf(COMMANDER_EVENT, inSession(commanderSnapshot({ player4: null }), (state) => {
-				state.player4!.eliminated = true;
-			}))).toMatchObject({
+			expect(
+				rowOf(
+					COMMANDER_EVENT,
+					inSession(commanderSnapshot({ player4: null }), (state) => {
+						state.player4!.eliminated = true;
+					}),
+				),
+			).toMatchObject({
 				player3Life: '40',
 				player4Life: '',
 				player4Eliminated: TRANSPARENT,
@@ -223,7 +250,10 @@ describe('the public Feature Match row', () => {
 
 		// A vMix title's field list must not change as Seats fill.
 		it('names the same fields with two Seats filled as with four', () => {
-			const two = rowOf(COMMANDER_EVENT, inSession(commanderSnapshot({ player2: null, player4: null })));
+			const two = rowOf(
+				COMMANDER_EVENT,
+				inSession(commanderSnapshot({ player2: null, player4: null })),
+			);
 			const four = rowOf(COMMANDER_EVENT, inSession(commanderSnapshot()));
 
 			expect(Object.keys(two)).toEqual(Object.keys(four));
@@ -235,7 +265,7 @@ describe('the public Feature Match row', () => {
 			});
 		});
 
-		it('reads an untimed game\'s clock as the Event\'s Untimed Label', () => {
+		it("reads an untimed game's clock as the Event's Untimed Label", () => {
 			const event = { ...COMMANDER_EVENT, featureMatchDefaultUntimedLabel: 'Casual' };
 
 			expect(rowOf(event, inSession(commanderSnapshot())).clock).toBe('Casual');

@@ -7,25 +7,26 @@ import { chunkArray, chunkJsonRows, SAFE_INARRAY_SIZE, selectForInsert } from '~
 
 export function playerListService() {
 	const validatePlayersBelongToEvent = async (eventId: number, playerIds: number[]) => {
-		if (playerIds.length === 0)
-			return;
+		if (playerIds.length === 0) return;
 
-		const uniquePlayerIds = [
-			...new Set(playerIds),
-		];
+		const uniquePlayerIds = [...new Set(playerIds)];
 		const existingPlayers: Array<{ id: number }> = [];
 		for (const payload of chunkJsonRows(uniquePlayerIds)) {
-			existingPlayers.push(...await db
-				.select({ id: players.id })
-				.from(players)
-				.where(and(
-					eq(players.eventId, eventId),
-					eq(players.isActive, true),
-					sql`${players.id} in (
+			existingPlayers.push(
+				...(await db
+					.select({ id: players.id })
+					.from(players)
+					.where(
+						and(
+							eq(players.eventId, eventId),
+							eq(players.isActive, true),
+							sql`${players.id} in (
 						select cast(value as integer)
 						from json_each(${payload})
 					)`,
-				)));
+						),
+					)),
+			);
 		}
 
 		if (existingPlayers.length !== uniquePlayerIds.length) {
@@ -43,11 +44,14 @@ export function playerListService() {
 			})
 			.from(playerLists)
 			.leftJoin(playerListMembers, eq(playerLists.id, playerListMembers.listId))
-			.leftJoin(players, and(
-				eq(playerListMembers.playerId, players.id),
-				eq(players.eventId, eventId),
-				eq(players.isActive, true),
-			))
+			.leftJoin(
+				players,
+				and(
+					eq(playerListMembers.playerId, players.id),
+					eq(players.eventId, eventId),
+					eq(players.isActive, true),
+				),
+			)
 			.where(eq(playerLists.eventId, eventId))
 			.groupBy(playerLists.id)
 			.orderBy(asc(playerLists.name));
@@ -65,22 +69,28 @@ export function playerListService() {
 
 	const findByIdWithMembers = async (id: number, eventId: number) => {
 		const list = await findById(id, eventId);
-		if (!list)
-			return undefined;
+		if (!list) return undefined;
 
 		const members = await getMembers(id, eventId);
 		return { ...list, members };
 	};
 
 	const create = async (eventId: number, data: CreatePlayerListInput): Promise<DbPlayerList> => {
-		const [newList] = await db.insert(playerLists).values({ ...data, eventId }).returning();
+		const [newList] = await db
+			.insert(playerLists)
+			.values({ ...data, eventId })
+			.returning();
 		if (!newList) {
 			throw new Error('Failed to create player list');
 		}
 		return newList;
 	};
 
-	const update = async (id: number, eventId: number, data: UpdatePlayerListInput): Promise<DbPlayerList | undefined> => {
+	const update = async (
+		id: number,
+		eventId: number,
+		data: UpdatePlayerListInput,
+	): Promise<DbPlayerList | undefined> => {
 		const [updatedList] = await db
 			.update(playerLists)
 			.set(data)
@@ -120,28 +130,43 @@ export function playerListService() {
 		const startOrder = (maxResult?.maxOrder ?? -1) + 1;
 
 		const nowMs = Date.now();
-		const payloads = chunkJsonRows(playerIds.map((playerId, index) => ({
-			playerId,
-			sortOrder: startOrder + index,
-		})));
-		const queries = payloads.map(payload => db.insert(playerListMembers)
-			.select(selectForInsert(playerListMembers, {
-				id: sql`null`,
-				listId: sql`${listId}`,
-				playerId: sql`cast(json_extract(value, '$.playerId') as integer)`,
-				sortOrder: sql`cast(json_extract(value, '$.sortOrder') as integer)`,
-				createdAt: sql`${nowMs}`,
-				updatedAt: sql`${nowMs}`,
-			}, sql`from json_each(${payload}) where true`))
-			.onConflictDoNothing()
-			.returning());
-		const results = await db.batch(queries as [typeof queries[0], ...typeof queries]);
+		const payloads = chunkJsonRows(
+			playerIds.map((playerId, index) => ({
+				playerId,
+				sortOrder: startOrder + index,
+			})),
+		);
+		const queries = payloads.map((payload) =>
+			db
+				.insert(playerListMembers)
+				.select(
+					selectForInsert(
+						playerListMembers,
+						{
+							id: sql`null`,
+							listId: sql`${listId}`,
+							playerId: sql`cast(json_extract(value, '$.playerId') as integer)`,
+							sortOrder: sql`cast(json_extract(value, '$.sortOrder') as integer)`,
+							createdAt: sql`${nowMs}`,
+							updatedAt: sql`${nowMs}`,
+						},
+						sql`from json_each(${payload}) where true`,
+					),
+				)
+				.onConflictDoNothing()
+				.returning(),
+		);
+		const results = await db.batch(queries as [(typeof queries)[0], ...typeof queries]);
 		const added = results.flat().length;
 
 		return { added };
 	};
 
-	const removeMember = async (listId: number, eventId: number, playerId: number): Promise<boolean> => {
+	const removeMember = async (
+		listId: number,
+		eventId: number,
+		playerId: number,
+	): Promise<boolean> => {
 		// Verify list belongs to event
 		const list = await findById(listId, eventId);
 		if (!list) {
@@ -152,10 +177,7 @@ export function playerListService() {
 
 		const result = await db
 			.delete(playerListMembers)
-			.where(and(
-				eq(playerListMembers.listId, listId),
-				eq(playerListMembers.playerId, playerId),
-			))
+			.where(and(eq(playerListMembers.listId, listId), eq(playerListMembers.playerId, playerId)))
 			.returning();
 
 		return result.length > 0;
@@ -173,27 +195,31 @@ export function playerListService() {
 			})
 			.from(playerListMembers)
 			.innerJoin(players, eq(playerListMembers.playerId, players.id))
-			.where(and(
-				eq(playerListMembers.listId, listId),
-				eq(players.eventId, eventId),
-				eq(players.isActive, true),
-			))
+			.where(
+				and(
+					eq(playerListMembers.listId, listId),
+					eq(players.eventId, eventId),
+					eq(players.isActive, true),
+				),
+			)
 			.orderBy(asc(playerListMembers.sortOrder), asc(playerListMembers.id));
-	};
+	}
 
 	const loadMemberPlayerIds = async (listId: number, eventId: number): Promise<number[]> => {
 		const results = await db
 			.select({ playerId: playerListMembers.playerId })
 			.from(playerListMembers)
 			.innerJoin(players, eq(playerListMembers.playerId, players.id))
-			.where(and(
-				eq(playerListMembers.listId, listId),
-				eq(players.eventId, eventId),
-				eq(players.isActive, true),
-			))
+			.where(
+				and(
+					eq(playerListMembers.listId, listId),
+					eq(players.eventId, eventId),
+					eq(players.isActive, true),
+				),
+			)
 			.orderBy(asc(playerListMembers.sortOrder), asc(playerListMembers.id));
 
-		return results.map(r => r.playerId);
+		return results.map((r) => r.playerId);
 	};
 
 	const getMemberPlayerIds = async (listId: number, eventId: number): Promise<number[]> => {
@@ -211,42 +237,46 @@ export function playerListService() {
 			.from(playerListMembers)
 			.innerJoin(playerLists, eq(playerListMembers.listId, playerLists.id))
 			.innerJoin(players, eq(playerListMembers.playerId, players.id))
-			.where(and(
-				eq(playerListMembers.listId, listId),
-				eq(playerLists.eventId, eventId),
-				eq(players.eventId, eventId),
-				eq(players.isActive, true),
-			));
+			.where(
+				and(
+					eq(playerListMembers.listId, listId),
+					eq(playerLists.eventId, eventId),
+					eq(players.eventId, eventId),
+					eq(players.isActive, true),
+				),
+			);
 
 		return Number(result?.memberCount ?? 0);
 	};
 
-	const batchRemoveMembers = async (listId: number, eventId: number, playerIds: number[]): Promise<number> => {
+	const batchRemoveMembers = async (
+		listId: number,
+		eventId: number,
+		playerIds: number[],
+	): Promise<number> => {
 		// Verify list belongs to event
 		const list = await findById(listId, eventId);
 		if (!list) {
 			throw createError({ statusCode: 404, message: 'Player list not found' });
 		}
 
-		if (playerIds.length === 0)
-			return 0;
+		if (playerIds.length === 0) return 0;
 
 		await validatePlayersBelongToEvent(eventId, playerIds);
 
 		// Chunk the inArray to stay under D1's 100 bound-parameter limit.
 		// Uses db.batch so all deletes are atomic.
 		const chunks = chunkArray(playerIds, SAFE_INARRAY_SIZE);
-		const queries = chunks.map(chunk =>
+		const queries = chunks.map((chunk) =>
 			db
 				.delete(playerListMembers)
-				.where(and(
-					eq(playerListMembers.listId, listId),
-					inArray(playerListMembers.playerId, chunk),
-				))
+				.where(
+					and(eq(playerListMembers.listId, listId), inArray(playerListMembers.playerId, chunk)),
+				)
 				.returning(),
 		);
 
-		const batchResults = await db.batch(queries as [typeof queries[0], ...typeof queries]);
+		const batchResults = await db.batch(queries as [(typeof queries)[0], ...typeof queries]);
 		return batchResults.flat().length;
 	};
 
@@ -259,9 +289,11 @@ export function playerListService() {
 
 		const uniquePlayerIds = new Set(playerIds);
 		const currentPlayerIds = await loadMemberPlayerIds(listId, eventId);
-		if (uniquePlayerIds.size !== playerIds.length
-			|| playerIds.length !== currentPlayerIds.length
-			|| currentPlayerIds.some(playerId => !uniquePlayerIds.has(playerId))) {
+		if (
+			uniquePlayerIds.size !== playerIds.length ||
+			playerIds.length !== currentPlayerIds.length ||
+			currentPlayerIds.some((playerId) => !uniquePlayerIds.has(playerId))
+		) {
 			throw createError({
 				statusCode: 400,
 				message: 'playerIds must contain each current list member exactly once',
@@ -269,7 +301,8 @@ export function playerListService() {
 		}
 
 		const payload = JSON.stringify(playerIds);
-		await db.update(playerListMembers)
+		await db
+			.update(playerListMembers)
 			.set({
 				sortOrder: sql<number>`(
 					select cast(key as integer)
@@ -277,13 +310,15 @@ export function playerListService() {
 					where cast(value as integer) = ${playerListMembers.playerId}
 				)`,
 			})
-			.where(and(
-				eq(playerListMembers.listId, listId),
-				sql`${playerListMembers.playerId} in (
+			.where(
+				and(
+					eq(playerListMembers.listId, listId),
+					sql`${playerListMembers.playerId} in (
 					select cast(value as integer)
 					from json_each(${payload})
 				)`,
-			));
+				),
+			);
 
 		return { reordered: currentPlayerIds.length };
 	};

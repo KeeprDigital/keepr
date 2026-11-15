@@ -22,8 +22,7 @@ const customTimeInput = ref('');
 const popoverOpen = ref(false);
 const isTimeInputValid = computed(() => parseTimeInput(customTimeInput.value) !== null);
 const formattedDefaultDuration = computed(() => {
-	if (!clockControls.defaultDurationMs.value)
-		return null;
+	if (!clockControls.defaultDurationMs.value) return null;
 	return formatClockTime(clockControls.defaultDurationMs.value);
 });
 
@@ -32,8 +31,7 @@ const incrementOptions = CLOCK_INCREMENT_OPTIONS;
 
 function handleInputBlur() {
 	const normalized = normalizeTimeInput(customTimeInput.value);
-	if (normalized)
-		customTimeInput.value = normalized;
+	if (normalized) customTimeInput.value = normalized;
 }
 
 function handleSetTime() {
@@ -63,10 +61,7 @@ function handleSetTime() {
 		>
 			<span
 				class="text-5xl font-mono leading-none transition-colors duration-300"
-				:class="[
-					appearance.colorClass,
-					{ 'animate-pulse': appearance.pulses },
-				]"
+				:class="[appearance.colorClass, { 'animate-pulse': appearance.pulses }]"
 				:data-clock-state="state"
 			>
 				{{ displayTime }}
@@ -87,7 +82,11 @@ function handleSetTime() {
 							leadingIcon: 'size-8',
 						}"
 						size="xl"
-						@click="() => { void clockControls.start() }"
+						@click="
+							() => {
+								void clockControls.start();
+							}
+						"
 					/>
 					<UButton
 						v-else
@@ -99,7 +98,11 @@ function handleSetTime() {
 							leadingIcon: 'size-8',
 						}"
 						size="xl"
-						@click="() => { void clockControls.pause() }"
+						@click="
+							() => {
+								void clockControls.pause();
+							}
+						"
 					/>
 					<UButton
 						icon="i-lucide-square"
@@ -110,7 +113,11 @@ function handleSetTime() {
 							leadingIcon: 'size-8',
 						}"
 						size="xl"
-						@click="() => { void clockControls.reset() }"
+						@click="
+							() => {
+								void clockControls.reset();
+							}
+						"
 					/>
 					<UButton
 						icon="i-lucide-refresh-cw"
@@ -121,7 +128,11 @@ function handleSetTime() {
 							leadingIcon: 'size-8',
 						}"
 						size="xl"
-						@click="() => { void clockControls.restart() }"
+						@click="
+							() => {
+								void clockControls.restart();
+							}
+						"
 					/>
 				</div>
 
@@ -173,7 +184,11 @@ function handleSetTime() {
 						v-if="formattedDefaultDuration"
 						color="neutral"
 						variant="ghost"
-						@click="() => { void clockControls.resetToDefault() }"
+						@click="
+							() => {
+								void clockControls.resetToDefault();
+							}
+						"
 					>
 						{{ formattedDefaultDuration }}
 					</UButton>

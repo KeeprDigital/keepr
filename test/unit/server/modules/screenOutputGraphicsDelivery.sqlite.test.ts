@@ -26,11 +26,13 @@ afterEach(async () => {
 type D1Catalogue = ReturnType<typeof createD1GraphicsAssetCatalogue>;
 
 /** One published PNG, and the delivery a Screen Output builds over the same catalogue and canonical store. */
-async function publishedForScreenOutput(options: {
-	/** Holds the reconciliation half of every report pending until it settles. */
-	holdReports?: Promise<void>;
-	defer?: (promise: Promise<unknown>) => void;
-} = {}) {
+async function publishedForScreenOutput(
+	options: {
+		/** Holds the reconciliation half of every report pending until it settles. */
+		holdReports?: Promise<void>;
+		defer?: (promise: Promise<unknown>) => void;
+	} = {},
+) {
 	const catalogue = createD1GraphicsAssetCatalogue(harness.database);
 	const context = createTestGraphicsLibrary({ catalogue });
 	const reference = publishedRevision(await ingestImage(context, { idempotencyKey: 'on-air' }));
@@ -69,51 +71,64 @@ const READS: [string, (published: Published) => Promise<unknown>, 'metadata' | '
 ];
 
 async function openUnavailableContent(published: Published) {
-	return (await published.context.library.getReconciliationOverview()).openCounts['unavailable-content'];
+	return (await published.context.library.getReconciliationOverview()).openCounts[
+		'unavailable-content'
+	];
 }
 
-describe('a Screen Output\'s Graphics Asset delivery', () => {
-	it.each(READS)('opens one Graphics Discrepancy, before any scheduled pass, on %s whose canonical object is missing', async (_name, read) => {
-		const published = await publishedForScreenOutput();
-		await published.context.canonical.delete(canonicalIdentity(digestOf(pixelPng)));
+describe("a Screen Output's Graphics Asset delivery", () => {
+	it.each(READS)(
+		'opens one Graphics Discrepancy, before any scheduled pass, on %s whose canonical object is missing',
+		async (_name, read) => {
+			const published = await publishedForScreenOutput();
+			await published.context.canonical.delete(canonicalIdentity(digestOf(pixelPng)));
 
-		expect(await read(published)).toEqual({ outcome: 'unavailable', retryable: true });
-		await read(published);
+			expect(await read(published)).toEqual({ outcome: 'unavailable', retryable: true });
+			await read(published);
 
-		expect(await openUnavailableContent(published)).toBe(1);
-		expect(await evidenceOf(published.context.library, {
-			categories: ['content-unavailable-detected'],
-		})).toHaveLength(1);
-	});
+			expect(await openUnavailableContent(published)).toBe(1);
+			expect(
+				await evidenceOf(published.context.library, {
+					categories: ['content-unavailable-detected'],
+				}),
+			).toHaveLength(1);
+		},
+	);
 
-	it.each(READS)('reports nothing on %s while the byte store merely cannot answer', async (_name, read, operation) => {
-		const published = await publishedForScreenOutput();
-		published.context.canonical.injectTransientFailure(operation, 1);
+	it.each(READS)(
+		'reports nothing on %s while the byte store merely cannot answer',
+		async (_name, read, operation) => {
+			const published = await publishedForScreenOutput();
+			published.context.canonical.injectTransientFailure(operation, 1);
 
-		expect(await read(published)).toEqual({ outcome: 'unavailable', retryable: true });
+			expect(await read(published)).toEqual({ outcome: 'unavailable', retryable: true });
 
-		expect(await openUnavailableContent(published)).toBe(0);
-		expect(await read(published)).toMatchObject({ outcome: 'available' });
-	});
+			expect(await openUnavailableContent(published)).toBe(0);
+			expect(await read(published)).toMatchObject({ outcome: 'available' });
+		},
+	);
 
-	it.each(READS)('answers %s before its report settles, handing the report to the Worker to finish', async (_name, read) => {
-		const reports = deferred();
-		const deferredWork: Promise<unknown>[] = [];
-		const published = await publishedForScreenOutput({
-			holdReports: reports.promise,
-			defer: promise => deferredWork.push(promise),
-		});
-		await published.context.canonical.delete(canonicalIdentity(digestOf(pixelPng)));
+	it.each(READS)(
+		'answers %s before its report settles, handing the report to the Worker to finish',
+		async (_name, read) => {
+			const reports = deferred();
+			const deferredWork: Promise<unknown>[] = [];
+			const published = await publishedForScreenOutput({
+				holdReports: reports.promise,
+				defer: (promise) => deferredWork.push(promise),
+			});
+			await published.context.canonical.delete(canonicalIdentity(digestOf(pixelPng)));
 
-		const answer = await Promise.race([
-			read(published),
-			new Promise(resolve => setTimeout(resolve, 1000, 'still reporting')),
-		]);
-		expect(answer).toEqual({ outcome: 'unavailable', retryable: true });
-		expect(await openUnavailableContent(published)).toBe(0);
+			const answer = await Promise.race([
+				read(published),
+				new Promise((resolve) => setTimeout(resolve, 1000, 'still reporting')),
+			]);
+			expect(answer).toEqual({ outcome: 'unavailable', retryable: true });
+			expect(await openUnavailableContent(published)).toBe(0);
 
-		reports.resolve();
-		await Promise.all(deferredWork);
-		expect(await openUnavailableContent(published)).toBe(1);
-	});
+			reports.resolve();
+			await Promise.all(deferredWork);
+			expect(await openUnavailableContent(published)).toBe(1);
+		},
+	);
 });

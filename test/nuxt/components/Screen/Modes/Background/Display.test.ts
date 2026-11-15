@@ -15,7 +15,9 @@ const screen = ref<{ themeOverrides: Record<string, unknown> }>();
 
 mockNuxtImport('useScreenContext', () => () => ({ screen, themeTokens }));
 
-const contentUrl = vi.fn((reference: GraphicAssetReference) => `/resolved/${reference.assetId}/${reference.revisionId}`);
+const contentUrl = vi.fn(
+	(reference: GraphicAssetReference) => `/resolved/${reference.assetId}/${reference.revisionId}`,
+);
 
 mockNuxtImport('useScreenGraphicAssetContentUrls', () => () => ({
 	contentUrl,
@@ -37,7 +39,9 @@ const AnimationSurfaceStub = defineComponent({
 	template: '<div data-testid="animation-surface" />',
 });
 
-function layer(overrides: Partial<BackgroundLayer> & Pick<BackgroundLayer, 'id' | 'type'>): BackgroundLayer {
+function layer(
+	overrides: Partial<BackgroundLayer> & Pick<BackgroundLayer, 'id' | 'type'>,
+): BackgroundLayer {
 	return {
 		enabled: true,
 		opacity: 1,
@@ -125,14 +129,14 @@ describe('screenModesBackgroundDisplay', () => {
 
 	it('paints a colour layer with its own colour', async () => {
 		config.value = {
-			layers: [
-				layer({ id: 'wash', type: 'color', color: 'rgb(16, 16, 16)' }),
-			],
+			layers: [layer({ id: 'wash', type: 'color', color: 'rgb(16, 16, 16)' })],
 		};
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.find('[data-layer-id="wash"]').attributes('style')).toContain('background-color: rgb(16, 16, 16)');
+		expect(wrapper.find('[data-layer-id="wash"]').attributes('style')).toContain(
+			'background-color: rgb(16, 16, 16)',
+		);
 	});
 
 	// A gradient layer holds a Graphic Fill gradient; one stored as a CSS string paints as stored.
@@ -149,21 +153,17 @@ describe('screenModesBackgroundDisplay', () => {
 			},
 			'linear-gradient(135deg, #0f172a 0%, #02061780 75%)',
 		],
-		[
-			'a stored CSS gradient string',
-			'radial-gradient(#000, #123)',
-			'radial-gradient(#000, #123)',
-		],
+		['a stored CSS gradient string', 'radial-gradient(#000, #123)', 'radial-gradient(#000, #123)'],
 	])('paints a gradient layer holding %s', async (_, gradient, painted) => {
 		config.value = {
-			layers: [
-				layer({ id: 'grad', type: 'gradient', gradient }),
-			],
+			layers: [layer({ id: 'grad', type: 'gradient', gradient })],
 		};
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.find('[data-layer-id="grad"]').attributes('style')).toContain(`background-image: ${painted}`);
+		expect(wrapper.find('[data-layer-id="grad"]').attributes('style')).toContain(
+			`background-image: ${painted}`,
+		);
 	});
 
 	it('renders a URL-sourced image layer directly and an asset-sourced one through the resolved content URL', async () => {
@@ -257,37 +257,39 @@ describe('screenModesBackgroundDisplay', () => {
 		expect(wrapper.find('[data-testid="animation-surface"]').exists()).toBe(false);
 	});
 
-	it('restyles live when its Theme\'s background changes', async () => {
+	it("restyles live when its Theme's background changes", async () => {
 		const wrapper = await mountComponent();
 		expect(wrapper.findAll('.background-layer-stack__layer')).toHaveLength(0);
 
 		themeTokens.value = {
-			background: [
-				layer({ id: 'theme-wash', type: 'color', color: '#203040' }),
-			],
+			background: [layer({ id: 'theme-wash', type: 'color', color: '#203040' })],
 		};
 		await nextTick();
 
-		expect(wrapper.findAll('.background-layer-stack__layer').map(rendered => rendered.attributes('data-layer-id'))).toEqual(['theme-wash']);
+		expect(
+			wrapper
+				.findAll('.background-layer-stack__layer')
+				.map((rendered) => rendered.attributes('data-layer-id')),
+		).toEqual(['theme-wash']);
 	});
 
 	// Its background has two sources, its own stack and its Theme's; one overridden before is read by nothing.
-	it('paints its Theme\'s background, never a stored override of it', async () => {
+	it("paints its Theme's background, never a stored override of it", async () => {
 		themeTokens.value = {
-			background: [
-				layer({ id: 'theme-wash', type: 'color', color: '#203040' }),
-			],
+			background: [layer({ id: 'theme-wash', type: 'color', color: '#203040' })],
 		};
 		screen.value = {
 			themeOverrides: {
-				background: [
-					layer({ id: 'override-wash', type: 'color', color: '#405060' }),
-				],
+				background: [layer({ id: 'override-wash', type: 'color', color: '#405060' })],
 			},
 		};
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('.background-layer-stack__layer').map(rendered => rendered.attributes('data-layer-id'))).toEqual(['theme-wash']);
+		expect(
+			wrapper
+				.findAll('.background-layer-stack__layer')
+				.map((rendered) => rendered.attributes('data-layer-id')),
+		).toEqual(['theme-wash']);
 	});
 });

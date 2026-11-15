@@ -10,7 +10,10 @@ interface CreatePlayerDeckListOptions {
 	curve?: ManaCurve;
 }
 
-export function isReviewedPlayerDeck(deck: { archetypeId: number | null; reviewedAt: Date | string | null }): boolean {
+export function isReviewedPlayerDeck(deck: {
+	archetypeId: number | null;
+	reviewedAt: Date | string | null;
+}): boolean {
 	return deck.reviewedAt != null && deck.archetypeId != null;
 }
 
@@ -29,15 +32,9 @@ export function createPlayerDeckList(
 		isPrimary: deckResponse.isPrimary,
 		reviewed: isReviewedPlayerDeck(deckResponse),
 		cards: deckResponse.cards as unknown as PlayerDeckList['cards'],
-		...(options.stats
-			? { stats: options.stats }
-			: {}),
-		...(options.pips
-			? { pips: options.pips }
-			: {}),
-		...(options.curve
-			? { curve: options.curve }
-			: {}),
+		...(options.stats ? { stats: options.stats } : {}),
+		...(options.pips ? { pips: options.pips } : {}),
+		...(options.curve ? { curve: options.curve } : {}),
 		companion: deckResponse.companion ?? null,
 		highlander: deckResponse.highlander,
 	};
@@ -52,12 +49,7 @@ export function createDeckLookupCards<T extends DeckLookupCardLike>(
 	cards: T[],
 	companion?: Pick<DeckCompanion, 'name' | 'scryfallId'> | null,
 ): Array<Pick<DeckLookupCardLike, 'name' | 'scryfallId'>> {
-	return companion
-		? [
-				...cards,
-				{ name: companion.name, scryfallId: companion.scryfallId },
-			]
-		: cards;
+	return companion ? [...cards, { name: companion.name, scryfallId: companion.scryfallId }] : cards;
 }
 
 export function getDeckCardImageUrl(
@@ -65,8 +57,8 @@ export function getDeckCardImageUrl(
 	card: DeckLookupCardLike,
 ): string | null {
 	const mtgCard = card.scryfallId
-		? cardDataMap.get(card.scryfallId) ?? null
-		: cardDataMap.get(`name:${card.name.toLowerCase()}`) ?? null;
+		? (cardDataMap.get(card.scryfallId) ?? null)
+		: (cardDataMap.get(`name:${card.name.toLowerCase()}`) ?? null);
 
 	return mtgCard?.imageData?.front?.normal ?? null;
 }

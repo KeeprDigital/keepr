@@ -6,8 +6,7 @@ export default defineEventHandler(async (event) => {
 	try {
 		await requireGraphicsAdministrator(event);
 		return await graphicsAssetLibraryForEvent(event).getCapacity();
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

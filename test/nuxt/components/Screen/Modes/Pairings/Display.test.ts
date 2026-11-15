@@ -78,9 +78,7 @@ describe('screenModesPairingsDisplay', () => {
 		error.value = null;
 		isEmpty.value = false;
 		headerText.value = 'Round 4 Pairings';
-		pageData.value = [
-			pairingRow(),
-		];
+		pageData.value = [pairingRow()];
 		cannedResults.clear();
 		cannedWinners.clear();
 	});
@@ -114,7 +112,7 @@ describe('screenModesPairingsDisplay', () => {
 
 		const rows = (await mountComponent()).findAll('.pairing-row');
 
-		expect(rows.map(row => row.get('.table').text())).toEqual(['1', '2']);
+		expect(rows.map((row) => row.get('.table').text())).toEqual(['1', '2']);
 		expect(rows[0]!.get('.player-1').text()).toBe('Nadia Rivers');
 		expect(rows[0]!.get('.player-2').text()).toBe('Oskar Lind');
 		expect(rows[0]!.get('.result').text()).toBe('Pending');
@@ -124,9 +122,7 @@ describe('screenModesPairingsDisplay', () => {
 	});
 
 	it('marks the winning side of a reported Match', async () => {
-		pageData.value = [
-			pairingRow({ hasResult: true }),
-		];
+		pageData.value = [pairingRow({ hasResult: true })];
 		cannedResults.set(1, '0-2');
 		cannedWinners.set(1, 2);
 
@@ -137,9 +133,7 @@ describe('screenModesPairingsDisplay', () => {
 	});
 
 	it('marks a bye, with no table and no opponent', async () => {
-		pageData.value = [
-			pairingRow({ tableNumber: null, isBye: true, player2: null }),
-		];
+		pageData.value = [pairingRow({ tableNumber: null, isBye: true, player2: null })];
 		cannedResults.set(1, 'BYE');
 
 		const row = (await mountComponent()).get('.pairing-row');
@@ -152,9 +146,7 @@ describe('screenModesPairingsDisplay', () => {
 	});
 
 	it('names an unfilled seat as to be decided', async () => {
-		pageData.value = [
-			pairingRow({ player2: null }),
-		];
+		pageData.value = [pairingRow({ player2: null })];
 
 		expect((await mountComponent()).get('.player-2').text()).toBe('TBD');
 	});

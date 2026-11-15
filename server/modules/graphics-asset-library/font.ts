@@ -35,13 +35,16 @@ interface ParsedGlyph {
 type ParsedFont = Exclude<ReturnType<typeof createFont>, { isCollection: true }> & {
 	directory?: {
 		totalSfntSize?: number;
-		tables?: Record<string, {
-			offset?: number;
-			length?: number;
-			compLength?: number;
-			checkSum?: number;
-			origChecksum?: number;
-		}>;
+		tables?: Record<
+			string,
+			{
+				offset?: number;
+				length?: number;
+				compLength?: number;
+				checkSum?: number;
+				origChecksum?: number;
+			}
+		>;
 	};
 	cmap?: {
 		tables?: Array<{
@@ -54,31 +57,28 @@ type ParsedFont = Exclude<ReturnType<typeof createFont>, { isCollection: true }>
 };
 
 export interface ProcessedStaticFont {
-	report: Extract<GraphicAssetValidationReport, { outcome: 'accepted'; facts: GraphicAssetFontFacts }>;
+	report: Extract<
+		GraphicAssetValidationReport,
+		{ outcome: 'accepted'; facts: GraphicAssetFontFacts }
+	>;
 	thumbnail: Uint8Array;
 }
 
 function signature(bytes: Uint8Array): StaticFontFormat {
 	if (bytes.byteLength >= 4) {
 		const tag = String.fromCharCode(...bytes.subarray(0, 4));
-		if (tag === 'wOF2')
-			return 'woff2';
-		if (tag === 'wOFF')
-			return 'woff';
-		if (tag === 'OTTO')
-			return 'otf';
+		if (tag === 'wOF2') return 'woff2';
+		if (tag === 'wOFF') return 'woff';
+		if (tag === 'OTTO') return 'otf';
 		if (tag === 'ttcf')
 			validationError('font-collection-not-supported', 'Font collections are not supported.');
-		if (tag === 'true' || (
-			bytes[0] === 0
-			&& bytes[1] === 1
-			&& bytes[2] === 0
-			&& bytes[3] === 0
-		)) {
+		if (tag === 'true' || (bytes[0] === 0 && bytes[1] === 1 && bytes[2] === 0 && bytes[3] === 0)) {
 			return 'ttf';
 		}
 	}
-	const sourceStart = new TextDecoder().decode(bytes.subarray(0, Math.min(64, bytes.byteLength))).trimStart();
+	const sourceStart = new TextDecoder()
+		.decode(bytes.subarray(0, Math.min(64, bytes.byteLength)))
+		.trimStart();
 	if (/^<\??(?:xml|svg)|^<svg/i.test(sourceStart))
 		validationError('font-svg-not-supported', 'SVG fonts are not supported.');
 	if (sourceStart.startsWith('%!PS'))
@@ -98,11 +98,12 @@ function validateDeclarations(
 		);
 	}
 	const declaredMime = declarations.declaredMime?.split(';', 1)[0]?.trim().toLocaleLowerCase();
-	const acceptedMimes = format === 'ttf'
-		? ['font/ttf', 'application/x-font-ttf']
-		: format === 'otf'
-			? ['font/otf', 'application/x-font-opentype']
-			: [MIME_BY_FORMAT[format], `application/font-${format}`];
+	const acceptedMimes =
+		format === 'ttf'
+			? ['font/ttf', 'application/x-font-ttf']
+			: format === 'otf'
+				? ['font/otf', 'application/x-font-opentype']
+				: [MIME_BY_FORMAT[format], `application/font-${format}`];
 	if (declaredMime && !acceptedMimes.includes(declaredMime)) {
 		validationError(
 			'conflicting-font-mime',
@@ -117,25 +118,32 @@ function uint16(bytes: Uint8Array, offset: number) {
 
 function uint32(bytes: Uint8Array, offset: number) {
 	return (
-		(bytes[offset]! * 0x1000000)
-		+ (bytes[offset + 1]! << 16)
-		+ (bytes[offset + 2]! << 8)
-		+ bytes[offset + 3]!
-	) >>> 0;
+		(bytes[offset]! * 0x1000000 +
+			(bytes[offset + 1]! << 16) +
+			(bytes[offset + 2]! << 8) +
+			bytes[offset + 3]!) >>>
+		0
+	);
 }
 
-function checksum(bytes: Uint8Array, offset: number, length: number, zeroChecksumAdjustment = false) {
+function checksum(
+	bytes: Uint8Array,
+	offset: number,
+	length: number,
+	zeroChecksumAdjustment = false,
+) {
 	let sum = 0;
 	const paddedLength = Math.ceil(length / 4) * 4;
 	for (let index = 0; index < paddedLength; index += 4) {
 		let word = 0;
 		for (let byte = 0; byte < 4; byte++) {
 			const sourceIndex = offset + index + byte;
-			const value = sourceIndex < offset + length
-				? (zeroChecksumAdjustment && index + byte >= 8 && index + byte < 12
+			const value =
+				sourceIndex < offset + length
+					? zeroChecksumAdjustment && index + byte >= 8 && index + byte < 12
 						? 0
-						: bytes[sourceIndex]!)
-				: 0;
+						: bytes[sourceIndex]!
+					: 0;
 			word = ((word << 8) | value) >>> 0;
 		}
 		sum = (sum + word) >>> 0;
@@ -144,8 +152,7 @@ function checksum(bytes: Uint8Array, offset: number, length: number, zeroChecksu
 }
 
 function validateRawSfntDirectory(bytes: Uint8Array) {
-	if (bytes.byteLength < 12)
-		validationError('font-table-invalid', 'SFNT header is incomplete.');
+	if (bytes.byteLength < 12) validationError('font-table-invalid', 'SFNT header is incomplete.');
 	const tableCount = uint16(bytes, 4);
 	if (tableCount === 0 || tableCount > 256 || 12 + tableCount * 16 > bytes.byteLength)
 		validationError('font-table-invalid', 'SFNT table directory is malformed.');
@@ -161,12 +168,12 @@ function validateRawSfntDirectory(bytes: Uint8Array) {
 		const end = offset + Math.ceil(length / 4) * 4;
 		if (end > bytes.byteLength)
 			validationError('font-table-invalid', `Font table ${tag} padding exceeds the source.`);
-		if (occupied.some(range => offset < range.end && end > range.start))
+		if (occupied.some((range) => offset < range.end && end > range.start))
 			validationError('font-table-invalid', `Font table ${tag} overlaps another table.`);
 		occupied.push({ start: offset, end });
 		if (
-			checksum(bytes, offset, length) !== expectedChecksum
-			&& (tag !== 'head' || checksum(bytes, offset, length, true) !== expectedChecksum)
+			checksum(bytes, offset, length) !== expectedChecksum &&
+			(tag !== 'head' || checksum(bytes, offset, length, true) !== expectedChecksum)
 		) {
 			validationError('font-checksum-invalid', `Font table ${tag} checksum is invalid.`);
 		}
@@ -187,9 +194,7 @@ function requireExpandedLimit(byteLength: number) {
 
 async function decompressWoffTable(bytes: Uint8Array, expectedLength: number) {
 	try {
-		const stream = new Blob([
-			Uint8Array.from(bytes),
-		])
+		const stream = new Blob([Uint8Array.from(bytes)])
 			.stream()
 			.pipeThrough(new DecompressionStream('deflate'));
 		const reader = stream.getReader();
@@ -197,17 +202,22 @@ async function decompressWoffTable(bytes: Uint8Array, expectedLength: number) {
 		let total = 0;
 		while (true) {
 			const result = await reader.read();
-			if (result.done)
-				break;
+			if (result.done) break;
 			total += result.value.byteLength;
 			if (total > expectedLength || total > MAX_STATIC_FONT_EXPANDED_BYTES) {
 				await reader.cancel();
-				validationError('font-expanded-size-exceeded', 'WOFF table expands beyond its declared bounded length.');
+				validationError(
+					'font-expanded-size-exceeded',
+					'WOFF table expands beyond its declared bounded length.',
+				);
 			}
 			chunks.push(result.value);
 		}
 		if (total !== expectedLength)
-			validationError('font-table-invalid', 'WOFF table expanded length does not match its directory.');
+			validationError(
+				'font-table-invalid',
+				'WOFF table expanded length does not match its directory.',
+			);
 		const decompressed = new Uint8Array(total);
 		let offset = 0;
 		for (const chunk of chunks) {
@@ -215,17 +225,14 @@ async function decompressWoffTable(bytes: Uint8Array, expectedLength: number) {
 			offset += chunk.byteLength;
 		}
 		return decompressed;
-	}
-	catch (error) {
-		if (error instanceof Error && 'issue' in error)
-			throw error;
+	} catch (error) {
+		if (error instanceof Error && 'issue' in error) throw error;
 		validationError('font-table-invalid', 'WOFF table compression stream is malformed.');
 	}
 }
 
 async function validateWoffDirectory(bytes: Uint8Array) {
-	if (bytes.byteLength < 44)
-		validationError('font-table-invalid', 'WOFF header is incomplete.');
+	if (bytes.byteLength < 44) validationError('font-table-invalid', 'WOFF header is incomplete.');
 	if (uint32(bytes, 8) !== bytes.byteLength)
 		validationError('font-table-invalid', 'WOFF declared source length is inconsistent.');
 	const tableCount = uint16(bytes, 12);
@@ -242,34 +249,38 @@ async function validateWoffDirectory(bytes: Uint8Array) {
 		const originalLength = uint32(bytes, entry + 12);
 		const expectedChecksum = uint32(bytes, entry + 16);
 		if (
-			offset % 4 !== 0
-			|| compressedLength === 0
-			|| originalLength === 0
-			|| compressedLength > originalLength
-			|| offset > bytes.byteLength
-			|| compressedLength > bytes.byteLength - offset
+			offset % 4 !== 0 ||
+			compressedLength === 0 ||
+			originalLength === 0 ||
+			compressedLength > originalLength ||
+			offset > bytes.byteLength ||
+			compressedLength > bytes.byteLength - offset
 		) {
 			validationError('font-table-invalid', `WOFF table ${tag} has invalid offsets or lengths.`);
 		}
 		calculatedSfntSize += Math.ceil(originalLength / 4) * 4;
 		requireExpandedLimit(calculatedSfntSize);
 		const end = offset + Math.ceil(compressedLength / 4) * 4;
-		if (end > bytes.byteLength || occupied.some(range => offset < range.end && end > range.start))
+		if (end > bytes.byteLength || occupied.some((range) => offset < range.end && end > range.start))
 			validationError('font-table-invalid', `WOFF table ${tag} overlaps another table.`);
 		occupied.push({ start: offset, end });
 		const source = bytes.subarray(offset, offset + compressedLength);
-		const expanded = compressedLength === originalLength
-			? source
-			: await decompressWoffTable(source, originalLength);
+		const expanded =
+			compressedLength === originalLength
+				? source
+				: await decompressWoffTable(source, originalLength);
 		if (
-			checksum(expanded, 0, expanded.byteLength) !== expectedChecksum
-			&& (tag !== 'head' || checksum(expanded, 0, expanded.byteLength, true) !== expectedChecksum)
+			checksum(expanded, 0, expanded.byteLength) !== expectedChecksum &&
+			(tag !== 'head' || checksum(expanded, 0, expanded.byteLength, true) !== expectedChecksum)
 		) {
 			validationError('font-checksum-invalid', `WOFF table ${tag} checksum is invalid.`);
 		}
 	}
 	if (calculatedSfntSize !== declaredSfntSize)
-		validationError('font-table-invalid', 'WOFF expanded SFNT length does not match its checked table lengths.');
+		validationError(
+			'font-table-invalid',
+			'WOFF expanded SFNT length does not match its checked table lengths.',
+		);
 	return declaredSfntSize;
 }
 
@@ -280,11 +291,10 @@ function readBase128(bytes: Uint8Array, start: number) {
 		if (offset >= bytes.byteLength || (index === 0 && bytes[offset] === 0x80))
 			validationError('font-table-invalid', 'WOFF2 table directory contains a malformed length.');
 		const next = bytes[offset++]!;
-		if (value > 0x01FFFFFF)
+		if (value > 0x01ffffff)
 			validationError('font-table-invalid', 'WOFF2 table length overflows its bounded integer.');
-		value = value * 128 + (next & 0x7F);
-		if ((next & 0x80) === 0)
-			return { value, offset };
+		value = value * 128 + (next & 0x7f);
+		if ((next & 0x80) === 0) return { value, offset };
 	}
 	validationError('font-table-invalid', 'WOFF2 table directory contains an overlong length.');
 }
@@ -356,20 +366,22 @@ const WOFF2_KNOWN_TAGS = [
 ] as const;
 
 function validateWoff2Header(bytes: Uint8Array) {
-	if (bytes.byteLength < 48)
-		validationError('font-table-invalid', 'WOFF2 header is incomplete.');
+	if (bytes.byteLength < 48) validationError('font-table-invalid', 'WOFF2 header is incomplete.');
 	if (uint32(bytes, 8) !== bytes.byteLength)
 		validationError('font-table-invalid', 'WOFF2 declared source length is inconsistent.');
 	const tableCount = uint16(bytes, 12);
 	const compressedLength = uint32(bytes, 20);
 	const declaredSfntSize = requireExpandedLimit(uint32(bytes, 16));
 	if (
-		tableCount === 0
-		|| tableCount > 256
-		|| compressedLength === 0
-		|| compressedLength > bytes.byteLength - 48
+		tableCount === 0 ||
+		tableCount > 256 ||
+		compressedLength === 0 ||
+		compressedLength > bytes.byteLength - 48
 	) {
-		validationError('font-table-invalid', 'WOFF2 table directory or compressed stream length is malformed.');
+		validationError(
+			'font-table-invalid',
+			'WOFF2 table directory or compressed stream length is malformed.',
+		);
 	}
 	let offset = 48;
 	let calculatedSfntSize = 12 + tableCount * 16;
@@ -378,7 +390,7 @@ function validateWoff2Header(bytes: Uint8Array) {
 		if (offset >= bytes.byteLength)
 			validationError('font-table-invalid', 'WOFF2 table directory is truncated.');
 		const flags = bytes[offset++]!;
-		const tagIndex = flags & 0x3F;
+		const tagIndex = flags & 0x3f;
 		let tag = WOFF2_KNOWN_TAGS[tagIndex];
 		if (tagIndex === 63) {
 			if (offset + 4 > bytes.byteLength)
@@ -393,9 +405,8 @@ function validateWoff2Header(bytes: Uint8Array) {
 		calculatedSfntSize += Math.ceil(original.value / 4) * 4;
 		requireExpandedLimit(calculatedSfntSize);
 		const transformVersion = flags >>> 6;
-		const transformed = tag === 'glyf' || tag === 'loca'
-			? transformVersion === 0
-			: transformVersion !== 0;
+		const transformed =
+			tag === 'glyf' || tag === 'loca' ? transformVersion === 0 : transformVersion !== 0;
 		let streamLength = original.value;
 		if (transformed) {
 			const transform = readBase128(bytes, offset);
@@ -406,7 +417,10 @@ function validateWoff2Header(bytes: Uint8Array) {
 		requireExpandedLimit(transformedStreamSize);
 	}
 	if (calculatedSfntSize !== declaredSfntSize)
-		validationError('font-table-invalid', 'WOFF2 expanded SFNT length does not match its checked table lengths.');
+		validationError(
+			'font-table-invalid',
+			'WOFF2 expanded SFNT length does not match its checked table lengths.',
+		);
 	if (offset + compressedLength > bytes.byteLength)
 		validationError('font-table-invalid', 'WOFF2 compressed stream exceeds the source bounds.');
 	return declaredSfntSize;
@@ -418,54 +432,42 @@ function expandedByteLength(
 	font: ParsedFont,
 	preflightExpandedByteLength?: number,
 ) {
-	const expanded = format === 'ttf' || format === 'otf'
-		? bytes.byteLength
-		: font.directory?.totalSfntSize;
+	const expanded =
+		format === 'ttf' || format === 'otf' ? bytes.byteLength : font.directory?.totalSfntSize;
 	requireExpandedLimit(expanded ?? 0);
 	if (preflightExpandedByteLength !== undefined && expanded !== preflightExpandedByteLength)
-		validationError('font-table-invalid', 'Decoded SFNT length differs from the bounded preflight length.');
+		validationError(
+			'font-table-invalid',
+			'Decoded SFNT length differs from the bounded preflight length.',
+		);
 	return expanded!;
 }
 
 function validateTables(font: ParsedFont) {
 	const tags = new Set(Object.keys(font.directory?.tables ?? {}));
-	for (const tag of [
-		'head',
-		'hhea',
-		'hmtx',
-		'maxp',
-		'name',
-		'OS/2',
-		'cmap',
-	]) {
+	for (const tag of ['head', 'hhea', 'hmtx', 'maxp', 'name', 'OS/2', 'cmap']) {
 		if (!tags.has(tag))
 			validationError('font-required-table-missing', `Font is missing required ${tag} table.`);
 	}
 	if (!(tags.has('glyf') && tags.has('loca')) && !tags.has('CFF '))
-		validationError('font-required-table-missing', 'Font must contain one TrueType or CFF outline face.');
-	if ([...tags].some(tag => [
-		'fvar',
-		'gvar',
-		'avar',
-		'HVAR',
-		'VVAR',
-		'MVAR',
-		'STAT',
-		'CFF2',
-	].includes(tag))) {
+		validationError(
+			'font-required-table-missing',
+			'Font must contain one TrueType or CFF outline face.',
+		);
+	if (
+		[...tags].some((tag) =>
+			['fvar', 'gvar', 'avar', 'HVAR', 'VVAR', 'MVAR', 'STAT', 'CFF2'].includes(tag),
+		)
+	) {
 		validationError('font-variable-not-supported', 'Variable fonts are not supported.');
 	}
-	if ([...tags].some(tag => [
-		'CBDT',
-		'CBLC',
-		'EBDT',
-		'EBLC',
-		'EBSC',
-		'sbix',
-	].includes(tag))) {
-		validationError('font-bitmap-not-supported', 'Bitmap fonts and bitmap strikes are not supported.');
+	if ([...tags].some((tag) => ['CBDT', 'CBLC', 'EBDT', 'EBLC', 'EBSC', 'sbix'].includes(tag))) {
+		validationError(
+			'font-bitmap-not-supported',
+			'Bitmap fonts and bitmap strikes are not supported.',
+		);
 	}
-	if ([...tags].some(tag => ['COLR', 'CPAL'].includes(tag)))
+	if ([...tags].some((tag) => ['COLR', 'CPAL'].includes(tag)))
 		validationError('font-colour-glyphs-not-supported', 'Colour-glyph fonts are not supported.');
 	if (tags.has('SVG '))
 		validationError('font-svg-not-supported', 'SVG glyph tables are not supported.');
@@ -512,9 +514,9 @@ function validateCmapSubtables(font: ParsedFont) {
 		// Formats carrying no language field (14, the variation-sequence subtable)
 		// report none, and there is nothing to check.
 		if (
-			subtable.platformID !== CMAP_MACINTOSH_PLATFORM
-			&& typeof subtable.table?.language === 'number'
-			&& subtable.table.language !== 0
+			subtable.platformID !== CMAP_MACINTOSH_PLATFORM &&
+			typeof subtable.table?.language === 'number' &&
+			subtable.table.language !== 0
 		) {
 			validationError(
 				'font-cmap-language-invalid',
@@ -530,40 +532,38 @@ interface Point {
 }
 
 function representativeCodePoints(font: ParsedFont, coverage: readonly number[], maximum: number) {
-	const preferred = coverage.filter(codePoint =>
-		(codePoint >= 48 && codePoint <= 57)
-		|| (codePoint >= 65 && codePoint <= 90)
-		|| (codePoint >= 97 && codePoint <= 122),
+	const preferred = coverage.filter(
+		(codePoint) =>
+			(codePoint >= 48 && codePoint <= 57) ||
+			(codePoint >= 65 && codePoint <= 90) ||
+			(codePoint >= 97 && codePoint <= 122),
 	);
 	const candidates = [
 		...preferred,
-		...coverage.filter(codePoint => !preferred.includes(codePoint)),
+		...coverage.filter((codePoint) => !preferred.includes(codePoint)),
 	];
 	const selected: number[] = [];
 	for (const codePoint of candidates) {
 		const glyph = font.glyphForCodePoint(codePoint);
 		if (
-			codePoint > 32
-			&& glyph.id !== 0
-			&& glyph.path.commands.length > 0
-			&& !selected.includes(codePoint)
+			codePoint > 32 &&
+			glyph.id !== 0 &&
+			glyph.path.commands.length > 0 &&
+			!selected.includes(codePoint)
 		) {
 			selected.push(codePoint);
 		}
-		if (selected.length === maximum)
-			break;
+		if (selected.length === maximum) break;
 	}
 	if (selected.length === 0)
-		validationError('font-glyphs-invalid', 'Font has no renderable glyph outlines in its Unicode mapping.');
+		validationError(
+			'font-glyphs-invalid',
+			'Font has no renderable glyph outlines in its Unicode mapping.',
+		);
 	return selected;
 }
 
-function curvePoint(
-	start: Point,
-	controls: readonly Point[],
-	end: Point,
-	t: number,
-): Point {
+function curvePoint(start: Point, controls: readonly Point[], end: Point, t: number): Point {
 	const inverse = 1 - t;
 	if (controls.length === 1) {
 		return {
@@ -572,23 +572,20 @@ function curvePoint(
 		};
 	}
 	return {
-		x: inverse ** 3 * start.x
-			+ 3 * inverse * inverse * t * controls[0]!.x
-			+ 3 * inverse * t * t * controls[1]!.x
-			+ t ** 3 * end.x,
-		y: inverse ** 3 * start.y
-			+ 3 * inverse * inverse * t * controls[0]!.y
-			+ 3 * inverse * t * t * controls[1]!.y
-			+ t ** 3 * end.y,
+		x:
+			inverse ** 3 * start.x +
+			3 * inverse * inverse * t * controls[0]!.x +
+			3 * inverse * t * t * controls[1]!.x +
+			t ** 3 * end.x,
+		y:
+			inverse ** 3 * start.y +
+			3 * inverse * inverse * t * controls[0]!.y +
+			3 * inverse * t * t * controls[1]!.y +
+			t ** 3 * end.y,
 	};
 }
 
-function glyphContours(
-	glyph: ParsedGlyph,
-	offsetX: number,
-	baseline: number,
-	scale: number,
-) {
+function glyphContours(glyph: ParsedGlyph, offsetX: number, baseline: number, scale: number) {
 	const transform = (x: number, y: number): Point => ({
 		x: offsetX + x * scale,
 		y: baseline - y * scale,
@@ -598,47 +595,36 @@ function glyphContours(
 	let current = { x: 0, y: 0 };
 	for (const command of glyph.path.commands) {
 		if (command.command === 'moveTo') {
-			if (contour && contour.length > 1)
-				contours.push(contour);
+			if (contour && contour.length > 1) contours.push(contour);
 			current = { x: command.args[0]!, y: command.args[1]! };
-			contour = [
-				transform(current.x, current.y),
-			];
+			contour = [transform(current.x, current.y)];
 			continue;
 		}
-		if (!contour)
-			continue;
+		if (!contour) continue;
 		if (command.command === 'lineTo') {
 			current = { x: command.args[0]!, y: command.args[1]! };
 			contour.push(transform(current.x, current.y));
-		}
-		else if (command.command === 'quadraticCurveTo' || command.command === 'bezierCurveTo') {
-			const controls = command.command === 'quadraticCurveTo'
-				? [
-						{ x: command.args[0]!, y: command.args[1]! },
-					]
-				: [
-						{ x: command.args[0]!, y: command.args[1]! },
-						{ x: command.args[2]!, y: command.args[3]! },
-					];
-			const endOffset = command.command === 'quadraticCurveTo'
-				? 2
-				: 4;
+		} else if (command.command === 'quadraticCurveTo' || command.command === 'bezierCurveTo') {
+			const controls =
+				command.command === 'quadraticCurveTo'
+					? [{ x: command.args[0]!, y: command.args[1]! }]
+					: [
+							{ x: command.args[0]!, y: command.args[1]! },
+							{ x: command.args[2]!, y: command.args[3]! },
+						];
+			const endOffset = command.command === 'quadraticCurveTo' ? 2 : 4;
 			const end = { x: command.args[endOffset]!, y: command.args[endOffset + 1]! };
 			for (let step = 1; step <= 12; step++) {
 				const point = curvePoint(current, controls, end, step / 12);
 				contour.push(transform(point.x, point.y));
 			}
 			current = end;
-		}
-		else if (command.command === 'closePath') {
-			if (contour.length > 1)
-				contours.push(contour);
+		} else if (command.command === 'closePath') {
+			if (contour.length > 1) contours.push(contour);
 			contour = undefined;
 		}
 	}
-	if (contour && contour.length > 1)
-		contours.push(contour);
+	if (contour && contour.length > 1) contours.push(contour);
 	return contours;
 }
 
@@ -649,10 +635,8 @@ function isInsideGlyph(contours: readonly Point[][], x: number, y: number) {
 			const start = contour[index]!;
 			const end = contour[(index + 1) % contour.length]!;
 			const side = (end.x - start.x) * (y - start.y) - (x - start.x) * (end.y - start.y);
-			if (start.y <= y && end.y > y && side > 0)
-				winding++;
-			else if (start.y > y && end.y <= y && side < 0)
-				winding--;
+			if (start.y <= y && end.y > y && side > 0) winding++;
+			else if (start.y > y && end.y <= y && side < 0) winding--;
 		}
 	}
 	return winding !== 0;
@@ -662,12 +646,12 @@ function specimenThumbnail(font: ParsedFont, selected: readonly number[]) {
 	const width = 640;
 	const height = 180;
 	const pixels = new Uint8Array(width * height * 4);
-	const glyphs = selected.map(codePoint => font.glyphForCodePoint(codePoint));
+	const glyphs = selected.map((codePoint) => font.glyphForCodePoint(codePoint));
 	const totalAdvance = glyphs.reduce((sum, glyph) => sum + Math.max(1, glyph.advanceWidth), 0);
 	const fontSize = Math.min(
 		132,
-		(width - 32) * font.unitsPerEm / Math.max(1, totalAdvance),
-		(height - 24) * font.unitsPerEm / Math.max(1, font.ascent - font.descent),
+		((width - 32) * font.unitsPerEm) / Math.max(1, totalAdvance),
+		((height - 24) * font.unitsPerEm) / Math.max(1, font.ascent - font.descent),
 	);
 	const scale = fontSize / font.unitsPerEm;
 	const baseline = height / 2 + ((font.ascent + font.descent) * scale) / 2;
@@ -676,14 +660,13 @@ function specimenThumbnail(font: ParsedFont, selected: readonly number[]) {
 		const contours = glyphContours(glyph, cursor, baseline, scale);
 		const points = contours.flat();
 		if (points.length > 0) {
-			const left = Math.max(0, Math.floor(Math.min(...points.map(point => point.x))));
-			const right = Math.min(width - 1, Math.ceil(Math.max(...points.map(point => point.x))));
-			const top = Math.max(0, Math.floor(Math.min(...points.map(point => point.y))));
-			const bottom = Math.min(height - 1, Math.ceil(Math.max(...points.map(point => point.y))));
+			const left = Math.max(0, Math.floor(Math.min(...points.map((point) => point.x))));
+			const right = Math.min(width - 1, Math.ceil(Math.max(...points.map((point) => point.x))));
+			const top = Math.max(0, Math.floor(Math.min(...points.map((point) => point.y))));
+			const bottom = Math.min(height - 1, Math.ceil(Math.max(...points.map((point) => point.y))));
 			for (let y = top; y <= bottom; y++) {
 				for (let x = left; x <= right; x++) {
-					if (!isInsideGlyph(contours, x + 0.5, y + 0.5))
-						continue;
+					if (!isInsideGlyph(contours, x + 0.5, y + 0.5)) continue;
 					const offset = (y * width + x) * 4;
 					pixels[offset] = 255;
 					pixels[offset + 1] = 255;
@@ -702,22 +685,21 @@ export async function processStaticFont(
 	declarations: GraphicAssetSourceDeclarations,
 ): Promise<ProcessedStaticFont> {
 	if (bytes.byteLength > MAX_STATIC_FONT_INGESTION_BYTES)
-		validationError('font-source-size-exceeded', `Font source must not exceed ${MAX_STATIC_FONT_INGESTION_BYTES} bytes.`);
+		validationError(
+			'font-source-size-exceeded',
+			`Font source must not exceed ${MAX_STATIC_FONT_INGESTION_BYTES} bytes.`,
+		);
 	const format = signature(bytes);
 	validateDeclarations(format, declarations);
 	let preflightExpandedByteLength: number | undefined;
-	if (format === 'ttf' || format === 'otf')
-		validateRawSfntDirectory(bytes);
-	else if (format === 'woff')
-		preflightExpandedByteLength = await validateWoffDirectory(bytes);
-	else
-		preflightExpandedByteLength = validateWoff2Header(bytes);
+	if (format === 'ttf' || format === 'otf') validateRawSfntDirectory(bytes);
+	else if (format === 'woff') preflightExpandedByteLength = await validateWoffDirectory(bytes);
+	else preflightExpandedByteLength = validateWoff2Header(bytes);
 
 	let parsed: ReturnType<typeof createFont>;
 	try {
 		parsed = createFont(Buffer.from(bytes));
-	}
-	catch {
+	} catch {
 		validationError('font-table-invalid', 'Font tables could not be parsed consistently.');
 	}
 	if (parsed.isCollection)
@@ -729,11 +711,15 @@ export async function processStaticFont(
 	let coverage: number[];
 	try {
 		coverage = [...font.characterSet]
-			.filter(codePoint => Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10FFFF)
+			.filter(
+				(codePoint) => Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff,
+			)
 			.sort((left, right) => left - right);
-	}
-	catch {
-		validationError('font-unicode-cmap-required', 'Font Unicode character map could not be inspected.');
+	} catch {
+		validationError(
+			'font-unicode-cmap-required',
+			'Font Unicode character map could not be inspected.',
+		);
 	}
 	if (coverage.length === 0)
 		validationError('font-unicode-cmap-required', 'Font must map at least one Unicode code point.');
@@ -743,21 +729,30 @@ export async function processStaticFont(
 	const subfamily = String(font.subfamilyName || '').trim();
 	const postscriptName = String(font.postscriptName || '').trim();
 	if (!family || !subfamily || !postscriptName)
-		validationError('font-name-invalid', 'Font family, subfamily, and PostScript name must be inspectable.');
+		validationError(
+			'font-name-invalid',
+			'Font family, subfamily, and PostScript name must be inspectable.',
+		);
 	const weight = Number(font['OS/2']?.usWeightClass);
-	const style = font['OS/2']?.fsSelection?.italic || font['OS/2']?.fsSelection?.oblique || font.italicAngle !== 0
-		? 'italic'
-		: 'normal';
+	const style =
+		font['OS/2']?.fsSelection?.italic ||
+		font['OS/2']?.fsSelection?.oblique ||
+		font.italicAngle !== 0
+			? 'italic'
+			: 'normal';
 	if (
-		!Number.isFinite(weight)
-		|| weight < 1
-		|| weight > 1000
-		|| !Number.isFinite(font.unitsPerEm)
-		|| font.unitsPerEm <= 0
-		|| !Number.isFinite(font.ascent)
-		|| !Number.isFinite(font.descent)
+		!Number.isFinite(weight) ||
+		weight < 1 ||
+		weight > 1000 ||
+		!Number.isFinite(font.unitsPerEm) ||
+		font.unitsPerEm <= 0 ||
+		!Number.isFinite(font.ascent) ||
+		!Number.isFinite(font.descent)
 	) {
-		validationError('font-metrics-invalid', 'Font weight and layout metrics must be internally consistent.');
+		validationError(
+			'font-metrics-invalid',
+			'Font weight and layout metrics must be internally consistent.',
+		);
 	}
 	const representativeGlyphs = representativeCodePoints(font, coverage, 8);
 	const sourceDigest = await sha256Hex(bytes);

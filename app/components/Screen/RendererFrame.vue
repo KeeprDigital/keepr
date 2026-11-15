@@ -39,15 +39,19 @@ const emit = defineEmits<{
 
 const { screen, overlayContainer, themeTokens, eventCanvas } = useScreenContext();
 
-const displayComponent = computed<Component>(() => getScreenModeDefinition(props.mode).displayComponent);
-const host = computed(() => resolveScreenModeHost({
-	mode: props.mode,
-	canvas: eventCanvas?.value ?? DEFAULT_EVENT_CANVAS,
-	theme: themeTokens?.value ?? DEFAULT_THEME_TOKENS,
-	overrides: screen.value?.themeOverrides ?? {},
-	viewportWidth: props.viewportWidth,
-	viewportHeight: props.viewportHeight,
-}));
+const displayComponent = computed<Component>(
+	() => getScreenModeDefinition(props.mode).displayComponent,
+);
+const host = computed(() =>
+	resolveScreenModeHost({
+		mode: props.mode,
+		canvas: eventCanvas?.value ?? DEFAULT_EVENT_CANVAS,
+		theme: themeTokens?.value ?? DEFAULT_THEME_TOKENS,
+		overrides: screen.value?.themeOverrides ?? {},
+		viewportWidth: props.viewportWidth,
+		viewportHeight: props.viewportHeight,
+	}),
+);
 
 /**
  * The mode's Background Layer stack, painted by this host behind the mode's
@@ -56,10 +60,12 @@ const host = computed(() => resolveScreenModeHost({
  * graphics hosts stay transparent.
  */
 const modeBackgroundLayers = computed<BackgroundLayer[]>(() => {
-	if (!screenModeSupportsBackgroundLayers(props.mode))
-		return [];
+	if (!screenModeSupportsBackgroundLayers(props.mode)) return [];
 	const modeConfigs = (screen.value?.modeConfigs ?? {}) as ModeConfigsMap;
-	return screenBackgroundLayers(modeConfigs[props.mode]?.backgroundLayers, themeTokens?.value ?? DEFAULT_THEME_TOKENS);
+	return screenBackgroundLayers(
+		modeConfigs[props.mode]?.backgroundLayers,
+		themeTokens?.value ?? DEFAULT_THEME_TOKENS,
+	);
 });
 
 /**
@@ -78,11 +84,13 @@ const containerBackgroundStyle = computed(() =>
  * properties its display reads: the Screen's own Screen Theme Overrides over
  * its Event's Theme.
  */
-const themeTokenStyle = computed(() => screenModeThemeTokenStyle(
-	props.mode,
-	themeTokens?.value ?? DEFAULT_THEME_TOKENS,
-	screen.value?.themeOverrides ?? {},
-));
+const themeTokenStyle = computed(() =>
+	screenModeThemeTokenStyle(
+		props.mode,
+		themeTokens?.value ?? DEFAULT_THEME_TOKENS,
+		screen.value?.themeOverrides ?? {},
+	),
+);
 
 /**
  * The fonts the Theme's `heading` and `body`, and the mode's typography Mode
@@ -95,28 +103,39 @@ const themeTokenStyle = computed(() => screenModeThemeTokenStyle(
  * blank display. An application font holds the rendering off program, never
  * the display: once on program, a late face swaps in.
  */
-const themeFontReferences = computed(() => screenModeThemeFontReferences(
-	props.mode,
-	themeTokens?.value ?? DEFAULT_THEME_TOKENS,
-	screen.value?.themeOverrides ?? {},
-));
+const themeFontReferences = computed(() =>
+	screenModeThemeFontReferences(
+		props.mode,
+		themeTokens?.value ?? DEFAULT_THEME_TOKENS,
+		screen.value?.themeOverrides ?? {},
+	),
+);
 const themeFontAssets = computed(() => themeFontReferences.value.map(({ reference }) => reference));
-const { contentUrl: themeFontUrl, contentUrlsSettled: themeFontUrlsSettled } = useScreenGraphicAssetContentUrls(themeFontAssets);
-const themeApplicationFonts = computed(() => screenModeThemeApplicationFonts(
-	props.mode,
-	themeTokens?.value ?? DEFAULT_THEME_TOKENS,
-	screen.value?.themeOverrides ?? {},
-));
-const themeLibraryFonts = useGraphicAssetFontFaces(themeFontReferences, themeFontUrl, themeFontUrlsSettled);
+const { contentUrl: themeFontUrl, contentUrlsSettled: themeFontUrlsSettled } =
+	useScreenGraphicAssetContentUrls(themeFontAssets);
+const themeApplicationFonts = computed(() =>
+	screenModeThemeApplicationFonts(
+		props.mode,
+		themeTokens?.value ?? DEFAULT_THEME_TOKENS,
+		screen.value?.themeOverrides ?? {},
+	),
+);
+const themeLibraryFonts = useGraphicAssetFontFaces(
+	themeFontReferences,
+	themeFontUrl,
+	themeFontUrlsSettled,
+);
 const { fontsReady: themeFontsReady, fontsFailed: themeFontsFailed } = useCombinedFontFaces(
 	themeLibraryFonts,
 	useApplicationFontFaces(themeApplicationFonts),
 );
 const themeFontsSettled = computed(() => themeFontsReady.value || themeFontsFailed.value);
-const themeLibraryFontsSettled = computed(() => themeLibraryFonts.fontsReady.value || themeLibraryFonts.fontsFailed.value);
-const themeFontStyle = computed(() => themeLibraryFontsSettled.value
-	? undefined
-	: { visibility: 'hidden' as const });
+const themeLibraryFontsSettled = computed(
+	() => themeLibraryFonts.fontsReady.value || themeLibraryFonts.fontsFailed.value,
+);
+const themeFontStyle = computed(() =>
+	themeLibraryFontsSettled.value ? undefined : { visibility: 'hidden' as const },
+);
 
 // ── Rendering Readiness ──
 
@@ -128,8 +147,7 @@ let readyCheck = 0;
 let readyTimeout: ReturnType<typeof setTimeout> | undefined;
 
 function becomeReady() {
-	if (ready.value || disposed)
-		return;
+	if (ready.value || disposed) return;
 	ready.value = true;
 	clearTimeout(readyTimeout);
 	emit('ready');
@@ -138,24 +156,28 @@ function becomeReady() {
 onMounted(() => {
 	readyTimeout = setTimeout(() => {
 		if (!ready.value)
-			console.warn(`Screen Mode "${props.mode}" was not ready after ${SCREEN_MODE_READY_TIMEOUT_MS} ms; showing it anyway.`);
+			console.warn(
+				`Screen Mode "${props.mode}" was not ready after ${SCREEN_MODE_READY_TIMEOUT_MS} ms; showing it anyway.`,
+			);
 		becomeReady();
 	}, SCREEN_MODE_READY_TIMEOUT_MS);
 });
 
-watch([declared, themeFontsSettled, container], async ([isDeclared, fontsSettled, element]) => {
-	if (ready.value || !isDeclared || !fontsSettled || !element)
-		return;
-	const check = ++readyCheck;
-	// What the declaration settled renders on the next tick, and its media
-	// starts loading only then.
-	await nextTick();
-	await waitForRenderedMedia(element);
-	// A Theme change during the wait can name a font still loading; its
-	// settling starts the next check.
-	if (check === readyCheck && declared.value && themeFontsSettled.value)
-		becomeReady();
-}, { immediate: true });
+watch(
+	[declared, themeFontsSettled, container],
+	async ([isDeclared, fontsSettled, element]) => {
+		if (ready.value || !isDeclared || !fontsSettled || !element) return;
+		const check = ++readyCheck;
+		// What the declaration settled renders on the next tick, and its media
+		// starts loading only then.
+		await nextTick();
+		await waitForRenderedMedia(element);
+		// A Theme change during the wait can name a font still loading; its
+		// settling starts the next check.
+		if (check === readyCheck && declared.value && themeFontsSettled.value) becomeReady();
+	},
+	{ immediate: true },
+);
 
 onBeforeUnmount(() => {
 	disposed = true;
@@ -163,27 +185,29 @@ onBeforeUnmount(() => {
 });
 
 function setContainer(el: Element | ComponentPublicInstance | null) {
-	container.value = el instanceof HTMLElement
-		? el
-		: null;
+	container.value = el instanceof HTMLElement ? el : null;
 }
 
 /** Only the rendering on program hosts overlays. */
-watch([
-	() => props.shown,
-	container,
-	() => host.value.provideOverlayContainer,
-], ([shown, element, provides]) => {
-	if (shown)
-		overlayContainer.value = provides ? element : null;
-}, { immediate: true });
+watch(
+	[() => props.shown, container, () => host.value.provideOverlayContainer],
+	([shown, element, provides]) => {
+		if (shown) overlayContainer.value = provides ? element : null;
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<div
 		:ref="setContainer"
 		:class="host.containerClass"
-		:style="[host.containerStyle, containerBackgroundStyle, themeTokenStyle, shown ? undefined : { visibility: 'hidden' }]"
+		:style="[
+			host.containerStyle,
+			containerBackgroundStyle,
+			themeTokenStyle,
+			shown ? undefined : { visibility: 'hidden' },
+		]"
 		:data-screen-mode="mode"
 		:data-screen-mode-ready="ready.toString()"
 		:aria-hidden="shown ? undefined : 'true'"

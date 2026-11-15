@@ -76,7 +76,7 @@ const {
 	describeFailure,
 	load: loadAccounts,
 } = useGraphicsAdminReading<AdministeredUserList>({
-	read: async headers => await $fetch<AdministeredUserList>('/api/admin/users', { headers }),
+	read: async (headers) => await $fetch<AdministeredUserList>('/api/admin/users', { headers }),
 	failureMessage: 'The account list could not be read.',
 	// A poll landing mid-action would re-read the list from before the action
 	// settled, which is what the composable's `paused` exists for.
@@ -100,9 +100,7 @@ function openFormFor(user: AdministeredUser, kind: 'password' | 'ban') {
 	actionInput.password = '';
 	actionInput.reason = '';
 	actionError.value = null;
-	openAction.value = alreadyOpen
-		? null
-		: { userId: user.id, kind };
+	openAction.value = alreadyOpen ? null : { userId: user.id, kind };
 }
 
 function isFormOpen(userId: string, kind: 'password' | 'ban') {
@@ -121,8 +119,7 @@ async function runAction(
 	perform: () => Promise<string>,
 	failureMessage: string,
 ) {
-	if (actionPending.value)
-		return;
+	if (actionPending.value) return;
 
 	actionPending.value = `${userId}:${kind}`;
 	actionError.value = null;
@@ -131,11 +128,9 @@ async function runAction(
 	try {
 		actionSummary.value = await perform();
 		await loadAccounts();
-	}
-	catch (caught) {
+	} catch (caught) {
 		actionError.value = describeFailure(caught, failureMessage);
-	}
-	finally {
+	} finally {
 		actionPending.value = null;
 	}
 }
@@ -157,100 +152,131 @@ function showIssuedLink(email: string, link: PasswordResetLink) {
  */
 async function invite() {
 	issuedLink.value = null;
-	await runAction(INVITE_FORM, 'invite', async () => {
-		const created = await $fetch<CreatedUserAccount>('/api/admin/users', {
-			method: 'POST',
-			headers: administratorHeaders(),
-			body: {
-				email: invitation.email.trim(),
-				name: invitation.name.trim(),
-			},
-		});
+	await runAction(
+		INVITE_FORM,
+		'invite',
+		async () => {
+			const created = await $fetch<CreatedUserAccount>('/api/admin/users', {
+				method: 'POST',
+				headers: administratorHeaders(),
+				body: {
+					email: invitation.email.trim(),
+					name: invitation.name.trim(),
+				},
+			});
 
-		showIssuedLink(created.user.email, created.passwordResetLink);
-		invitation.email = '';
-		invitation.name = '';
-		return `${created.user.email} has an account. Hand the link below over yourself.`;
-	}, 'The account could not be created.');
+			showIssuedLink(created.user.email, created.passwordResetLink);
+			invitation.email = '';
+			invitation.name = '';
+			return `${created.user.email} has an account. Hand the link below over yourself.`;
+		},
+		'The account could not be created.',
+	);
 }
 
 async function issueResetLink(user: AdministeredUser) {
 	issuedLink.value = null;
-	await runAction(user.id, 'reset-link', async () => {
-		const issued = await $fetch<IssuedPasswordResetLink>(
-			`/api/admin/users/${user.id}/password-reset-link`,
-			{
-				method: 'POST',
-				headers: administratorHeaders(),
-			},
-		);
-		showIssuedLink(user.email, issued.passwordResetLink);
-		return `A new reset link for ${user.email} is ready to hand over. Using it will `
-			+ 'end their other sessions.';
-	}, 'The reset link could not be issued.');
+	await runAction(
+		user.id,
+		'reset-link',
+		async () => {
+			const issued = await $fetch<IssuedPasswordResetLink>(
+				`/api/admin/users/${user.id}/password-reset-link`,
+				{
+					method: 'POST',
+					headers: administratorHeaders(),
+				},
+			);
+			showIssuedLink(user.email, issued.passwordResetLink);
+			return (
+				`A new reset link for ${user.email} is ready to hand over. Using it will ` +
+				'end their other sessions.'
+			);
+		},
+		'The reset link could not be issued.',
+	);
 }
 
 async function setPassword(user: AdministeredUser) {
 	const password = actionInput.password;
-	await runAction(user.id, 'password', async () => {
-		await $fetch(`/api/admin/users/${user.id}/password`, {
-			method: 'PUT',
-			headers: administratorHeaders(),
-			body: { password },
-		});
-		openAction.value = null;
-		actionInput.password = '';
-		return `The password for ${user.email} was set. Their existing sessions are untouched — `
-			+ 'revoke them separately if that is what you meant.';
-	}, 'The password could not be set.');
+	await runAction(
+		user.id,
+		'password',
+		async () => {
+			await $fetch(`/api/admin/users/${user.id}/password`, {
+				method: 'PUT',
+				headers: administratorHeaders(),
+				body: { password },
+			});
+			openAction.value = null;
+			actionInput.password = '';
+			return (
+				`The password for ${user.email} was set. Their existing sessions are untouched — ` +
+				'revoke them separately if that is what you meant.'
+			);
+		},
+		'The password could not be set.',
+	);
 }
 
 async function ban(user: AdministeredUser) {
 	const reason = actionInput.reason.trim();
-	await runAction(user.id, 'ban', async () => {
-		const outcome = await $fetch<RevokedUserSessions>(`/api/admin/users/${user.id}/ban`, {
-			method: 'POST',
-			headers: administratorHeaders(),
-			body: reason
-				? { reason }
-				: {},
-		});
-		openAction.value = null;
-		actionInput.reason = '';
-		return `${user.email} is banned, and ${sessionCount(outcome.revokedSessionCount)} ended.`;
-	}, 'The account could not be banned.');
+	await runAction(
+		user.id,
+		'ban',
+		async () => {
+			const outcome = await $fetch<RevokedUserSessions>(`/api/admin/users/${user.id}/ban`, {
+				method: 'POST',
+				headers: administratorHeaders(),
+				body: reason ? { reason } : {},
+			});
+			openAction.value = null;
+			actionInput.reason = '';
+			return `${user.email} is banned, and ${sessionCount(outcome.revokedSessionCount)} ended.`;
+		},
+		'The account could not be banned.',
+	);
 }
 
 async function unban(user: AdministeredUser) {
-	await runAction(user.id, 'unban', async () => {
-		await $fetch(`/api/admin/users/${user.id}/ban`, {
-			method: 'DELETE',
-			headers: administratorHeaders(),
-		});
-		return `${user.email} can sign in again with the password they already had.`;
-	}, 'The ban could not be lifted.');
+	await runAction(
+		user.id,
+		'unban',
+		async () => {
+			await $fetch(`/api/admin/users/${user.id}/ban`, {
+				method: 'DELETE',
+				headers: administratorHeaders(),
+			});
+			return `${user.email} can sign in again with the password they already had.`;
+		},
+		'The ban could not be lifted.',
+	);
 }
 
 async function revokeSessions(user: AdministeredUser) {
-	await runAction(user.id, 'sessions', async () => {
-		const outcome = await $fetch<RevokedUserSessions>(`/api/admin/users/${user.id}/sessions`, {
-			method: 'DELETE',
-			headers: administratorHeaders(),
-		});
-		// "0 sessions ended" is the useful answer as often as any other: the
-		// compromise being chased is not a live session.
-		return `${sessionCount(outcome.revokedSessionCount)} for ${user.email} ended. They can sign back in.`;
-	}, 'The sessions could not be revoked.');
+	await runAction(
+		user.id,
+		'sessions',
+		async () => {
+			const outcome = await $fetch<RevokedUserSessions>(`/api/admin/users/${user.id}/sessions`, {
+				method: 'DELETE',
+				headers: administratorHeaders(),
+			});
+			// "0 sessions ended" is the useful answer as often as any other: the
+			// compromise being chased is not a live session.
+			return `${sessionCount(outcome.revokedSessionCount)} for ${user.email} ended. They can sign back in.`;
+		},
+		'The sessions could not be revoked.',
+	);
 }
 
 function sessionCount(count: number) {
-	return count === 1
-		? '1 session'
-		: `${count} sessions`;
+	return count === 1 ? '1 session' : `${count} sessions`;
 }
 
 const hiddenAccountCount = computed(() =>
-	Math.max((accounts.value?.total ?? 0) - (accounts.value?.users.length ?? 0), 0));
+	Math.max((accounts.value?.total ?? 0) - (accounts.value?.users.length ?? 0), 0),
+);
 </script>
 
 <template>
@@ -270,31 +296,23 @@ const hiddenAccountCount = computed(() =>
 
 		<div class="mx-auto flex w-full max-w-4xl flex-col gap-6">
 			<div>
-				<h1 class="text-2xl font-semibold text-highlighted">
-					User Administration
-				</h1>
+				<h1 class="text-2xl font-semibold text-highlighted">User Administration</h1>
 				<p class="mt-1 text-sm text-muted">
-					Accounts are created here and there is no self sign-up. This installation
-					sends no email, so an invite is a link you copy and hand over yourself.
+					Accounts are created here and there is no self sign-up. This installation sends no email,
+					so an invite is a link you copy and hand over yourself.
 				</p>
 			</div>
 
 			<UCard v-if="!hasReading">
 				<template #header>
-					<h2 class="font-semibold text-highlighted">
-						Graphics Administrator access
-					</h2>
+					<h2 class="font-semibold text-highlighted">Graphics Administrator access</h2>
 				</template>
 				<div class="flex flex-col gap-4">
 					<UFormField
 						label="Graphics Administrator token"
 						description="This surface is administrator-only. The token is held for this session only and never stored."
 					>
-						<UInput
-							v-model="administratorToken"
-							type="password"
-							autocomplete="current-password"
-						/>
+						<UInput v-model="administratorToken" type="password" autocomplete="current-password" />
 					</UFormField>
 					<div>
 						<UButton
@@ -322,9 +340,7 @@ const hiddenAccountCount = computed(() =>
 
 				<UCard>
 					<template #header>
-						<h2 class="font-semibold text-highlighted">
-							Invite someone
-						</h2>
+						<h2 class="font-semibold text-highlighted">Invite someone</h2>
 					</template>
 					<UForm :state="invitation" @submit="invite">
 						<div class="flex flex-col gap-4">
@@ -348,8 +364,8 @@ const hiddenAccountCount = computed(() =>
 								</UFormField>
 							</div>
 							<p class="text-sm text-muted">
-								The account is created with no password. The link below is what sets
-								one, and only the person you give it to should ever see it.
+								The account is created with no password. The link below is what sets one, and only
+								the person you give it to should ever see it.
 							</p>
 							<div>
 								<UButton
@@ -374,10 +390,9 @@ const hiddenAccountCount = computed(() =>
 					<template #description>
 						<div class="flex flex-col gap-3">
 							<p class="text-sm">
-								Hand this over yourself — in team chat, or in person. It can be used
-								once, and expires {{ formatInstant(issuedLink.expiresAt) }}. It is
-								shown here once and is not stored anywhere. Using it ends every other
-								session the account has.
+								Hand this over yourself — in team chat, or in person. It can be used once, and
+								expires {{ formatInstant(issuedLink.expiresAt) }}. It is shown here once and is not
+								stored anywhere. Using it ends every other session the account has.
 							</p>
 							<div class="flex flex-wrap items-center gap-2">
 								<UInput
@@ -415,20 +430,17 @@ const hiddenAccountCount = computed(() =>
 
 				<section class="flex flex-col gap-3">
 					<div class="flex flex-wrap items-center gap-3">
-						<h2 class="text-lg font-semibold text-highlighted">
-							Accounts
-						</h2>
+						<h2 class="text-lg font-semibold text-highlighted">Accounts</h2>
 						<UBadge variant="soft" color="neutral" :label="`${accounts.total} total`" />
 					</div>
 
 					<p v-if="hiddenAccountCount > 0" class="text-sm text-warning">
-						Showing the first {{ accounts.cap }} accounts; {{ hiddenAccountCount }} are not
-						listed.
+						Showing the first {{ accounts.cap }} accounts; {{ hiddenAccountCount }} are not listed.
 					</p>
 
 					<p v-if="accounts.users.length === 0" class="text-sm text-muted">
-						This installation holds no accounts at all. The first one is created by the
-						bootstrap ceremony in the README, not from here.
+						This installation holds no accounts at all. The first one is created by the bootstrap
+						ceremony in the README, not from here.
 					</p>
 
 					<UCard v-for="user in accounts.users" :key="user.id">
@@ -442,18 +454,8 @@ const hiddenAccountCount = computed(() =>
 								</p>
 							</div>
 							<div class="flex flex-wrap items-center gap-2">
-								<UBadge
-									v-if="user.role"
-									variant="subtle"
-									color="neutral"
-									:label="user.role"
-								/>
-								<UBadge
-									v-if="user.banned"
-									variant="soft"
-									color="error"
-									label="Banned"
-								/>
+								<UBadge v-if="user.role" variant="subtle" color="neutral" :label="user.role" />
+								<UBadge v-if="user.banned" variant="soft" color="error" label="Banned" />
 							</div>
 						</div>
 

@@ -1,16 +1,27 @@
-import type { FeatureMatchAssignment, SaveFeatureMatchAssignmentInput, UpdateFeatureMatchAssignmentInput } from '~/types';
+import type {
+	FeatureMatchAssignment,
+	SaveFeatureMatchAssignmentInput,
+	UpdateFeatureMatchAssignmentInput,
+} from '~/types';
 import { useEventDataFetch, useEventDataResource } from '~/modules/event-data/client';
 
 export function useFeatureMatchAssignmentRepository() {
 	const eventData = useEventDataFetch();
-	const base = useEventDataResource<FeatureMatchAssignment, SaveFeatureMatchAssignmentInput, UpdateFeatureMatchAssignmentInput>({
+	const base = useEventDataResource<
+		FeatureMatchAssignment,
+		SaveFeatureMatchAssignmentInput,
+		UpdateFeatureMatchAssignmentInput
+	>({
 		resourcePath: 'feature-match-assignments',
 		eventScoped: true,
 		includeHeaders: true,
 		responseKey: 'featureMatchAssignments',
 	});
 
-	const listByRound = async (eventId: number, roundId: number): Promise<FeatureMatchAssignment[]> => {
+	const listByRound = async (
+		eventId: number,
+		roundId: number,
+	): Promise<FeatureMatchAssignment[]> => {
 		const response = await eventData.command<{ featureMatchAssignments: FeatureMatchAssignment[] }>(
 			{ eventId, resourcePath: 'feature-match-assignments' },
 			{

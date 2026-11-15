@@ -94,12 +94,10 @@ const EXPECTED_CONTENT_SELECT = `
 `;
 
 function parseFacts(value: string | null): Record<string, unknown> {
-	if (!value)
-		return {};
+	if (!value) return {};
 	try {
 		return JSON.parse(value) as Record<string, unknown>;
-	}
-	catch {
+	} catch {
 		return {};
 	}
 }
@@ -121,14 +119,14 @@ function expectedContentFromRow(row: ExpectedContentRow): ExpectedGraphicAssetCo
 					},
 				}
 			: {}),
-		...(row.derivative_id
-			&& row.derivative_kind
-			&& row.derivative_source_asset_id
-			&& row.derivative_source_revision_id
-			&& row.derivative_source_digest
-			&& row.derivative_source_mime
-			&& row.derivative_source_kind
-			&& row.derivative_source_byte_length !== null
+		...(row.derivative_id &&
+		row.derivative_kind &&
+		row.derivative_source_asset_id &&
+		row.derivative_source_revision_id &&
+		row.derivative_source_digest &&
+		row.derivative_source_mime &&
+		row.derivative_source_kind &&
+		row.derivative_source_byte_length !== null
 			? {
 					derivative: {
 						id: row.derivative_id as GraphicsDerivativeId,
@@ -194,15 +192,9 @@ function discrepancyFromRow(row: DiscrepancyRow): GraphicsDiscrepancyRecord {
 		id: row.id,
 		kind: row.kind,
 		subjectKey: row.subject_key,
-		...(row.digest
-			? { digest: row.digest }
-			: {}),
-		...(row.object_key
-			? { objectKey: row.object_key }
-			: {}),
-		...(row.derivative_id
-			? { derivativeId: row.derivative_id as GraphicsDerivativeId }
-			: {}),
+		...(row.digest ? { digest: row.digest } : {}),
+		...(row.object_key ? { objectKey: row.object_key } : {}),
+		...(row.derivative_id ? { derivativeId: row.derivative_id as GraphicsDerivativeId } : {}),
 		state: row.state,
 		reasonCode: row.reason_code,
 		isolated: row.isolated === 1,
@@ -215,12 +207,8 @@ function discrepancyFromRow(row: DiscrepancyRow): GraphicsDiscrepancyRecord {
 			: {
 					resolvedAt: new Date(row.resolved_at).toISOString(),
 				}),
-		...(row.resolution
-			? { resolution: row.resolution }
-			: {}),
-		...(row.working_copy_key
-			? { workingCopyKey: row.working_copy_key }
-			: {}),
+		...(row.resolution ? { resolution: row.resolution } : {}),
+		...(row.working_copy_key ? { workingCopyKey: row.working_copy_key } : {}),
 		...(row.working_copy_since === null
 			? {}
 			: {
@@ -248,13 +236,14 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 	'recordGraphicsAssetEvidence' | 'markContentUnavailable' | 'getCapacity'
 > {
 	async function findOpenDiscrepancy(kind: GraphicsDiscrepancyKind, subjectKey: string) {
-		const row = await database.prepare(`
+		const row = await database
+			.prepare(`
 			SELECT ${DISCREPANCY_COLUMNS} FROM graphics_discrepancies
 			WHERE kind = ? AND subject_key = ? AND state = 'open'
-		`).bind(kind, subjectKey).first<DiscrepancyRow>();
-		return row
-			? discrepancyFromRow(row)
-			: undefined;
+		`)
+			.bind(kind, subjectKey)
+			.first<DiscrepancyRow>();
+		return row ? discrepancyFromRow(row) : undefined;
 	}
 
 	return {
@@ -262,42 +251,43 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 			// Least recently compared first, and never compared at all before that,
 			// so one bounded sweep eventually covers every expectation instead of
 			// re-checking the same head of the table.
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				${EXPECTED_CONTENT_SELECT}
 				ORDER BY contents.reconciled_at IS NOT NULL, contents.reconciled_at, contents.digest
 				LIMIT ?
-			`).bind(input.limit).all<ExpectedContentRow>();
-			if (!result.success)
-				throw new Error('Expected Graphic Asset Content could not be read');
+			`)
+				.bind(input.limit)
+				.all<ExpectedContentRow>();
+			if (!result.success) throw new Error('Expected Graphic Asset Content could not be read');
 			return result.results.map(expectedContentFromRow);
 		},
 		async findExpectedContent(input) {
-			const row = await database.prepare(`
+			const row = await database
+				.prepare(`
 				${EXPECTED_CONTENT_SELECT}
 				WHERE contents.digest = ?
-			`).bind(input.digest).first<ExpectedContentRow>();
-			return row
-				? expectedContentFromRow(row)
-				: undefined;
+			`)
+				.bind(input.digest)
+				.first<ExpectedContentRow>();
+			return row ? expectedContentFromRow(row) : undefined;
 		},
 		async findExpectedContents(input) {
-			if (input.digests.length === 0)
-				return new Map();
-			const result = await database.prepare(`
+			if (input.digests.length === 0) return new Map();
+			const result = await database
+				.prepare(`
 				${EXPECTED_CONTENT_SELECT}
 				WHERE contents.digest IN ${valuesFromJsonArray()}
-			`).bind(boundJsonArray(input.digests)).all<ExpectedContentRow>();
-			if (!result.success)
-				throw new Error('Expected Graphic Asset Content could not be read');
-			return new Map(result.results.map(row => [
-				row.digest,
-				expectedContentFromRow(row),
-			]));
+			`)
+				.bind(boundJsonArray(input.digests))
+				.all<ExpectedContentRow>();
+			if (!result.success) throw new Error('Expected Graphic Asset Content could not be read');
+			return new Map(result.results.map((row) => [row.digest, expectedContentFromRow(row)]));
 		},
 		async listContentUsageForDigests(input) {
-			if (input.digests.length === 0)
-				return new Map();
-			const result = await database.prepare(`
+			if (input.digests.length === 0) return new Map();
+			const result = await database
+				.prepare(`
 				SELECT revision.content_digest AS digest, revision.asset_id, asset.name,
 					revision.id AS revision_id, revision.revision_number, asset.kind,
 					asset.lifecycle_state,
@@ -321,9 +311,10 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 				JOIN graphic_assets asset ON asset.id = source.asset_id
 				WHERE derivative.content_digest IN ${valuesFromJsonArray('?1')}
 				ORDER BY name, revision_number
-			`).bind(boundJsonArray(input.digests)).all<UsageRow & { digest: string }>();
-			if (!result.success)
-				throw new Error('Graphic Asset Content usage could not be read');
+			`)
+				.bind(boundJsonArray(input.digests))
+				.all<UsageRow & { digest: string }>();
+			if (!result.success) throw new Error('Graphic Asset Content usage could not be read');
 			const usage = new Map<string, GraphicsDiscrepancyUsage[]>();
 			for (const row of result.results) {
 				const existing = usage.get(row.digest) ?? [];
@@ -333,44 +324,58 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 			return usage;
 		},
 		async findQuarantinedDigests(input) {
-			if (input.digests.length === 0)
-				return new Map();
-			const result = await database.prepare(`
+			if (input.digests.length === 0) return new Map();
+			const result = await database
+				.prepare(`
 				SELECT digest, quarantined_at, delete_after FROM graphics_content_quarantine
 				WHERE digest IN ${valuesFromJsonArray()}
-			`).bind(boundJsonArray(input.digests)).all<{
-				digest: string;
-				quarantined_at: number;
-				delete_after: number;
-			}>();
-			if (!result.success)
-				throw new Error('Quarantined Graphic Asset Content could not be read');
-			return new Map(result.results.map(row => [
-				row.digest,
-				{
-					quarantinedAt: new Date(row.quarantined_at).toISOString(),
-					deleteAfter: new Date(row.delete_after).toISOString(),
-				},
-			]));
+			`)
+				.bind(boundJsonArray(input.digests))
+				.all<{
+					digest: string;
+					quarantined_at: number;
+					delete_after: number;
+				}>();
+			if (!result.success) throw new Error('Quarantined Graphic Asset Content could not be read');
+			return new Map(
+				result.results.map((row) => [
+					row.digest,
+					{
+						quarantinedAt: new Date(row.quarantined_at).toISOString(),
+						deleteAfter: new Date(row.delete_after).toISOString(),
+					},
+				]),
+			);
 		},
 		async hasOpenIsolatedIncident(input) {
-			return Boolean(await database.prepare(`
+			return Boolean(
+				await database
+					.prepare(`
 				SELECT 1 FROM graphics_discrepancies
 				WHERE digest = ? AND state = 'open' AND isolated = 1
 				LIMIT 1
-			`).bind(input.digest).first());
+			`)
+					.bind(input.digest)
+					.first(),
+			);
 		},
 		async findRevisionContentDigest(input) {
-			const row = await database.prepare(`
+			const row = await database
+				.prepare(`
 				SELECT content_digest FROM graphic_asset_revisions
 				WHERE id = ? AND asset_id = ?
-			`).bind(input.revisionId, input.assetId).first<{ content_digest: string }>();
+			`)
+				.bind(input.revisionId, input.assetId)
+				.first<{ content_digest: string }>();
 			return row?.content_digest;
 		},
 		async recordContentReconciled(input) {
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				UPDATE graphic_asset_contents SET reconciled_at = ? WHERE digest = ?
-			`).bind(new Date(input.checkedAt).getTime(), input.digest).run();
+			`)
+				.bind(new Date(input.checkedAt).getTime(), input.digest)
+				.run();
 			if (!result.success)
 				throw new Error('Graphic Asset Content reconciliation progress could not be recorded');
 		},
@@ -378,7 +383,8 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 			// An open isolated incident is the one state a byte-level agreement may
 			// not clear: only deep verification can settle a digest conflict, so the
 			// flag stays closed until an administrator resolves the incident.
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				UPDATE graphic_asset_contents
 				SET availability = 'available',
 					unavailable_reason_code = NULL,
@@ -391,14 +397,15 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 							AND incident.state = 'open'
 							AND incident.isolated = 1
 					)
-			`).bind(new Date(input.restoredAt).getTime(), input.digest).run();
+			`)
+				.bind(new Date(input.restoredAt).getTime(), input.digest)
+				.run();
 			if (!result.success)
 				throw new Error('Graphic Asset Content availability could not be restored');
 			return result.meta.changes === 1;
 		},
 		async filterAccountedDigests(input) {
-			if (input.digests.length === 0)
-				return new Set();
+			if (input.digests.length === 0) return new Set();
 			// A digest is accounted for when the catalogue records it, an ingestion
 			// operation has claimed it, or it is already quarantined. Anything else
 			// in the byte store is bytes the library never asked for.
@@ -407,7 +414,8 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 			// placeholders would bind it three times over and hit D1's
 			// hundred-parameter ceiling at thirty-four digests — a third of one
 			// scan page.
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				SELECT digest FROM graphic_asset_contents
 				WHERE digest IN ${valuesFromJsonArray('?1')}
 				UNION
@@ -416,10 +424,12 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 				UNION
 				SELECT digest FROM graphics_content_quarantine
 				WHERE digest IN ${valuesFromJsonArray('?1')}
-			`).bind(boundJsonArray(input.digests)).all<{ digest: string }>();
+			`)
+				.bind(boundJsonArray(input.digests))
+				.all<{ digest: string }>();
 			if (!result.success)
 				throw new Error('Accounted Graphic Asset Content digests could not be read');
-			return new Set(result.results.map(row => row.digest));
+			return new Set(result.results.map((row) => row.digest));
 		},
 		async quarantineUnexpectedObject(input) {
 			// The insert predicate re-proves, at write time, that nothing in the
@@ -432,7 +442,8 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 			// claimed after it runs is caught instead by publication, which deletes
 			// the quarantine record for everything it publishes in the same atomic
 			// transaction.
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				INSERT INTO graphics_content_quarantine (
 					id, digest, byte_length, origin, quarantined_at, delete_after, created_at
 				)
@@ -446,30 +457,34 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 					AND NOT EXISTS (
 						SELECT 1 FROM graphics_content_quarantine quarantine WHERE quarantine.digest = ?
 					)
-			`).bind(
-				input.id,
-				input.digest,
-				input.byteLength,
-				new Date(input.quarantinedAt).getTime(),
-				new Date(input.deleteAfter).getTime(),
-				new Date(input.quarantinedAt).getTime(),
-				input.digest,
-				input.digest,
-				input.digest,
-			).run();
-			if (!result.success)
-				throw new Error('Unexpected canonical object could not be quarantined');
+			`)
+				.bind(
+					input.id,
+					input.digest,
+					input.byteLength,
+					new Date(input.quarantinedAt).getTime(),
+					new Date(input.deleteAfter).getTime(),
+					new Date(input.quarantinedAt).getTime(),
+					input.digest,
+					input.digest,
+					input.digest,
+				)
+				.run();
+			if (!result.success) throw new Error('Unexpected canonical object could not be quarantined');
 			return result.meta.changes === 1;
 		},
 		async findContentQuarantine(input) {
-			const row = await database.prepare(`
+			const row = await database
+				.prepare(`
 				SELECT id, quarantined_at, delete_after FROM graphics_content_quarantine
 				WHERE digest = ?
-			`).bind(input.digest).first<{
-				id: string;
-				quarantined_at: number;
-				delete_after: number;
-			}>();
+			`)
+				.bind(input.digest)
+				.first<{
+					id: string;
+					quarantined_at: number;
+					delete_after: number;
+				}>();
 			return row
 				? {
 						id: row.id,
@@ -479,18 +494,24 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 				: undefined;
 		},
 		async releaseContentQuarantine(input) {
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				DELETE FROM graphics_content_quarantine WHERE digest = ? AND deleting_since IS NULL
-			`).bind(input.digest).run();
+			`)
+				.bind(input.digest)
+				.run();
 			if (!result.success)
 				throw new Error('Quarantined Graphic Asset Content could not be released');
 			return result.meta.changes === 1;
 		},
 		async listContentUsage(input) {
-			return (await this.listContentUsageForDigests({
-				digests: [input.digest],
-			}))
-				.get(input.digest) ?? [];
+			return (
+				(
+					await this.listContentUsageForDigests({
+						digests: [input.digest],
+					})
+				).get(input.digest) ?? []
+			);
 		},
 		async openDiscrepancy(input) {
 			const observedAt = new Date(input.observedAt).getTime();
@@ -499,69 +520,69 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 			// stacking duplicates, while a recurrence after resolution opens a new
 			// record of its own.
 			const results = await database.batch([
-				database.prepare(`
+				database
+					.prepare(`
 					INSERT OR IGNORE INTO graphics_discrepancies (
 						id, kind, subject_key, digest, object_key, derivative_id, state,
 						reason_code, isolated, expected, observed, detected_at,
 						last_checked_at, correlation_id, created_at
 					) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?)
-				`).bind(
-					input.id,
-					input.kind,
-					input.subjectKey,
-					input.digest ?? null,
-					input.objectKey ?? null,
-					input.derivativeId ?? null,
-					input.reasonCode,
-					input.isolated ? 1 : 0,
-					JSON.stringify(input.expected),
-					JSON.stringify(input.observed),
-					observedAt,
-					observedAt,
-					input.correlationId,
-					observedAt,
-				),
-				database.prepare(`
+				`)
+					.bind(
+						input.id,
+						input.kind,
+						input.subjectKey,
+						input.digest ?? null,
+						input.objectKey ?? null,
+						input.derivativeId ?? null,
+						input.reasonCode,
+						input.isolated ? 1 : 0,
+						JSON.stringify(input.expected),
+						JSON.stringify(input.observed),
+						observedAt,
+						observedAt,
+						input.correlationId,
+						observedAt,
+					),
+				database
+					.prepare(`
 					UPDATE graphics_discrepancies
 					SET last_checked_at = ?,
 						observed = ?,
 						reason_code = ?,
 						isolated = CASE WHEN isolated = 1 OR ? = 1 THEN 1 ELSE 0 END
 					WHERE kind = ? AND subject_key = ? AND state = 'open'
-				`).bind(
-					observedAt,
-					JSON.stringify(input.observed),
-					input.reasonCode,
-					input.isolated ? 1 : 0,
-					input.kind,
-					input.subjectKey,
-				),
+				`)
+					.bind(
+						observedAt,
+						JSON.stringify(input.observed),
+						input.reasonCode,
+						input.isolated ? 1 : 0,
+						input.kind,
+						input.subjectKey,
+					),
 			]);
-			if (results.some(result => !result.success))
+			if (results.some((result) => !result.success))
 				throw new Error('Graphics discrepancy could not be recorded');
 			const record = await findOpenDiscrepancy(input.kind, input.subjectKey);
-			if (!record)
-				throw new Error('Graphics discrepancy could not be read back');
+			if (!record) throw new Error('Graphics discrepancy could not be read back');
 			return record;
 		},
 		async findDiscrepancy(input) {
-			const row = await database.prepare(`
+			const row = await database
+				.prepare(`
 				SELECT ${DISCREPANCY_COLUMNS} FROM graphics_discrepancies WHERE id = ?
-			`).bind(input.id).first<DiscrepancyRow>();
-			return row
-				? discrepancyFromRow(row)
-				: undefined;
+			`)
+				.bind(input.id)
+				.first<DiscrepancyRow>();
+			return row ? discrepancyFromRow(row) : undefined;
 		},
 		async listDiscrepancies(input) {
 			const states = input.states ?? [];
 			const kinds = input.kinds ?? [];
 			const predicates = [
-				...(states.length > 0
-					? [`state IN (${states.map(() => '?').join(', ')})`]
-					: []),
-				...(kinds.length > 0
-					? [`kind IN (${kinds.map(() => '?').join(', ')})`]
-					: []),
+				...(states.length > 0 ? [`state IN (${states.map(() => '?').join(', ')})`] : []),
+				...(kinds.length > 0 ? [`kind IN (${kinds.map(() => '?').join(', ')})`] : []),
 			];
 			/**
 			 * Newest-first is right when the question is what just went wrong. It is
@@ -570,156 +591,169 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 			 * furthest from deletion and a bounded sample of them hides every object
 			 * about to be deleted. That sample is asked for by deletion deadline.
 			 */
-			const order = input.orderBy === 'quarantine-deadline'
-				? `COALESCE((
+			const order =
+				input.orderBy === 'quarantine-deadline'
+					? `COALESCE((
 						SELECT quarantine.delete_after FROM graphics_content_quarantine quarantine
 						WHERE quarantine.digest = graphics_discrepancies.digest
 					), 8640000000000000) ASC, detected_at DESC, id DESC`
-				: 'isolated DESC, detected_at DESC, id DESC';
-			const result = await database.prepare(`
+					: 'isolated DESC, detected_at DESC, id DESC';
+			const result = await database
+				.prepare(`
 				SELECT ${DISCREPANCY_COLUMNS} FROM graphics_discrepancies
-				${predicates.length > 0
-					? `WHERE ${predicates.join(' AND ')}`
-					: ''}
+				${predicates.length > 0 ? `WHERE ${predicates.join(' AND ')}` : ''}
 				ORDER BY ${order}
 				LIMIT ?
-			`).bind(...states, ...kinds, input.limit).all<DiscrepancyRow>();
-			if (!result.success)
-				throw new Error('Graphics discrepancies could not be read');
+			`)
+				.bind(...states, ...kinds, input.limit)
+				.all<DiscrepancyRow>();
+			if (!result.success) throw new Error('Graphics discrepancies could not be read');
 			return result.results.map(discrepancyFromRow);
 		},
 		async countOpenDiscrepancies() {
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				SELECT kind, COUNT(*) AS total FROM graphics_discrepancies
 				WHERE state = 'open'
 				GROUP BY kind
-			`).all<{ kind: GraphicsDiscrepancyKind; total: number }>();
-			if (!result.success)
-				throw new Error('Open graphics discrepancies could not be counted');
+			`)
+				.all<{ kind: GraphicsDiscrepancyKind; total: number }>();
+			if (!result.success) throw new Error('Open graphics discrepancies could not be counted');
 			const counts = Object.fromEntries(
-				GRAPHICS_DISCREPANCY_KINDS.map(kind => [kind, 0]),
+				GRAPHICS_DISCREPANCY_KINDS.map((kind) => [kind, 0]),
 			) as Record<GraphicsDiscrepancyKind, number>;
-			for (const row of result.results)
-				counts[row.kind] = row.total;
+			for (const row of result.results) counts[row.kind] = row.total;
 			return counts;
 		},
 		async recordDiscrepancyObservation(input) {
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				UPDATE graphics_discrepancies
 				SET last_checked_at = ?, observed = ?
 				WHERE id = ? AND state = 'open'
-			`).bind(
-				new Date(input.observedAt).getTime(),
-				JSON.stringify(input.observed),
-				input.id,
-			).run();
+			`)
+				.bind(new Date(input.observedAt).getTime(), JSON.stringify(input.observed), input.id)
+				.run();
 			if (!result.success)
 				throw new Error('Graphics discrepancy observation could not be recorded');
 		},
 		async resolveDiscrepancy(input) {
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				UPDATE graphics_discrepancies
 				SET state = 'resolved', resolved_at = ?, resolution = ?,
 					last_checked_at = ?, working_copy_key = NULL, working_copy_since = NULL
 				WHERE id = ? AND state = 'open'
-			`).bind(
-				new Date(input.resolvedAt).getTime(),
-				input.resolution,
-				new Date(input.resolvedAt).getTime(),
-				input.id,
-			).run();
-			if (!result.success)
-				throw new Error('Graphics discrepancy could not be resolved');
+			`)
+				.bind(
+					new Date(input.resolvedAt).getTime(),
+					input.resolution,
+					new Date(input.resolvedAt).getTime(),
+					input.id,
+				)
+				.run();
+			if (!result.success) throw new Error('Graphics discrepancy could not be resolved');
 			return result.meta.changes === 1;
 		},
 		async resolveDiscrepanciesForDigest(input) {
 			// An isolated incident is deliberately excluded: an object whose size and
 			// media type agree proves nothing about a byte-level digest conflict.
-			const open = await database.prepare(`
+			const open = await database
+				.prepare(`
 				SELECT id FROM graphics_discrepancies
 				WHERE digest = ? AND state = 'open' AND isolated = 0
-			`).bind(input.digest).all<{ id: string }>();
-			if (!open.success)
-				throw new Error('Open graphics discrepancies could not be read');
-			if (open.results.length === 0)
-				return [];
-			const result = await database.prepare(`
+			`)
+				.bind(input.digest)
+				.all<{ id: string }>();
+			if (!open.success) throw new Error('Open graphics discrepancies could not be read');
+			if (open.results.length === 0) return [];
+			const result = await database
+				.prepare(`
 				UPDATE graphics_discrepancies
 				SET state = 'resolved', resolved_at = ?, resolution = ?,
 					last_checked_at = ?, working_copy_key = NULL, working_copy_since = NULL
 				WHERE digest = ? AND state = 'open' AND isolated = 0
-			`).bind(
-				new Date(input.resolvedAt).getTime(),
-				input.resolution,
-				new Date(input.resolvedAt).getTime(),
-				input.digest,
-			).run();
-			if (!result.success)
-				throw new Error('Graphics discrepancies could not be resolved');
-			return open.results.map(row => row.id);
+			`)
+				.bind(
+					new Date(input.resolvedAt).getTime(),
+					input.resolution,
+					new Date(input.resolvedAt).getTime(),
+					input.digest,
+				)
+				.run();
+			if (!result.success) throw new Error('Graphics discrepancies could not be resolved');
+			return open.results.map((row) => row.id);
 		},
 		async claimDiscrepancyWorkingCopy(input) {
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				UPDATE graphics_discrepancies
 				SET working_copy_key = ?, working_copy_since = ?
 				WHERE id = ? AND state = 'open'
 					AND (working_copy_since IS NULL OR working_copy_since <= ?)
-			`).bind(
-				input.workingCopyKey,
-				new Date(input.claimedAt).getTime(),
-				input.id,
-				new Date(input.staleClaimsBefore).getTime(),
-			).run();
+			`)
+				.bind(
+					input.workingCopyKey,
+					new Date(input.claimedAt).getTime(),
+					input.id,
+					new Date(input.staleClaimsBefore).getTime(),
+				)
+				.run();
 			if (!result.success)
 				throw new Error('Graphics discrepancy working copy could not be claimed');
 			return result.meta.changes === 1;
 		},
 		async releaseDiscrepancyWorkingCopy(input) {
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				UPDATE graphics_discrepancies
 				SET working_copy_key = NULL, working_copy_since = NULL
 				WHERE id = ?
-			`).bind(input.id).run();
+			`)
+				.bind(input.id)
+				.run();
 			if (!result.success)
 				throw new Error('Graphics discrepancy working copy could not be released');
 		},
 		async listStaleDiscrepancyWorkingCopies(input) {
-			const result = await database.prepare(`
+			const result = await database
+				.prepare(`
 				SELECT id, working_copy_key FROM graphics_discrepancies
 				WHERE working_copy_since IS NOT NULL
 					AND working_copy_since <= ?
 					AND working_copy_key IS NOT NULL
 				ORDER BY working_copy_since, id
 				LIMIT ?
-			`).bind(new Date(input.staleClaimsBefore).getTime(), input.limit).all<{
-				id: string;
-				working_copy_key: string;
-			}>();
+			`)
+				.bind(new Date(input.staleClaimsBefore).getTime(), input.limit)
+				.all<{
+					id: string;
+					working_copy_key: string;
+				}>();
 			if (!result.success)
 				throw new Error('Stale graphics discrepancy working copies could not be read');
-			return result.results.map(row => ({
+			return result.results.map((row) => ({
 				id: row.id,
 				workingCopyKey: row.working_copy_key,
 			}));
 		},
 		async getReconciliationState() {
-			const row = await database.prepare(`
+			const row = await database
+				.prepare(`
 				SELECT canonical_scan_cursor, canonical_scan_started_at,
 					last_sweep_correlation_id, last_sweep_started_at, last_sweep_completed_at
 				FROM graphics_reconciliation_state WHERE id = 1
-			`).first<{
-				canonical_scan_cursor: string | null;
-				canonical_scan_started_at: number | null;
-				last_sweep_correlation_id: string | null;
-				last_sweep_started_at: number | null;
-				last_sweep_completed_at: number | null;
-			}>();
-			if (!row)
-				return {};
+			`)
+				.first<{
+					canonical_scan_cursor: string | null;
+					canonical_scan_started_at: number | null;
+					last_sweep_correlation_id: string | null;
+					last_sweep_started_at: number | null;
+					last_sweep_completed_at: number | null;
+				}>();
+			if (!row) return {};
 			return {
-				...(row.canonical_scan_cursor
-					? { canonicalScanCursor: row.canonical_scan_cursor }
-					: {}),
+				...(row.canonical_scan_cursor ? { canonicalScanCursor: row.canonical_scan_cursor } : {}),
 				...(row.canonical_scan_started_at === null
 					? {}
 					: {
@@ -745,18 +779,18 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 				database.prepare(`
 					INSERT OR IGNORE INTO graphics_reconciliation_state (id) VALUES (1)
 				`),
-				database.prepare(`
+				database
+					.prepare(`
 					UPDATE graphics_reconciliation_state
 					SET canonical_scan_cursor = ?, canonical_scan_started_at = ?
 					WHERE id = 1
-				`).bind(
-					input.cursor ?? null,
-					input.startedAt === undefined
-						? null
-						: new Date(input.startedAt).getTime(),
-				),
+				`)
+					.bind(
+						input.cursor ?? null,
+						input.startedAt === undefined ? null : new Date(input.startedAt).getTime(),
+					),
 			]);
-			if (results.some(result => !result.success))
+			if (results.some((result) => !result.success))
 				throw new Error('Canonical byte-store scan progress could not be recorded');
 		},
 		async recordReconciliationSweep(input) {
@@ -764,19 +798,21 @@ export function createD1GraphicsAssetReconciliationCatalogue(
 				database.prepare(`
 					INSERT OR IGNORE INTO graphics_reconciliation_state (id) VALUES (1)
 				`),
-				database.prepare(`
+				database
+					.prepare(`
 					UPDATE graphics_reconciliation_state
 					SET last_sweep_correlation_id = ?,
 						last_sweep_started_at = ?,
 						last_sweep_completed_at = ?
 					WHERE id = 1
-				`).bind(
-					input.correlationId,
-					new Date(input.startedAt).getTime(),
-					new Date(input.completedAt).getTime(),
-				),
+				`)
+					.bind(
+						input.correlationId,
+						new Date(input.startedAt).getTime(),
+						new Date(input.completedAt).getTime(),
+					),
 			]);
-			if (results.some(result => !result.success))
+			if (results.some((result) => !result.success))
 				throw new Error('Graphics reconciliation sweep could not be recorded');
 		},
 	};

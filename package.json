@@ -1,15 +1,8 @@
 {
 	"name": "stream-keepr",
-	"type": "module",
 	"version": "1.5.0",
 	"private": true,
-	"packageManager": "pnpm@12.15.0",
-	"devEngines": {
-		"runtime": {
-			"name": "node",
-			"version": "26.12.1"
-		}
-	},
+	"type": "module",
 	"scripts": {
 		"verify": "node scripts/verify.mjs",
 		"verify:quick": "node scripts/verify.mjs --quick",
@@ -119,5 +112,12 @@
 		"vue-tsc": "catalog:",
 		"wrangler": "catalog:",
 		"yaml": "catalog:"
-	}
+	},
+	"devEngines": {
+		"runtime": {
+			"name": "node",
+			"version": "26.12.1"
+		}
+	},
+	"packageManager": "pnpm@12.15.0"
 }

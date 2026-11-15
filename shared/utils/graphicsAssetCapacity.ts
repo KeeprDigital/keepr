@@ -19,11 +19,8 @@ export function graphicsCanonicalCapacityPressure(
 	limitBytes: number,
 ): GraphicsCanonicalCapacityPressure {
 	const ratio = usedBytes / limitBytes;
-	if (ratio >= GRAPHICS_CANONICAL_QUOTA_BOUNDARY_FRACTIONS.full)
-		return 'full';
-	if (ratio >= GRAPHICS_CANONICAL_QUOTA_BOUNDARY_FRACTIONS.critical)
-		return 'critical';
-	if (ratio >= GRAPHICS_CANONICAL_QUOTA_BOUNDARY_FRACTIONS.warning)
-		return 'warning';
+	if (ratio >= GRAPHICS_CANONICAL_QUOTA_BOUNDARY_FRACTIONS.full) return 'full';
+	if (ratio >= GRAPHICS_CANONICAL_QUOTA_BOUNDARY_FRACTIONS.critical) return 'critical';
+	if (ratio >= GRAPHICS_CANONICAL_QUOTA_BOUNDARY_FRACTIONS.warning) return 'warning';
 	return 'normal';
 }

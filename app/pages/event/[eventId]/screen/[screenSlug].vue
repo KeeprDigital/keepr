@@ -40,9 +40,7 @@ provideScreenContext(session.screenContext);
 			class="fixed top-4 left-4 z-50 flex flex-col gap-1 text-sm p-4 rounded-lg font-mono"
 			:class="debugPanelClass"
 		>
-			<div class="text-primary font-bold mb-2">
-				Debug Info
-			</div>
+			<div class="text-primary font-bold mb-2">Debug Info</div>
 			<div>Connection ID: {{ debugInfo.connectionId }}</div>
 			<div>Screen ID: {{ debugInfo.screenId }}</div>
 			<div>Screen Slug: {{ debugInfo.screenSlug }}</div>
@@ -76,7 +74,10 @@ provideScreenContext(session.screenContext);
 			</p>
 		</div>
 
-		<div v-else-if="exportError" class="fixed top-4 right-4 z-50 bg-error text-white p-4 rounded-lg">
+		<div
+			v-else-if="exportError"
+			class="fixed top-4 right-4 z-50 bg-error text-white p-4 rounded-lg"
+		>
 			{{ exportError }}
 		</div>
 

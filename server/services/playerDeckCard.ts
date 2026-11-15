@@ -1,6 +1,10 @@
 import type { PlayerDeckSelection } from '~~/server/services/playerDeck';
 import type { PointsSystem } from '~~/shared/types/enums';
-import type { PlayerDeckCardEntry, PlayerDeckCollectionResponse, PlayerDeckResponse } from '~~/shared/types/metagame';
+import type {
+	PlayerDeckCardEntry,
+	PlayerDeckCollectionResponse,
+	PlayerDeckResponse,
+} from '~~/shared/types/metagame';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { cards, phases, playerDeckCards } from '~~/server/db/schema';
@@ -24,7 +28,7 @@ export function playerDeckCardService() {
 			return { decks: [], selectedDeckId: null };
 		}
 
-		const deckIds = deckRows.map(deck => deck.id);
+		const deckIds = deckRows.map((deck) => deck.id);
 		const [cardRows, phaseRows, selectedDeck, reviewedArchetypes] = await Promise.all([
 			db
 				.select({
@@ -59,12 +63,14 @@ export function playerDeckCardService() {
 			deckSvc.selectFromDecks(eventId, deckRows, selection),
 			archetypeService().findManyByIds(
 				eventId,
-				deckRows.flatMap(deck => deck.reviewedAt != null && deck.archetypeId != null
-					? [deck.archetypeId]
-					: []),
+				deckRows.flatMap((deck) =>
+					deck.reviewedAt != null && deck.archetypeId != null ? [deck.archetypeId] : [],
+				),
 			),
 		]);
-		const archetypesById = new Map(reviewedArchetypes.map(archetype => [archetype.id, archetype]));
+		const archetypesById = new Map(
+			reviewedArchetypes.map((archetype) => [archetype.id, archetype]),
+		);
 
 		const pointsByOracleId = pointsSystem
 			? getPointsByOracleId(pointsSystem)
@@ -76,68 +82,64 @@ export function playerDeckCardService() {
 			cardsByDeckId.set(row.deckId, existing);
 		}
 
-		const decks: PlayerDeckResponse[] = await Promise.all(deckRows.map(async (deck) => {
-			const rows = cardsByDeckId.get(deck.id) ?? [];
-			const companion = await playerDeckCompanionService().getDeckCompanion(deck.id);
-			const matchingPhases = phaseRows.filter(phase => phase.formatExternalId === deck.formatExternalId);
-			const deckCards: PlayerDeckCardEntry[] = rows.map(row => ({
-				cardId: row.cardId,
-				name: row.name,
-				scryfallId: row.scryfallId,
-				cardType: row.cardType,
-				colors: row.colors,
-				cmc: row.cmc,
-				manaCost: row.manaCost,
-				deckCounterTypes: row.deckCounterTypes,
-				deckTokens: row.deckTokens,
-				quantity: row.quantity,
-				compartment: row.compartment,
-				sortOrder: row.sortOrder,
-				highlanderPoints: row.oracleId
-					? pointsByOracleId.get(row.oracleId) ?? null
-					: null,
-			}));
-			const highlander = pointsSystem
-				? evaluateHighlanderDeck(
-						pointsSystem,
-						rows.map(row => ({
-							name: row.name,
-							oracleId: row.oracleId,
-							cardType: row.cardType,
-							quantity: row.quantity,
-							compartment: row.compartment,
-						})),
-						companion
-							? { name: companion.name, oracleId: companion.oracleId }
-							: null,
-					)
-				: undefined;
-			const details = resolvePlayerDeckDetails(
-				deck,
-				deck.archetypeId == null
-					? null
-					: archetypesById.get(deck.archetypeId),
-			);
+		const decks: PlayerDeckResponse[] = await Promise.all(
+			deckRows.map(async (deck) => {
+				const rows = cardsByDeckId.get(deck.id) ?? [];
+				const companion = await playerDeckCompanionService().getDeckCompanion(deck.id);
+				const matchingPhases = phaseRows.filter(
+					(phase) => phase.formatExternalId === deck.formatExternalId,
+				);
+				const deckCards: PlayerDeckCardEntry[] = rows.map((row) => ({
+					cardId: row.cardId,
+					name: row.name,
+					scryfallId: row.scryfallId,
+					cardType: row.cardType,
+					colors: row.colors,
+					cmc: row.cmc,
+					manaCost: row.manaCost,
+					deckCounterTypes: row.deckCounterTypes,
+					deckTokens: row.deckTokens,
+					quantity: row.quantity,
+					compartment: row.compartment,
+					sortOrder: row.sortOrder,
+					highlanderPoints: row.oracleId ? (pointsByOracleId.get(row.oracleId) ?? null) : null,
+				}));
+				const highlander = pointsSystem
+					? evaluateHighlanderDeck(
+							pointsSystem,
+							rows.map((row) => ({
+								name: row.name,
+								oracleId: row.oracleId,
+								cardType: row.cardType,
+								quantity: row.quantity,
+								compartment: row.compartment,
+							})),
+							companion ? { name: companion.name, oracleId: companion.oracleId } : null,
+						)
+					: undefined;
+				const details = resolvePlayerDeckDetails(
+					deck,
+					deck.archetypeId == null ? null : archetypesById.get(deck.archetypeId),
+				);
 
-			return {
-				id: deck.id,
-				playerId: deck.playerId,
-				externalId: deck.externalId,
-				formatExternalId: deck.formatExternalId,
-				phaseIds: matchingPhases.map(phase => phase.id),
-				phaseName: matchingPhases[0]?.name ?? null,
-				...details,
-				sortOrder: deck.sortOrder,
-				isPrimary: deck.isPrimary,
-				archetypeId: deck.archetypeId,
-				reviewedAt: deck.reviewedAt,
-				cards: deckCards,
-				companion,
-				...(highlander
-					? { highlander }
-					: {}),
-			};
-		}));
+				return {
+					id: deck.id,
+					playerId: deck.playerId,
+					externalId: deck.externalId,
+					formatExternalId: deck.formatExternalId,
+					phaseIds: matchingPhases.map((phase) => phase.id),
+					phaseName: matchingPhases[0]?.name ?? null,
+					...details,
+					sortOrder: deck.sortOrder,
+					isPrimary: deck.isPrimary,
+					archetypeId: deck.archetypeId,
+					reviewedAt: deck.reviewedAt,
+					cards: deckCards,
+					companion,
+					...(highlander ? { highlander } : {}),
+				};
+			}),
+		);
 
 		return {
 			decks,

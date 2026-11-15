@@ -27,14 +27,14 @@ function mountField(modelValue: TopCutBracketSize | undefined) {
 	});
 }
 
-describe('a Top Cut Bracket\'s size', () => {
+describe("a Top Cut Bracket's size", () => {
 	it('offers each size after sizing from the first Round, which it holds until one is picked, and says a smaller one is ignored', () => {
 		const wrapper = mountField(undefined);
 		const select = wrapper.get<HTMLSelectElement>('select');
 
-		expect(select.findAll('option:not([hidden])').map(option => option.text())).toEqual([
+		expect(select.findAll('option:not([hidden])').map((option) => option.text())).toEqual([
 			'From the first Round',
-			...TOP_CUT_BRACKET_SIZES.map(size => `Top ${size}`),
+			...TOP_CUT_BRACKET_SIZES.map((size) => `Top ${size}`),
 		]);
 		expect(select.element.selectedOptions[0]!.text).toBe('From the first Round');
 		expect(wrapper.text()).toMatch(/smaller .* ignored/);
@@ -48,8 +48,6 @@ describe('a Top Cut Bracket\'s size', () => {
 
 		await wrapper.get('select').setValue(picked);
 
-		expect(wrapper.emitted('update:modelValue')).toEqual([
-			[size],
-		]);
+		expect(wrapper.emitted('update:modelValue')).toEqual([[size]]);
 	});
 });

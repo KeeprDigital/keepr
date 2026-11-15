@@ -78,11 +78,9 @@ function resizeToTarget() {
 	// while the effect module is still loading, and a size recorded then makes
 	// the post-mount resize an early return — the renderer stays at its default
 	// size and a shader-plane effect renders as a flat, static layer.
-	if (!instance.value)
-		return;
+	if (!instance.value) return;
 	const size = targetSize();
-	if (appliedSize && appliedSize.width === size.width && appliedSize.height === size.height)
-		return;
+	if (appliedSize && appliedSize.width === size.width && appliedSize.height === size.height) return;
 	instance.value.resize(size.width, size.height);
 	appliedSize = size;
 }
@@ -102,30 +100,27 @@ async function mountAnimation() {
 
 	disposeAnimation();
 	const factory = await loadAnimationEffect(props.effect);
-	if (generation !== mountGeneration || !host.value)
-		return;
+	if (generation !== mountGeneration || !host.value) return;
 	instance.value = factory(host.value, resolvedParams());
 	currentEffect = props.effect;
 	resizeToTarget();
 	startLoop();
 }
 
-watch([
-	() => props.effect,
-	() => props.params,
-	() => props.width,
-	() => props.height,
-], () => {
-	void mountAnimation();
-}, { deep: true });
+watch(
+	[() => props.effect, () => props.params, () => props.width, () => props.height],
+	() => {
+		void mountAnimation();
+	},
+	{ deep: true },
+);
 
 onMounted(() => {
 	// A host with no fixed size is followed through its own element, so a
 	// viewport resize reaches the renderer without the host having to relay it.
 	if (props.width == null && typeof ResizeObserver !== 'undefined') {
 		resizeObserver = new ResizeObserver(() => resizeToTarget());
-		if (host.value)
-			resizeObserver.observe(host.value);
+		if (host.value) resizeObserver.observe(host.value);
 	}
 	void mountAnimation();
 });

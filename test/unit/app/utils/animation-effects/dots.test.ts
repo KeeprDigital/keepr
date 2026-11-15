@@ -30,17 +30,21 @@ function mountDelegate(overrides: Partial<AnimationEffectParams<'dots'>> = {}) {
 }
 
 function starField(scene: THREE.Scene): THREE.Points {
-	const points = scene.children.find((child): child is THREE.Points => (child as THREE.Points).isPoints);
+	const points = scene.children.find(
+		(child): child is THREE.Points => (child as THREE.Points).isPoints,
+	);
 	expect(points).toBeDefined();
 	return points!;
 }
 
 function linesMesh(scene: THREE.Scene): THREE.LineSegments | undefined {
-	return scene.children.find((child): child is THREE.LineSegments => (child as THREE.LineSegments).isLineSegments);
+	return scene.children.find(
+		(child): child is THREE.LineSegments => (child as THREE.LineSegments).isLineSegments,
+	);
 }
 
 describe('createDotsDelegate', () => {
-	it('eases the camera from the intro position toward the fork\'s resting target over elapsed time', () => {
+	it("eases the camera from the intro position toward the fork's resting target over elapsed time", () => {
 		const { delegate, context, camera } = mountDelegate();
 		delegate.update({ ...context, elapsedSeconds: 0 });
 		expect(camera.position.toArray()).toEqual([0, 250, 50]);
@@ -58,7 +62,7 @@ describe('createDotsDelegate', () => {
 		expect(camera.position.z).toBeCloseTo(350, 1);
 	});
 
-	it('builds the fork\'s 61×61 star grid from the spacing param, on a dynamic position attribute', () => {
+	it("builds the fork's 61×61 star grid from the spacing param, on a dynamic position attribute", () => {
 		const { scene, params } = mountDelegate();
 		const stars = starField(scene);
 		const position = stars.geometry.getAttribute('position') as THREE.BufferAttribute;
@@ -77,11 +81,13 @@ describe('createDotsDelegate', () => {
 		expect(material.size).toBe(params.size);
 	});
 
-	it('strings the fork\'s 200 radial accent segments between its sphere shells', () => {
+	it("strings the fork's 200 radial accent segments between its sphere shells", () => {
 		const { scene, params } = mountDelegate();
 		const lines = linesMesh(scene);
 		expect(lines).toBeDefined();
-		expect((lines!.material as THREE.LineBasicMaterial).color.getHexString()).toBe(params.lineColor.slice(1));
+		expect((lines!.material as THREE.LineBasicMaterial).color.getHexString()).toBe(
+			params.lineColor.slice(1),
+		);
 		const position = lines!.geometry.getAttribute('position') as THREE.BufferAttribute;
 		expect(position.count).toBe(400);
 		for (const segment of [0, 66, 199]) {
@@ -99,7 +105,7 @@ describe('createDotsDelegate', () => {
 		expect(linesMesh(scene)).toBeUndefined();
 	});
 
-	it('drifts each star within the fork\'s accumulated-sine band of its rest height', () => {
+	it("drifts each star within the fork's accumulated-sine band of its rest height", () => {
 		const { delegate, scene, context } = mountDelegate();
 		const position = starField(scene).geometry.getAttribute('position') as THREE.BufferAttribute;
 		const restHeights = Array.from({ length: position.count }, (_, index) => position.getY(index));
@@ -109,8 +115,7 @@ describe('createDotsDelegate', () => {
 		for (let index = 0; index < position.count; index++) {
 			const drift = position.getY(index) - restHeights[index]!;
 			expect(Math.abs(drift)).toBeLessThanOrEqual(10 + 1e-9);
-			if (Math.abs(drift) > 0.5)
-				moved++;
+			if (Math.abs(drift) > 0.5) moved++;
 		}
 		expect(moved).toBeGreaterThan(0);
 
@@ -121,7 +126,7 @@ describe('createDotsDelegate', () => {
 		expect(position.version).toBeGreaterThan(versionAfterFirst);
 	});
 
-	it('tumbles the line segments at the fork\'s per-frame rates over elapsed time', () => {
+	it("tumbles the line segments at the fork's per-frame rates over elapsed time", () => {
 		const { delegate, scene, context } = mountDelegate();
 		const lines = linesMesh(scene)!;
 		delegate.update({ ...context, elapsedSeconds: 2 });
@@ -130,7 +135,7 @@ describe('createDotsDelegate', () => {
 		expect(lines.rotation.y).toBeCloseTo(0.0005 * 60 * 2);
 	});
 
-	it('clears to the background colour the fork\'s base cleared to', () => {
+	it("clears to the background colour the fork's base cleared to", () => {
 		const { scene, delegate, context, params } = mountDelegate();
 		expect((scene.background as THREE.Color).getHexString()).toBe(params.backgroundColor.slice(1));
 		delegate.applyParams({
@@ -156,7 +161,9 @@ describe('createDotsDelegate', () => {
 		const material = stars.material as THREE.PointsMaterial;
 		expect(material.color.getHexString()).toBe('123456');
 		expect(material.size).toBe(7);
-		expect((linesMesh(scene)!.material as THREE.LineBasicMaterial).color.getHexString()).toBe('654321');
+		expect((linesMesh(scene)!.material as THREE.LineBasicMaterial).color.getHexString()).toBe(
+			'654321',
+		);
 		const position = stars.geometry.getAttribute('position') as THREE.BufferAttribute;
 		expect(position.getX(0)).toBe(-30 * 50 + 25);
 		expect(position.getZ(0)).toBe(-30 * 50 + 25);

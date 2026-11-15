@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { Event, UpdateEventInput } from '~/types';
-import { fromFeatureMatchDefaults, toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
+import {
+	fromFeatureMatchDefaults,
+	toFeatureMatchDefaults,
+} from '~~/shared/types/featureMatchDefaults';
 
 const props = defineProps<{
 	event: Event;
@@ -27,7 +30,14 @@ const { formData, isDirty, reset, save, saving } = useEventConfigForm({
 });
 
 function toUpdate(changes: Partial<typeof initialData.value>): UpdateEventInput {
-	const { pronounsEnabled, standingsEnabled, lgsEnabled, tableNumberEnabled, featureMatchNotesEnabled, ...matchDefaults } = changes;
+	const {
+		pronounsEnabled,
+		standingsEnabled,
+		lgsEnabled,
+		tableNumberEnabled,
+		featureMatchNotesEnabled,
+		...matchDefaults
+	} = changes;
 	const eventToggles = Object.fromEntries(
 		Object.entries({
 			pronounsEnabled,
@@ -48,9 +58,7 @@ function toUpdate(changes: Partial<typeof initialData.value>): UpdateEventInput 
 	<UForm :state="formData" @submit="save">
 		<UCard variant="subtle">
 			<div class="w-full flex flex-col gap-4">
-				<h3 class="font-semibold">
-					Player Fields
-				</h3>
+				<h3 class="font-semibold">Player Fields</h3>
 
 				<UFormField
 					name="pronounsEnabled"
@@ -90,9 +98,7 @@ function toUpdate(changes: Partial<typeof initialData.value>): UpdateEventInput 
 
 				<USeparator />
 
-				<h3 class="font-semibold">
-					Match Tracking
-				</h3>
+				<h3 class="font-semibold">Match Tracking</h3>
 
 				<UFormField
 					name="turnTrackingEnabled"

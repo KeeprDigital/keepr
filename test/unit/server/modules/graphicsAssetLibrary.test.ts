@@ -23,7 +23,8 @@ vi.mock('~~/server/utils/auth', () => ({
 }));
 
 vi.stubGlobal('createError', (input: { statusCode: number; message: string; cause?: unknown }) =>
-	Object.assign(new Error(input.message), input));
+	Object.assign(new Error(input.message), input),
+);
 
 describe('the Graphics Asset Library public module', () => {
 	it('reports catalogue, staging, and canonical health as separate domain results', async () => {
@@ -105,7 +106,9 @@ describe('the Graphics Asset Library public module', () => {
 		// Refused as invalid input (400), never minted into a lookup that misses (404) (#322).
 		it.each(['', '   ', '\t', ' \t\n '])('refuses %j as invalid input', (blank) => {
 			expect(() => mint(blank)).toThrow(GraphicsAssetLibraryError);
-			expect(() => mint(blank)).toThrow(expect.objectContaining({ code: 'invalid-ingestion-input' }));
+			expect(() => mint(blank)).toThrow(
+				expect.objectContaining({ code: 'invalid-ingestion-input' }),
+			);
 		});
 
 		it('mints the trimmed identity, so a padded segment addresses what it names', () => {
@@ -120,17 +123,18 @@ describe('the graphics object identity boundary', () => {
 			try {
 				graphicsObjectIdentity('');
 				return undefined;
-			}
-			catch (error) {
+			} catch (error) {
 				return error;
 			}
 		})();
 
 		expect(thrown).toBeInstanceOf(GraphicsObjectInputError);
 
-		expect(() => rethrowGraphicsAssetApiError(thrown, stubH3Event())).toThrow(expect.objectContaining({
-			statusCode: 400,
-			message: 'A graphics object identity cannot be empty',
-		}));
+		expect(() => rethrowGraphicsAssetApiError(thrown, stubH3Event())).toThrow(
+			expect.objectContaining({
+				statusCode: 400,
+				message: 'A graphics object identity cannot be empty',
+			}),
+		);
 	});
 });

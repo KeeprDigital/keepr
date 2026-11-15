@@ -17,8 +17,7 @@ export function projectTalentScreenSocialProfile(
 	rotation: { dwellMs: number; now?: number },
 ): SocialProfileProjectionValue | undefined {
 	const [first] = profiles;
-	if (!first)
-		return undefined;
+	if (!first) return undefined;
 	return projectSocialProfileRotation(
 		{
 			acceptedProfiles: [...profiles],
@@ -34,6 +33,9 @@ export function projectTalentScreenSocialProfile(
  * Milliseconds until the rotation next steps: every Talent steps at once, so a
  * rendering schedules one re-evaluation for its whole lineup.
  */
-export function msUntilNextTalentScreenProfile(rotation: { dwellMs: number; now: number }): number | null {
+export function msUntilNextTalentScreenProfile(rotation: {
+	dwellMs: number;
+	now: number;
+}): number | null {
 	return projectInterval(0, rotation.dwellMs, rotation.now).nextStepInMs;
 }

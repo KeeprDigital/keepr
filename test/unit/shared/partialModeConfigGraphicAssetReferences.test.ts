@@ -1,4 +1,7 @@
-import type { GraphicAssetReferencingScreenMode, GraphicAssetReferencingScreenModeConfigs } from '~~/shared/utils/graphicsAssetReferences';
+import type {
+	GraphicAssetReferencingScreenMode,
+	GraphicAssetReferencingScreenModeConfigs,
+} from '~~/shared/utils/graphicsAssetReferences';
 import { describe, expect, it } from 'vitest';
 import { screenModeGraphicAssetReferences } from '~~/shared/utils/graphicsAssetReferences';
 

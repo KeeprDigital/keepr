@@ -22,8 +22,16 @@ function graphic(id: string, items: BroadcastGraphicConfig['items'] = []): Broad
 
 /** A Broadcast Graphic holding a Graphic Group with one child, plus a top-level item. */
 function composed(): BroadcastGraphicConfig {
-	const withGroup = addGraphicItem(graphic('lower-third'), { kind: 'group', id: 'cluster', ...CANVAS }).graphic;
-	const withChild = addGraphicGroupChild(withGroup, { kind: 'shape', groupId: 'cluster', id: 'child' }).graphic;
+	const withGroup = addGraphicItem(graphic('lower-third'), {
+		kind: 'group',
+		id: 'cluster',
+		...CANVAS,
+	}).graphic;
+	const withChild = addGraphicGroupChild(withGroup, {
+		kind: 'shape',
+		groupId: 'cluster',
+		id: 'child',
+	}).graphic;
 	return addGraphicItem(withChild, { kind: 'text', id: 'headline', ...CANVAS }).graphic;
 }
 
@@ -34,14 +42,13 @@ function sequentialIds(prefix = 'new') {
 }
 
 function groupOf(config: BroadcastGraphicConfig): GraphicGroupItemConfig {
-	const group = config.items.find(item => item.type === 'group');
-	if (group?.type !== 'group')
-		throw new Error('expected a Graphic Group');
+	const group = config.items.find((item) => item.type === 'group');
+	if (group?.type !== 'group') throw new Error('expected a Graphic Group');
 	return group;
 }
 
 describe('broadcastGraphicTemplateDocument', () => {
-	it('saves the placed Broadcast Graphic\'s composition as the template document', () => {
+	it("saves the placed Broadcast Graphic's composition as the template document", () => {
 		const placed = composed();
 
 		const document = broadcastGraphicTemplateDocument(placed);
@@ -88,23 +95,21 @@ describe('a Layer Lock on a Broadcast Graphic', () => {
 	}
 
 	it.each<[string, () => BroadcastGraphicConfig]>([
-		[
-			'a saved Broadcast Graphic Template',
-			() => broadcastGraphicTemplateDocument(locked()),
-		],
+		['a saved Broadcast Graphic Template', () => broadcastGraphicTemplateDocument(locked())],
 		[
 			'a placed copy of one',
-			() => placeBroadcastGraphicTemplate(
-				{
-					id: 'template-1',
-					name: 'Lower third',
-					document: locked(),
-				},
-				{
-					generateId: sequentialIds(),
-					existing: [],
-				},
-			),
+			() =>
+				placeBroadcastGraphicTemplate(
+					{
+						id: 'template-1',
+						name: 'Lower third',
+						document: locked(),
+					},
+					{
+						generateId: sequentialIds(),
+						existing: [],
+					},
+				),
 		],
 	])('stays on %s', (_, travelled) => {
 		expect(locks(travelled())).toEqual({ item: true, group: undefined, child: true });
@@ -146,7 +151,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 		expect(placed.channelId).toBeUndefined();
 	});
 
-	it('regenerates every Graphic Item id, including a Graphic Group\'s children', () => {
+	it("regenerates every Graphic Item id, including a Graphic Group's children", () => {
 		const template = {
 			id: 'template-1',
 			name: 'Lower third',
@@ -159,8 +164,8 @@ describe('placeBroadcastGraphicTemplate', () => {
 		});
 
 		const placedIds = [
-			...placed.items.map(item => item.id),
-			...groupOf(placed).children.map(child => child.id),
+			...placed.items.map((item) => item.id),
+			...groupOf(placed).children.map((child) => child.id),
 		];
 		expect(placedIds).not.toContain('cluster');
 		expect(placedIds).not.toContain('child');
@@ -168,7 +173,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 		expect(new Set(placedIds).size).toBe(placedIds.length);
 	});
 
-	it('copies each Graphic Input default as the placed graphic\'s own initial value', () => {
+	it("copies each Graphic Input default as the placed graphic's own initial value", () => {
 		const document = composed();
 		document.inputs = [
 			{
@@ -195,9 +200,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 
 	it('gives the placed copy independently editable Graphic Source Selections and Graphic Input Bindings', () => {
 		const document = composed();
-		document.sources = [
-			{ key: 'player', label: 'Player', kind: 'player' },
-		];
+		document.sources = [{ key: 'player', label: 'Player', kind: 'player' }];
 		document.bindings = [
 			{ inputKey: 'headline', sourceKey: 'player', fieldId: 'player.displayName' },
 		];
@@ -255,9 +258,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 
 	it('places Social Profile Projections onto the copied Presentation Group identities', () => {
 		const document = composed();
-		document.sources = [
-			{ key: 'talent', label: 'Talent', kind: 'talent' },
-		];
+		document.sources = [{ key: 'talent', label: 'Talent', kind: 'talent' }];
 		document.socialProfileProjections = [
 			{
 				key: 'profile',
@@ -294,7 +295,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 	it('carries the authored Graphic Asset Reference of every Media Graphic Item', () => {
 		const document = composed();
 		const media = addGraphicItem(document, { kind: 'media', id: 'brand', ...CANVAS }).graphic;
-		const item = media.items.find(entry => entry.id === 'brand') as MediaGraphicItemConfig;
+		const item = media.items.find((entry) => entry.id === 'brand') as MediaGraphicItemConfig;
 		item.asset = testGraphicAssetReference('asset-1', 'revision-1');
 		const template = { id: 'template-1', name: 'Lower third', document: media };
 
@@ -303,16 +304,21 @@ describe('placeBroadcastGraphicTemplate', () => {
 			existing: [],
 		});
 
-		const placedMedia = placed.items.find(entry => entry.type === 'media') as MediaGraphicItemConfig;
+		const placedMedia = placed.items.find(
+			(entry) => entry.type === 'media',
+		) as MediaGraphicItemConfig;
 		expect(placedMedia.asset).toEqual({ assetId: 'asset-1', revisionId: 'revision-1' });
 	});
 
 	it('round-trips a Social Network Icon as semantic configuration with no Graphic Asset', () => {
-		const authored = addGraphicItem(
-			composed(),
-			{ kind: 'social-network-icon', id: 'social-icon', ...CANVAS },
-		).graphic;
-		const icon = authored.items.find(entry => entry.id === 'social-icon') as SocialNetworkIconGraphicItemConfig;
+		const authored = addGraphicItem(composed(), {
+			kind: 'social-network-icon',
+			id: 'social-icon',
+			...CANVAS,
+		}).graphic;
+		const icon = authored.items.find(
+			(entry) => entry.id === 'social-icon',
+		) as SocialNetworkIconGraphicItemConfig;
 		icon.network = 'tiktok';
 		icon.color = '#ff0050';
 		icon.opacity = 0.55;
@@ -328,7 +334,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 			existing: [],
 		});
 		const placedIcon = placed.items.find(
-			entry => entry.type === 'social-network-icon',
+			(entry) => entry.type === 'social-network-icon',
 		) as SocialNetworkIconGraphicItemConfig;
 
 		expect(placedIcon.id).not.toBe('social-icon');
@@ -342,7 +348,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 		expect(placedIcon).not.toHaveProperty('asset');
 	});
 
-	it('names the copy distinctly when the Screen already carries the template\'s name', () => {
+	it("names the copy distinctly when the Screen already carries the template's name", () => {
 		const template = {
 			id: 'template-1',
 			name: 'Lower third',
@@ -408,7 +414,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 		expect(placed.items[1]!.animation).toEqual(document.items[1]!.animation);
 	});
 
-	it('rewrites a Broadcast Graphic\'s staggered subset onto the placed copy\'s own Graphic Item ids', () => {
+	it("rewrites a Broadcast Graphic's staggered subset onto the placed copy's own Graphic Item ids", () => {
 		const document = composed();
 		// `itemIds` is a selection, so its own order carries no meaning: the stagger follows
 		// list order, reversed.
@@ -445,7 +451,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 			existing: [],
 		});
 
-		const [cluster, headline] = placed.items.map(item => item.id);
+		const [cluster, headline] = placed.items.map((item) => item.id);
 		const enter = placed.animation!.stagger!.enter as GraphicAnimationStagger;
 		expect(enter.itemIds).toEqual([headline, cluster]);
 		expect(enter.step).toBe(80);
@@ -456,7 +462,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 		expect(enter.itemIds).not.toContain('cluster');
 	});
 
-	it('rewrites a Graphic Group\'s own staggered subset onto its copied children', () => {
+	it("rewrites a Graphic Group's own staggered subset onto its copied children", () => {
 		const document = composed();
 		const group = groupOf(document);
 		group.animation = {
@@ -482,8 +488,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 		});
 
 		const placedGroup = groupOf(placed);
-		expect(placedGroup.animation!.stagger!.enter!.itemIds)
-			.toEqual([placedGroup.children[0]!.id]);
+		expect(placedGroup.animation!.stagger!.enter!.itemIds).toEqual([placedGroup.children[0]!.id]);
 		expect(placedGroup.animation!.stagger!.enter!.itemIds).not.toContain('child');
 		expect(placedGroup.animation!.stagger!.enter!.order).toBe('reverse-list');
 	});
@@ -582,7 +587,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 		expect(document.animation.stagger!.enter!.step).toBe(80);
 	});
 
-	it('drops a Graphic Group\'s animation entirely when its only stagger was stale', () => {
+	it("drops a Graphic Group's animation entirely when its only stagger was stale", () => {
 		const document = composed();
 		const group = groupOf(document);
 		group.animation = {
@@ -629,7 +634,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 	it('carries every field of a maximally populated document except what it rewrites', () => {
 		const document = composed();
 		document.animation = {
-			'enter': {
+			enter: {
 				duration: 400,
 				easing: 'ease-out',
 				delay: 100,
@@ -643,21 +648,21 @@ describe('placeBroadcastGraphicTemplate', () => {
 				repeat: 3,
 				scale: { factor: 1.1, origin: 'center' },
 			},
-			'update': {
+			update: {
 				duration: 250,
 				easing: 'ease-in-out',
 				delay: 0,
 				fade: { opacity: 0.5 },
 			},
-			'exit': {
+			exit: {
 				duration: 300,
 				easing: 'ease-in',
 				delay: 0,
 				slide: { direction: 'south', distanceMode: 'fixed', distance: 200 },
 				reveal: { edge: 'left' },
 			},
-			'stagger': {
-				'enter': {
+			stagger: {
+				enter: {
 					order: 'list',
 					step: 80,
 					itemIds: ['headline', 'cluster'],
@@ -667,12 +672,12 @@ describe('placeBroadcastGraphicTemplate', () => {
 					step: 40,
 					itemIds: ['cluster'],
 				},
-				'update': {
+				update: {
 					order: 'list',
 					step: 20,
 					itemIds: ['headline'],
 				},
-				'exit': {
+				exit: {
 					order: 'reverse-list',
 					step: 60,
 					itemIds: ['cluster', 'headline'],
@@ -725,9 +730,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 				],
 			},
 		];
-		document.sources = [
-			{ key: 'player', label: 'Player', kind: 'player' },
-		];
+		document.sources = [{ key: 'player', label: 'Player', kind: 'player' }];
 		document.bindings = [
 			{ inputKey: 'headline', sourceKey: 'player', fieldId: 'player.displayName' },
 		];
@@ -742,21 +745,22 @@ describe('placeBroadcastGraphicTemplate', () => {
 
 		/** The document as placement should have rewritten it, built independently. */
 		function expected(source: BroadcastGraphicConfig): BroadcastGraphicConfig {
-			const rewriteIds = (ids: readonly string[]) => ids.map(id => idMap.get(id) ?? id);
-			const rewriteStagger = (animation: any) => animation?.stagger
-				? {
-						...animation,
-						stagger: Object.fromEntries(Object.entries(animation.stagger).map(
-							([phase, entry]) => [
-								phase,
-								{
-									...(entry as any),
-									itemIds: rewriteIds((entry as any).itemIds),
-								},
-							],
-						)),
-					}
-				: animation;
+			const rewriteIds = (ids: readonly string[]) => ids.map((id) => idMap.get(id) ?? id);
+			const rewriteStagger = (animation: any) =>
+				animation?.stagger
+					? {
+							...animation,
+							stagger: Object.fromEntries(
+								Object.entries(animation.stagger).map(([phase, entry]) => [
+									phase,
+									{
+										...(entry as any),
+										itemIds: rewriteIds((entry as any).itemIds),
+									},
+								]),
+							),
+						}
+					: animation;
 
 			return {
 				...structuredClone(source),
@@ -785,7 +789,7 @@ describe('placeBroadcastGraphicTemplate', () => {
 		expect(placed).toEqual(expected(document));
 		// And every id it was defined to rewrite actually changed.
 		expect(placed.id).not.toBe(document.id);
-		expect(placed.items.map(item => item.id)).not.toEqual(document.items.map(item => item.id));
+		expect(placed.items.map((item) => item.id)).not.toEqual(document.items.map((item) => item.id));
 	});
 
 	it('places two copies of one template with no Graphic Item id in common', () => {
@@ -804,9 +808,9 @@ describe('placeBroadcastGraphicTemplate', () => {
 
 		const ids = (config: BroadcastGraphicConfig) => [
 			config.id,
-			...config.items.map(item => item.id),
-			...groupOf(config).children.map(child => child.id),
+			...config.items.map((item) => item.id),
+			...groupOf(config).children.map((child) => child.id),
 		];
-		expect(ids(first).some(id => ids(second).includes(id))).toBe(false);
+		expect(ids(first).some((id) => ids(second).includes(id))).toBe(false);
 	});
 });

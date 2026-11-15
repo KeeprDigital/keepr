@@ -55,9 +55,14 @@ import { MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS } from './socialProfiles';
  *   build cannot interpret, which is what a state written under a different
  *   vocabulary looks like from here.
  */
-export const BROADCAST_GRAPHICS_RECOVERY_FAULT_REASONS = ['missing', 'corrupt', 'incompatible'] as const;
+export const BROADCAST_GRAPHICS_RECOVERY_FAULT_REASONS = [
+	'missing',
+	'corrupt',
+	'incompatible',
+] as const;
 
-export type BroadcastGraphicsRecoveryFaultReason = typeof BROADCAST_GRAPHICS_RECOVERY_FAULT_REASONS[number];
+export type BroadcastGraphicsRecoveryFaultReason =
+	(typeof BROADCAST_GRAPHICS_RECOVERY_FAULT_REASONS)[number];
 
 /** A recovery fault, with enough detail to be diagnosable rather than merely fatal. */
 export interface BroadcastGraphicsRecoveryFault {
@@ -70,13 +75,15 @@ function isFiniteNumber(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value);
 }
 
-function fault(reason: BroadcastGraphicsRecoveryFaultReason, detail: string): BroadcastGraphicsRecoveryFault {
+function fault(
+	reason: BroadcastGraphicsRecoveryFaultReason,
+	detail: string,
+): BroadcastGraphicsRecoveryFault {
 	return { reason, detail };
 }
 
 function playoutFault(playout: unknown): BroadcastGraphicsRecoveryFault | null {
-	if (playout === undefined || playout === null)
-		return null;
+	if (playout === undefined || playout === null) return null;
 	if (!isPlainRecord(playout))
 		return fault('corrupt', 'the playout map is not a set of Broadcast Graphic records');
 
@@ -84,9 +91,15 @@ function playoutFault(playout: unknown): BroadcastGraphicsRecoveryFault | null {
 		if (!isPlainRecord(record))
 			return fault('corrupt', `the playout record for ${graphicId} is not a record`);
 		if ('onAir' in record && typeof record.onAir !== 'boolean')
-			return fault('incompatible', `the on-air intent for ${graphicId} is not a true or false value`);
+			return fault(
+				'incompatible',
+				`the on-air intent for ${graphicId} is not a true or false value`,
+			);
 		if ('cut' in record && typeof record.cut !== 'boolean')
-			return fault('incompatible', `the Cut modifier for ${graphicId} is not a true or false value`);
+			return fault(
+				'incompatible',
+				`the Cut modifier for ${graphicId} is not a true or false value`,
+			);
 		// A start time that is not a number at all, which is a different thing from a
 		// start time that is merely old. Animation deliberately trusts an old one
 		// literally — the projection is monotone and saturating, so a start time from
@@ -103,8 +116,7 @@ function playoutFault(playout: unknown): BroadcastGraphicsRecoveryFault | null {
 }
 
 function inputsFault(inputs: unknown): BroadcastGraphicsRecoveryFault | null {
-	if (inputs === undefined || inputs === null)
-		return null;
+	if (inputs === undefined || inputs === null) return null;
 	if (!isPlainRecord(inputs))
 		return fault('corrupt', 'the Graphic Input map is not a set of Broadcast Graphic records');
 
@@ -113,10 +125,16 @@ function inputsFault(inputs: unknown): BroadcastGraphicsRecoveryFault | null {
 			return fault('corrupt', `the Graphic Input record for ${graphicId} is not a record`);
 		for (const slot of ['working', 'accepted'] as const) {
 			if (slot in record && !isPlainRecord(record[slot]))
-				return fault('corrupt', `the ${slot} Graphic Input values for ${graphicId} are not a set of values`);
+				return fault(
+					'corrupt',
+					`the ${slot} Graphic Input values for ${graphicId} are not a set of values`,
+				);
 		}
 		if ('acceptedRevision' in record && !Number.isFinite(record.acceptedRevision))
-			return fault('incompatible', `the Graphic Input acceptance revision for ${graphicId} is not a number`);
+			return fault(
+				'incompatible',
+				`the Graphic Input acceptance revision for ${graphicId} is not a number`,
+			);
 	}
 
 	return null;
@@ -140,28 +158,40 @@ function inputsFault(inputs: unknown): BroadcastGraphicsRecoveryFault | null {
  * #168.
  */
 function sourcesFault(sources: unknown): BroadcastGraphicsRecoveryFault | null {
-	if (sources === undefined || sources === null)
-		return null;
+	if (sources === undefined || sources === null) return null;
 	if (!isPlainRecord(sources))
-		return fault('corrupt', 'the Graphic Source Selection map is not a set of Broadcast Graphic records');
+		return fault(
+			'corrupt',
+			'the Graphic Source Selection map is not a set of Broadcast Graphic records',
+		);
 
 	for (const [graphicId, record] of Object.entries(sources)) {
 		if (!isPlainRecord(record))
-			return fault('corrupt', `the Graphic Source Selection record for ${graphicId} is not a record`);
+			return fault(
+				'corrupt',
+				`the Graphic Source Selection record for ${graphicId} is not a record`,
+			);
 		for (const [sourceKey, selection] of Object.entries(record)) {
 			if (!Number.isFinite(selection))
-				return fault('incompatible', `the ${sourceKey} Graphic Source Selection for ${graphicId} does not name an entity`);
+				return fault(
+					'incompatible',
+					`the ${sourceKey} Graphic Source Selection for ${graphicId} does not name an entity`,
+				);
 		}
 	}
 
 	return null;
 }
 
-function socialProfileProjectionsFault(projections: unknown): BroadcastGraphicsRecoveryFault | null {
-	if (projections === undefined || projections === null)
-		return null;
+function socialProfileProjectionsFault(
+	projections: unknown,
+): BroadcastGraphicsRecoveryFault | null {
+	if (projections === undefined || projections === null) return null;
 	if (!isPlainRecord(projections))
-		return fault('corrupt', 'the Social Profile Projection map is not a set of Broadcast Graphic records');
+		return fault(
+			'corrupt',
+			'the Social Profile Projection map is not a set of Broadcast Graphic records',
+		);
 
 	const supportedNetworks = new Set<string>(SUPPORTED_SOCIAL_NETWORK_KEYS);
 	const presentationLayersFault = (
@@ -169,8 +199,7 @@ function socialProfileProjectionsFault(projections: unknown): BroadcastGraphicsR
 		identity: string,
 		label: string,
 	): BroadcastGraphicsRecoveryFault | null => {
-		if (!Array.isArray(layers))
-			return fault('corrupt', `${label} for ${identity} is not a list`);
+		if (!Array.isArray(layers)) return fault('corrupt', `${label} for ${identity} is not a list`);
 		if (layers.length > MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS)
 			return fault('incompatible', `${label} for ${identity} exceeds its bounded layer maximum`);
 
@@ -184,19 +213,19 @@ function socialProfileProjectionsFault(projections: unknown): BroadcastGraphicsR
 			const network = values.network as SupportedSocialNetwork;
 			const tupleIdentity = `${network}\u0000${String(values.handle)}`;
 			if (
-				typeof values.handle !== 'string'
-				|| values.handle.length === 0
-				|| values.handle.length > MAX_SOCIAL_PROFILE_HANDLE_LENGTH
-				|| values.networkLabel !== SUPPORTED_SOCIAL_NETWORK_BY_KEY[network].label
-				|| values.profileUrl !== canonicalSocialProfileUrl(network, values.handle)
-				|| tuples.has(tupleIdentity)
-				|| !isFiniteNumber(layer.opacity)
-				|| layer.opacity < 0
-				|| layer.opacity > 1
-				|| !isFiniteNumber(layer.offsetX)
-				|| Math.abs(layer.offsetX) > 100
-				|| !isFiniteNumber(layer.offsetY)
-				|| Math.abs(layer.offsetY) > 100
+				typeof values.handle !== 'string' ||
+				values.handle.length === 0 ||
+				values.handle.length > MAX_SOCIAL_PROFILE_HANDLE_LENGTH ||
+				values.networkLabel !== SUPPORTED_SOCIAL_NETWORK_BY_KEY[network].label ||
+				values.profileUrl !== canonicalSocialProfileUrl(network, values.handle) ||
+				tuples.has(tupleIdentity) ||
+				!isFiniteNumber(layer.opacity) ||
+				layer.opacity < 0 ||
+				layer.opacity > 1 ||
+				!isFiniteNumber(layer.offsetX) ||
+				Math.abs(layer.offsetX) > 100 ||
+				!isFiniteNumber(layer.offsetY) ||
+				Math.abs(layer.offsetY) > 100
 			) {
 				return fault('incompatible', `a layer in ${label} for ${identity} is not correlated`);
 			}
@@ -206,7 +235,10 @@ function socialProfileProjectionsFault(projections: unknown): BroadcastGraphicsR
 	};
 	for (const [graphicId, graphic] of Object.entries(projections)) {
 		if (!isPlainRecord(graphic))
-			return fault('corrupt', `the Social Profile Projection record for ${graphicId} is not a record`);
+			return fault(
+				'corrupt',
+				`the Social Profile Projection record for ${graphicId} is not a record`,
+			);
 		for (const [projectionKey, projection] of Object.entries(graphic)) {
 			const identity = `${graphicId}.${projectionKey}`;
 			if (!isPlainRecord(projection))
@@ -214,21 +246,26 @@ function socialProfileProjectionsFault(projections: unknown): BroadcastGraphicsR
 			if (!Array.isArray(projection.acceptedProfiles))
 				return fault('corrupt', `the accepted Social Profiles for ${identity} are not a list`);
 			if (projection.acceptedProfiles.length > SUPPORTED_SOCIAL_NETWORK_KEYS.length)
-				return fault('incompatible', `the accepted Social Profiles for ${identity} exceed the supported catalog`);
+				return fault(
+					'incompatible',
+					`the accepted Social Profiles for ${identity} exceed the supported catalog`,
+				);
 
 			if ('talent' in projection) {
 				if (!isPlainRecord(projection.talent))
 					return fault('corrupt', `the accepted Talent for ${identity} is not a record`);
 				if (!Number.isFinite(projection.talent.id) || typeof projection.talent.name !== 'string')
 					return fault('incompatible', `the accepted Talent for ${identity} cannot be interpreted`);
-			}
-			else if (
-				projection.acceptedProfiles.length > 0
-				|| 'currentNetwork' in projection
-				|| 'manualNetwork' in projection
-				|| 'rotationAnchor' in projection
+			} else if (
+				projection.acceptedProfiles.length > 0 ||
+				'currentNetwork' in projection ||
+				'manualNetwork' in projection ||
+				'rotationAnchor' in projection
 			) {
-				return fault('incompatible', `the Social Profile Projection ${identity} has no accepted Talent`);
+				return fault(
+					'incompatible',
+					`the Social Profile Projection ${identity} has no accepted Talent`,
+				);
 			}
 
 			const accepted = new Set<SupportedSocialNetwork>();
@@ -237,31 +274,42 @@ function socialProfileProjectionsFault(projections: unknown): BroadcastGraphicsR
 				if (!isPlainRecord(profile))
 					return fault('corrupt', `an accepted Social Profile for ${identity} is not a record`);
 				if (typeof profile.network !== 'string' || !supportedNetworks.has(profile.network))
-					return fault('incompatible', `an accepted Social Profile network for ${identity} is unsupported`);
+					return fault(
+						'incompatible',
+						`an accepted Social Profile network for ${identity} is unsupported`,
+					);
 				const network = profile.network as SupportedSocialNetwork;
 				const catalogIndex = SUPPORTED_SOCIAL_NETWORK_KEYS.indexOf(network);
 				if (
-					typeof profile.handle !== 'string'
-					|| profile.handle.length === 0
-					|| profile.handle.length > MAX_SOCIAL_PROFILE_HANDLE_LENGTH
-					|| typeof profile.networkLabel !== 'string'
-					|| typeof profile.profileUrl !== 'string'
-					|| profile.networkLabel !== SUPPORTED_SOCIAL_NETWORK_BY_KEY[network].label
-					|| profile.profileUrl !== canonicalSocialProfileUrl(network, profile.handle)
-					|| accepted.has(network)
-					|| catalogIndex <= previousCatalogIndex
+					typeof profile.handle !== 'string' ||
+					profile.handle.length === 0 ||
+					profile.handle.length > MAX_SOCIAL_PROFILE_HANDLE_LENGTH ||
+					typeof profile.networkLabel !== 'string' ||
+					typeof profile.profileUrl !== 'string' ||
+					profile.networkLabel !== SUPPORTED_SOCIAL_NETWORK_BY_KEY[network].label ||
+					profile.profileUrl !== canonicalSocialProfileUrl(network, profile.handle) ||
+					accepted.has(network) ||
+					catalogIndex <= previousCatalogIndex
 				) {
-					return fault('incompatible', `an accepted Social Profile tuple for ${identity} is not correlated`);
+					return fault(
+						'incompatible',
+						`an accepted Social Profile tuple for ${identity} is not correlated`,
+					);
 				}
 				accepted.add(network);
 				previousCatalogIndex = catalogIndex;
 			}
 
 			for (const field of ['currentNetwork', 'manualNetwork'] as const) {
-				if (!(field in projection))
-					continue;
-				if (typeof projection[field] !== 'string' || !accepted.has(projection[field] as SupportedSocialNetwork))
-					return fault('incompatible', `the ${field} for ${identity} is not an accepted Social Profile`);
+				if (!(field in projection)) continue;
+				if (
+					typeof projection[field] !== 'string' ||
+					!accepted.has(projection[field] as SupportedSocialNetwork)
+				)
+					return fault(
+						'incompatible',
+						`the ${field} for ${identity} is not an accepted Social Profile`,
+					);
 			}
 
 			if ('automatic' in projection && typeof projection.automatic !== 'boolean')
@@ -269,41 +317,50 @@ function socialProfileProjectionsFault(projections: unknown): BroadcastGraphicsR
 
 			if ('rotationAnchor' in projection) {
 				if (!isPlainRecord(projection.rotationAnchor))
-					return fault('corrupt', `the Social Profile Rotation anchor for ${identity} is not a record`);
+					return fault(
+						'corrupt',
+						`the Social Profile Rotation anchor for ${identity} is not a record`,
+					);
 				if (
-					typeof projection.rotationAnchor.network !== 'string'
-					|| !accepted.has(projection.rotationAnchor.network as SupportedSocialNetwork)
-					|| !Number.isFinite(projection.rotationAnchor.anchoredAt)
+					typeof projection.rotationAnchor.network !== 'string' ||
+					!accepted.has(projection.rotationAnchor.network as SupportedSocialNetwork) ||
+					!Number.isFinite(projection.rotationAnchor.anchoredAt)
 				) {
-					return fault('incompatible', `the Social Profile Rotation anchor for ${identity} cannot be interpreted`);
+					return fault(
+						'incompatible',
+						`the Social Profile Rotation anchor for ${identity} cannot be interpreted`,
+					);
 				}
 			}
 
 			for (const field of ['updateFrom', 'pendingUpdateFrom'] as const) {
-				if (!(field in projection))
-					continue;
+				if (!(field in projection)) continue;
 				const snapshotFault = presentationLayersFault(
 					projection[field],
 					identity,
 					`the ${field} Social Profile update snapshot`,
 				);
-				if (snapshotFault)
-					return snapshotFault;
+				if (snapshotFault) return snapshotFault;
 			}
 
 			if ('transitionAnchor' in projection) {
 				if (!isPlainRecord(projection.transitionAnchor))
-					return fault('corrupt', `the Social Profile Transition anchor for ${identity} is not a record`);
+					return fault(
+						'corrupt',
+						`the Social Profile Transition anchor for ${identity} is not a record`,
+					);
 				const anchor = projection.transitionAnchor;
 				if (!isFiniteNumber(anchor.startedAt))
-					return fault('incompatible', `the Social Profile Transition anchor for ${identity} cannot be interpreted`);
+					return fault(
+						'incompatible',
+						`the Social Profile Transition anchor for ${identity} cannot be interpreted`,
+					);
 				const anchorFault = presentationLayersFault(
 					anchor.from,
 					identity,
 					'the interrupted Social Profile visual',
 				);
-				if (anchorFault)
-					return anchorFault;
+				if (anchorFault) return anchorFault;
 			}
 		}
 	}
@@ -317,16 +374,20 @@ function socialProfileProjectionsFault(projections: unknown): BroadcastGraphicsR
  * Answering `null` is the claim that every field this build reads is present in a
  * shape it can read — not that the state is exhaustively understood.
  */
-export function broadcastGraphicsRecoveryFault(raw: unknown): BroadcastGraphicsRecoveryFault | null {
+export function broadcastGraphicsRecoveryFault(
+	raw: unknown,
+): BroadcastGraphicsRecoveryFault | null {
 	if (raw === undefined || raw === null)
 		return fault('missing', 'this Broadcast Graphics Live Session has no durable live state');
 	if (!isPlainRecord(raw))
 		return fault('corrupt', 'the durable live state is not a live state record');
 
-	return playoutFault(raw.playout)
-		?? inputsFault(raw.inputs)
-		?? sourcesFault(raw.sources)
-		?? socialProfileProjectionsFault(raw.socialProfileProjections);
+	return (
+		playoutFault(raw.playout) ??
+		inputsFault(raw.inputs) ??
+		sourcesFault(raw.sources) ??
+		socialProfileProjectionsFault(raw.socialProfileProjections)
+	);
 }
 
 /**
@@ -438,10 +499,9 @@ export function carriedForwardBroadcastGraphicsLiveState(raw: unknown): Broadcas
 	const inputs = Object.fromEntries(
 		Object.entries(recovered.inputs).map(([graphicId, stored]) => [
 			graphicId,
-			Object.assign(
-				createInitialBroadcastGraphicInputsState(),
-			{ working: stored.working ?? {} } satisfies Partial<NormalizedBroadcastGraphicInputsState>,
-			),
+			Object.assign(createInitialBroadcastGraphicInputsState(), {
+				working: stored.working ?? {},
+			} satisfies Partial<NormalizedBroadcastGraphicInputsState>),
 		]),
 	);
 

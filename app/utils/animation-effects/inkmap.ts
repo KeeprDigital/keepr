@@ -76,18 +76,21 @@ export default function createInkmapEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'inkmap'>,
 ): AnimationEffectInstance<AnimationEffectParams<'inkmap'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: INKMAP_FRAGMENT_SHADER,
-		uniforms: current => ({
-			inkColor: current.inkColor,
-			edgeColor: current.edgeColor,
-			backgroundColor: current.backgroundColor,
-			coverage: current.coverage,
-			contours: current.contours,
-			scale: current.scale,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: INKMAP_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				inkColor: current.inkColor,
+				edgeColor: current.edgeColor,
+				backgroundColor: current.backgroundColor,
+				coverage: current.coverage,
+				contours: current.contours,
+				scale: current.scale,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

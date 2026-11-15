@@ -21,7 +21,9 @@ export interface UseEventConfigFormOptions<T extends Record<string, any>> {
  * save at a time: the Event store's update reports no loading of its own, and
  * Enter submits the form past a disabled Save.
  */
-export function useEventConfigForm<T extends Record<string, any>>(options: UseEventConfigFormOptions<T>) {
+export function useEventConfigForm<T extends Record<string, any>>(
+	options: UseEventConfigFormOptions<T>,
+) {
 	const { toUpdate, validate, ...formOptions } = options;
 	const form = useForm<T>(formOptions);
 	useRegisterDirtyState(form.isDirty);
@@ -29,13 +31,11 @@ export function useEventConfigForm<T extends Record<string, any>>(options: UseEv
 	const saving = ref(false);
 
 	async function save() {
-		if (saving.value || (validate && !validate()))
-			return;
+		if (saving.value || (validate && !validate())) return;
 		saving.value = true;
 		try {
 			await form.runSave(() => handleSubmit(toUpdate(form.getChanges())));
-		}
-		finally {
+		} finally {
 			saving.value = false;
 		}
 	}

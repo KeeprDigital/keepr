@@ -18,7 +18,7 @@ vi.mock('~~/server/utils/ably', () => ({
 }));
 
 vi.mock('~~/server/mappers/event', () => ({
-	mapEventToResponse: vi.fn(event => event),
+	mapEventToResponse: vi.fn((event) => event),
 }));
 
 vi.stubGlobal('createError', (input: { statusCode: number; message: string; data?: unknown }) => {
@@ -49,32 +49,48 @@ describe('melee sync lease state', () => {
 	it('conditions successful metadata on the owning lease token before publication', async () => {
 		const syncedAt = new Date('2026-01-01T00:05:00.000Z');
 
-		await expect(recordMeleeSyncSuccess(syncContext, 9, {
-			lastPlayersSyncedAt: syncedAt,
-		}, 'lease-token')).resolves.toBe(true);
+		await expect(
+			recordMeleeSyncSuccess(
+				syncContext,
+				9,
+				{
+					lastPlayersSyncedAt: syncedAt,
+				},
+				'lease-token',
+			),
+		).resolves.toBe(true);
 
-		expect(mockEventService.updateSyncMetadata).toHaveBeenCalledWith(9, {
-			lastPlayersSyncedAt: syncedAt,
-			lastSyncError: null,
-		}, 'lease-token');
+		expect(mockEventService.updateSyncMetadata).toHaveBeenCalledWith(
+			9,
+			{
+				lastPlayersSyncedAt: syncedAt,
+				lastSyncError: null,
+			},
+			'lease-token',
+		);
 		expect(mockPublishMessage).toHaveBeenCalledOnce();
-		expect(mockPublishMessage).toHaveBeenCalledWith(9, 'event:updated', expect.anything(), 'origin-1');
+		expect(mockPublishMessage).toHaveBeenCalledWith(
+			9,
+			'event:updated',
+			expect.anything(),
+			'origin-1',
+		);
 	});
 
 	it('does not publish when token-conditioned failure metadata loses ownership', async () => {
 		mockEventService.updateSyncMetadata.mockResolvedValue(false);
 
-		await expect(recordMeleeSyncFailure(
-			syncContext,
-			9,
-			new Error('upstream failed'),
-			{},
-			'lease-token',
-		)).resolves.toBe(false);
+		await expect(
+			recordMeleeSyncFailure(syncContext, 9, new Error('upstream failed'), {}, 'lease-token'),
+		).resolves.toBe(false);
 
-		expect(mockEventService.updateSyncMetadata).toHaveBeenCalledWith(9, {
-			lastSyncError: 'Melee sync failed. Retry the operation.',
-		}, 'lease-token');
+		expect(mockEventService.updateSyncMetadata).toHaveBeenCalledWith(
+			9,
+			{
+				lastSyncError: 'Melee sync failed. Retry the operation.',
+			},
+			'lease-token',
+		);
 		expect(mockPublishMessage).not.toHaveBeenCalled();
 	});
 
@@ -85,20 +101,33 @@ describe('melee sync lease state', () => {
 
 		await recordMeleeSyncFailure(syncContext, 9, error, {}, 'lease-token');
 
-		expect(mockEventService.updateSyncMetadata).toHaveBeenCalledWith(9, {
-			lastSyncError: 'Card data provider is temporarily unavailable. Existing deck data was preserved; retry the sync.',
-		}, 'lease-token');
-		expect(JSON.stringify(mockEventService.updateSyncMetadata.mock.calls)).not.toContain('secret upstream body');
+		expect(mockEventService.updateSyncMetadata).toHaveBeenCalledWith(
+			9,
+			{
+				lastSyncError:
+					'Card data provider is temporarily unavailable. Existing deck data was preserved; retry the sync.',
+			},
+			'lease-token',
+		);
+		expect(JSON.stringify(mockEventService.updateSyncMetadata.mock.calls)).not.toContain(
+			'secret upstream body',
+		);
 	});
 
 	it('does not persist messages from arbitrary errors carrying client-like status metadata', async () => {
-		const error = Object.assign(new Error('library detail must remain private'), { statusCode: 400 });
+		const error = Object.assign(new Error('library detail must remain private'), {
+			statusCode: 400,
+		});
 
 		await recordMeleeSyncFailure(syncContext, 9, error, {}, 'lease-token');
 
-		expect(mockEventService.updateSyncMetadata).toHaveBeenCalledWith(9, {
-			lastSyncError: 'Melee sync failed. Retry the operation.',
-		}, 'lease-token');
+		expect(mockEventService.updateSyncMetadata).toHaveBeenCalledWith(
+			9,
+			{
+				lastSyncError: 'Melee sync failed. Retry the operation.',
+			},
+			'lease-token',
+		);
 	});
 
 	it('returns a clear 409 for a concurrent command', async () => {
@@ -108,10 +137,12 @@ describe('melee sync lease state', () => {
 			activeLease: { command: 'update', expiresAt },
 		});
 
-		await expect(acquireMeleeSyncLease(9, 'players', {
-			now: new Date('2026-01-01T00:00:00.000Z'),
-			token: 'new-token',
-		})).rejects.toMatchObject({
+		await expect(
+			acquireMeleeSyncLease(9, 'players', {
+				now: new Date('2026-01-01T00:00:00.000Z'),
+				token: 'new-token',
+			}),
+		).rejects.toMatchObject({
 			statusCode: 409,
 			message: 'Melee sync command "update" is already running for this event',
 			data: {

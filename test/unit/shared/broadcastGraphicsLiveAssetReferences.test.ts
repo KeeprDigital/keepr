@@ -21,7 +21,10 @@ const sponsor = value('image-asset', 'image-revision-1');
 const replacement = value('image-asset', 'image-revision-2');
 const sting = value('video-asset', 'video-revision-1');
 
-function mediaInput(key: string, mediaKind: 'image' | 'silent-video' = 'image'): GraphicInputDeclaration {
+function mediaInput(
+	key: string,
+	mediaKind: 'image' | 'silent-video' = 'image',
+): GraphicInputDeclaration {
 	return {
 		type: 'media',
 		key,
@@ -69,40 +72,42 @@ describe('broadcast Graphics Live Session Graphic Asset References', () => {
 			'video-revision-1',
 			'sting',
 		],
-	] as const)('publishes an accepted %s value as its exact revision, named by its Graphic Input', (kind, input, accepted, assetId, revisionId, key) => {
-		expect(references([input], { working: {}, accepted, acceptedRevision: 1 })).toEqual([
-			{
-				reference: { assetId, revisionId },
-				ownerSlot: `liveSession.lower-third.inputs.${key}`,
-				kind,
-			},
-		]);
-	});
+	] as const)(
+		'publishes an accepted %s value as its exact revision, named by its Graphic Input',
+		(kind, input, accepted, assetId, revisionId, key) => {
+			expect(references([input], { working: {}, accepted, acceptedRevision: 1 })).toEqual([
+				{
+					reference: { assetId, revisionId },
+					ownerSlot: `liveSession.lower-third.inputs.${key}`,
+					kind,
+				},
+			]);
+		},
+	);
 
 	it('does not publish a staged value nothing has accepted', () => {
-		expect(references([
-			mediaInput('backdrop'),
-		], {
-			working: { backdrop: sponsor },
-			accepted: {},
-			acceptedRevision: 0,
-		})).toEqual([]);
+		expect(
+			references([mediaInput('backdrop')], {
+				working: { backdrop: sponsor },
+				accepted: {},
+				acceptedRevision: 0,
+			}),
+		).toEqual([]);
 	});
 
 	it('stops publishing a revision a later acceptance replaced', () => {
-		expect(references([
-			mediaInput('backdrop'),
-		], {
-			working: {},
-			accepted: { backdrop: replacement },
-			acceptedRevision: 2,
-		}))
-			.toEqual([
-				{
-					reference: { assetId: 'image-asset', revisionId: 'image-revision-2' },
-					ownerSlot: 'liveSession.lower-third.inputs.backdrop',
-					kind: 'image',
-				},
-			]);
+		expect(
+			references([mediaInput('backdrop')], {
+				working: {},
+				accepted: { backdrop: replacement },
+				acceptedRevision: 2,
+			}),
+		).toEqual([
+			{
+				reference: { assetId: 'image-asset', revisionId: 'image-revision-2' },
+				ownerSlot: 'liveSession.lower-third.inputs.backdrop',
+				kind: 'image',
+			},
+		]);
 	});
 });

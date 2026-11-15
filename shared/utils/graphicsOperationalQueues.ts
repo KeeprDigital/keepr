@@ -57,7 +57,7 @@ export const GRAPHICS_OPERATIONAL_QUEUES = [
 	'retired-asset',
 ] as const;
 
-export type GraphicsOperationalQueueId = typeof GRAPHICS_OPERATIONAL_QUEUES[number];
+export type GraphicsOperationalQueueId = (typeof GRAPHICS_OPERATIONAL_QUEUES)[number];
 
 /**
  * How urgently each queue needs an administrator.
@@ -112,7 +112,7 @@ export const GRAPHICS_QUEUE_ACTIONS = [
 	'purge-now',
 ] as const;
 
-export type GraphicsQueueAction = typeof GRAPHICS_QUEUE_ACTIONS[number];
+export type GraphicsQueueAction = (typeof GRAPHICS_QUEUE_ACTIONS)[number];
 
 /**
  * What every queue action reports, without exception.
@@ -136,7 +136,7 @@ export const GRAPHICS_QUEUE_ACTION_OUTCOMES = [
 	'integrity-conflict',
 ] as const;
 
-export type GraphicsQueueActionOutcome = typeof GRAPHICS_QUEUE_ACTION_OUTCOMES[number];
+export type GraphicsQueueActionOutcome = (typeof GRAPHICS_QUEUE_ACTION_OUTCOMES)[number];
 
 /**
  * Which outcome each reconciliation rejection reports.
@@ -172,10 +172,8 @@ const REJECTION_OUTCOMES: Record<GraphicsRepairRejectionCode, GraphicsQueueActio
 export function graphicsDiscrepancyQueueOutcome(
 	outcome: GraphicsDiscrepancyActionOutcome,
 ): GraphicsQueueActionOutcome {
-	if (outcome.outcome === 'resolved')
-		return 'completed';
-	if (outcome.outcome === 'unchanged')
-		return 'retryable-unavailable';
+	if (outcome.outcome === 'resolved') return 'completed';
+	if (outcome.outcome === 'unchanged') return 'retryable-unavailable';
 	return REJECTION_OUTCOMES[outcome.code];
 }
 
@@ -192,17 +190,13 @@ export function graphicsDiscrepancyQueueOutcome(
 export function graphicsLifecycleQueueOutcome(
 	outcome: GraphicAssetLifecycleActionOutcome,
 ): GraphicsQueueActionOutcome {
-	return outcome.outcome === 'in-use'
-		? 'reference-blocked'
-		: 'completed';
+	return outcome.outcome === 'in-use' ? 'reference-blocked' : 'completed';
 }
 
 export function graphicsPurgeQueueOutcome(
 	outcome: GraphicAssetPurgeOutcome,
 ): GraphicsQueueActionOutcome {
-	return outcome.outcome === 'in-use'
-		? 'reference-blocked'
-		: 'completed';
+	return outcome.outcome === 'in-use' ? 'reference-blocked' : 'completed';
 }
 
 /**
@@ -217,8 +211,7 @@ export function graphicsPurgeQueueOutcome(
 export function graphicsIngestionRetryQueueOutcome(
 	operation: GraphicsIngestionOperation,
 ): GraphicsQueueActionOutcome {
-	if (operation.stage === 'completed' || operation.stage === 'cancelled')
-		return 'already-in-state';
+	if (operation.stage === 'completed' || operation.stage === 'cancelled') return 'already-in-state';
 	if (operation.stage === 'failed')
 		return operation.failure?.retryable ? 'retryable-unavailable' : 'already-in-state';
 	return 'completed';
@@ -234,9 +227,7 @@ export function graphicsIngestionRetryQueueOutcome(
  * library could not reach is retryable.
  */
 export function graphicsQueueOutcomeFromStatus(status: number): GraphicsQueueActionOutcome {
-	if (status === 404 || status === 409)
-		return 'already-in-state';
-	if (status >= 500)
-		return 'retryable-unavailable';
+	if (status === 404 || status === 409) return 'already-in-state';
+	if (status >= 500) return 'retryable-unavailable';
 	return 'integrity-conflict';
 }

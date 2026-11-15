@@ -7,7 +7,10 @@ import {
 	renderGraphicTextTemplate,
 } from '~~/shared/modules/graphics';
 
-function text(key: string, overrides: Partial<GraphicInputDeclaration> = {}): GraphicInputDeclaration {
+function text(
+	key: string,
+	overrides: Partial<GraphicInputDeclaration> = {},
+): GraphicInputDeclaration {
 	return {
 		type: 'text',
 		key,
@@ -41,18 +44,18 @@ describe('graphicTextTemplate', () => {
 		// A placeholder references a stable input key and nothing else — no property
 		// access, formatting, fallbacks, conditionals, or expressions — so anything
 		// that is not one of those keys is text an author typed.
-		expect(parseGraphicTextTemplate('100% {of 3} {}')).toEqual([
-			{ text: '100% {of 3} {}' },
-		]);
+		expect(parseGraphicTextTemplate('100% {of 3} {}')).toEqual([{ text: '100% {of 3} {}' }]);
 	});
 
 	it('keeps projection-shaped braces literal unless a Broadcast Graphic opts in that projection', () => {
 		const template = 'Contact {profile.handle} at {profile.profileUrl}';
 
-		expect(parseGraphicTextTemplate(template)).toEqual([
-			{ text: template },
-		]);
-		expect(renderGraphicTextTemplate(template, [], {}).map(segment => segment.text).join('')).toBe(template);
+		expect(parseGraphicTextTemplate(template)).toEqual([{ text: template }]);
+		expect(
+			renderGraphicTextTemplate(template, [], {})
+				.map((segment) => segment.text)
+				.join(''),
+		).toBe(template);
 		expect(parseGraphicTextTemplate(template, new Set(['profile']))).toEqual([
 			{ text: 'Contact ' },
 			{ text: '', inputKey: 'profile.handle' },
@@ -66,23 +69,19 @@ describe('graphicTextTemplate', () => {
 	});
 
 	it('renders each placeholder from the accepted value of the input it names', () => {
-		const rendered = renderGraphicTextTemplate(
-			'{name} — {team}',
-			[
-				text('name'),
-				text('team'),
-			],
-			{ name: 'Ava Reed', team: 'Blue' },
-		);
+		const rendered = renderGraphicTextTemplate('{name} — {team}', [text('name'), text('team')], {
+			name: 'Ava Reed',
+			team: 'Blue',
+		});
 
-		expect(rendered.map(segment => segment.text).join('')).toBe('Ava Reed — Blue');
+		expect(rendered.map((segment) => segment.text).join('')).toBe('Ava Reed — Blue');
 		expect(rendered[0]).toEqual({ text: 'Ava Reed', inputKey: 'name' });
 	});
 
 	it('renders a placeholder naming an undeclared input as nothing', () => {
 		const rendered = renderGraphicTextTemplate('[{ghost}]', [], {});
 
-		expect(rendered.map(segment => segment.text).join('')).toBe('[]');
+		expect(rendered.map((segment) => segment.text).join('')).toBe('[]');
 	});
 
 	it('renders nothing for a value that violates its declared constraints', () => {
@@ -90,13 +89,11 @@ describe('graphicTextTemplate', () => {
 		// not truncated into something shorter, it simply does not render.
 		const rendered = renderGraphicTextTemplate(
 			'{name}',
-			[
-				text('name', { maxLength: 4 } as Partial<GraphicInputDeclaration>),
-			],
+			[text('name', { maxLength: 4 } as Partial<GraphicInputDeclaration>)],
 			{ name: 'Ava Reed' },
 		);
 
-		expect(rendered.map(segment => segment.text).join('')).toBe('');
+		expect(rendered.map((segment) => segment.text).join('')).toBe('');
 	});
 
 	it('renders a choice value as the label an operator picked', () => {
@@ -119,23 +116,33 @@ describe('graphicTextTemplate', () => {
 	it('renders a number without formatting it, and a toggle or media not at all', () => {
 		// Broadcast-formatted values are a field-catalogue concern; a placeholder
 		// substitutes a value rather than presenting it.
-		expect(graphicInputTextValue({
-			type: 'number',
-			key: 'life',
-			label: 'Life',
-			required: false,
-			updatePolicy: 'staged',
-			default: null,
-			integer: true,
-		}, 20)).toBe('20');
+		expect(
+			graphicInputTextValue(
+				{
+					type: 'number',
+					key: 'life',
+					label: 'Life',
+					required: false,
+					updatePolicy: 'staged',
+					default: null,
+					integer: true,
+				},
+				20,
+			),
+		).toBe('20');
 
-		expect(graphicInputTextValue({
-			type: 'toggle',
-			key: 'flag',
-			label: 'Flag',
-			required: false,
-			updatePolicy: 'staged',
-			default: false,
-		}, true)).toBe('');
+		expect(
+			graphicInputTextValue(
+				{
+					type: 'toggle',
+					key: 'flag',
+					label: 'Flag',
+					required: false,
+					updatePolicy: 'staged',
+					default: false,
+				},
+				true,
+			),
+		).toBe('');
 	});
 });

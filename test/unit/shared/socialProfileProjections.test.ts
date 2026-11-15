@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { broadcastGraphicsModeConfigSchema } from '~~/server/schemas/api/screen';
-import { addGraphicGroupChild, addGraphicItem, parseGraphicTextTemplate } from '~~/shared/modules/graphics';
+import {
+	addGraphicGroupChild,
+	addGraphicItem,
+	parseGraphicTextTemplate,
+} from '~~/shared/modules/graphics';
 import { readGraphicsPreviewState } from '~/modules/graphics/previewMessages';
 
 const SQUARE = { treatment: 'square' as const, size: 0 };
@@ -39,12 +43,8 @@ function projectedGraphic() {
 	return {
 		id: 'lower-third',
 		name: 'Talent lower third',
-		items: [
-			presentationGroup('profile-group'),
-		],
-		sources: [
-			{ key: 'talent', label: 'Talent', kind: 'talent' as const },
-		],
+		items: [presentationGroup('profile-group')],
+		sources: [{ key: 'talent', label: 'Talent', kind: 'talent' as const }],
 		socialProfileProjections: [
 			{
 				key: 'profile',
@@ -68,24 +68,28 @@ describe('social Profile Projection document validation', () => {
 			selectedTarget: { type: 'canvas' },
 		});
 
-		expect((state as typeof state & { socialProfileValues?: unknown }).socialProfileValues).toEqual({
-			'lower-third': {
-				profile: {
-					network: 'twitch',
-					networkLabel: 'Twitch',
-					handle: 'example',
-					profileUrl: 'https://www.twitch.tv/example',
+		expect((state as typeof state & { socialProfileValues?: unknown }).socialProfileValues).toEqual(
+			{
+				'lower-third': {
+					profile: {
+						network: 'twitch',
+						networkLabel: 'Twitch',
+						handle: 'example',
+						profileUrl: 'https://www.twitch.tv/example',
+					},
 				},
 			},
-		});
+		);
 		expect(graphic).not.toHaveProperty('socialProfileValues');
 	});
 
 	it('parses projected text references as existing placeholder runs', () => {
-		expect(parseGraphicTextTemplate(
-			'On {profile.networkLabel} as {profile.handle}',
-			new Set(['profile']),
-		)).toEqual([
+		expect(
+			parseGraphicTextTemplate(
+				'On {profile.networkLabel} as {profile.handle}',
+				new Set(['profile']),
+			),
+		).toEqual([
 			{ text: 'On ' },
 			{ text: '', inputKey: 'profile.networkLabel' },
 			{ text: ' as ' },
@@ -104,14 +108,15 @@ describe('social Profile Projection document validation', () => {
 			},
 		).graphic;
 		const text = graphic.items[0];
-		if (text?.type !== 'text')
-			throw new Error('expected a Text Graphic Item');
+		if (text?.type !== 'text') throw new Error('expected a Text Graphic Item');
 		text.text = 'Literal {profile.handle}';
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [graphic],
-			channels: [],
-		}).success).toBe(true);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [graphic],
+				channels: [],
+			}).success,
+		).toBe(true);
 	});
 
 	it('accepts multiple named projections onto distinct Presentation Groups', () => {
@@ -120,10 +125,7 @@ describe('social Profile Projection document validation', () => {
 				{
 					id: 'lower-thirds',
 					name: 'Talent lower thirds',
-					items: [
-						presentationGroup('left-profile'),
-						presentationGroup('right-profile'),
-					],
+					items: [presentationGroup('left-profile'), presentationGroup('right-profile')],
 					sources: [
 						{ key: 'left-talent', label: 'Left Talent', kind: 'talent' },
 						{ key: 'right-talent', label: 'Right Talent', kind: 'talent' },
@@ -166,14 +168,18 @@ describe('social Profile Projection document validation', () => {
 		});
 		duplicate.items.push(presentationGroup('other-group'));
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [invalid],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [duplicate],
-			channels: [],
-		}).success).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [invalid],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [duplicate],
+				channels: [],
+			}).success,
+		).toBe(false);
 	});
 
 	it('refuses a projection whose source is missing, non-Talent, or a fixed Event Talent record', () => {
@@ -191,18 +197,24 @@ describe('social Profile Projection document validation', () => {
 			],
 		};
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [missing],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [nonTalent],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [fixedTalent],
-			channels: [],
-		}).success).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [missing],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [nonTalent],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [fixedTalent],
+				channels: [],
+			}).success,
+		).toBe(false);
 	});
 
 	it('requires a distinct ordinary Graphic Group for every projection', () => {
@@ -222,38 +234,40 @@ describe('social Profile Projection document validation', () => {
 			key: 'other-profile',
 		});
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [missing],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [nonGroup],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [shared],
-			channels: [],
-		}).success).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [missing],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [nonGroup],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [shared],
+				channels: [],
+			}).success,
+		).toBe(false);
 	});
 
 	it('pins the projection timing bounds, transition vocabulary, and On-air Update Policy', () => {
 		for (const [field, values] of [
-			[
-				'dwellMs',
-				[1_999, 60_001],
-			],
-			[
-				'transitionDurationMs',
-				[99, 2_001],
-			],
+			['dwellMs', [1_999, 60_001]],
+			['transitionDurationMs', [99, 2_001]],
 		] as const) {
 			for (const value of values) {
 				const graphic = projectedGraphic();
 				graphic.socialProfileProjections[0]![field] = value;
-				expect(broadcastGraphicsModeConfigSchema.safeParse({
-					graphics: [graphic],
-					channels: [],
-				}).success).toBe(false);
+				expect(
+					broadcastGraphicsModeConfigSchema.safeParse({
+						graphics: [graphic],
+						channels: [],
+					}).success,
+				).toBe(false);
 			}
 		}
 		const invalidTransition = projectedGraphic();
@@ -263,18 +277,24 @@ describe('social Profile Projection document validation', () => {
 		const livePolicy = projectedGraphic();
 		livePolicy.socialProfileProjections[0]!.updatePolicy = 'live';
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [invalidTransition],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [invalidPolicy],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [livePolicy],
-			channels: [],
-		}).success).toBe(true);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [invalidTransition],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [invalidPolicy],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [livePolicy],
+				channels: [],
+			}).success,
+		).toBe(true);
 	});
 
 	it('accepts projected text references and a dynamic icon inside the Presentation Group', () => {
@@ -289,21 +309,20 @@ describe('social Profile Projection document validation', () => {
 			id: 'profile-icon',
 		}).graphic;
 		const group = graphic.items[0]!;
-		if (group.type !== 'group')
-			throw new Error('expected the Presentation Group');
-		const text = group.children.find(child => child.type === 'text');
-		if (text?.type !== 'text')
-			throw new Error('expected projected text');
+		if (group.type !== 'group') throw new Error('expected the Presentation Group');
+		const text = group.children.find((child) => child.type === 'text');
+		if (text?.type !== 'text') throw new Error('expected projected text');
 		text.text = '{profile.networkLabel} — {profile.handle} — {profile.profileUrl}';
-		const icon = group.children.find(child => child.type === 'social-network-icon');
-		if (icon?.type !== 'social-network-icon')
-			throw new Error('expected projected icon');
+		const icon = group.children.find((child) => child.type === 'social-network-icon');
+		if (icon?.type !== 'social-network-icon') throw new Error('expected projected icon');
 		icon.network = { projectionKey: 'profile' } as never;
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [graphic],
-			channels: [],
-		}).success).toBe(true);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [graphic],
+				channels: [],
+			}).success,
+		).toBe(true);
 	});
 
 	it('rejects dangling, unsupported, or out-of-group projected text and icon references', () => {
@@ -327,9 +346,8 @@ describe('social Profile Projection document validation', () => {
 			canvasWidth: 1920,
 			canvasHeight: 1080,
 		}).graphic;
-		const outsideText = topLevelDangling.items.find(item => item.id === 'outside-text');
-		if (outsideText?.type !== 'text')
-			throw new Error('expected top-level projected text');
+		const outsideText = topLevelDangling.items.find((item) => item.id === 'outside-text');
+		if (outsideText?.type !== 'text') throw new Error('expected top-level projected text');
 		outsideText.text = '{missing.handle}';
 
 		const outOfGroup = addGraphicItem(projectedGraphic(), {
@@ -338,27 +356,34 @@ describe('social Profile Projection document validation', () => {
 			canvasWidth: 1920,
 			canvasHeight: 1080,
 		}).graphic;
-		const outsideIcon = outOfGroup.items.find(item => item.id === 'outside-icon');
-		if (outsideIcon?.type !== 'social-network-icon')
-			throw new Error('expected dynamic icon');
+		const outsideIcon = outOfGroup.items.find((item) => item.id === 'outside-icon');
+		if (outsideIcon?.type !== 'social-network-icon') throw new Error('expected dynamic icon');
 		outsideIcon.network = { projectionKey: 'profile' };
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [danglingText],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [unsupportedText],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [topLevelDangling],
-			channels: [],
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: [outOfGroup],
-			channels: [],
-		}).success).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [danglingText],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [unsupportedText],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [topLevelDangling],
+				channels: [],
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: [outOfGroup],
+				channels: [],
+			}).success,
+		).toBe(false);
 	});
 
 	it('bounds the total Social Profile Projections on one Broadcast Graphics Screen', () => {
@@ -366,10 +391,9 @@ describe('social Profile Projection document validation', () => {
 			id: `graphic-${graphicIndex}`,
 			name: `Graphic ${graphicIndex}`,
 			items: Array.from({ length: 24 }, (_, projectionIndex) =>
-				presentationGroup(`group-${graphicIndex}-${projectionIndex}`)),
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' as const },
-			],
+				presentationGroup(`group-${graphicIndex}-${projectionIndex}`),
+			),
+			sources: [{ key: 'talent', label: 'Talent', kind: 'talent' as const }],
 			socialProfileProjections: Array.from({ length: 24 }, (_, projectionIndex) => ({
 				key: `profile-${projectionIndex}`,
 				label: `Profile ${projectionIndex}`,
@@ -381,6 +405,8 @@ describe('social Profile Projection document validation', () => {
 			})),
 		}));
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({ graphics, channels: [] }).success).toBe(false);
+		expect(broadcastGraphicsModeConfigSchema.safeParse({ graphics, channels: [] }).success).toBe(
+			false,
+		);
 	});
 });

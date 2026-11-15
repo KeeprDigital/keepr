@@ -19,21 +19,24 @@ import { NUMBER_SCRUB_GESTURE } from '~/modules/graphics/numberScrubGesture';
  */
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<{
-	label: string;
-	modelValue: number | null | undefined;
-	min?: number;
-	max?: number;
-	/** The displayed step: the arrows', and the drag's per 2px. */
-	step?: number;
-	stepSnapping?: boolean;
-	size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-	disabled?: boolean;
-}>(), {
-	step: 1,
-	stepSnapping: undefined,
-	size: 'sm',
-});
+const props = withDefaults(
+	defineProps<{
+		label: string;
+		modelValue: number | null | undefined;
+		min?: number;
+		max?: number;
+		/** The displayed step: the arrows', and the drag's per 2px. */
+		step?: number;
+		stepSnapping?: boolean;
+		size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+		disabled?: boolean;
+	}>(),
+	{
+		step: 1,
+		stepSnapping: undefined,
+		size: 'sm',
+	},
+);
 
 const emit = defineEmits<{ 'update:modelValue': [value: number | null] }>();
 
@@ -60,12 +63,15 @@ const active = shallowRef<ActiveScrub | null>(null);
 let swallowClick = false;
 
 function isDisabled() {
-	return props.disabled || props.modelValue == null || handle.value?.closest('fieldset[disabled]') != null;
+	return (
+		props.disabled ||
+		props.modelValue == null ||
+		handle.value?.closest('fieldset[disabled]') != null
+	);
 }
 
 function start(event: PointerEvent) {
-	if (event.button !== 0 || isDisabled())
-		return;
+	if (event.button !== 0 || isDisabled()) return;
 	event.preventDefault();
 	(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 	swallowClick = false;
@@ -79,8 +85,7 @@ function start(event: PointerEvent) {
 
 function move(event: PointerEvent) {
 	const current = active.value;
-	if (!current || event.pointerId !== current.pointerId)
-		return;
+	if (!current || event.pointerId !== current.pointerId) return;
 	const scrub = scrubNumber(current.scrub, {
 		dx: event.clientX - current.lastX,
 		step: props.step,
@@ -90,22 +95,19 @@ function move(event: PointerEvent) {
 		max: props.max,
 	});
 	const changed = scrub.value !== current.scrub.value;
-	if (changed && !current.changed)
-		gesture?.begin();
+	if (changed && !current.changed) gesture?.begin();
 	active.value = {
 		...current,
 		lastX: event.clientX,
 		scrub,
 		changed: current.changed || changed,
 	};
-	if (changed)
-		emit('update:modelValue', scrub.value);
+	if (changed) emit('update:modelValue', scrub.value);
 }
 
 function end(event?: PointerEvent) {
 	const current = active.value;
-	if (!current || (event && event.pointerId !== current.pointerId))
-		return;
+	if (!current || (event && event.pointerId !== current.pointerId)) return;
 	active.value = null;
 	if (current.changed) {
 		swallowClick = true;
@@ -114,8 +116,7 @@ function end(event?: PointerEvent) {
 }
 
 function click(event: MouseEvent) {
-	if (swallowClick)
-		event.preventDefault();
+	if (swallowClick) event.preventDefault();
 	swallowClick = false;
 }
 
@@ -138,7 +139,8 @@ onBeforeUnmount(() => end());
 				@pointercancel="end"
 				@lostpointercapture="end"
 				@click="click"
-			>{{ label }}</span>
+				>{{ label }}</span
+			>
 		</template>
 		<ScreenSettingsNumberField
 			v-bind="inputAttrs"

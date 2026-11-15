@@ -13,10 +13,10 @@
  * failing closed is safer than emitting a container a receiver cannot read.
  */
 
-const LOCAL_HEADER_SIGNATURE = 0x04034B50;
-const CENTRAL_HEADER_SIGNATURE = 0x02014B50;
-const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054B50;
-const DATA_DESCRIPTOR_SIGNATURE = 0x08074B50;
+const LOCAL_HEADER_SIGNATURE = 0x04034b50;
+const CENTRAL_HEADER_SIGNATURE = 0x02014b50;
+const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
+const DATA_DESCRIPTOR_SIGNATURE = 0x08074b50;
 
 const LOCAL_HEADER_BYTES = 30;
 const CENTRAL_HEADER_BYTES = 46;
@@ -27,8 +27,8 @@ const STORED_METHOD = 0;
 /** Bit 3 moves the CRC and sizes into a trailing data descriptor; bit 11 declares UTF-8 names. */
 const STREAMING_UTF8_FLAGS = 0x0808;
 const VERSION_NEEDED_TO_EXTRACT = 20;
-const MAXIMUM_ENTRY_COUNT = 0xFFFF;
-const MAXIMUM_ENTRY_BYTE_LENGTH = 0xFFFFFFFE;
+const MAXIMUM_ENTRY_COUNT = 0xffff;
+const MAXIMUM_ENTRY_BYTE_LENGTH = 0xfffffffe;
 const MAXIMUM_ENTRY_NAME_BYTES = 200;
 
 /**
@@ -49,15 +49,12 @@ export interface StoredZipEntry {
 let crcTable: Uint32Array | undefined;
 
 function crc32Table(): Uint32Array {
-	if (crcTable)
-		return crcTable;
+	if (crcTable) return crcTable;
 	const table = new Uint32Array(256);
 	for (let index = 0; index < 256; index += 1) {
 		let value = index;
 		for (let bit = 0; bit < 8; bit += 1) {
-			value = value & 1
-				? 0xEDB88320 ^ (value >>> 1)
-				: value >>> 1;
+			value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
 		}
 		table[index] = value >>> 0;
 	}
@@ -68,10 +65,10 @@ function crc32Table(): Uint32Array {
 /** Incremental CRC-32 so an entry never has to be buffered to be checksummed. */
 export function crc32Update(current: number, bytes: Uint8Array): number {
 	const table = crc32Table();
-	let value = (current ^ 0xFFFFFFFF) >>> 0;
+	let value = (current ^ 0xffffffff) >>> 0;
 	for (let index = 0; index < bytes.length; index += 1)
-		value = (table[(value ^ bytes[index]!) & 0xFF]! ^ (value >>> 8)) >>> 0;
-	return (value ^ 0xFFFFFFFF) >>> 0;
+		value = (table[(value ^ bytes[index]!) & 0xff]! ^ (value >>> 8)) >>> 0;
+	return (value ^ 0xffffffff) >>> 0;
 }
 
 export function crc32(bytes: Uint8Array): number {
@@ -95,7 +92,7 @@ function assertSafeEntryNames(entries: readonly { name: string }[]): void {
 			throw new StoredZipArchiveError(`Archive entry name "${name}" is empty or too long`);
 		if (!/^[\w.-]+(?:\/[\w.-]+)*$/.test(name))
 			throw new StoredZipArchiveError(`Archive entry name "${name}" is not a safe relative path`);
-		if (name.split('/').some(segment => segment === '.' || segment === '..'))
+		if (name.split('/').some((segment) => segment === '.' || segment === '..'))
 			throw new StoredZipArchiveError(`Archive entry name "${name}" traverses its archive`);
 		const collisionKey = name.toLowerCase();
 		if (seen.has(collisionKey))
@@ -133,16 +130,16 @@ export function storedZipArchiveByteLength(
  * reach these; they exist so a future caller cannot silently emit a container no
  * reader could open.
  */
-function assertWritableArchive(
-	entries: readonly { name: string; byteLength: number }[],
-): void {
+function assertWritableArchive(entries: readonly { name: string; byteLength: number }[]): void {
 	if (entries.length > MAXIMUM_ENTRY_COUNT)
 		throw new StoredZipArchiveError('Archive has more entries than a non-Zip64 archive can record');
 	for (const entry of entries) {
 		if (!Number.isSafeInteger(entry.byteLength) || entry.byteLength < 0)
 			throw new StoredZipArchiveError(`Archive entry "${entry.name}" has an invalid byte length`);
 		if (entry.byteLength > MAXIMUM_ENTRY_BYTE_LENGTH)
-			throw new StoredZipArchiveError(`Archive entry "${entry.name}" is too large for a non-Zip64 archive`);
+			throw new StoredZipArchiveError(
+				`Archive entry "${entry.name}" is too large for a non-Zip64 archive`,
+			);
 	}
 	if (storedZipArchiveByteLength(entries) > MAXIMUM_ENTRY_BYTE_LENGTH)
 		throw new StoredZipArchiveError('Archive is too large for a non-Zip64 archive');
@@ -229,8 +226,7 @@ async function* archiveChunks(entries: readonly StoredZipEntry[]): AsyncGenerato
 		try {
 			for (;;) {
 				const { done, value } = await reader.read();
-				if (done)
-					break;
+				if (done) break;
 				observedByteLength += value.byteLength;
 				if (observedByteLength > entry.byteLength) {
 					throw new StoredZipArchiveError(
@@ -242,13 +238,11 @@ async function* archiveChunks(entries: readonly StoredZipEntry[]): AsyncGenerato
 				yield value;
 			}
 			drained = true;
-		}
-		finally {
+		} finally {
 			// An abandoned generator — a client aborting the download, or an entry
 			// failing mid-stream — must release the source it opened. Without this
 			// the in-flight canonical body stays open for the rest of the request.
-			if (!drained)
-				await reader.cancel().catch(() => {});
+			if (!drained) await reader.cancel().catch(() => {});
 			reader.releaseLock();
 		}
 		if (observedByteLength !== entry.byteLength) {
@@ -260,12 +254,14 @@ async function* archiveChunks(entries: readonly StoredZipEntry[]): AsyncGenerato
 		const descriptor = dataDescriptor(crc, observedByteLength);
 		offset += descriptor.byteLength;
 		yield descriptor;
-		directory.push(centralHeader({
-			name,
-			crc,
-			byteLength: observedByteLength,
-			localHeaderOffset,
-		}));
+		directory.push(
+			centralHeader({
+				name,
+				crc,
+				byteLength: observedByteLength,
+				localHeaderOffset,
+			}),
+		);
 	}
 
 	const centralDirectoryOffset = offset;

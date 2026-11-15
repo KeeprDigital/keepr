@@ -13,12 +13,12 @@ import { MAX_GRAPHIC_FILL_STOPS, MIN_GRAPHIC_FILL_STOPS } from '../../types/grap
  */
 
 /** One author change to a Graphic Fill. `color` is in the host's own vocabulary. */
-export type GraphicFillEdit
-	= | { kind: 'fill-kind'; fillKind: GraphicFillKind }
-		| { kind: 'solid-fill'; color: string }
-		| { kind: 'gradient-angle'; angle: number }
-		| { kind: 'gradient-stop'; index: number; patch: Partial<GraphicFillStop> }
-		| { kind: 'stop-count'; delta: 1 | -1 };
+export type GraphicFillEdit =
+	| { kind: 'fill-kind'; fillKind: GraphicFillKind }
+	| { kind: 'solid-fill'; color: string }
+	| { kind: 'gradient-angle'; angle: number }
+	| { kind: 'gradient-stop'; index: number; patch: Partial<GraphicFillStop> }
+	| { kind: 'stop-count'; delta: 1 | -1 };
 
 export interface ApplyGraphicFillEditOptions {
 	/**
@@ -29,9 +29,7 @@ export interface ApplyGraphicFillEditOptions {
 }
 
 function currentFillColor(fill: GraphicFill): string {
-	return fill.type === 'solid'
-		? fill.color
-		: (fill.stops[0]?.color ?? '');
+	return fill.type === 'solid' ? fill.color : (fill.stops[0]?.color ?? '');
 }
 
 /**
@@ -50,8 +48,7 @@ export function applyGraphicFillEdit(
 ): GraphicFill {
 	switch (edit.kind) {
 		case 'fill-kind': {
-			if (fill.type === edit.fillKind)
-				return fill;
+			if (fill.type === edit.fillKind) return fill;
 			const color = currentFillColor(fill);
 			return edit.fillKind === 'solid'
 				? { type: 'solid', color }
@@ -65,28 +62,24 @@ export function applyGraphicFillEdit(
 					};
 		}
 		case 'solid-fill':
-			return fill.type === 'solid'
-				? { type: 'solid', color: edit.color }
-				: fill;
+			return fill.type === 'solid' ? { type: 'solid', color: edit.color } : fill;
 		case 'gradient-angle':
-			return fill.type === 'linear-gradient'
-				? { ...fill, angle: edit.angle }
-				: fill;
+			return fill.type === 'linear-gradient' ? { ...fill, angle: edit.angle } : fill;
 		case 'gradient-stop':
-			if (fill.type !== 'linear-gradient')
-				return fill;
+			if (fill.type !== 'linear-gradient') return fill;
 			return {
 				...fill,
-				stops: fill.stops.map((stop, index) => index === edit.index
-					? {
-							...stop,
-							...edit.patch,
-						}
-					: stop),
+				stops: fill.stops.map((stop, index) =>
+					index === edit.index
+						? {
+								...stop,
+								...edit.patch,
+							}
+						: stop,
+				),
 			};
 		case 'stop-count': {
-			if (fill.type !== 'linear-gradient')
-				return fill;
+			if (fill.type !== 'linear-gradient') return fill;
 			if (edit.delta === 1 && fill.stops.length < MAX_GRAPHIC_FILL_STOPS) {
 				return {
 					...fill,

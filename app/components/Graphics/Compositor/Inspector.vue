@@ -176,36 +176,36 @@ const emit = defineEmits<{ 'update:graphics': [graphics: BroadcastGraphicConfig[
  */
 const { canAuthor, editItem, editGraphic, bindThemeToken, detachThemeToken } = useCompositorEditing(
 	() => props,
-	graphics => emit('update:graphics', graphics),
+	(graphics) => emit('update:graphics', graphics),
 );
 
 const OVERFLOW_POLICY_OPTIONS = [
 	{ label: 'Clip', value: 'clip' },
 	{ label: 'Ellipsis', value: 'ellipsis' },
 	{ label: 'Shrink then ellipsis', value: 'shrink' },
-] satisfies Array<{ label: string; value: typeof TEXT_OVERFLOW_POLICY_VALUES[number] }>;
-const TEXT_ALIGN_OPTIONS = GRAPHIC_TEXT_ALIGN_VALUES.map(value => ({
+] satisfies Array<{ label: string; value: (typeof TEXT_OVERFLOW_POLICY_VALUES)[number] }>;
+const TEXT_ALIGN_OPTIONS = GRAPHIC_TEXT_ALIGN_VALUES.map((value) => ({
 	label: optionLabel(value),
 	value,
 	icon: `i-lucide-align-${value}`,
 }));
-const PLAYER_LIFE_ANIMATION_OPTIONS = PLAYER_LIFE_ANIMATION_VALUES.map(value => ({
+const PLAYER_LIFE_ANIMATION_OPTIONS = PLAYER_LIFE_ANIMATION_VALUES.map((value) => ({
 	label: optionLabel(value),
 	value,
 }));
-const GAME_WINS_DISPLAY_MODE_OPTIONS = GAME_WINS_DISPLAY_MODE_VALUES.map(value => ({
+const GAME_WINS_DISPLAY_MODE_OPTIONS = GAME_WINS_DISPLAY_MODE_VALUES.map((value) => ({
 	label: optionLabel(value),
 	value,
 }));
-const GAME_WINS_BOX_ORIENTATION_OPTIONS = GAME_WINS_BOX_ORIENTATION_VALUES.map(value => ({
+const GAME_WINS_BOX_ORIENTATION_OPTIONS = GAME_WINS_BOX_ORIENTATION_VALUES.map((value) => ({
 	label: optionLabel(value),
 	value,
 }));
-const DECK_LIST_VIEW_OPTIONS = DECK_LIST_VIEW_VALUES.map(value => ({
+const DECK_LIST_VIEW_OPTIONS = DECK_LIST_VIEW_VALUES.map((value) => ({
 	label: optionLabel(value),
 	value,
 }));
-const SOCIAL_NETWORK_OPTIONS = SUPPORTED_SOCIAL_NETWORKS.map(network => ({
+const SOCIAL_NETWORK_OPTIONS = SUPPORTED_SOCIAL_NETWORKS.map((network) => ({
 	label: network.label,
 	value: network.key,
 }));
@@ -214,18 +214,26 @@ const SOCIAL_NETWORK_ICON_SOURCE_OPTIONS = [
 	{ label: 'Social Profile Projection', value: 'projection' },
 ];
 /** Icon-only, named for assistive technology. */
-const TEXT_ALIGN_ITEMS = TEXT_ALIGN_OPTIONS.map(option => ({ value: option.value, icon: option.icon, ariaLabel: `Align ${option.value}` }));
-const ARRANGEMENT_ICONS = { row: 'i-lucide-columns-3', column: 'i-lucide-rows-3', canvas: 'i-lucide-move' } as const;
-const ARRANGEMENT_OPTIONS = GRAPHIC_GROUP_ARRANGEMENT_VALUES.map(value => ({
+const TEXT_ALIGN_ITEMS = TEXT_ALIGN_OPTIONS.map((option) => ({
+	value: option.value,
+	icon: option.icon,
+	ariaLabel: `Align ${option.value}`,
+}));
+const ARRANGEMENT_ICONS = {
+	row: 'i-lucide-columns-3',
+	column: 'i-lucide-rows-3',
+	canvas: 'i-lucide-move',
+} as const;
+const ARRANGEMENT_OPTIONS = GRAPHIC_GROUP_ARRANGEMENT_VALUES.map((value) => ({
 	label: optionLabel(value),
 	value,
 	icon: ARRANGEMENT_ICONS[value],
 }));
-const ALIGN_OPTIONS = GRAPHIC_GROUP_ALIGN_VALUES.map(value => ({
+const ALIGN_OPTIONS = GRAPHIC_GROUP_ALIGN_VALUES.map((value) => ({
 	label: optionLabel(value),
 	value,
 }));
-const JUSTIFY_OPTIONS = GRAPHIC_GROUP_JUSTIFY_VALUES.map(value => ({
+const JUSTIFY_OPTIONS = GRAPHIC_GROUP_JUSTIFY_VALUES.map((value) => ({
 	label: optionLabel(value),
 	value,
 }));
@@ -239,8 +247,12 @@ const SIZING_MODE_OPTIONS = [
  * so every control shows what goes on air. Edits still start from the stored
  * stack, which the editing chain paints the same way.
  */
-const previewedGraphics = computed(() => paintGraphicsThemeBindings(props.graphics, props.themeTokens));
-const selection = computed(() => resolveGraphicsSelection(previewedGraphics.value, props.selectedTarget));
+const previewedGraphics = computed(() =>
+	paintGraphicsThemeBindings(props.graphics, props.themeTokens),
+);
+const selection = computed(() =>
+	resolveGraphicsSelection(previewedGraphics.value, props.selectedTarget),
+);
 /** What is selected, as opposed to `selection`, which is a new object on every stack change. */
 const selectionKey = computed(() => graphicsSelectionKey(props.selectedTarget));
 
@@ -278,43 +290,35 @@ const header = computed(() => {
 	};
 });
 
-const selectedItem = computed(() => selection.value.kind === 'item'
-	? selection.value.item
-	: null);
+const selectedItem = computed(() =>
+	selection.value.kind === 'item' ? selection.value.item : null,
+);
 const parentGroup = computed<GraphicGroupItemConfig | null>(() =>
-	selection.value.kind === 'item'
-		? selection.value.group ?? null
-		: null,
+	selection.value.kind === 'item' ? (selection.value.group ?? null) : null,
 );
 const selectedTextItem = computed<TextGraphicItemConfig | null>(() =>
-	selectedItem.value?.type === 'text'
-		? selectedItem.value
-		: null,
+	selectedItem.value?.type === 'text' ? selectedItem.value : null,
 );
 const selectedMediaItem = computed<MediaGraphicItemConfig | null>(() =>
-	selectedItem.value?.type === 'media'
-		? selectedItem.value
-		: null,
+	selectedItem.value?.type === 'media' ? selectedItem.value : null,
 );
 const selectedSocialNetworkIcon = computed<SocialNetworkIconGraphicItemConfig | null>(() =>
-	selectedItem.value?.type === 'social-network-icon'
-		? selectedItem.value
-		: null,
+	selectedItem.value?.type === 'social-network-icon' ? selectedItem.value : null,
 );
 const socialProfileProjectionOptions = computed(() => {
 	const current = selection.value;
-	if (current.kind !== 'item' || !current.group)
-		return [];
+	if (current.kind !== 'item' || !current.group) return [];
 	return (current.graphic.socialProfileProjections ?? [])
-		.filter(projection => projection.presentationGroupId === current.group?.id)
-		.map(projection => ({ label: projection.label, value: projection.key }));
+		.filter((projection) => projection.presentationGroupId === current.group?.id)
+		.map((projection) => ({ label: projection.label, value: projection.key }));
 });
 const invalidSocialNetworkIconProjection = computed(() => {
 	const icon = selectedSocialNetworkIcon.value;
 	const network = icon?.network;
-	if (!network || typeof network === 'string')
-		return false;
-	return !socialProfileProjectionOptions.value.some(option => option.value === network.projectionKey);
+	if (!network || typeof network === 'string') return false;
+	return !socialProfileProjectionOptions.value.some(
+		(option) => option.value === network.projectionKey,
+	);
 });
 
 function updateSocialNetworkIconSource(source: 'static' | 'projection') {
@@ -330,19 +334,13 @@ function updateSocialNetworkIconSource(source: 'static' | 'projection') {
 	}
 }
 const selectedGroup = computed<GraphicGroupItemConfig | null>(() =>
-	selectedItem.value?.type === 'group'
-		? selectedItem.value
-		: null,
+	selectedItem.value?.type === 'group' ? selectedItem.value : null,
 );
 const selectedPlayerLife = computed<PlayerLifeGraphicItemConfig | null>(() =>
-	selectedItem.value?.type === 'player-life'
-		? selectedItem.value
-		: null,
+	selectedItem.value?.type === 'player-life' ? selectedItem.value : null,
 );
 const selectedSeatIndicator = computed<SeatIndicatorGraphicItemConfig | null>(() =>
-	selectedItem.value?.type === 'seat-indicator'
-		? selectedItem.value
-		: null,
+	selectedItem.value?.type === 'seat-indicator' ? selectedItem.value : null,
 );
 /** The states a Seat Indicator can mark, as its author reads them. */
 const SEAT_INDICATOR_STATE_OPTIONS = [
@@ -350,17 +348,17 @@ const SEAT_INDICATOR_STATE_OPTIONS = [
 	{ label: 'Eliminated', value: 'eliminated' },
 ] satisfies Array<{ label: string; value: SeatIndicatorState }>;
 /** Only a Commander game eliminates a Seat, so only its host is offered that state (ADR-0087). */
-const seatIndicatorStateOptions = computed(() => SEAT_INDICATOR_STATE_OPTIONS
-	.filter(option => option.value !== 'eliminated' || props.contract.contextKinds.includes('commander-game')));
+const seatIndicatorStateOptions = computed(() =>
+	SEAT_INDICATOR_STATE_OPTIONS.filter(
+		(option) =>
+			option.value !== 'eliminated' || props.contract.contextKinds.includes('commander-game'),
+	),
+);
 const selectedGameWins = computed<GameWinsGraphicItemConfig | null>(() =>
-	selectedItem.value?.type === 'game-wins'
-		? selectedItem.value
-		: null,
+	selectedItem.value?.type === 'game-wins' ? selectedItem.value : null,
 );
 const selectedDeckList = computed<DeckListGraphicItemConfig | null>(() =>
-	selectedItem.value?.type === 'deck-list'
-		? selectedItem.value
-		: null,
+	selectedItem.value?.type === 'deck-list' ? selectedItem.value : null,
 );
 
 /**
@@ -370,15 +368,13 @@ const selectedDeckList = computed<DeckListGraphicItemConfig | null>(() =>
  * typography Theme binding slot reads the same declaration.
  */
 const selectedTypography = computed<GraphicTypography | null>(() =>
-	selectedItem.value
-		? paintedGraphicTypography(selectedItem.value)
-		: null);
+	selectedItem.value ? paintedGraphicTypography(selectedItem.value) : null,
+);
 
 /** The Text Overflow Policy of a selection whose Definition says its text can outgrow its bounds. */
 const selectedTextOverflow = computed(() => {
 	const item = selectedItem.value;
-	if (!item || !ownsTextOverflowPolicy(item))
-		return null;
+	if (!item || !ownsTextOverflowPolicy(item)) return null;
 	return { overflowPolicy: item.overflowPolicy, minFontSize: item.minFontSize };
 });
 
@@ -393,20 +389,17 @@ const selectedTextOverflow = computed(() => {
  */
 const selectedPlayerSideItem = computed<GraphicPlayerSideItem | null>(() => {
 	const item = selectedItem.value;
-	return item && ownsPlayerSide(item)
-		? item
-		: null;
+	return item && ownsPlayerSide(item) ? item : null;
 });
 
 /** The Seats the selected item can read, of those its host supplies: a pair's two, or any of a Commander Slot's four (ADR-0087). */
 const playerSideOptions = computed(() => {
 	const item = selectedPlayerSideItem.value;
-	if (!item)
-		return [];
+	if (!item) return [];
 	const reads = graphicItemKindSeats(item.type);
 	return (props.contract.seats ?? [])
-		.filter(option => reads.includes(option.seat))
-		.map(option => ({ label: option.label, value: option.seat }));
+		.filter((option) => reads.includes(option.seat))
+		.map((option) => ({ label: option.label, value: option.seat }));
 });
 
 /**
@@ -422,23 +415,22 @@ const playerSideOptions = computed(() => {
  * whichever geometry they edit.
  */
 const selectedShapeGeometry = computed<OwnedShapeGeometry | null>(() =>
-	selectedItem.value
-		? paintedShapeGeometry(selectedItem.value)
-		: null);
+	selectedItem.value ? paintedShapeGeometry(selectedItem.value) : null,
+);
 
 /** Named for what it shapes, because a win box's geometry is not the item's own bounds. */
 const geometryTitle = computed(() =>
-	selectedShapeGeometry.value?.slot === 'boxGeometry'
-		? 'Win box Shape Geometry'
-		: 'Shape Geometry',
+	selectedShapeGeometry.value?.slot === 'boxGeometry' ? 'Win box Shape Geometry' : 'Shape Geometry',
 );
 
 /** Only a canvas-positioned item has a coordinate and a Graphic Rotation. */
-const isCanvasPositioned = computed(() =>
-	selectedItem.value !== null && (parentGroup.value === null || parentGroup.value.arrangement === 'canvas'),
+const isCanvasPositioned = computed(
+	() =>
+		selectedItem.value !== null &&
+		(parentGroup.value === null || parentGroup.value.arrangement === 'canvas'),
 );
-const isStackedChild = computed(() =>
-	parentGroup.value !== null && parentGroup.value.arrangement !== 'canvas',
+const isStackedChild = computed(
+	() => parentGroup.value !== null && parentGroup.value.arrangement !== 'canvas',
 );
 
 /**
@@ -449,50 +441,48 @@ const isStackedChild = computed(() =>
  * with none of its own inherits the group's local style default, which is edited on
  * the group itself.
  */
-const selectedSurfaces = computed<Partial<Record<GraphicSurfaceStyleSlot, GraphicSurfaceStyle | null>>>(() =>
-	selectedItem.value
-		? paintedGraphicSurfaceStyles(selectedItem.value)
-		: {});
+const selectedSurfaces = computed<
+	Partial<Record<GraphicSurfaceStyleSlot, GraphicSurfaceStyle | null>>
+>(() => (selectedItem.value ? paintedGraphicSurfaceStyles(selectedItem.value) : {}));
 
 /* ── Section titles and the summaries a collapsed section shows ── */
 
-const hasContentSection = computed(() => Boolean(
-	selectedPlayerSideItem.value
-	|| selectedPlayerLife.value
-	|| selectedGameWins.value
-	|| selectedDeckList.value
-	|| selectedTextItem.value
-	|| selectedSocialNetworkIcon.value
-	|| selectedMediaItem.value,
-));
+const hasContentSection = computed(() =>
+	Boolean(
+		selectedPlayerSideItem.value ||
+		selectedPlayerLife.value ||
+		selectedGameWins.value ||
+		selectedDeckList.value ||
+		selectedTextItem.value ||
+		selectedSocialNetworkIcon.value ||
+		selectedMediaItem.value,
+	),
+);
 
 /** The kind-specific section is named for the kind: Text, Media, Game Wins… */
-const contentTitle = computed(() => selectedItem.value
-	? graphicItemKindLabel(selectedItem.value.type)
-	: 'Content');
+const contentTitle = computed(() =>
+	selectedItem.value ? graphicItemKindLabel(selectedItem.value.type) : 'Content',
+);
 
-const hasSurfaceSection = computed(() =>
-	'surfaceStyle' in selectedSurfaces.value
-	|| 'boxSurfaceStyle' in selectedSurfaces.value
-	|| 'wonBoxSurfaceStyle' in selectedSurfaces.value);
+const hasSurfaceSection = computed(
+	() =>
+		'surfaceStyle' in selectedSurfaces.value ||
+		'boxSurfaceStyle' in selectedSurfaces.value ||
+		'wonBoxSurfaceStyle' in selectedSurfaces.value,
+);
 
 const layoutSummary = computed(() => {
 	const item = selectedItem.value;
-	if (!item)
-		return undefined;
+	if (!item) return undefined;
 	const size = `${Math.round(item.width)}×${Math.round(item.height)}`;
-	if (!isCanvasPositioned.value)
-		return size;
-	const rotation = item.rotation
-		? ` · ${item.rotation}°`
-		: '';
+	if (!isCanvasPositioned.value) return size;
+	const rotation = item.rotation ? ` · ${item.rotation}°` : '';
 	return `${Math.round(item.x)}, ${Math.round(item.y)} · ${size}${rotation}`;
 });
 
 const groupSummary = computed(() => {
 	const group = selectedGroup.value;
-	if (!group)
-		return undefined;
+	if (!group) return undefined;
 	return group.arrangement === 'canvas'
 		? `canvas · ${group.children.length} items`
 		: `${group.arrangement} · gap ${group.gap} · ${group.children.length} items`;
@@ -507,54 +497,45 @@ const typographySummary = computed(() => {
 
 const shapeSummary = computed(() => {
 	const geometry = selectedShapeGeometry.value?.geometry;
-	if (!geometry)
-		return undefined;
-	const treatments = new Set([
-		geometry.topLeft,
-		geometry.topRight,
-		geometry.bottomRight,
-		geometry.bottomLeft,
-	].map(corner => corner.treatment));
-	const corners = treatments.size === 1
-		? `${[...treatments][0]} corners`
-		: 'mixed corners';
-	return geometry.leftSlant || geometry.rightSlant
-		? `${corners} · slanted`
-		: corners;
+	if (!geometry) return undefined;
+	const treatments = new Set(
+		[geometry.topLeft, geometry.topRight, geometry.bottomRight, geometry.bottomLeft].map(
+			(corner) => corner.treatment,
+		),
+	);
+	const corners = treatments.size === 1 ? `${[...treatments][0]} corners` : 'mixed corners';
+	return geometry.leftSlant || geometry.rightSlant ? `${corners} · slanted` : corners;
 });
 
 const surfaceSummary = computed(() => {
 	const surface = selectedSurfaces.value.surfaceStyle;
-	if (surface === undefined)
-		return undefined;
-	if (surface === null)
-		return 'None';
-	const fill = surface.fill.type === 'solid'
-		? surface.fill.color
-		: `${surface.fill.type} fill`;
-	return surface.outline
-		? `${fill} · outline`
-		: fill;
+	if (surface === undefined) return undefined;
+	if (surface === null) return 'None';
+	const fill = surface.fill.type === 'solid' ? surface.fill.color : `${surface.fill.type} fill`;
+	return surface.outline ? `${fill} · outline` : fill;
 });
 
 /** The lifecycle phases the selection animates, in lifecycle order. */
 const animationSummary = computed(() => {
 	const current = selection.value;
-	const animation = current.kind === 'graphic'
-		? current.graphic.animation
-		: current.kind === 'item'
-			? current.item.animation
-			: undefined;
-	const phases = GRAPHIC_ANIMATION_PHASE_VALUES.filter(phase => animation?.[phase]);
+	const animation =
+		current.kind === 'graphic'
+			? current.graphic.animation
+			: current.kind === 'item'
+				? current.item.animation
+				: undefined;
+	const phases = GRAPHIC_ANIMATION_PHASE_VALUES.filter((phase) => animation?.[phase]);
 	return phases.length > 0
-		? phases.map(phase => GRAPHIC_ANIMATION_PHASE_LABELS[phase]).join(' · ')
+		? phases.map((phase) => GRAPHIC_ANIMATION_PHASE_LABELS[phase]).join(' · ')
 		: 'None';
 });
 
 /** A Geometry Unit projects against the containing canvas — a Graphic Group for its children. */
-const geometryContainer = computed(() => parentGroup.value
-	? { width: parentGroup.value.width, height: parentGroup.value.height }
-	: { width: props.canvasWidth, height: props.canvasHeight });
+const geometryContainer = computed(() =>
+	parentGroup.value
+		? { width: parentGroup.value.width, height: parentGroup.value.height }
+		: { width: props.canvasWidth, height: props.canvasHeight },
+);
 
 /** The Foundation Token one slot of the selected Graphic Item follows, if any. */
 function themeBindingFor(slot: GraphicThemeSlot): string | undefined {
@@ -573,8 +554,9 @@ function themeBindingFor(slot: GraphicThemeSlot): string | undefined {
  */
 const fontSourceOverride = ref<GraphicFontSelection['kind']>();
 const selectedFont = computed(() => selectedTypography.value?.font);
-const fontSource = computed<GraphicFontSource>(() =>
-	fontSourceOverride.value ?? selectedFont.value?.kind ?? 'application');
+const fontSource = computed<GraphicFontSource>(
+	() => fontSourceOverride.value ?? selectedFont.value?.kind ?? 'application',
+);
 
 watch(selectionKey, () => {
 	fontSourceOverride.value = undefined;
@@ -591,8 +573,7 @@ watch(selectionKey, () => {
  * a cast made this the one invariant of the shared control nothing checked (#199).
  */
 function updateFontSource(source: GraphicFontSource) {
-	if (source === 'base')
-		return;
+	if (source === 'base') return;
 	fontSourceOverride.value = source;
 	if (source === 'application' && selectedFont.value?.kind === 'asset') {
 		editItem(patchGraphicTypography, {
@@ -618,10 +599,8 @@ function clearFontAsset() {
 /** A cleared opacity is opaque again and a cleared playback rate is normal speed. */
 function updateMediaFields(patch: MediaFieldsPatch) {
 	const { focalPosition, ...rest } = resolveMediaFieldsPatch(patch);
-	if (focalPosition)
-		editItem(patchMediaFocalPosition, focalPosition);
-	else
-		editItem(patchMediaGraphicItem, rest);
+	if (focalPosition) editItem(patchMediaFocalPosition, focalPosition);
+	else editItem(patchMediaGraphicItem, rest);
 }
 
 /**
@@ -631,9 +610,7 @@ function updateMediaFields(patch: MediaFieldsPatch) {
 function selectMediaAsset(asset: GraphicAsset, reference: GraphicAssetReference) {
 	editItem(selectMediaGraphicItemAsset, {
 		asset: reference,
-		mediaKind: asset.kind === 'silent-video'
-			? 'silent-video'
-			: 'image',
+		mediaKind: asset.kind === 'silent-video' ? 'silent-video' : 'image',
 	});
 }
 
@@ -649,9 +626,7 @@ function selectMediaAsset(asset: GraphicAsset, reference: GraphicAssetReference)
  * input — so this panel appears with the Broadcast Graphic selected.
  */
 const selectedGraphicInputs = computed<GraphicInputDeclaration[]>(() =>
-	selection.value.kind === 'graphic'
-		? selection.value.graphic.inputs ?? []
-		: [],
+	selection.value.kind === 'graphic' ? (selection.value.graphic.inputs ?? []) : [],
 );
 
 /**
@@ -682,35 +657,37 @@ const hostTokens = computed(() => graphicsHostTokenCatalogue(props.contract));
  */
 const availablePlaceholders = computed<Array<{ key: string; label: string }>>(() => {
 	if (!authorsInputs.value)
-		return hostTokens.value.map(token => ({ key: token.key, label: token.label }));
+		return hostTokens.value.map((token) => ({ key: token.key, label: token.label }));
 
 	const current = selection.value;
-	if (current.kind !== 'graphic' && current.kind !== 'item')
-		return [];
-	const inputs = (current.graphic.inputs ?? []).map(input => ({ key: input.key, label: input.label }));
+	if (current.kind !== 'graphic' && current.kind !== 'item') return [];
+	const inputs = (current.graphic.inputs ?? []).map((input) => ({
+		key: input.key,
+		label: input.label,
+	}));
 	const valueLabels = {
 		networkLabel: 'Projected network label',
 		handle: 'Projected handle',
 		profileUrl: 'Projected profile URL',
 	} as const;
-	const projections = current.kind === 'item'
-		? (current.graphic.socialProfileProjections ?? []).filter(projection =>
-				projection.presentationGroupId === current.group?.id,
-			)
-		: current.graphic.socialProfileProjections ?? [];
-	const projected = projections.flatMap(projection =>
-		SOCIAL_PROFILE_PROJECTED_TEXT_VALUE_VALUES.map(value => ({
+	const projections =
+		current.kind === 'item'
+			? (current.graphic.socialProfileProjections ?? []).filter(
+					(projection) => projection.presentationGroupId === current.group?.id,
+				)
+			: (current.graphic.socialProfileProjections ?? []);
+	const projected = projections.flatMap((projection) =>
+		SOCIAL_PROFILE_PROJECTED_TEXT_VALUE_VALUES.map((value) => ({
 			key: `${projection.key}.${value}`,
 			label: `${valueLabels[value]} — ${projection.label}`,
 		})),
 	);
-	return [
-		...inputs,
-		...projected,
-	];
+	return [...inputs, ...projected];
 });
 
-const availablePlaceholderKeys = computed(() => availablePlaceholders.value.map(entry => entry.key));
+const availablePlaceholderKeys = computed(() =>
+	availablePlaceholders.value.map((entry) => entry.key),
+);
 
 /**
  * The `{inputKey}` placeholders of the selected Text Graphic Item that nothing
@@ -724,17 +701,16 @@ const availablePlaceholderKeys = computed(() => availablePlaceholders.value.map(
  */
 const unresolvedPlaceholders = computed<string[]>(() => {
 	const item = selectedTextItem.value;
-	if (!item)
-		return [];
+	if (!item) return [];
 
 	const available = new Set(availablePlaceholderKeys.value);
 	return [
 		...graphicTextTemplateInputKeys(item.text),
 		...graphicTextTemplateDottedPlaceholderKeys(item.text),
-	].filter(key => !available.has(key));
+	].filter((key) => !available.has(key));
 });
 
-const INPUT_TYPE_OPTIONS = GRAPHIC_INPUT_TYPE_VALUES.map(value => ({ label: value, value }));
+const INPUT_TYPE_OPTIONS = GRAPHIC_INPUT_TYPE_VALUES.map((value) => ({ label: value, value }));
 const UPDATE_POLICY_OPTIONS = [
 	{ label: 'Staged', value: 'staged' },
 	{ label: 'Live', value: 'live' },
@@ -770,12 +746,10 @@ function placeholderToken(key: string): string {
  */
 function appendHostToken(key: string) {
 	const item = selectedTextItem.value;
-	if (!item)
-		return;
+	if (!item) return;
 
 	const next = `${item.text}${placeholderToken(key)}`;
-	if (next.length <= MAX_GRAPHIC_TEXT_LENGTH)
-		editItem(patchTextGraphicItem, { text: next });
+	if (next.length <= MAX_GRAPHIC_TEXT_LENGTH) editItem(patchTextGraphicItem, { text: next });
 }
 
 /**
@@ -811,8 +785,7 @@ function relabelItem(label: string) {
  * the Screen's mode configuration unchanged.
  */
 function updateInput(key: string, patch: Partial<Omit<GraphicInputDeclaration, 'key' | 'type'>>) {
-	if (patch.label !== undefined && patch.label.trim() === '')
-		return;
+	if (patch.label !== undefined && patch.label.trim() === '') return;
 	editGraphic(patchGraphicInput, key, patch);
 }
 
@@ -825,23 +798,27 @@ function updateInput(key: string, patch: Partial<Omit<GraphicInputDeclaration, '
  */
 function choiceOptionsText(input: GraphicInputDeclaration): string {
 	return input.type === 'choice'
-		? input.options.map(option => `${option.value}=${option.label}`).join('\n')
+		? input.options.map((option) => `${option.value}=${option.label}`).join('\n')
 		: '';
 }
 
 function parseChoiceOptions(key: string, value: string) {
 	const options = value
 		.split('\n')
-		.map(line => line.trim())
-		.filter(line => line.length > 0)
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0)
 		.map((line) => {
 			const [optionValue, ...rest] = line.split('=');
 			const trimmed = (optionValue ?? '').trim();
 			return { value: trimmed, label: rest.join('=').trim() || trimmed };
 		})
-		.filter(option => option.value.length > 0);
+		.filter((option) => option.value.length > 0);
 
-	editGraphic(setGraphicInputChoiceOptions, key, options.slice(0, MAX_GRAPHIC_INPUT_CHOICE_OPTIONS));
+	editGraphic(
+		setGraphicInputChoiceOptions,
+		key,
+		options.slice(0, MAX_GRAPHIC_INPUT_CHOICE_OPTIONS),
+	);
 }
 
 /**
@@ -857,9 +834,7 @@ function parseChoiceOptions(key: string, value: string) {
 function choiceDefaultOptions(input: GraphicInputDeclaration) {
 	return [
 		{ label: 'No default', value: NO_CHOICE_DEFAULT },
-		...(input.type === 'choice'
-			? input.options
-			: []).map(option => ({
+		...(input.type === 'choice' ? input.options : []).map((option) => ({
 			label: option.label,
 			value: option.value,
 		})),
@@ -868,9 +843,7 @@ function choiceDefaultOptions(input: GraphicInputDeclaration) {
 
 function updateChoiceDefault(key: string, value: string) {
 	updateInput(key, {
-		default: value === NO_CHOICE_DEFAULT
-			? null
-			: value,
+		default: value === NO_CHOICE_DEFAULT ? null : value,
 	});
 }
 
@@ -899,14 +872,13 @@ function selectInputDefaultAsset(key: string, reference: GraphicAssetReference) 
  */
 const styleablePlaceholders = computed(() => {
 	const current = selection.value;
-	if (current.kind !== 'item' || current.item.type !== 'text')
-		return [];
+	if (current.kind !== 'item' || current.item.type !== 'text') return [];
 
 	const available = new Set(availablePlaceholderKeys.value);
 	return [
 		...graphicTextTemplateInputKeys(current.item.text),
 		...graphicTextTemplateDottedPlaceholderKeys(current.item.text),
-	].filter(key => available.has(key));
+	].filter((key) => available.has(key));
 });
 
 /** Whether this placeholder carries a typography override of its own. */
@@ -939,18 +911,22 @@ watch(selectionKey, () => {
 });
 
 function placeholderFontSource(inputKey: string): GraphicFontSource {
-	return placeholderFontSourceOverrides.value[inputKey]
-		?? placeholderStyleFor(inputKey).font?.kind
-		?? 'base';
+	return (
+		placeholderFontSourceOverrides.value[inputKey] ??
+		placeholderStyleFor(inputKey).font?.kind ??
+		'base'
+	);
 }
 
 function updatePlaceholderFontSource(inputKey: string, source: GraphicFontSource) {
-	placeholderFontSourceOverrides.value = { ...placeholderFontSourceOverrides.value, [inputKey]: source };
+	placeholderFontSourceOverrides.value = {
+		...placeholderFontSourceOverrides.value,
+		[inputKey]: source,
+	};
 	const current = placeholderStyleFor(inputKey).font;
 	if (source === 'base' && current) {
 		editItem(patchGraphicPlaceholderStyle, inputKey, { font: undefined });
-	}
-	else if (source === 'application' && current?.kind !== 'application') {
+	} else if (source === 'application' && current?.kind !== 'application') {
 		editItem(patchGraphicPlaceholderStyle, inputKey, {
 			font: applicationGraphicFont(DEFAULT_GRAPHIC_FONT_ID),
 		});
@@ -977,7 +953,10 @@ function selectPlaceholderFontAsset(
  * so the picker is still there to pin another.
  */
 function clearPlaceholderFontAsset(inputKey: string) {
-	placeholderFontSourceOverrides.value = { ...placeholderFontSourceOverrides.value, [inputKey]: 'asset' };
+	placeholderFontSourceOverrides.value = {
+		...placeholderFontSourceOverrides.value,
+		[inputKey]: 'asset',
+	};
 	editItem(patchGraphicPlaceholderStyle, inputKey, { font: undefined });
 }
 </script>
@@ -1192,7 +1171,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							class="w-full"
 							size="sm"
 							data-testid="graphic-input-media-kind"
-							@update:model-value="editGraphic(setGraphicInputMediaKind, input.key, $event as GraphicMediaKind)"
+							@update:model-value="
+								editGraphic(setGraphicInputMediaKind, input.key, $event as GraphicMediaKind)
+							"
 						/>
 					</UFormField>
 					<UFormField label="Default" size="xs">
@@ -1298,7 +1279,11 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							value-key="value"
 							class="w-full"
 							data-testid="graphic-group-child-sizing-mode"
-							@update:model-value="editItem(patchGraphicGroupChildSizing, { mode: $event as GraphicGroupChildSizing['mode'] })"
+							@update:model-value="
+								editItem(patchGraphicGroupChildSizing, {
+									mode: $event as GraphicGroupChildSizing['mode'],
+								})
+							"
 						/>
 					</UFormField>
 					<GraphicsNumberField
@@ -1391,7 +1376,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						<USwitch
 							:model-value="selectedGroup.defaultChildSurfaceStyle !== undefined"
 							data-testid="graphic-group-child-style-default"
-							@update:model-value="editItem(patchGraphicGroupDefaultChildSurfaceStyle, $event ? {} : null)"
+							@update:model-value="
+								editItem(patchGraphicGroupDefaultChildSurfaceStyle, $event ? {} : null)
+							"
 						/>
 					</UFormField>
 					<GraphicsCompositorThemeBinding
@@ -1400,7 +1387,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						label="Child style default"
 						:current="themeBindingFor('defaultChildSurfaceStyle')"
 						:writable="canAuthor"
-						@bind="token => bindThemeToken('defaultChildSurfaceStyle', token)"
+						@bind="(token) => bindThemeToken('defaultChildSurfaceStyle', token)"
 						@detach="detachThemeToken('defaultChildSurfaceStyle')"
 					/>
 					<GraphicsOpacityField
@@ -1409,7 +1396,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						size="sm"
 						:model-value="selectedGroup.defaultChildSurfaceStyle.fillOpacity"
 						aria-label="Child fill opacity"
-						@update:model-value="editItem(patchGraphicGroupDefaultChildSurfaceStyle, { fillOpacity: $event ?? 1 })"
+						@update:model-value="
+							editItem(patchGraphicGroupDefaultChildSurfaceStyle, { fillOpacity: $event ?? 1 })
+						"
 					/>
 					<UFormField
 						v-if="selectedGroup.defaultChildSurfaceStyle?.fill.type === 'solid'"
@@ -1419,7 +1408,13 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						<UIColorPicker
 							:model-value="selectedGroup.defaultChildSurfaceStyle.fill.color"
 							data-testid="graphic-group-child-fill"
-							@update:model-value="color => color && editItem(patchGraphicGroupDefaultChildSurfaceStyle, { fill: { type: 'solid', color } })"
+							@update:model-value="
+								(color) =>
+									color &&
+									editItem(patchGraphicGroupDefaultChildSurfaceStyle, {
+										fill: { type: 'solid', color },
+									})
+							"
 						/>
 					</UFormField>
 				</div>
@@ -1471,9 +1466,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 				which is not something the shared animation vocabulary expresses.
 			-->
 			<div v-if="selectedPlayerLife" class="space-y-2">
-				<p class="text-xs font-semibold text-muted">
-					Life change
-				</p>
+				<p class="text-xs font-semibold text-muted">Life change</p>
 				<UFormField label="Animation" size="sm">
 					<USelect
 						:model-value="selectedPlayerLife.lifeAnimation"
@@ -1481,7 +1474,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						value-key="value"
 						class="w-full"
 						data-testid="player-life-animation"
-						@update:model-value="editItem(patchPlayerLifeGraphicItem, { lifeAnimation: $event as PlayerLifeAnimation })"
+						@update:model-value="
+							editItem(patchPlayerLifeGraphicItem, { lifeAnimation: $event as PlayerLifeAnimation })
+						"
 					/>
 				</UFormField>
 				<div class="grid grid-cols-2 gap-2">
@@ -1493,7 +1488,11 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						:max="MAX_PLAYER_LIFE_ANIMATION_DURATION_MS"
 						data-testid="player-life-animation-duration"
 						aria-label="Life change duration"
-						@update:model-value="editItem(patchPlayerLifeGraphicItem, { lifeAnimationDurationMs: $event ?? MIN_PLAYER_LIFE_ANIMATION_DURATION_MS })"
+						@update:model-value="
+							editItem(patchPlayerLifeGraphicItem, {
+								lifeAnimationDurationMs: $event ?? MIN_PLAYER_LIFE_ANIMATION_DURATION_MS,
+							})
+						"
 					/>
 					<!-- Tinted by a glow or slide change only; the others ignore it. -->
 					<UFormField label="Accent colour" size="sm">
@@ -1501,7 +1500,10 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							:model-value="selectedPlayerLife.lifeAnimationAccentColor"
 							alpha
 							data-testid="player-life-animation-accent"
-							@update:model-value="color => color && editItem(patchPlayerLifeGraphicItem, { lifeAnimationAccentColor: color })"
+							@update:model-value="
+								(color) =>
+									color && editItem(patchPlayerLifeGraphicItem, { lifeAnimationAccentColor: color })
+							"
 						/>
 					</UFormField>
 				</div>
@@ -1513,9 +1515,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 				never restates what the session already knows.
 			-->
 			<div v-if="selectedGameWins" class="space-y-2">
-				<p class="text-xs font-semibold text-muted">
-					Game Wins
-				</p>
+				<p class="text-xs font-semibold text-muted">Game Wins</p>
 				<div class="grid grid-cols-2 gap-2">
 					<UFormField label="Display mode" size="sm">
 						<USelect
@@ -1524,17 +1524,27 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							value-key="value"
 							class="w-full"
 							data-testid="game-wins-display-mode"
-							@update:model-value="editItem(patchGameWinsGraphicItem, { displayMode: $event as GameWinsDisplayMode })"
+							@update:model-value="
+								editItem(patchGameWinsGraphicItem, { displayMode: $event as GameWinsDisplayMode })
+							"
 						/>
 					</UFormField>
-					<UFormField v-if="selectedGameWins.displayMode === 'boxes'" label="Box orientation" size="sm">
+					<UFormField
+						v-if="selectedGameWins.displayMode === 'boxes'"
+						label="Box orientation"
+						size="sm"
+					>
 						<USelect
 							:model-value="selectedGameWins.boxOrientation"
 							:items="GAME_WINS_BOX_ORIENTATION_OPTIONS"
 							value-key="value"
 							class="w-full"
 							data-testid="game-wins-box-orientation"
-							@update:model-value="editItem(patchGameWinsGraphicItem, { boxOrientation: $event as GameWinsBoxOrientation })"
+							@update:model-value="
+								editItem(patchGameWinsGraphicItem, {
+									boxOrientation: $event as GameWinsBoxOrientation,
+								})
+							"
 						/>
 					</UFormField>
 				</div>
@@ -1545,7 +1555,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						:model-value="selectedGameWins.boxWidth"
 						:min="1"
 						aria-label="Win box width"
-						@update:model-value="editItem(patchGameWinsGraphicItem, { boxWidth: Math.max(1, $event ?? 1) })"
+						@update:model-value="
+							editItem(patchGameWinsGraphicItem, { boxWidth: Math.max(1, $event ?? 1) })
+						"
 					/>
 					<GraphicsNumberField
 						label="Box height"
@@ -1553,7 +1565,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						:model-value="selectedGameWins.boxHeight"
 						:min="1"
 						aria-label="Win box height"
-						@update:model-value="editItem(patchGameWinsGraphicItem, { boxHeight: Math.max(1, $event ?? 1) })"
+						@update:model-value="
+							editItem(patchGameWinsGraphicItem, { boxHeight: Math.max(1, $event ?? 1) })
+						"
 					/>
 					<GraphicsNumberField
 						label="Box gap"
@@ -1572,9 +1586,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 				the live card count, so there are deliberately no layout knobs here.
 			-->
 			<div v-if="selectedDeckList" class="space-y-2">
-				<p class="text-xs font-semibold text-muted">
-					Deck List
-				</p>
+				<p class="text-xs font-semibold text-muted">Deck List</p>
 				<div class="grid grid-cols-2 gap-2">
 					<UFormField label="View" size="sm">
 						<USelect
@@ -1583,7 +1595,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							value-key="value"
 							class="w-full"
 							data-testid="deck-list-view"
-							@update:model-value="editItem(patchDeckListGraphicItem, { view: $event as DeckListView })"
+							@update:model-value="
+								editItem(patchDeckListGraphicItem, { view: $event as DeckListView })
+							"
 						/>
 					</UFormField>
 					<UFormField label="Show quantities" size="sm">
@@ -1617,13 +1631,24 @@ function clearPlaceholderFontAsset(inputKey: string) {
 					missing entirely, which left the key visible only in the Graphic Inputs
 					panel of a *different* selection (#234).
 				-->
-				<UCollapsible v-if="availablePlaceholders.length > 0" class="rounded-lg border border-default/70">
+				<UCollapsible
+					v-if="availablePlaceholders.length > 0"
+					class="rounded-lg border border-default/70"
+				>
 					<template #default="{ open }">
-						<button type="button" class="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-sm" data-testid="graphic-host-tokens-toggle">
+						<button
+							type="button"
+							class="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-sm"
+							data-testid="graphic-host-tokens-toggle"
+						>
 							<span class="font-medium">Insert placeholder</span>
 							<span class="flex items-center gap-1 text-xs text-muted">
 								{{ availablePlaceholders.length }}
-								<UIcon name="i-lucide-chevron-down" class="size-4 transition-transform" :class="{ 'rotate-180': open }" />
+								<UIcon
+									name="i-lucide-chevron-down"
+									class="size-4 transition-transform"
+									:class="{ 'rotate-180': open }"
+								/>
 							</span>
 						</button>
 					</template>
@@ -1663,23 +1688,21 @@ function clearPlaceholderFontAsset(inputKey: string) {
 					nothing.
 					<template v-if="availablePlaceholderKeys.length > 0">
 						This composition offers
-						{{ availablePlaceholderKeys.map(placeholderToken).join(', ') }} — a
-						Graphic Input is named and keyed separately, and a template names the key.
+						{{ availablePlaceholderKeys.map(placeholderToken).join(', ') }} — a Graphic Input is
+						named and keyed separately, and a template names the key.
 					</template>
-					<template v-else>
-						This composition declares no Graphic Inputs yet.
-					</template>
+					<template v-else> This composition declares no Graphic Inputs yet. </template>
 				</p>
 			</template>
 
 			<template v-if="selectedSocialNetworkIcon">
 				<div class="space-y-2">
-					<p class="text-xs font-semibold text-muted">
-						Social Network Icon
-					</p>
+					<p class="text-xs font-semibold text-muted">Social Network Icon</p>
 					<UFormField label="Network source" size="sm">
 						<USelect
-							:model-value="typeof selectedSocialNetworkIcon.network === 'string' ? 'static' : 'projection'"
+							:model-value="
+								typeof selectedSocialNetworkIcon.network === 'string' ? 'static' : 'projection'
+							"
 							:items="SOCIAL_NETWORK_ICON_SOURCE_OPTIONS"
 							value-key="value"
 							class="w-full"
@@ -1687,14 +1710,20 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							@update:model-value="updateSocialNetworkIconSource($event as 'static' | 'projection')"
 						/>
 					</UFormField>
-					<UFormField v-if="typeof selectedSocialNetworkIcon.network === 'string'" label="Social network" size="sm">
+					<UFormField
+						v-if="typeof selectedSocialNetworkIcon.network === 'string'"
+						label="Social network"
+						size="sm"
+					>
 						<USelect
 							:model-value="selectedSocialNetworkIcon.network"
 							:items="SOCIAL_NETWORK_OPTIONS"
 							value-key="value"
 							class="w-full"
 							data-testid="social-network-icon-network"
-							@update:model-value="editItem(patchGraphicItem, { network: $event as SupportedSocialNetwork })"
+							@update:model-value="
+								editItem(patchGraphicItem, { network: $event as SupportedSocialNetwork })
+							"
 						/>
 					</UFormField>
 					<UFormField v-else label="Social Profile Projection" size="sm">
@@ -1704,7 +1733,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							value-key="value"
 							class="w-full"
 							data-testid="social-network-icon-projection"
-							@update:model-value="editItem(patchGraphicItem, { network: { projectionKey: String($event) } })"
+							@update:model-value="
+								editItem(patchGraphicItem, { network: { projectionKey: String($event) } })
+							"
 						/>
 					</UFormField>
 					<p
@@ -1712,7 +1743,8 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						class="text-xs text-warning"
 						data-testid="social-network-icon-projection-invalid"
 					>
-						This icon is outside that projection's Presentation Group. Move or replace it before saving.
+						This icon is outside that projection's Presentation Group. Move or replace it before
+						saving.
 					</p>
 					<div class="grid grid-cols-2 gap-2">
 						<UFormField label="Colour" size="sm">
@@ -1721,13 +1753,13 @@ function clearPlaceholderFontAsset(inputKey: string) {
 								label="Icon colour"
 								:current="themeBindingFor('color')"
 								:writable="canAuthor"
-								@bind="token => bindThemeToken('color', token)"
+								@bind="(token) => bindThemeToken('color', token)"
 								@detach="detachThemeToken('color')"
 							/>
 							<UIColorPicker
 								:model-value="selectedSocialNetworkIcon.color"
 								data-testid="social-network-icon-color"
-								@update:model-value="color => color && editItem(patchGraphicItem, { color })"
+								@update:model-value="(color) => color && editItem(patchGraphicItem, { color })"
 							/>
 						</UFormField>
 						<GraphicsOpacityField
@@ -1744,9 +1776,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 
 			<template v-if="selectedMediaItem">
 				<div class="space-y-2">
-					<p class="text-xs font-semibold text-muted">
-						Media
-					</p>
+					<p class="text-xs font-semibold text-muted">Media</p>
 
 					<!--
 						The picker pins one exact Graphic Asset identity and revision, and
@@ -1760,7 +1790,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							label="Media"
 							:current="themeBindingFor('media')"
 							:writable="canAuthor"
-							@bind="token => bindThemeToken('media', token)"
+							@bind="(token) => bindThemeToken('media', token)"
 							@detach="detachThemeToken('media')"
 						/>
 						<GraphicsAssetFocusPicker
@@ -1821,7 +1851,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 					label="Typography"
 					:current="themeBindingFor('typography')"
 					:writable="canAuthor"
-					@bind="token => bindThemeToken('typography', token)"
+					@bind="(token) => bindThemeToken('typography', token)"
 					@detach="detachThemeToken('typography')"
 				/>
 
@@ -1845,7 +1875,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							size="sm"
 							test-id-prefix="typography"
 							@update:source="updateFontSource"
-							@application="editItem(patchGraphicTypography, { font: applicationGraphicFont($event) })"
+							@application="
+								editItem(patchGraphicTypography, { font: applicationGraphicFont($event) })
+							"
 							@select="selectFontAsset"
 							@clear="clearFontAsset"
 						/>
@@ -1857,7 +1889,9 @@ function clearPlaceholderFontAsset(inputKey: string) {
 								:items="TEXT_ALIGN_ITEMS"
 								size="xs"
 								data-testid="typography-text-align"
-								@update:model-value="editItem(patchGraphicTypography, { textAlign: $event as never })"
+								@update:model-value="
+									editItem(patchGraphicTypography, { textAlign: $event as never })
+								"
 							/>
 						</UFormField>
 						<UFormField label="Colour" size="sm" class="col-span-2">
@@ -1866,14 +1900,16 @@ function clearPlaceholderFontAsset(inputKey: string) {
 								label="Text colour"
 								:current="themeBindingFor('typography.color')"
 								:writable="canAuthor"
-								@bind="token => bindThemeToken('typography.color', token)"
+								@bind="(token) => bindThemeToken('typography.color', token)"
 								@detach="detachThemeToken('typography.color')"
 							/>
 							<UIColorPicker
 								:model-value="selectedTypography.color"
 								alpha
 								data-testid="graphic-typography-color"
-								@update:model-value="color => color && editItem(patchGraphicTypography, { color })"
+								@update:model-value="
+									(color) => color && editItem(patchGraphicTypography, { color })
+								"
 							/>
 						</UFormField>
 					</template>
@@ -1926,12 +1962,22 @@ function clearPlaceholderFontAsset(inputKey: string) {
 					:data-graphic-placeholder-style="inputKey"
 				>
 					<template #default="{ open }">
-						<button type="button" class="flex w-full items-center gap-2 px-2 py-1.5 text-left" data-testid="graphic-placeholder-style-toggle">
+						<button
+							type="button"
+							class="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+							data-testid="graphic-placeholder-style-toggle"
+						>
 							<span class="min-w-0 flex-1 truncate text-xs">
 								<span class="font-mono">{{ placeholderToken(inputKey) }}</span>
-								<span class="text-muted"> style · {{ hasPlaceholderStyle(inputKey) ? 'custom' : 'same as base' }}</span>
+								<span class="text-muted">
+									style · {{ hasPlaceholderStyle(inputKey) ? 'custom' : 'same as base' }}</span
+								>
 							</span>
-							<UIcon name="i-lucide-chevron-down" class="size-4 shrink-0 text-muted transition-transform" :class="{ 'rotate-180': open }" />
+							<UIcon
+								name="i-lucide-chevron-down"
+								class="size-4 shrink-0 text-muted transition-transform"
+								:class="{ 'rotate-180': open }"
+							/>
 						</button>
 					</template>
 					<template #content>
@@ -1970,20 +2016,30 @@ function clearPlaceholderFontAsset(inputKey: string) {
 										:field-label="`Placeholder ${placeholderToken(inputKey)}`"
 										size="xs"
 										test-id-prefix="graphic-placeholder-style"
-										@update:source="source => updatePlaceholderFontSource(inputKey, source)"
-										@application="editItem(patchGraphicPlaceholderStyle, inputKey, { font: applicationGraphicFont($event) })"
-										@select="(asset, reference) => selectPlaceholderFontAsset(inputKey, asset, reference)"
+										@update:source="(source) => updatePlaceholderFontSource(inputKey, source)"
+										@application="
+											editItem(patchGraphicPlaceholderStyle, inputKey, {
+												font: applicationGraphicFont($event),
+											})
+										"
+										@select="
+											(asset, reference) => selectPlaceholderFontAsset(inputKey, asset, reference)
+										"
 										@clear="clearPlaceholderFontAsset(inputKey)"
 									/>
 								</template>
 								<template #color>
 									<UFormField label="Colour" size="xs" class="col-span-2">
 										<UIColorPicker
-											:model-value="placeholderStyleFor(inputKey).color ?? selectedTextItem.typography.color"
+											:model-value="
+												placeholderStyleFor(inputKey).color ?? selectedTextItem.typography.color
+											"
 											alpha
 											clearable
 											data-testid="graphic-placeholder-style-color"
-											@update:model-value="editItem(patchGraphicPlaceholderStyle, inputKey, { color: $event })"
+											@update:model-value="
+												editItem(patchGraphicPlaceholderStyle, inputKey, { color: $event })
+											"
 										/>
 									</UFormField>
 								</template>
@@ -2009,7 +2065,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						label="Shape Geometry"
 						:current="themeBindingFor(selectedShapeGeometry!.slot)"
 						:writable="canAuthor"
-						@bind="token => bindThemeToken(selectedShapeGeometry!.slot, token)"
+						@bind="(token) => bindThemeToken(selectedShapeGeometry!.slot, token)"
 						@detach="detachThemeToken(selectedShapeGeometry!.slot)"
 					/>
 					<GraphicsShapeGeometryFields
@@ -2053,7 +2109,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						label="Surface style"
 						:current="themeBindingFor('surfaceStyle')"
 						:writable="canAuthor"
-						@bind="token => bindThemeToken('surfaceStyle', token)"
+						@bind="(token) => bindThemeToken('surfaceStyle', token)"
 						@detach="detachThemeToken('surfaceStyle')"
 					/>
 					<GraphicsCompositorThemeBinding
@@ -2061,7 +2117,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 						label="Graphic Fill"
 						:current="themeBindingFor('surfaceStyle.fill')"
 						:writable="canAuthor"
-						@bind="token => bindThemeToken('surfaceStyle.fill', token)"
+						@bind="(token) => bindThemeToken('surfaceStyle.fill', token)"
 						@detach="detachThemeToken('surfaceStyle.fill')"
 					/>
 				</template>
@@ -2082,7 +2138,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							label="Win box style"
 							:current="themeBindingFor('boxSurfaceStyle')"
 							:writable="canAuthor"
-							@bind="token => bindThemeToken('boxSurfaceStyle', token)"
+							@bind="(token) => bindThemeToken('boxSurfaceStyle', token)"
 							@detach="detachThemeToken('boxSurfaceStyle')"
 						/>
 					</template>
@@ -2103,7 +2159,7 @@ function clearPlaceholderFontAsset(inputKey: string) {
 							label="Won win box style"
 							:current="themeBindingFor('wonBoxSurfaceStyle')"
 							:writable="canAuthor"
-							@bind="token => bindThemeToken('wonBoxSurfaceStyle', token)"
+							@bind="(token) => bindThemeToken('wonBoxSurfaceStyle', token)"
 							@detach="detachThemeToken('wonBoxSurfaceStyle')"
 						/>
 					</template>

@@ -30,20 +30,14 @@ function boardsOf(config: Readonly<Record<string, any>>) {
 /** The sideboard block that follows the mainboard's layout, or that holds a copy of it as its own. */
 function sideboardFollowing(config: Readonly<Record<string, any>>, follows: boolean) {
 	const { sideboard } = boardsOf(config);
-	return follows
-		? sideboardOwnFields(sideboard)
-		: patchedBoardLayout(sideboard, {});
+	return follows ? sideboardOwnFields(sideboard) : patchedBoardLayout(sideboard, {});
 }
 </script>
 
 <template>
 	<ScreenModeSettings ref="renderer" :screen="screen" :event-id="eventId">
 		<template #board-toggles="{ config, update }">
-			<ScreenModesDeckBoardToggles
-				:config="config"
-				:event-id="eventId"
-				@update="update($event)"
-			/>
+			<ScreenModesDeckBoardToggles :config="config" :event-id="eventId" @update="update($event)" />
 		</template>
 
 		<template #before:sideboard="{ config, update }">
@@ -53,16 +47,20 @@ function sideboardFollowing(config: Readonly<Record<string, any>>, follows: bool
 				class="flex items-center justify-between gap-3"
 			>
 				<ScreenSettingsHint>
-					{{ boardsOf(config).sideboardCustomised
-						? 'Has its own layout.'
-						: 'Uses the mainboard\'s layout.' }}
+					{{
+						boardsOf(config).sideboardCustomised
+							? 'Has its own layout.'
+							: "Uses the mainboard's layout."
+					}}
 				</ScreenSettingsHint>
 				<UButton
 					size="xs"
 					color="neutral"
 					variant="outline"
 					:label="boardsOf(config).sideboardCustomised ? 'Use mainboard\'s' : 'Customise'"
-					@click="update({ sideboard: sideboardFollowing(config, boardsOf(config).sideboardCustomised) })"
+					@click="
+						update({ sideboard: sideboardFollowing(config, boardsOf(config).sideboardCustomised) })
+					"
 				/>
 			</div>
 		</template>

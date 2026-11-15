@@ -8,17 +8,20 @@ import { useConsumedEventData } from '~/modules/event-data/resync';
  * Rounds and Phases it lacks, re-reads them on Reconnect Resync (#610), and
  * emits the Round's id, or `null` for the null option.
  */
-const props = withDefaults(defineProps<{
-	modelValue?: number | null;
-	eventId: number;
-	label?: string;
-	description?: string;
-	/** What no Round means: "Current standings", "Select a round…". */
-	nullLabel?: string;
-}>(), {
-	label: 'Round',
-	nullLabel: 'Select a round…',
-});
+const props = withDefaults(
+	defineProps<{
+		modelValue?: number | null;
+		eventId: number;
+		label?: string;
+		description?: string;
+		/** What no Round means: "Current standings", "Select a round…". */
+		nullLabel?: string;
+	}>(),
+	{
+		label: 'Round',
+		nullLabel: 'Select a round…',
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [roundId: number | null];
@@ -32,12 +35,9 @@ const items = computed(() => roundPickerOptions(roundStore.rounds, phaseStore.ph
 useConsumedEventData(['phases', 'rounds']);
 
 onMounted(async () => {
-	if (!props.eventId)
-		return;
-	if (!roundStore.isLoaded)
-		await roundStore.loadRoundsByEventId(props.eventId);
-	if (!phaseStore.isLoaded)
-		await phaseStore.loadPhasesByEventId(props.eventId);
+	if (!props.eventId) return;
+	if (!roundStore.isLoaded) await roundStore.loadRoundsByEventId(props.eventId);
+	if (!phaseStore.isLoaded) await phaseStore.loadPhasesByEventId(props.eventId);
 });
 </script>
 

@@ -25,11 +25,11 @@ const classifiedPlayersInScope = computed(() => archetypeData.value?.classifiedP
 // ── Fetch ──
 async function fetchArchetypes() {
 	await runRequest(
-		() => metagameClient.loadArchetypeBreakdown(
-			eventStore.eventId!,
-			metagameStore.scopeQuery,
-			{ sortBy: archetypeSortBy.value, ...metagameStore.conversionTarget },
-		),
+		() =>
+			metagameClient.loadArchetypeBreakdown(eventStore.eventId!, metagameStore.scopeQuery, {
+				sortBy: archetypeSortBy.value,
+				...metagameStore.conversionTarget,
+			}),
 		{
 			latestKey: 'archetypes',
 			loadingRef: archetypeLoading,
@@ -50,29 +50,30 @@ const { summaryLoading, fetchPageData } = useMetagamePage(fetchArchetypes, {
 });
 
 function onArchetypeSelect(archetypeName: string | null) {
-	if (!archetypeName)
-		return;
-	const entry = archetypeData.value?.entries.find(e => e.name === archetypeName);
-	if (!entry)
-		return;
+	if (!archetypeName) return;
+	const entry = archetypeData.value?.entries.find((e) => e.name === archetypeName);
+	if (!entry) return;
 	void navigateTo(`/event/${eventStore.eventId}/metagame/archetype/${entry.id}`);
 }
 
 // ── Initialization ──
-const { eventId, initialLoading, initialError, retry } = useEventPageLoading([
-	{
-		consumes: 'players',
-		isLoaded: () => playerStore.isLoaded,
-		isLoading: () => playerStore.loading,
-		load: id => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
-	},
-	{
-		consumes: 'archetypes',
-		isLoaded: () => archetypeStore.isLoaded,
-		isLoading: () => archetypeStore.loading,
-		load: id => archetypeStore.loadByEventId(id, { failure: 'raise' }),
-	},
-], fetchPageData);
+const { eventId, initialLoading, initialError, retry } = useEventPageLoading(
+	[
+		{
+			consumes: 'players',
+			isLoaded: () => playerStore.isLoaded,
+			isLoading: () => playerStore.loading,
+			load: (id) => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+		},
+		{
+			consumes: 'archetypes',
+			isLoaded: () => archetypeStore.isLoaded,
+			isLoading: () => archetypeStore.loading,
+			load: (id) => archetypeStore.loadByEventId(id, { failure: 'raise' }),
+		},
+	],
+	fetchPageData,
+);
 </script>
 
 <template>
@@ -88,18 +89,13 @@ const { eventId, initialLoading, initialError, retry } = useEventPageLoading([
 	/>
 
 	<div v-else class="flex flex-col gap-6">
-		<MetagameSummaryPanel
-			:summary="metagameStore.summaryData"
-			:loading="summaryLoading"
-		/>
+		<MetagameSummaryPanel :summary="metagameStore.summaryData" :loading="summaryLoading" />
 
 		<!-- Archetype card -->
 		<UCard :ui="{ body: 'p-0 sm:p-0' }">
 			<template #header>
 				<div class="flex items-center justify-between">
-					<h3 class="text-base font-semibold">
-						Archetype Breakdown
-					</h3>
+					<h3 class="text-base font-semibold">Archetype Breakdown</h3>
 					<div class="flex items-center gap-3">
 						<MetagameViewToggle v-if="classifiedPlayersInScope > 0" v-model="archetypeView" />
 					</div>

@@ -73,11 +73,9 @@ export default defineEventHandler(async (event) => {
 	// doing equal work for an absent row, which is a real cost for a guess this
 	// route's 404 already refuses to confirm.
 	const screen = await screenService().findBySlug(eventId, slug);
-	if (!screen)
-		screenNotFound();
+	if (!screen) screenNotFound();
 
-	if (await canReadScreenOutput(event, screen))
-		return mapScreenToResponse(screen);
+	if (await canReadScreenOutput(event, screen)) return mapScreenToResponse(screen);
 
 	screenNotFound();
 });

@@ -16,14 +16,12 @@ const isValid = computed(() => formData.value.name.trim().length > 0);
 
 async function handleSubmit() {
 	const trimmed = formData.value.name.trim();
-	if (!trimmed || !eventStore.eventId)
-		return;
+	if (!trimmed || !eventStore.eventId) return;
 
 	await runRequest(
 		async () => {
 			const created = await playerListStore.createList(eventStore.eventId!, { name: trimmed });
-			if (!created)
-				throw new Error('Failed to create list');
+			if (!created) throw new Error('Failed to create list');
 			return created;
 		},
 		{
@@ -49,14 +47,10 @@ function handleCancel() {
 		title="Create Player List"
 		:close="{ onClick: handleCancel }"
 		:ui="{ footer: 'justify-end' }"
-		@update:open="val => !val && handleCancel()"
+		@update:open="(val) => !val && handleCancel()"
 	>
 		<template #body>
-			<UForm
-				:id="formId"
-				:state="formData"
-				@submit="handleSubmit"
-			>
+			<UForm :id="formId" :state="formData" @submit="handleSubmit">
 				<UFormField label="List Name" required>
 					<UInput
 						v-model="formData.name"
@@ -69,12 +63,7 @@ function handleCancel() {
 		</template>
 
 		<template #footer>
-			<UButton
-				variant="ghost"
-				color="neutral"
-				label="Cancel"
-				@click="handleCancel"
-			/>
+			<UButton variant="ghost" color="neutral" label="Cancel" @click="handleCancel" />
 			<UButton
 				type="submit"
 				:form="formId"

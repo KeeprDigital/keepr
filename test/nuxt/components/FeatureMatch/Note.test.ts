@@ -10,13 +10,15 @@ const UButtonStub = defineComponent({
 		loading: Boolean,
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" :data-loading="String(loading)" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',
+	template:
+		'<button type="button" :disabled="disabled" :data-loading="String(loading)" @click="$emit(\'click\')"><slot>{{ label }}</slot></button>',
 });
 
 const UTextareaStub = defineComponent({
 	props: { modelValue: String, maxlength: Number },
 	emits: ['update:modelValue', 'keydown'],
-	template: '<textarea data-testid="note-input" :value="modelValue" :maxlength="maxlength" @input="$emit(\'update:modelValue\', $event.target.value)" @keydown="$emit(\'keydown\', $event)" />',
+	template:
+		'<textarea data-testid="note-input" :value="modelValue" :maxlength="maxlength" @input="$emit(\'update:modelValue\', $event.target.value)" @keydown="$emit(\'keydown\', $event)" />',
 });
 
 async function mountNote(props: Record<string, unknown>) {
@@ -49,7 +51,9 @@ describe('featureMatchNote', () => {
 		const note = Array.from({ length: 6 }, (_, index) => `Line ${index + 1}`).join('\n');
 		const filled = await mountNote({ note });
 		expect(filled.get('[data-testid="note-text"]').text()).toContain('Line 1');
-		expect(filled.get('[data-testid="note-text"]').attributes('style')).toContain('white-space: pre-wrap');
+		expect(filled.get('[data-testid="note-text"]').attributes('style')).toContain(
+			'white-space: pre-wrap',
+		);
 		expect(filled.get('[data-testid="note-text"]').classes()).toContain('line-clamp-4');
 
 		await filled.get('[data-testid="note-expand"]').trigger('click');
@@ -58,16 +62,21 @@ describe('featureMatchNote', () => {
 
 	it('keeps the editor open while saving and saves with Ctrl+Enter while Enter remains multiline', async () => {
 		let finishSave!: () => void;
-		const save = vi.fn(() => new Promise<void>((resolve) => {
-			finishSave = resolve;
-		}));
+		const save = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					finishSave = resolve;
+				}),
+		);
 		const wrapper = await mountNote({ note: 'Original', save });
 		await wrapper.get('[data-testid="note-edit"]').trigger('click');
 		await wrapper.get('[data-testid="note-input"]').setValue('First\nSecond');
 
 		await wrapper.get('[data-testid="note-input"]').trigger('keydown', { key: 'Enter' });
 		expect(save).not.toHaveBeenCalled();
-		await wrapper.get('[data-testid="note-input"]').trigger('keydown', { key: 'Enter', ctrlKey: true });
+		await wrapper
+			.get('[data-testid="note-input"]')
+			.trigger('keydown', { key: 'Enter', ctrlKey: true });
 		await Promise.resolve();
 
 		expect(save).toHaveBeenCalledWith('First\nSecond');
@@ -85,10 +94,16 @@ describe('featureMatchNote', () => {
 		await wrapper.get('[data-testid="note-input"]').setValue('Local draft');
 		await wrapper.setProps({ note: 'Peer update', remoteChanged: true });
 
-		expect((wrapper.get('[data-testid="note-input"]').element as HTMLTextAreaElement).value).toBe('Local draft');
+		expect((wrapper.get('[data-testid="note-input"]').element as HTMLTextAreaElement).value).toBe(
+			'Local draft',
+		);
 		await wrapper.get('[data-testid="note-save"]').trigger('click');
-		await vi.waitFor(() => expect(wrapper.get('[data-testid="note-error"]').text()).toContain('Network unavailable'));
-		expect((wrapper.get('[data-testid="note-input"]').element as HTMLTextAreaElement).value).toBe('Local draft');
+		await vi.waitFor(() =>
+			expect(wrapper.get('[data-testid="note-error"]').text()).toContain('Network unavailable'),
+		);
+		expect((wrapper.get('[data-testid="note-input"]').element as HTMLTextAreaElement).value).toBe(
+			'Local draft',
+		);
 		expect(wrapper.attributes('data-remote-changed')).toBe('true');
 	});
 
@@ -99,7 +114,9 @@ describe('featureMatchNote', () => {
 		await wrapper.get('[data-testid="note-clear"]').trigger('click');
 
 		expect(save).not.toHaveBeenCalled();
-		expect(wrapper.get('[data-testid="note-clear-confirmation"]').text()).toContain('Important context');
+		expect(wrapper.get('[data-testid="note-clear-confirmation"]').text()).toContain(
+			'Important context',
+		);
 		await wrapper.get('[data-testid="note-confirm-clear"]').trigger('click');
 		await vi.waitFor(() => expect(save).toHaveBeenCalledWith(''));
 	});
@@ -109,7 +126,7 @@ describe('featureMatchNote', () => {
 		const wrapper = await mountNote({ note: 'Authoritative Note', save });
 		await wrapper.get('[data-testid="note-edit"]').trigger('click');
 		await wrapper.get('[data-testid="note-input"]').setValue('Discard this draft');
-		const cancel = wrapper.findAll('button').find(button => button.text() === 'Cancel');
+		const cancel = wrapper.findAll('button').find((button) => button.text() === 'Cancel');
 		expect(cancel).toBeDefined();
 		await cancel!.trigger('click');
 
@@ -118,14 +135,18 @@ describe('featureMatchNote', () => {
 
 		await wrapper.get('[data-testid="note-edit"]').trigger('click');
 		await wrapper.get('[data-testid="note-input"]').setValue('Saved from a Mac');
-		await wrapper.get('[data-testid="note-input"]').trigger('keydown', { key: 'Enter', metaKey: true });
+		await wrapper
+			.get('[data-testid="note-input"]')
+			.trigger('keydown', { key: 'Enter', metaKey: true });
 		await vi.waitFor(() => expect(save).toHaveBeenCalledWith('Saved from a Mac'));
 	});
 
 	it('renders Note contents strictly as plain text', async () => {
 		const wrapper = await mountNote({ note: '<strong>Not markup</strong>\nSecond line' });
 
-		expect(wrapper.get('[data-testid="note-text"]').text()).toBe('<strong>Not markup</strong>\nSecond line');
+		expect(wrapper.get('[data-testid="note-text"]').text()).toBe(
+			'<strong>Not markup</strong>\nSecond line',
+		);
 		expect(wrapper.find('strong').exists()).toBe(false);
 	});
 });

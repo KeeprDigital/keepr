@@ -25,9 +25,11 @@ describe('createTalentSchema', () => {
 			socialProfiles: { twitch: 'https://x.com/Alice' },
 		});
 
-		expect(result.error?.issues).toContainEqual(expect.objectContaining({
-			path: ['socialProfiles', 'twitch'],
-		}));
+		expect(result.error?.issues).toContainEqual(
+			expect.objectContaining({
+				path: ['socialProfiles', 'twitch'],
+			}),
+		);
 	});
 
 	it('bounds a Social Profile handle to the live-document ceiling', () => {
@@ -38,17 +40,23 @@ describe('createTalentSchema', () => {
 			},
 		});
 
-		expect(createTalentSchema.safeParse(withHandle(MAX_SOCIAL_PROFILE_HANDLE_LENGTH)).success).toBe(true);
-		expect(createTalentSchema.safeParse(withHandle(MAX_SOCIAL_PROFILE_HANDLE_LENGTH + 1)).success).toBe(false);
+		expect(createTalentSchema.safeParse(withHandle(MAX_SOCIAL_PROFILE_HANDLE_LENGTH)).success).toBe(
+			true,
+		);
+		expect(
+			createTalentSchema.safeParse(withHandle(MAX_SOCIAL_PROFILE_HANDLE_LENGTH + 1)).success,
+		).toBe(false);
 	});
 });
 
 describe('updateTalentSchema', () => {
 	it('distinguishes omitted, replacement and clearing Social Profile updates', () => {
 		expect(updateTalentSchema.parse({})).toEqual({});
-		expect(updateTalentSchema.parse({
-			socialProfiles: { instagram: '@Alice' },
-		})).toEqual({
+		expect(
+			updateTalentSchema.parse({
+				socialProfiles: { instagram: '@Alice' },
+			}),
+		).toEqual({
 			socialProfiles: { instagram: 'Alice' },
 		});
 		expect(updateTalentSchema.parse({ socialProfiles: {} })).toEqual({ socialProfiles: {} });
@@ -73,8 +81,10 @@ describe('a Talent role', () => {
 		[100, true],
 		[101, false],
 	])('accepts a role of %i characters: %s', (length, accepted) => {
-		expect(updateTalentSchema.safeParse({
-			role: 'r'.repeat(length),
-		}).success).toBe(accepted);
+		expect(
+			updateTalentSchema.safeParse({
+				role: 'r'.repeat(length),
+			}).success,
+		).toBe(accepted);
 	});
 });

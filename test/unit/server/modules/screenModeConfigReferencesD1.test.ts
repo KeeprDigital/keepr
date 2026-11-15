@@ -30,9 +30,8 @@ afterAll(async () => await harness.dispose());
 
 vi.doMock('~~/server/db', () => ({ db }));
 
-const { updateScreenModeConfigWithGraphicAssetReferences } = await import(
-	'~~/server/modules/screen-graphic-asset-references',
-);
+const { updateScreenModeConfigWithGraphicAssetReferences } =
+	await import('~~/server/modules/screen-graphic-asset-references');
 const { StateConflictError } = await import('~~/server/utils/errors');
 
 /** Six base parameters plus eight per reference first passed D1's hundred here. */
@@ -106,8 +105,8 @@ function fontSelection(index: number) {
  * three Broadcast Graphics; `repickedMediaIndex` moves one item to a second generation.
  */
 function maximalStack(repickedMediaIndex?: number) {
-	const graphicCount = MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN
-		/ MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC;
+	const graphicCount =
+		MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN / MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC;
 	let mediaIndex = 0;
 	return {
 		graphics: Array.from({ length: graphicCount }, (_, graphic) => ({
@@ -141,9 +140,7 @@ function maximalStack(repickedMediaIndex?: number) {
 					mediaKind: 'image',
 					asset: {
 						assetId: assetId(asset),
-						revisionId: revisionId(asset, index === repickedMediaIndex
-							? 2
-							: 1),
+						revisionId: revisionId(asset, index === repickedMediaIndex ? 2 : 1),
 					},
 				};
 			}),
@@ -156,20 +153,26 @@ let screenId: number;
 
 /** Every reference row the authored write has published for this Screen. */
 async function indexedReferences() {
-	const rows = await harness.database.prepare(`
+	const rows = await harness.database
+		.prepare(`
 		SELECT owner_slot AS ownerSlot, revision_id AS revisionId
 		FROM graphic_asset_references
 		WHERE owner_kind = 'screen' AND owner_id = ?
 		ORDER BY owner_slot
-	`).bind(String(screenId)).all<{ ownerSlot: string; revisionId: string }>();
+	`)
+		.bind(String(screenId))
+		.all<{ ownerSlot: string; revisionId: string }>();
 	return rows.results;
 }
 
 async function storedScreen() {
-	return await harness.database.prepare(`
+	return await harness.database
+		.prepare(`
 		SELECT mode_configs AS modeConfigs, state_version AS stateVersion
 		FROM screens WHERE id = ?
-	`).bind(screenId).first<{ modeConfigs: string; stateVersion: number }>();
+	`)
+		.bind(screenId)
+		.first<{ modeConfigs: string; stateVersion: number }>();
 }
 
 beforeEach(async () => {
@@ -179,21 +182,27 @@ beforeEach(async () => {
 	await db.delete(graphicAssets);
 	await db.delete(graphicAssetContents);
 
-	const [event] = await db.insert(schema.events).values({
-		name: 'Reference limits',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-	} as never).returning();
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'Reference limits',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+		} as never)
+		.returning();
 	eventId = event!.id;
 
-	const [screen] = await db.insert(schema.screens).values({
-		eventId,
-		name: 'Program',
-		slug: 'program',
-		currentMode: 'broadcast-graphics',
-		assetCapabilitySeed: 'seed',
-		assetCapabilityDigest: 'digest',
-	} as never).returning();
+	const [screen] = await db
+		.insert(schema.screens)
+		.values({
+			eventId,
+			name: 'Program',
+			slug: 'program',
+			currentMode: 'broadcast-graphics',
+			assetCapabilitySeed: 'seed',
+			assetCapabilityDigest: 'digest',
+		} as never)
+		.returning();
 	screenId = screen!.id;
 
 	await db.insert(graphicAssetContents).values({
@@ -211,37 +220,45 @@ beforeEach(async () => {
 	const seeds: BatchItem<'sqlite'>[] = [];
 
 	for (let index = 0; index < FONT_ASSET_COUNT; index++) {
-		seeds.push(db.insert(graphicAssets).values({
-			id: fontAssetId(index),
-			name: `Font ${index}`,
-			kind: 'font',
-		} as never));
-		seeds.push(db.insert(graphicAssetRevisions).values({
-			id: fontRevisionId(index),
-			assetId: fontAssetId(index),
-			revisionNumber: 1,
-			contentDigest: FONT_CONTENT_DIGEST,
-			compatibilityProfile: 'static-font-v1',
-			technicalFacts: {},
-		} as never));
+		seeds.push(
+			db.insert(graphicAssets).values({
+				id: fontAssetId(index),
+				name: `Font ${index}`,
+				kind: 'font',
+			} as never),
+		);
+		seeds.push(
+			db.insert(graphicAssetRevisions).values({
+				id: fontRevisionId(index),
+				assetId: fontAssetId(index),
+				revisionNumber: 1,
+				contentDigest: FONT_CONTENT_DIGEST,
+				compatibilityProfile: 'static-font-v1',
+				technicalFacts: {},
+			} as never),
+		);
 	}
 
 	// Two revisions per asset, so a test can re-pick content.
 	for (let index = 0; index < LARGE_REFERENCE_COUNT; index++) {
-		seeds.push(db.insert(graphicAssets).values({
-			id: assetId(index),
-			name: `Asset ${index}`,
-			kind: 'image',
-		} as never));
+		seeds.push(
+			db.insert(graphicAssets).values({
+				id: assetId(index),
+				name: `Asset ${index}`,
+				kind: 'image',
+			} as never),
+		);
 		for (const generation of [1, 2]) {
-			seeds.push(db.insert(graphicAssetRevisions).values({
-				id: revisionId(index, generation),
-				assetId: assetId(index),
-				revisionNumber: generation,
-				contentDigest: CONTENT_DIGEST,
-				compatibilityProfile: 'still-image-v1',
-				technicalFacts: {},
-			} as never));
+			seeds.push(
+				db.insert(graphicAssetRevisions).values({
+					id: revisionId(index, generation),
+					assetId: assetId(index),
+					revisionNumber: generation,
+					contentDigest: CONTENT_DIGEST,
+					compatibilityProfile: 'still-image-v1',
+					technicalFacts: {},
+				} as never),
+			);
 		}
 	}
 	await db.batch(seeds as [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]);
@@ -251,10 +268,15 @@ describe('an authored Screen Mode configuration carrying many Graphic Asset Refe
 	it('proves the limit the precondition has to fit inside is enforced here', async () => {
 		// Control: this harness does refuse an over-limit statement.
 		const over = Array.from({ length: D1_MAXIMUM_BOUND_PARAMETERS + 1 }, (_, index) => `${index}`);
-		await expect(harness.database.prepare(`
+		await expect(
+			harness.database
+				.prepare(`
 			SELECT id FROM graphic_asset_references
 			WHERE id IN (${over.map(() => '?').join(', ')})
-		`).bind(...over).all()).rejects.toThrow(/too many SQL variables/i);
+		`)
+				.bind(...over)
+				.all(),
+		).rejects.toThrow(/too many SQL variables/i);
 	});
 
 	it('commits a save at the count the old encoding could not bind', async () => {
@@ -268,8 +290,9 @@ describe('an authored Screen Mode configuration carrying many Graphic Asset Refe
 		expect(updated?.stateVersion).toBe(1);
 		const indexed = await indexedReferences();
 		expect(indexed).toHaveLength(FIRST_UNBINDABLE_REFERENCE_COUNT);
-		expect(indexed.map(row => row.revisionId).toSorted())
-			.toEqual(revisionsFor(FIRST_UNBINDABLE_REFERENCE_COUNT).toSorted());
+		expect(indexed.map((row) => row.revisionId).toSorted()).toEqual(
+			revisionsFor(FIRST_UNBINDABLE_REFERENCE_COUNT).toSorted(),
+		);
 	});
 
 	it('commits a save far past it, so the count no longer decides anything', async () => {
@@ -296,36 +319,43 @@ describe('an authored Screen Mode configuration carrying many Graphic Asset Refe
 
 		it('rejects the save when one referenced Graphic Asset is retired under it', async () => {
 			// A re-pick onto a retired asset: one failed precondition rejects the whole save.
-			await harness.database.prepare(`
+			await harness.database
+				.prepare(`
 				UPDATE graphic_assets SET lifecycle_state = 'retired' WHERE id = ?
-			`).bind(assetId(3)).run();
+			`)
+				.bind(assetId(3))
+				.run();
 
 			const next = revisionsFor(FIRST_UNBINDABLE_REFERENCE_COUNT);
 			next[3] = revisionId(3, 2);
 
-			await expect(updateScreenModeConfigWithGraphicAssetReferences({
-				id: screenId,
-				eventId,
-				mode: 'broadcast-graphics',
-				partialConfig: stackPinning(next),
-			})).rejects.toThrow(StateConflictError);
+			await expect(
+				updateScreenModeConfigWithGraphicAssetReferences({
+					id: screenId,
+					eventId,
+					mode: 'broadcast-graphics',
+					partialConfig: stackPinning(next),
+				}),
+			).rejects.toThrow(StateConflictError);
 
 			// Nothing moved: not the configuration, not the version, not the index.
 			const screen = await storedScreen();
 			expect(screen?.stateVersion).toBe(1);
 			expect(screen?.modeConfigs).toContain(revisionId(3, 1));
 			const indexed = await indexedReferences();
-			expect(indexed.map(row => row.revisionId)).not.toContain(revisionId(3, 2));
+			expect(indexed.map((row) => row.revisionId)).not.toContain(revisionId(3, 2));
 		});
 
 		it('rejects the save when the Screen has moved on since it was read', async () => {
-			await expect(updateScreenModeConfigWithGraphicAssetReferences({
-				id: screenId,
-				eventId,
-				mode: 'broadcast-graphics',
-				partialConfig: stackPinning(revisionsFor(FIRST_UNBINDABLE_REFERENCE_COUNT, 2)),
-				stateVersion: 0,
-			})).rejects.toThrow(StateConflictError);
+			await expect(
+				updateScreenModeConfigWithGraphicAssetReferences({
+					id: screenId,
+					eventId,
+					mode: 'broadcast-graphics',
+					partialConfig: stackPinning(revisionsFor(FIRST_UNBINDABLE_REFERENCE_COUNT, 2)),
+					stateVersion: 0,
+				}),
+			).rejects.toThrow(StateConflictError);
 
 			expect((await storedScreen())?.stateVersion).toBe(1);
 		});
@@ -346,9 +376,12 @@ describe('an authored Screen Mode configuration carrying many Graphic Asset Refe
 
 		it('keeps a pinned revision resolvable once its own asset is retired', async () => {
 			// An unchanged reference keeps resolving after its asset is retired.
-			await harness.database.prepare(`
+			await harness.database
+				.prepare(`
 				UPDATE graphic_assets SET lifecycle_state = 'retired' WHERE id = ?
-			`).bind(assetId(3)).run();
+			`)
+				.bind(assetId(3))
+				.run();
 
 			const updated = await updateScreenModeConfigWithGraphicAssetReferences({
 				id: screenId,
@@ -370,48 +403,61 @@ describe('a Broadcast Graphics Screen authored to its documented Graphic Item ca
 	// A maximal write is six hundred statements against workerd; the default timeout is too short.
 	const MAXIMAL_WRITE_TIMEOUT_MS = 60_000;
 
-	it('commits every reference the cap admits in one write', async () => {
-		const updated = await updateScreenModeConfigWithGraphicAssetReferences({
-			id: screenId,
-			eventId,
-			mode: 'broadcast-graphics',
-			partialConfig: maximalStack(),
-		});
+	it(
+		'commits every reference the cap admits in one write',
+		async () => {
+			const updated = await updateScreenModeConfigWithGraphicAssetReferences({
+				id: screenId,
+				eventId,
+				mode: 'broadcast-graphics',
+				partialConfig: maximalStack(),
+			});
 
-		expect(updated?.stateVersion).toBe(1);
-		expect(await indexedReferences()).toHaveLength(MAXIMUM_REFERENCE_COUNT);
-	}, MAXIMAL_WRITE_TIMEOUT_MS);
+			expect(updated?.stateVersion).toBe(1);
+			expect(await indexedReferences()).toHaveLength(MAXIMUM_REFERENCE_COUNT);
+		},
+		MAXIMAL_WRITE_TIMEOUT_MS,
+	);
 
 	it.each([
 		['the first', 0],
 		['the last', MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN / 2 - 1],
-	] as const)('still refuses the whole save when %s reference stops resolving', async (_where, repicked) => {
-		await updateScreenModeConfigWithGraphicAssetReferences({
-			id: screenId,
-			eventId,
-			mode: 'broadcast-graphics',
-			partialConfig: maximalStack(),
-		});
+	] as const)(
+		'still refuses the whole save when %s reference stops resolving',
+		async (_where, repicked) => {
+			await updateScreenModeConfigWithGraphicAssetReferences({
+				id: screenId,
+				eventId,
+				mode: 'broadcast-graphics',
+				partialConfig: maximalStack(),
+			});
 
-		const repickedAsset = assetId(repicked % LARGE_REFERENCE_COUNT);
-		const repickedRevision = revisionId(repicked % LARGE_REFERENCE_COUNT, 2);
-		await harness.database.prepare(`
+			const repickedAsset = assetId(repicked % LARGE_REFERENCE_COUNT);
+			const repickedRevision = revisionId(repicked % LARGE_REFERENCE_COUNT, 2);
+			await harness.database
+				.prepare(`
 			UPDATE graphic_assets SET lifecycle_state = 'retired' WHERE id = ?
-		`).bind(repickedAsset).run();
+		`)
+				.bind(repickedAsset)
+				.run();
 
-		await expect(updateScreenModeConfigWithGraphicAssetReferences({
-			id: screenId,
-			eventId,
-			mode: 'broadcast-graphics',
-			partialConfig: maximalStack(repicked),
-		})).rejects.toThrow(StateConflictError);
+			await expect(
+				updateScreenModeConfigWithGraphicAssetReferences({
+					id: screenId,
+					eventId,
+					mode: 'broadcast-graphics',
+					partialConfig: maximalStack(repicked),
+				}),
+			).rejects.toThrow(StateConflictError);
 
-		// Nothing moved: not the configuration, the version, or the index.
-		const screen = await storedScreen();
-		expect(screen?.stateVersion).toBe(1);
-		expect(screen?.modeConfigs).not.toContain(repickedRevision);
-		const indexed = await indexedReferences();
-		expect(indexed).toHaveLength(MAXIMUM_REFERENCE_COUNT);
-		expect(indexed.map(row => row.revisionId)).not.toContain(repickedRevision);
-	}, MAXIMAL_WRITE_TIMEOUT_MS);
+			// Nothing moved: not the configuration, the version, or the index.
+			const screen = await storedScreen();
+			expect(screen?.stateVersion).toBe(1);
+			expect(screen?.modeConfigs).not.toContain(repickedRevision);
+			const indexed = await indexedReferences();
+			expect(indexed).toHaveLength(MAXIMUM_REFERENCE_COUNT);
+			expect(indexed.map((row) => row.revisionId)).not.toContain(repickedRevision);
+		},
+		MAXIMAL_WRITE_TIMEOUT_MS,
+	);
 });

@@ -46,9 +46,8 @@ function isActive(color: string): boolean {
 
 function toggle(color: string) {
 	if (isActive(color)) {
-		model.value = model.value.filter(c => c !== color);
-	}
-	else {
+		model.value = model.value.filter((c) => c !== color);
+	} else {
 		model.value = [...model.value, color];
 	}
 }
@@ -67,10 +66,7 @@ function toggle(color: string) {
 			:aria-pressed="isActive(color.value)"
 			@click="toggle(color.value)"
 		>
-			<i
-				class="ms ms-cost"
-				:class="colorClassMap[color.value]"
-			/>
+			<i class="ms ms-cost" :class="colorClassMap[color.value]" />
 		</button>
 	</div>
 </template>

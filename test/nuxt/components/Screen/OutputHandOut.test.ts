@@ -21,7 +21,9 @@ function accessUrl(output: ScreenOutput) {
 	return `${window.location.origin}/event/1/screen/main?output=${output}#asset-capability=${capability}`;
 }
 
-function mountHandOut(props: { outputs?: ScreenOutput[]; disabled?: boolean; disabledReason?: string } = {}) {
+function mountHandOut(
+	props: { outputs?: ScreenOutput[]; disabled?: boolean; disabledReason?: string } = {},
+) {
 	return mount(OutputHandOut, {
 		props: {
 			eventId: 1,
@@ -38,7 +40,10 @@ function stubOutputWindow() {
 		location: { href: '' },
 		close: vi.fn(),
 	};
-	vi.stubGlobal('open', vi.fn(() => outputWindow));
+	vi.stubGlobal(
+		'open',
+		vi.fn(() => outputWindow),
+	);
 	return outputWindow;
 }
 
@@ -46,9 +51,10 @@ function stubOutputWindow() {
 async function handOut(wrapper: VueWrapper, control: 'open' | 'copy', item?: string) {
 	await wrapper.get(`[data-hand-out="${control}"]`).trigger('click');
 	if (item) {
-		const entry = wrapper.findAll('[role="menuitem"]').find(candidate => candidate.text() === item);
-		if (!entry)
-			throw new Error(`No menu item "${item}" behind ${control}`);
+		const entry = wrapper
+			.findAll('[role="menuitem"]')
+			.find((candidate) => candidate.text() === item);
+		if (!entry) throw new Error(`No menu item "${item}" behind ${control}`);
 		await entry.trigger('click');
 	}
 	await flushPromises();
@@ -71,35 +77,28 @@ afterEach(() => {
 // this one owns which output each control hands out and the words for each outcome.
 describe('a Screen Output hand-out', () => {
 	it.each([
-		[
-			'the output, with no outputs of its own',
-			undefined,
-			undefined,
-			'overlay',
-		],
-		[
-			'a chosen output',
-			['overlay', 'fill', 'key'] as ScreenOutput[],
-			'Open key output',
-			'key',
-		],
+		['the output, with no outputs of its own', undefined, undefined, 'overlay'],
+		['a chosen output', ['overlay', 'fill', 'key'] as ScreenOutput[], 'Open key output', 'key'],
 		[
 			'the output from the menu',
 			['overlay', 'fill', 'key'] as ScreenOutput[],
 			'Open output',
 			'overlay',
 		],
-	])('opens %s in a tab it points once asset access is in hand', async (_, outputs, item, output) => {
-		const outputWindow = stubOutputWindow();
-		const wrapper = mountHandOut({ outputs });
+	])(
+		'opens %s in a tab it points once asset access is in hand',
+		async (_, outputs, item, output) => {
+			const outputWindow = stubOutputWindow();
+			const wrapper = mountHandOut({ outputs });
 
-		await handOut(wrapper, 'open', item);
+			await handOut(wrapper, 'open', item);
 
-		expect(apiFetch).toHaveBeenCalledWith('/api/events/1/screens/7/asset-capability');
-		expect(outputWindow.opener).toBeNull();
-		expect(outputWindow.location.href).toBe(accessUrl(output as ScreenOutput));
-		expect(toastAdd).not.toHaveBeenCalled();
-	});
+			expect(apiFetch).toHaveBeenCalledWith('/api/events/1/screens/7/asset-capability');
+			expect(outputWindow.opener).toBeNull();
+			expect(outputWindow.location.href).toBe(accessUrl(output as ScreenOutput));
+			expect(toastAdd).not.toHaveBeenCalled();
+		},
+	);
 
 	it.each([
 		[
@@ -123,18 +122,23 @@ describe('a Screen Output hand-out', () => {
 			'overlay',
 			'Output URL copied',
 		],
-	])('copies %s with asset access, and says what it carries', async (_, outputs, item, output, title) => {
-		const wrapper = mountHandOut({ outputs });
+	])(
+		'copies %s with asset access, and says what it carries',
+		async (_, outputs, item, output, title) => {
+			const wrapper = mountHandOut({ outputs });
 
-		await handOut(wrapper, 'copy', item);
+			await handOut(wrapper, 'copy', item);
 
-		expect(writeText).toHaveBeenCalledExactlyOnceWith(accessUrl(output as ScreenOutput));
-		expect(toastAdd).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-			title,
-			description: expect.stringContaining('asset access'),
-			color: 'success',
-		}));
-	});
+			expect(writeText).toHaveBeenCalledExactlyOnceWith(accessUrl(output as ScreenOutput));
+			expect(toastAdd).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					title,
+					description: expect.stringContaining('asset access'),
+					color: 'success',
+				}),
+			);
+		},
+	);
 
 	// A refusal and a blocked tab are opposite instructions — retry, or allow pop-ups —
 	// so each is said in its own words, and neither is blamed on the clipboard.
@@ -152,7 +156,11 @@ describe('a Screen Output hand-out', () => {
 		[
 			'names the browser when it blocks the tab',
 			'open',
-			() => vi.stubGlobal('open', vi.fn(() => null)),
+			() =>
+				vi.stubGlobal(
+					'open',
+					vi.fn(() => null),
+				),
 			'Output not opened',
 			'Allow pop-ups for this site',
 		],
@@ -170,11 +178,13 @@ describe('a Screen Output hand-out', () => {
 		await handOut(wrapper, control);
 
 		expect(writeText).not.toHaveBeenCalled();
-		expect(toastAdd).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-			title,
-			description: expect.stringContaining(reason),
-			color: 'error',
-		}));
+		expect(toastAdd).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				title,
+				description: expect.stringContaining(reason),
+				color: 'error',
+			}),
+		);
 	});
 
 	it('closes the tab it opened, unpointed, when asset access is refused', async () => {
@@ -190,13 +200,14 @@ describe('a Screen Output hand-out', () => {
 
 	it.each([
 		['no outputs of its own', undefined],
-		[
-			'outputs of its own',
-			['overlay', 'fill', 'key'] as ScreenOutput[],
-		],
+		['outputs of its own', ['overlay', 'fill', 'key'] as ScreenOutput[]],
 	])('hands nothing out, and says why, while disabled, with %s', async (_, outputs) => {
 		stubOutputWindow();
-		const wrapper = mountHandOut({ outputs, disabled: true, disabledReason: 'A pinned revision is missing.' });
+		const wrapper = mountHandOut({
+			outputs,
+			disabled: true,
+			disabledReason: 'A pinned revision is missing.',
+		});
 
 		for (const control of ['open', 'copy'] as const) {
 			const button = wrapper.get(`[data-hand-out="${control}"]`);

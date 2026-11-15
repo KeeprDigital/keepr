@@ -102,18 +102,21 @@ describe('useTopCutModeData', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
-	it('reads the configured Phase\'s bracket through the Screen', async () => {
+	it("reads the configured Phase's bracket through the Screen", async () => {
 		mutableConfig.phaseId = 3;
 		mockFetch.mockResolvedValue(answer());
 
 		const { bracket: held, isEmpty, error } = makeTopCutModeData();
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/top-cut', expect.anything());
-		expect(held.value.columns.map(column => column.name)).toEqual(['Semifinals', 'Final']);
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/top-cut',
+			expect.anything(),
+		);
+		expect(held.value.columns.map((column) => column.name)).toEqual(['Semifinals', 'Final']);
 		expect(isEmpty.value).toBe(false);
 		expect(error.value).toBeNull();
 	});
@@ -128,9 +131,11 @@ describe('useTopCutModeData', () => {
 
 	it('is empty while the Phase holds no Rounds, or is gone', async () => {
 		mutableConfig.phaseId = 3;
-		mockFetch.mockResolvedValue(answer({
-			bracket: { size: 0, columns: [], champion: null },
-		}));
+		mockFetch.mockResolvedValue(
+			answer({
+				bracket: { size: 0, columns: [], champion: null },
+			}),
+		);
 
 		const { isEmpty } = makeTopCutModeData();
 		await flushPromises();
@@ -138,7 +143,7 @@ describe('useTopCutModeData', () => {
 		expect(isEmpty.value).toBe(true);
 	});
 
-	it('heads the bracket with the configured header, else the Phase\'s name', async () => {
+	it("heads the bracket with the configured header, else the Phase's name", async () => {
 		mutableConfig.phaseId = 3;
 		mockFetch.mockResolvedValue(answer());
 		const { headerText } = makeTopCutModeData();
@@ -152,18 +157,21 @@ describe('useTopCutModeData', () => {
 	it.each([
 		['seeds', 'showSeeds'],
 		['Archetypes', 'showArchetypes'],
-	] as const)('re-reads when %s are turned on, since the read carries them only while shown', async (_, toggle) => {
-		mutableConfig.phaseId = 3;
-		mockFetch.mockResolvedValue(answer());
-		makeTopCutModeData();
-		await flushPromises();
-		mockFetch.mockClear();
+	] as const)(
+		're-reads when %s are turned on, since the read carries them only while shown',
+		async (_, toggle) => {
+			mutableConfig.phaseId = 3;
+			mockFetch.mockResolvedValue(answer());
+			makeTopCutModeData();
+			await flushPromises();
+			mockFetch.mockClear();
 
-		mutableConfig[toggle] = true;
-		await flushPromises();
+			mutableConfig[toggle] = true;
+			await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledTimes(1);
-	});
+			expect(mockFetch).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	it('re-reads when the bracket size is set', async () => {
 		mutableConfig.phaseId = 3;
@@ -193,36 +201,30 @@ describe('useTopCutModeData', () => {
 		it.each([
 			{ showArchetypes: true, reads: 1 },
 			{ showArchetypes: false, reads: 0 },
-		])('re-reads $reads times on an Archetype deleted while showArchetypes is $showArchetypes', async ({ showArchetypes, reads }) => {
-			await following({ showArchetypes });
-			deliver('archetype:deleted', { archetypeId: 5 });
-			await flushPromises();
+		])(
+			're-reads $reads times on an Archetype deleted while showArchetypes is $showArchetypes',
+			async ({ showArchetypes, reads }) => {
+				await following({ showArchetypes });
+				deliver('archetype:deleted', { archetypeId: 5 });
+				await flushPromises();
 
-			expect(mockFetch).toHaveBeenCalledTimes(reads);
-		});
+				expect(mockFetch).toHaveBeenCalledTimes(reads);
+			},
+		);
 	});
 
 	describe('a Manual Bracket (ADR-0075)', () => {
 		/** A Top 4 whose Seed 1 is Player 7 and Seed 4 a typed name. */
 		const manual: ManualBracket = {
 			size: 4,
-			entrants: [
-				{ playerId: 7 },
-				null,
-				null,
-				{ name: 'Walk-in' },
-			],
+			entrants: [{ playerId: 7 }, null, null, { name: 'Walk-in' }],
 			results: [],
 		};
 		const manualAnswer = (): ScreenOutputTopCutResponse => ({
 			phase: null,
 			bracket: deriveManualTopCutBracket(manual, (entrant, seed) => ({
-				playerId: 'playerId' in entrant
-					? entrant.playerId
-					: null,
-				name: 'name' in entrant
-					? entrant.name
-					: 'Nadia',
+				playerId: 'playerId' in entrant ? entrant.playerId : null,
+				name: 'name' in entrant ? entrant.name : 'Nadia',
 				seed,
 			})),
 		});
@@ -239,8 +241,11 @@ describe('useTopCutModeData', () => {
 		it('reads it through the Screen with no Phase selected, headed "Top Cut" unless configured', async () => {
 			const { bracket: held, isEmpty, headerText } = await readingManual();
 
-			expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/top-cut', expect.anything());
-			expect(held.value.columns.map(column => column.name)).toEqual(['Semifinals', 'Final']);
+			expect(mockFetch).toHaveBeenCalledWith(
+				'/api/screen-output/events/1/screens/1/top-cut',
+				expect.anything(),
+			);
+			expect(held.value.columns.map((column) => column.name)).toEqual(['Semifinals', 'Final']);
 			expect(isEmpty.value).toBe(false);
 			expect(headerText.value).toBe('Top Cut');
 		});
@@ -261,11 +266,7 @@ describe('useTopCutModeData', () => {
 
 			mutableConfig.manualBracket = {
 				...manual,
-				results: [
-					[
-						{ winner: 0 },
-					],
-				],
+				results: [[{ winner: 0 }]],
 			};
 			await flushPromises();
 

@@ -19,9 +19,7 @@ defineExpose(passOnRendererExposed(renderer));
 
 /** Ranking pointed cards keeps nonbasic lands in, whatever the Land filter holds. */
 function lockedTypes(config: Readonly<Record<string, any>>): MetagameCardTypeBucket[] {
-	return config.pointedOnly === true
-		? ['Land']
-		: [];
+	return config.pointedOnly === true ? ['Land'] : [];
 }
 </script>
 

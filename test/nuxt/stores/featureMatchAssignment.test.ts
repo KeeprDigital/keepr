@@ -38,9 +38,7 @@ describe('useFeatureMatchAssignmentStore', () => {
 	it('keeps simultaneously consumed Round collections instead of replacing one with another', async () => {
 		const round10 = assignment({ id: 1, roundId: 10 });
 		const round11 = assignment({ id: 2, roundId: 11 });
-		mockRepo.listByRound
-			.mockResolvedValueOnce([round10])
-			.mockResolvedValueOnce([round11]);
+		mockRepo.listByRound.mockResolvedValueOnce([round10]).mockResolvedValueOnce([round11]);
 		store.consumeRound(1, 10);
 		store.consumeRound(1, 11);
 
@@ -55,8 +53,8 @@ describe('useFeatureMatchAssignmentStore', () => {
 		let resolveOlder!: (assignments: FeatureMatchAssignment[]) => void;
 		let resolveNewer!: (assignments: FeatureMatchAssignment[]) => void;
 		mockRepo.listByRound
-			.mockReturnValueOnce(new Promise(resolve => resolveOlder = resolve))
-			.mockReturnValueOnce(new Promise(resolve => resolveNewer = resolve));
+			.mockReturnValueOnce(new Promise((resolve) => (resolveOlder = resolve)))
+			.mockReturnValueOnce(new Promise((resolve) => (resolveNewer = resolve)));
 
 		const olderLoad = store.loadAssignments(1, 10);
 		const newerLoad = store.loadAssignments(1, 10);
@@ -65,9 +63,7 @@ describe('useFeatureMatchAssignmentStore', () => {
 		await newerLoad;
 		expect(store.assignmentsForRound(10)).toEqual([newer]);
 
-		resolveOlder([
-			assignment({ id: 1, roundId: 10, note: 'Stale response' }),
-		]);
+		resolveOlder([assignment({ id: 1, roundId: 10, note: 'Stale response' })]);
 		await olderLoad;
 		expect(store.assignmentsForRound(10)).toEqual([newer]);
 	});
@@ -96,9 +92,7 @@ describe('useFeatureMatchAssignmentStore', () => {
 
 	it('keeps applying peer changes to a loaded Round after its mounted consumer releases it', async () => {
 		const release = store.consumeRound(1, 10);
-		mockRepo.listByRound.mockResolvedValue([
-			assignment({ id: 1, roundId: 10, note: 'Before' }),
-		]);
+		mockRepo.listByRound.mockResolvedValue([assignment({ id: 1, roundId: 10, note: 'Before' })]);
 		await store.loadAssignments(1, 10);
 		release();
 
@@ -115,9 +109,7 @@ describe('useFeatureMatchAssignmentStore', () => {
 	it('applies local save responses only to their owning Round collection', async () => {
 		const round10 = assignment({ id: 1, roundId: 10, note: 'Round 10' });
 		const round11 = assignment({ id: 2, roundId: 11, note: 'Round 11' });
-		mockRepo.listByRound
-			.mockResolvedValueOnce([round10])
-			.mockResolvedValueOnce([round11]);
+		mockRepo.listByRound.mockResolvedValueOnce([round10]).mockResolvedValueOnce([round11]);
 		await store.loadAssignments(1, 10);
 		await store.loadAssignments(1, 11);
 		const saved = assignment({ id: 1, roundId: 10, note: 'Updated locally' });
@@ -132,9 +124,7 @@ describe('useFeatureMatchAssignmentStore', () => {
 	it('reloads every consumed Round after reconnect without clearing accepted Notes first', async () => {
 		const old10 = assignment({ id: 1, roundId: 10, note: 'Held while disconnected' });
 		const old11 = assignment({ id: 2, roundId: 11, note: 'Also held' });
-		mockRepo.listByRound
-			.mockResolvedValueOnce([old10])
-			.mockResolvedValueOnce([old11]);
+		mockRepo.listByRound.mockResolvedValueOnce([old10]).mockResolvedValueOnce([old11]);
 		store.consumeRound(1, 10);
 		store.consumeRound(1, 11);
 		await store.loadAssignments(1, 10);
@@ -142,12 +132,8 @@ describe('useFeatureMatchAssignmentStore', () => {
 
 		mockRepo.listByRound.mockReset();
 		mockRepo.listByRound
-			.mockResolvedValueOnce([
-				assignment({ id: 1, roundId: 10, note: 'Authoritative 10' }),
-			])
-			.mockResolvedValueOnce([
-				assignment({ id: 2, roundId: 11, note: 'Authoritative 11' }),
-			]);
+			.mockResolvedValueOnce([assignment({ id: 1, roundId: 10, note: 'Authoritative 10' })])
+			.mockResolvedValueOnce([assignment({ id: 2, roundId: 11, note: 'Authoritative 11' })]);
 		const reload = store.reloadConsumedRounds();
 
 		expect(store.assignmentsForRound(10)[0]?.note).toBe('Held while disconnected');
@@ -169,9 +155,7 @@ describe('useFeatureMatchAssignmentStore', () => {
 		releaseSecondRound10();
 		expect(store.consumedRoundIds).toEqual(new Set([11]));
 
-		mockRepo.listByRound.mockResolvedValue([
-			assignment({ id: 2, roundId: 11 }),
-		]);
+		mockRepo.listByRound.mockResolvedValue([assignment({ id: 2, roundId: 11 })]);
 		await store.reloadConsumedRounds();
 		expect(mockRepo.listByRound).toHaveBeenCalledOnce();
 		expect(mockRepo.listByRound).toHaveBeenCalledWith(1, 11);
@@ -206,9 +190,7 @@ describe('useFeatureMatchAssignmentStore', () => {
 		}
 
 		it('a late create or update replaces no Assignment', async () => {
-			mockRepo.listByRound.mockResolvedValueOnce([
-				assignment({ id: 1, roundId: 10 }),
-			]);
+			mockRepo.listByRound.mockResolvedValueOnce([assignment({ id: 1, roundId: 10 })]);
 			store.consumeRound(1, 10);
 			await store.loadAssignments(1, 10);
 			const created = deferred<FeatureMatchAssignment>();
@@ -219,12 +201,14 @@ describe('useFeatureMatchAssignmentStore', () => {
 			const saving = store.saveAssignment(1, { roundId: 10, slotId: 101, matchId: 1001 } as any);
 			const updating = store.updateAssignment(1, 1, { note: 'Saved before the switch' });
 			const shown = await switchAway();
-			created.resolve(assignment({
-				id: 2,
-				roundId: 10,
-				slotId: 101,
-				matchId: 1001,
-			}));
+			created.resolve(
+				assignment({
+					id: 2,
+					roundId: 10,
+					slotId: 101,
+					matchId: 1001,
+				}),
+			);
 			updated.resolve(assignment({ id: 1, roundId: 10, note: 'Saved before the switch' }));
 			await Promise.all([saving, updating]);
 

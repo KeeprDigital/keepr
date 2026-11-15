@@ -49,16 +49,11 @@ export function useScreenOutputAssetCapability(
 				const result = await $fetch<{ assetCapability: string }>(
 					`/api/events/${currentEventId}/screens/${currentScreenId}/asset-capability`,
 				);
-				if (flight.current)
-					assetCapability.value = result.assetCapability;
-			}
-			catch {
-				if (flight.current)
-					assetCapability.value = null;
-			}
-			finally {
-				if (flight.current)
-					settled.value = true;
+				if (flight.current) assetCapability.value = result.assetCapability;
+			} catch {
+				if (flight.current) assetCapability.value = null;
+			} finally {
+				if (flight.current) settled.value = true;
 			}
 		},
 		{ immediate: true },

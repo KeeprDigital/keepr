@@ -10,14 +10,19 @@ import { SCREEN_MODE_VALUES } from '~~/shared/types/enums';
 import { DEFAULT_DECK_BOARD_LAYOUT, getDefaultConfigForMode } from '~~/shared/types/screenConfig';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 
-vi.mock('~/modules/screen-mode/editorModeData', () => import('~~/test/helpers/editedScreenModeData'));
+vi.mock(
+	'~/modules/screen-mode/editorModeData',
+	() => import('~~/test/helpers/editedScreenModeData'),
+);
 
 // The guard against an editor drifting from its config contract (ADR-0037, #498).
 
 const MODES_WITHOUT_SCALAR_CONTROLS: Partial<Record<ScreenMode, string>> = {
-	'background': 'its editor is the Background Layer stack, an authored stack',
-	'feature-match-overlay': 'its editor picks a Feature Match Slot (an Event Reference) and edits the server-validated layout',
-	'broadcast-graphics': 'its editor edits the authored graphics stack, the Graphic Channels list, and the Broadcast Graphics Background: one Animation Effect selection, a union field the shared Animation Effect editor edits from its catalogue schema',
+	background: 'its editor is the Background Layer stack, an authored stack',
+	'feature-match-overlay':
+		'its editor picks a Feature Match Slot (an Event Reference) and edits the server-validated layout',
+	'broadcast-graphics':
+		'its editor edits the authored graphics stack, the Graphic Channels list, and the Broadcast Graphics Background: one Animation Effect selection, a union field the shared Animation Effect editor edits from its catalogue schema',
 };
 
 /**
@@ -49,8 +54,7 @@ const BESPOKE_CONTROLS: Record<string, string> = {
 };
 
 // Values a contract's select field allows that its editor does not offer.
-const OPTIONS_NOT_OFFERED: Record<string, readonly string[]> = {
-};
+const OPTIONS_NOT_OFFERED: Record<string, readonly string[]> = {};
 
 /** A mode whose page the generic settings renderer draws from its contract. */
 const RENDERER = 'ModeSettings';
@@ -70,7 +74,7 @@ const EDITOR_VARIANTS: Partial<Record<ScreenMode, EditorVariants>> = {
 	},
 	// Each board in each view: the defaults show a grid Mainboard and a stacked Sideboard
 	// following its layout; a customised Sideboard shows its own layout fields.
-	'deck': {
+	deck: {
 		editor: RENDERER,
 		variants: [
 			{},
@@ -95,21 +99,19 @@ const EDITOR_VARIANTS: Partial<Record<ScreenMode, EditorVariants>> = {
 		opVariants: [{}],
 	},
 	// Each view mode's settings; the archetype colours show with the deck column.
-	'standings': {
+	standings: {
 		editor: 'Standings',
 		variants: [
 			{ viewMode: 'range' },
 			{
 				viewMode: 'reveal',
 				autoPageEnabled: true,
-				columns: [
-					{ key: 'deck', visible: true },
-				],
+				columns: [{ key: 'deck', visible: true }],
 			},
 		],
 	},
 	// Each scope's and each view's settings, and the Event's Conversion Target a shown Conversion Rate column names.
-	'metagame': {
+	metagame: {
 		editor: 'Metagame',
 		variants: [
 			{ scope: 'topN', autoPageEnabled: true },
@@ -125,10 +127,7 @@ const EDITOR_VARIANTS: Partial<Record<ScreenMode, EditorVariants>> = {
 	// Each scope's own field, and auto-page.
 	'archetype-spotlight': {
 		editor: 'ArchetypeSpotlight',
-		variants: [
-			{ scope: 'topN', autoPageEnabled: true },
-			{ scope: 'minPoints' },
-		],
+		variants: [{ scope: 'topN', autoPageEnabled: true }, { scope: 'minPoints' }],
 	},
 	// Each scope's own field, and auto-page.
 	'top-cards': {
@@ -180,9 +179,7 @@ mockNuxtImport('usePlayerStore', () => () => ({
 // One Player List, so every scope that needs one is offered.
 mockNuxtImport('usePlayerListStore', () => () => ({
 	...loaded,
-	lists: [
-		{ id: 7, name: 'Feature Table', memberCount: 4 },
-	],
+	lists: [{ id: 7, name: 'Feature Table', memberCount: 4 }],
 	loadByEventId: vi.fn(),
 }));
 mockNuxtImport('useRoundStore', () => () => ({
@@ -251,7 +248,9 @@ const UFormFieldStub = defineComponent({
 
 type ControlKind = ScreenModeConfigField['control'];
 
-interface OptionItem { value: unknown }
+interface OptionItem {
+	value: unknown;
+}
 
 function controlStub(kind: ControlKind, next: (props: Record<string, any>) => unknown) {
 	return defineComponent({
@@ -267,42 +266,43 @@ function controlStub(kind: ControlKind, next: (props: Record<string, any>) => un
 		emits: ['update:modelValue'],
 		setup(props, { attrs, emit }) {
 			const fieldLabel = inject<() => string | undefined>(FIELD_LABEL, () => undefined);
-			return () => h('button', {
-				'type': 'button',
-				'data-guard-control': kind,
-				'data-label': props.label ?? fieldLabel(),
-				'data-aria-label': attrs['aria-label'] as string | undefined,
-				// A toggle rendered by `ScreenConfigField` carries its field's key on itself.
-				'data-config-field': attrs['data-config-field'] as string | undefined,
-				'data-min': props.min,
-				'data-max': props.max,
-				'data-step': props.step,
-				'data-values': props.items
-					? JSON.stringify((props.items as OptionItem[]).map(item => item.value))
-					: undefined,
-				'onClick': () => emit('update:modelValue', next(props)),
-			});
+			return () =>
+				h('button', {
+					type: 'button',
+					'data-guard-control': kind,
+					'data-label': props.label ?? fieldLabel(),
+					'data-aria-label': attrs['aria-label'] as string | undefined,
+					// A toggle rendered by `ScreenConfigField` carries its field's key on itself.
+					'data-config-field': attrs['data-config-field'] as string | undefined,
+					'data-min': props.min,
+					'data-max': props.max,
+					'data-step': props.step,
+					'data-values': props.items
+						? JSON.stringify((props.items as OptionItem[]).map((item) => item.value))
+						: undefined,
+					onClick: () => emit('update:modelValue', next(props)),
+				});
 		},
 	});
 }
 
 function differentItem(props: Record<string, any>) {
 	const items = (props.items ?? []) as OptionItem[];
-	return (items.find(item => item.value !== props.modelValue) ?? items[0])?.value;
+	return (items.find((item) => item.value !== props.modelValue) ?? items[0])?.value;
 }
 
 const stubs = {
 	ScreenSettingsSection: ScreenSettingsSectionStub,
-	ScreenSettingsToggle: controlStub('toggle', props => !props.modelValue),
+	ScreenSettingsToggle: controlStub('toggle', (props) => !props.modelValue),
 	// A bare switch, as a card badge's row shows it, named by its field.
-	USwitch: controlStub('toggle', props => !props.modelValue),
+	USwitch: controlStub('toggle', (props) => !props.modelValue),
 	UFormField: UFormFieldStub,
-	UInputNumber: controlStub('number', props => (Number(props.modelValue) || 0) + 1),
+	UInputNumber: controlStub('number', (props) => (Number(props.modelValue) || 0) + 1),
 	USelect: controlStub('select', differentItem),
 	UISegmentedTabs: controlStub('select', differentItem),
-	UINinePointPicker: controlStub('position', props => (props.modelValue === 'bottom-left'
-		? 'bottom-right'
-		: 'bottom-left')),
+	UINinePointPicker: controlStub('position', (props) =>
+		props.modelValue === 'bottom-left' ? 'bottom-right' : 'bottom-left',
+	),
 	UIColorPicker: controlStub('color', () => '#010203'),
 	UInput: controlStub('text', () => 'Guard'),
 	UTabs: true,
@@ -330,16 +330,19 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  * The field path a control's first write names: a key, or a key inside a block it
  * rewrote whole. A bespoke field is named whole, whatever its value.
  */
-function writtenPath(before: Record<string, unknown>, patch: Record<string, unknown>, bespoke: Set<string>): string[] {
-	const keys = Object.keys(patch).filter(key => !ROTATION_KEYS.has(key));
+function writtenPath(
+	before: Record<string, unknown>,
+	patch: Record<string, unknown>,
+	bespoke: Set<string>,
+): string[] {
+	const keys = Object.keys(patch).filter((key) => !ROTATION_KEYS.has(key));
 	expect(keys, `a control wrote ${JSON.stringify(patch)}: one field per control`).toHaveLength(1);
 	const key = keys[0]!;
-	if (bespoke.has(key))
-		return [key];
+	if (bespoke.has(key)) return [key];
 	const value = patch[key];
 	const previous = before[key];
 	if (isPlainObject(value) && isPlainObject(previous)) {
-		const changed = Object.keys(value).filter(inner => value[inner] !== previous[inner]);
+		const changed = Object.keys(value).filter((inner) => value[inner] !== previous[inner]);
 		expect(changed, `a control rewrote ${key} changing ${changed.join(', ')}`).toHaveLength(1);
 		return [key, changed[0]!];
 	}
@@ -361,8 +364,7 @@ function contractEditorFields(mode: ScreenMode): Map<string, ScreenModeConfigFie
 	const fields = new Map<string, ScreenModeConfigField>();
 	const visit = (views: Readonly<Record<string, ScreenModeConfigField>>, path: string[]) => {
 		for (const field of Object.values(views)) {
-			if (field.fields)
-				visit(field.fields, [...path, field.key]);
+			if (field.fields) visit(field.fields, [...path, field.key]);
 			else if (SCALAR_CONTROLS.has(field.control))
 				fields.set([...path, field.key].join('.'), field);
 		}
@@ -373,21 +375,22 @@ function contractEditorFields(mode: ScreenMode): Map<string, ScreenModeConfigFie
 
 /** A mode's fields a bespoke widget edits: its Event References and named slots. */
 function bespokeFields(mode: ScreenMode): Set<string> {
-	return new Set(Object.values(screenModeConfigContract(mode).fields as Record<string, ScreenModeConfigField>)
-		.filter(field => field.control === 'reference' || field.control === 'slot')
-		.map(field => field.key));
+	return new Set(
+		Object.values(screenModeConfigContract(mode).fields as Record<string, ScreenModeConfigField>)
+			.filter((field) => field.control === 'reference' || field.control === 'slot')
+			.map((field) => field.key),
+	);
 }
 
 function numberAttr(value: string | undefined): number | undefined {
-	return value === undefined
-		? undefined
-		: Number(value);
+	return value === undefined ? undefined : Number(value);
 }
 
 async function mountEditor(editor: string, mode: ScreenMode) {
-	const { default: Settings } = editor === RENDERER
-		? await import('~/components/Screen/ModeSettings.vue')
-		: await import(`../../../../../app/components/Screen/Modes/${editor}/Settings.vue`);
+	const { default: Settings } =
+		editor === RENDERER
+			? await import('~/components/Screen/ModeSettings.vue')
+			: await import(`../../../../../app/components/Screen/Modes/${editor}/Settings.vue`);
 	const wrapper = mount(Settings, {
 		props: {
 			screen: { id: 1, currentMode: mode } as Screen,
@@ -400,33 +403,50 @@ async function mountEditor(editor: string, mode: ScreenMode) {
 }
 
 /** Whether a field's page decides something of it for the Screen, which a contract's types cannot hold to its declaration. */
-function decidedForTheScreen(mode: ScreenMode, path: string, field: ScreenModeConfigField): boolean {
-	const groups = screenModeConfigContract(mode).groups as Record<string, { layout?: string }> | undefined;
-	return typeof field.options === 'function'
-		|| field.labelFor !== undefined
-		|| field.maxFor !== undefined
-		|| path.includes('.')
-		|| (field.group !== undefined && groups?.[field.group]?.layout === 'row');
+function decidedForTheScreen(
+	mode: ScreenMode,
+	path: string,
+	field: ScreenModeConfigField,
+): boolean {
+	const groups = screenModeConfigContract(mode).groups as
+		| Record<string, { layout?: string }>
+		| undefined;
+	return (
+		typeof field.options === 'function' ||
+		field.labelFor !== undefined ||
+		field.maxFor !== undefined ||
+		path.includes('.') ||
+		(field.group !== undefined && groups?.[field.group]?.layout === 'row')
+	);
 }
 
-describe('the settings editors\' guard', () => {
+describe("the settings editors' guard", () => {
 	it('lists every Screen Mode once: with its variants, with why its editor has no scalar control, or as drawn whole from its contract', () => {
-		expect([
-			...Object.keys(EDITOR_VARIANTS),
-			...Object.keys(MODES_WITHOUT_SCALAR_CONTROLS),
-			...MODES_DRAWN_WHOLE_FROM_THEIR_CONTRACT,
-		].sort()).toEqual([...SCREEN_MODE_VALUES].sort());
+		expect(
+			[
+				...Object.keys(EDITOR_VARIANTS),
+				...Object.keys(MODES_WITHOUT_SCALAR_CONTROLS),
+				...MODES_DRAWN_WHOLE_FROM_THEIR_CONTRACT,
+			].sort(),
+		).toEqual([...SCREEN_MODE_VALUES].sort());
 	});
 
-	it.each(Object.entries(MODES_WITHOUT_SCALAR_CONTROLS) as [ScreenMode, string][])('%s declares no scalar editor field, since %s', (mode) => {
-		expect(contractEditorFields(mode).size).toBe(0);
-	});
+	it.each(Object.entries(MODES_WITHOUT_SCALAR_CONTROLS) as [ScreenMode, string][])(
+		'%s declares no scalar editor field, since %s',
+		(mode) => {
+			expect(contractEditorFields(mode).size).toBe(0);
+		},
+	);
 
 	// One gaining such a field has a page that can drift: list it in EDITOR_VARIANTS.
 	it('a mode drawn whole from its contract declares no field its page decides for the Screen', () => {
-		expect(MODES_DRAWN_WHOLE_FROM_THEIR_CONTRACT.flatMap(mode => [
-			...contractEditorFields(mode),
-		].filter(([path, field]) => decidedForTheScreen(mode, path, field)).map(([path]) => `${mode}.${path}`))).toEqual([]);
+		expect(
+			MODES_DRAWN_WHOLE_FROM_THEIR_CONTRACT.flatMap((mode) =>
+				[...contractEditorFields(mode)]
+					.filter(([path, field]) => decidedForTheScreen(mode, path, field))
+					.map(([path]) => `${mode}.${path}`),
+			),
+		).toEqual([]);
 	});
 });
 
@@ -439,8 +459,8 @@ describe.each(Object.keys(EDITOR_VARIANTS) as ScreenMode[])('the %s settings edi
 		const rendered = new Set<string>();
 
 		const variants = [
-			...entry.variants.map(variant => ({ variant, game: 'mtg' })),
-			...(entry.opVariants ?? []).map(variant => ({ variant, game: 'op' })),
+			...entry.variants.map((variant) => ({ variant, game: 'mtg' })),
+			...(entry.opVariants ?? []).map((variant) => ({ variant, game: 'op' })),
 		];
 		for (const { variant, game } of variants) {
 			editorEvent.game = game;
@@ -453,11 +473,14 @@ describe.each(Object.keys(EDITOR_VARIANTS) as ScreenMode[])('the %s settings edi
 			const count = wrapper.findAll('[data-guard-control]').length;
 
 			// A declared field rendered by `ScreenConfigField` is found by its key.
-			const editorKeys = new Set([
-				...fields.keys(),
-			].map(path => path.split('.').at(-1)));
-			for (const declared of wrapper.findAll('[data-config-field]').map(found => found.attributes('data-config-field')!))
-				expect(editorKeys.has(declared), `${mode} editor renders "${declared}", which is no editor field of its contract`).toBe(true);
+			const editorKeys = new Set([...fields.keys()].map((path) => path.split('.').at(-1)));
+			for (const declared of wrapper
+				.findAll('[data-config-field]')
+				.map((found) => found.attributes('data-config-field')!))
+				expect(
+					editorKeys.has(declared),
+					`${mode} editor renders "${declared}", which is no editor field of its contract`,
+				).toBe(true);
 
 			for (let index = 0; index < count; index++) {
 				config.value = structuredClone(initial);
@@ -466,12 +489,10 @@ describe.each(Object.keys(EDITOR_VARIANTS) as ScreenMode[])('the %s settings edi
 				writes.length = 0;
 				await control.trigger('click');
 				const patch = writes[0];
-				if (!patch)
-					continue; // not a write of this mode's config, such as a Screen's alignment
+				if (!patch) continue; // not a write of this mode's config, such as a Screen's alignment
 
 				const path = writtenPath(initial, patch, bespoke);
-				if (path.length === 1 && bespoke.has(path[0]!))
-					continue; // an Event Reference's picker or a named slot's widget (ADR-0038)
+				if (path.length === 1 && bespoke.has(path[0]!)) continue; // an Event Reference's picker or a named slot's widget (ADR-0038)
 
 				const key = path.join('.');
 				if (BESPOKE_CONTROLS[`${mode}.${key}`]) {
@@ -481,35 +502,40 @@ describe.each(Object.keys(EDITOR_VARIANTS) as ScreenMode[])('the %s settings edi
 				const field = fields.get(key);
 				const where = `${mode} editor control writing ${key}`;
 				expect(field, `${where}: its contract field carries no editor metadata`).toBeDefined();
-				const declared = (control.element as HTMLElement).closest('[data-config-field]')?.getAttribute('data-config-field');
-				if (declared)
-					expect(declared, `${where}: rendered as another field`).toBe(path.at(-1));
-				const { guardControl, label, ariaLabel, min, max, step, values } = (control.element as HTMLElement).dataset;
+				const declared = (control.element as HTMLElement)
+					.closest('[data-config-field]')
+					?.getAttribute('data-config-field');
+				if (declared) expect(declared, `${where}: rendered as another field`).toBe(path.at(-1));
+				const { guardControl, label, ariaLabel, min, max, step, values } = (
+					control.element as HTMLElement
+				).dataset;
 				expect(guardControl, `${where}: control kind`).toBe(field!.control);
 				// Labelled by its field, visibly or, inside a group of controls, by its accessible name.
 				expect([label, ariaLabel], `${where}: label`).toContain(field!.label);
 				if (field!.control === 'number') {
-					expect({
-						min: numberAttr(min),
-						max: numberAttr(max),
-						step: numberAttr(step),
-					}, `${where}: bounds`)
-						.toEqual({ min: field!.min, max: field!.max, step: field!.step });
+					expect(
+						{
+							min: numberAttr(min),
+							max: numberAttr(max),
+							step: numberAttr(step),
+						},
+						`${where}: bounds`,
+					).toEqual({ min: field!.min, max: field!.max, step: field!.step });
 				}
 				if (field!.control === 'select' && values) {
 					const notOffered = OPTIONS_NOT_OFFERED[`${mode}.${key}`] ?? [];
-					expect([
-						...new Set(JSON.parse(values) as string[]),
-					].sort(), `${where}: options`)
-						.toEqual(field!.values!.filter(value => !notOffered.includes(value)).sort());
+					expect([...new Set(JSON.parse(values) as string[])].sort(), `${where}: options`).toEqual(
+						field!.values!.filter((value) => !notOffered.includes(value)).sort(),
+					);
 				}
 				rendered.add(key);
 			}
 			wrapper.unmount();
 		}
 
-		expect([
-			...fields.keys(),
-		].filter(key => !rendered.has(key)), `${mode} editor fields never rendered`).toEqual([]);
+		expect(
+			[...fields.keys()].filter((key) => !rendered.has(key)),
+			`${mode} editor fields never rendered`,
+		).toEqual([]);
 	});
 });

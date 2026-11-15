@@ -8,7 +8,11 @@ import {
 } from '~~/server/schemas/api/screen';
 import { screenModeConfigContract } from '~~/shared/screenModes';
 import { SCREEN_MODE_VALUES } from '~~/shared/types/enums';
-import { getDefaultConfigForMode, getDisplayDefaultsForMode, resolveScreenModeConfig } from '~~/shared/types/screenConfig';
+import {
+	getDefaultConfigForMode,
+	getDisplayDefaultsForMode,
+	resolveScreenModeConfig,
+} from '~~/shared/types/screenConfig';
 
 /**
  * One config contract per Screen Mode (ADR-0037).
@@ -19,12 +23,14 @@ import { getDefaultConfigForMode, getDisplayDefaultsForMode, resolveScreenModeCo
  * delete an authored stack.
  */
 it('declares the Background Layer stack and the Broadcast Graphics stack authored, and nothing else', () => {
-	const declared = Object.fromEntries(SCREEN_MODE_VALUES
-		.map(mode => [mode, screenModeConfigContract(mode).authoredStacks] as const)
-		.filter(([, stacks]) => stacks.length > 0));
+	const declared = Object.fromEntries(
+		SCREEN_MODE_VALUES.map(
+			(mode) => [mode, screenModeConfigContract(mode).authoredStacks] as const,
+		).filter(([, stacks]) => stacks.length > 0),
+	);
 
 	expect(declared).toEqual({
-		'background': ['layers'],
+		background: ['layers'],
 		'broadcast-graphics': ['graphics'],
 	});
 });
@@ -54,23 +60,23 @@ describe.each(SCREEN_MODE_VALUES)('the %s config contract', (mode) => {
 
 	const authoredStacks: readonly string[] = contract.authoredStacks;
 
-	it.each(authoredStacks)('replaces its authored %s stack, but refuses to delete it with null', (key) => {
-		// `null` deletes a stored key, which would empty an authored stack with no
-		// way back; a display reset leaves one alone for the same reason.
-		const stack = (contract.defaults as Record<string, unknown>)[key];
+	it.each(authoredStacks)(
+		'replaces its authored %s stack, but refuses to delete it with null',
+		(key) => {
+			// `null` deletes a stored key, which would empty an authored stack with no
+			// way back; a display reset leaves one alone for the same reason.
+			const stack = (contract.defaults as Record<string, unknown>)[key];
 
-		expect(patchSchema.parse({ [key]: stack })).toEqual({ [key]: stack });
-		expect(patchSchema.safeParse({ [key]: null }).success).toBe(false);
-		expect(getDisplayDefaultsForMode(mode)).not.toHaveProperty(key);
-	});
+			expect(patchSchema.parse({ [key]: stack })).toEqual({ [key]: stack });
+			expect(patchSchema.safeParse({ [key]: null }).success).toBe(false);
+			expect(getDisplayDefaultsForMode(mode)).not.toHaveProperty(key);
+		},
+	);
 
 	it('saves what storage holds back through a full write unchanged, as the Edit Screen dialog sends it', () => {
 		// PATCHes leave a fragment, and a display reset writes every default but the
 		// preserved keys. Neither may be refused, nor completed into storage.
-		for (const stored of [
-			{},
-			getDisplayDefaultsForMode(mode),
-		])
+		for (const stored of [{}, getDisplayDefaultsForMode(mode)])
 			expect(modeConfigsMapSchema.parse({ [mode]: stored })).toEqual({ [mode]: stored });
 	});
 });
@@ -87,14 +93,23 @@ describe.each(['standings', 'metagame'] as const)('the %s max width', (mode) => 
 	});
 
 	it('is Auto on a Screen storing none, and again once cleared', () => {
-		const cleared = parseModeConfigPatchResult({
-			[mode]: { maxWidth: 1200 },
-		}, mode, modeConfigPatchSchemaMap[mode].parse({ maxWidth: null }) as Record<string, unknown>);
+		const cleared = parseModeConfigPatchResult(
+			{
+				[mode]: { maxWidth: 1200 },
+			},
+			mode,
+			modeConfigPatchSchemaMap[mode].parse({ maxWidth: null }) as Record<string, unknown>,
+		);
 
 		expect(resolveScreenModeConfig({}, mode).maxWidth).toBeUndefined();
-		expect(resolveScreenModeConfig({
-			[mode]: { maxWidth: 1200 },
-		}, mode).maxWidth).toBe(1200);
+		expect(
+			resolveScreenModeConfig(
+				{
+					[mode]: { maxWidth: 1200 },
+				},
+				mode,
+			).maxWidth,
+		).toBe(1200);
 		expect(resolveScreenModeConfig(cleared, mode).maxWidth).toBeUndefined();
 	});
 });

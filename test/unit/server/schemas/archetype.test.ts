@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createArchetypeSchema, setArchetypeKeyCardsSchema, updateArchetypeSchema } from '~~/server/schemas/api/archetype';
+import {
+	createArchetypeSchema,
+	setArchetypeKeyCardsSchema,
+	updateArchetypeSchema,
+} from '~~/server/schemas/api/archetype';
 
 describe('createArchetypeSchema', () => {
 	it.each([
@@ -7,11 +11,15 @@ describe('createArchetypeSchema', () => {
 		['leaderCardNumber', 'OP01-001'],
 		['customised', true],
 	])('refuses %s, which the server owns', (field, value) => {
-		expect(createArchetypeSchema.safeParse({ name: 'Azorius Control', [field]: value }).success).toBe(false);
+		expect(
+			createArchetypeSchema.safeParse({ name: 'Azorius Control', [field]: value }).success,
+		).toBe(false);
 	});
 
 	it('takes no Pinned Chart Series, which only an edit sets', () => {
-		expect(createArchetypeSchema.safeParse({ name: 'Azorius Control', chartSeries: 3 }).success).toBe(false);
+		expect(
+			createArchetypeSchema.safeParse({ name: 'Azorius Control', chartSeries: 3 }).success,
+		).toBe(false);
 	});
 });
 
@@ -82,11 +90,7 @@ describe('setArchetypeKeyCardsSchema', () => {
 			},
 			false,
 		],
-		[
-			'an empty list, which clears the key cards',
-			{ cardIds: [] },
-			true,
-		],
+		['an empty list, which clears the key cards', { cardIds: [] }, true],
 		['neither IDs nor names', {}, false],
 		[
 			'both IDs and names',
@@ -101,11 +105,15 @@ describe('setArchetypeKeyCardsSchema', () => {
 	});
 
 	it('trims card names and refuses a blank one', () => {
-		expect(setArchetypeKeyCardsSchema.parse({
-			cardNames: ['  Lightning Bolt  '],
-		}).cardNames).toEqual(['Lightning Bolt']);
-		expect(setArchetypeKeyCardsSchema.safeParse({
-			cardNames: ['   '],
-		}).success).toBe(false);
+		expect(
+			setArchetypeKeyCardsSchema.parse({
+				cardNames: ['  Lightning Bolt  '],
+			}).cardNames,
+		).toEqual(['Lightning Bolt']);
+		expect(
+			setArchetypeKeyCardsSchema.safeParse({
+				cardNames: ['   '],
+			}).success,
+		).toBe(false);
 	});
 });

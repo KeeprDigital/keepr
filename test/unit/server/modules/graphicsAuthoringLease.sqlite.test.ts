@@ -13,9 +13,13 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // the Session are faked; the commit-time fence is `screenGraphicsAuthoringLease.sqlite.test.ts`'s.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: { params: unknown }, parse: (value: unknown) => unknown) => parse(event.params),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -44,9 +48,11 @@ vi.doMock('~~/server/utils/auth', () => ({
 }));
 
 const { graphicsAuthoringLeaseModule } = await import('~~/server/modules/graphics-authoring-lease');
-const { screenEditWorkspaceLeaseRef } = await import('~~/server/modules/graphics-authoring-lease/screenEditWorkspace');
+const { screenEditWorkspaceLeaseRef } =
+	await import('~~/server/modules/graphics-authoring-lease/screenEditWorkspace');
 const { screenWriteModule } = await import('~~/server/modules/screen-write');
-const readScreen = (await import('~~/server/api/events/[id]/screens/[screenId]/index.get')).default as unknown as (event: H3Event) => Promise<{
+const readScreen = (await import('~~/server/api/events/[id]/screens/[screenId]/index.get'))
+	.default as unknown as (event: H3Event) => Promise<{
 	modeConfigs: { 'broadcast-graphics': { graphics: BroadcastGraphicConfig[] } };
 }>;
 
@@ -69,12 +75,8 @@ function ask(sessionId: string, heartbeatIntervalMs?: number) {
 async function storedLease() {
 	const rows = await db.select().from(schema.graphicsAuthoringLeases);
 	return rows
-		.filter(row => row.artifactId === String(screenId))
-		.map(row => [
-			row.holderSessionId,
-			row.acquiredAt.getTime(),
-			row.expiresAt.getTime(),
-		]);
+		.filter((row) => row.artifactId === String(screenId))
+		.map((row) => [row.holderSessionId, row.acquiredAt.getTime(), row.expiresAt.getTime()]);
 }
 
 beforeEach(async () => {
@@ -98,7 +100,7 @@ afterEach(() => {
 afterAll(async () => await harness.close());
 
 describe('a Graphics Authoring Lease heartbeat', () => {
-	it('moves the holder\'s deadline on by the time that passed, keeping when it was first held', async () => {
+	it("moves the holder's deadline on by the time that passed, keeping when it was first held", async () => {
 		const granted = await ask(HOLDER);
 		vi.setSystemTime(GRANTED_AT + 5_000);
 
@@ -111,9 +113,7 @@ describe('a Graphics Authoring Lease heartbeat', () => {
 			heldSince: GRANTED_AT,
 			expiresAt: granted.lease.expiresAt! + 5_000,
 		});
-		expect(await storedLease()).toEqual([
-			[HOLDER, GRANTED_AT, granted.lease.expiresAt! + 5_000],
-		]);
+		expect(await storedLease()).toEqual([[HOLDER, GRANTED_AT, granted.lease.expiresAt! + 5_000]]);
 	});
 });
 
@@ -147,7 +147,7 @@ describe('a Graphics Authoring Lease whose holder stopped asking', () => {
 });
 
 describe('a Screen read while its Edit workspace is leased', () => {
-	it('answers an observing Session the holder\'s accepted stack', async () => {
+	it("answers an observing Session the holder's accepted stack", async () => {
 		await ask(HOLDER);
 		await screenWriteModule().updateModeConfig({
 			eventId,
@@ -166,14 +166,18 @@ describe('a Screen read while its Edit workspace is leased', () => {
 		askingSessionId = OTHER;
 		expect((await ask(OTHER)).lease.writable).toBe(false);
 
-		const screen = await readScreen(stubH3Event({
-			params: {
-				id: String(eventId),
-				screenId: String(screenId),
-			},
-		}));
+		const screen = await readScreen(
+			stubH3Event({
+				params: {
+					id: String(eventId),
+					screenId: String(screenId),
+				},
+			}),
+		);
 
-		expect(screen.modeConfigs['broadcast-graphics'].graphics.map(entry => entry.id))
-			.toEqual(['holder-stack', 'second-graphic']);
+		expect(screen.modeConfigs['broadcast-graphics'].graphics.map((entry) => entry.id)).toEqual([
+			'holder-stack',
+			'second-graphic',
+		]);
 	});
 });

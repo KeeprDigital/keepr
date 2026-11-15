@@ -15,8 +15,7 @@ function failure(code, detail) {
 }
 
 function sameBytes(actual, expected) {
-	if (actual.byteLength !== expected.byteLength)
-		return false;
+	if (actual.byteLength !== expected.byteLength) return false;
 	return actual.every((byte, index) => byte === expected[index]);
 }
 
@@ -35,19 +34,13 @@ function checkStatus(observation, expected, route) {
 function checkValidator(headers, route) {
 	const etag = headers.get('etag');
 	if (!etag) {
-		return [
-			failure('delivery-validator-missing', { route }),
-		];
+		return [failure('delivery-validator-missing', { route })];
 	}
 	if (/^W\//i.test(etag.trim())) {
-		return [
-			failure('delivery-validator-not-strong', { route, shape: 'weak' }),
-		];
+		return [failure('delivery-validator-not-strong', { route, shape: 'weak' })];
 	}
 	if (!/^"[^"]+"$/.test(etag.trim())) {
-		return [
-			failure('delivery-validator-not-strong', { route, shape: 'unquoted' }),
-		];
+		return [failure('delivery-validator-not-strong', { route, shape: 'unquoted' })];
 	}
 	return [];
 }
@@ -73,40 +66,50 @@ export function checkFullRead(observation, expected) {
 	if (headers.get('accept-ranges') !== 'bytes')
 		failures.push(failure('delivery-accept-ranges-missing', { route: expected.route }));
 	if (headers.get('content-type') !== expected.contentType) {
-		failures.push(failure('delivery-content-type-unexpected', {
-			route: expected.route,
-			expected: expected.contentType,
-			actual: headers.get('content-type') ?? 'absent',
-		}));
+		failures.push(
+			failure('delivery-content-type-unexpected', {
+				route: expected.route,
+				expected: expected.contentType,
+				actual: headers.get('content-type') ?? 'absent',
+			}),
+		);
 	}
 	if (headers.get('content-length') !== String(expected.bytes.byteLength)) {
-		failures.push(failure('delivery-content-length-unexpected', {
-			route: expected.route,
-			expected: expected.bytes.byteLength,
-			actual: headers.get('content-length') ?? 'absent',
-		}));
+		failures.push(
+			failure('delivery-content-length-unexpected', {
+				route: expected.route,
+				expected: expected.bytes.byteLength,
+				actual: headers.get('content-length') ?? 'absent',
+			}),
+		);
 	}
 	if (headers.get('cache-control') !== expected.cacheControl) {
-		failures.push(failure('delivery-cache-directive-unexpected', {
-			route: expected.route,
-			expected: expected.cacheControl,
-			actual: headers.get('cache-control') ?? 'absent',
-		}));
+		failures.push(
+			failure('delivery-cache-directive-unexpected', {
+				route: expected.route,
+				expected: expected.cacheControl,
+				actual: headers.get('cache-control') ?? 'absent',
+			}),
+		);
 	}
-	const vary = (headers.get('vary') ?? '').split(',').map(value => value.trim().toLowerCase());
-	if (!expected.vary.every(name => vary.includes(name))) {
-		failures.push(failure('delivery-vary-incomplete', {
-			route: expected.route,
-			expected: expected.vary.join(' '),
-			actual: vary.join(' ') || 'absent',
-		}));
+	const vary = (headers.get('vary') ?? '').split(',').map((value) => value.trim().toLowerCase());
+	if (!expected.vary.every((name) => vary.includes(name))) {
+		failures.push(
+			failure('delivery-vary-incomplete', {
+				route: expected.route,
+				expected: expected.vary.join(' '),
+				actual: vary.join(' ') || 'absent',
+			}),
+		);
 	}
 	if (!sameBytes(observation.bytes, expected.bytes)) {
-		failures.push(failure('delivery-body-mismatch', {
-			route: expected.route,
-			expected: expected.bytes.byteLength,
-			actual: observation.bytes.byteLength,
-		}));
+		failures.push(
+			failure('delivery-body-mismatch', {
+				route: expected.route,
+				expected: expected.bytes.byteLength,
+				actual: observation.bytes.byteLength,
+			}),
+		);
 	}
 	return failures;
 }
@@ -115,11 +118,13 @@ export function checkFullRead(observation, expected) {
 export function checkConditionalRead(observation, { route, etag }) {
 	const failures = [];
 	if (observation.status !== 304) {
-		failures.push(failure('delivery-conditional-not-honoured', {
-			route,
-			expected: 304,
-			actual: observation.status,
-		}));
+		failures.push(
+			failure('delivery-conditional-not-honoured', {
+				route,
+				expected: 304,
+				actual: observation.status,
+			}),
+		);
 	}
 	// A 200 carrying the representation is already reported above; only a 304
 	// that still ships bytes is a second, separate breach of the contract.
@@ -134,26 +139,32 @@ export function checkConditionalRead(observation, { route, etag }) {
 export function checkRangeRead(observation, { route, start, end, byteLength, bytes }) {
 	const failures = [];
 	if (observation.status !== 206) {
-		failures.push(failure('delivery-range-status-unexpected', {
-			route,
-			expected: 206,
-			actual: observation.status,
-		}));
+		failures.push(
+			failure('delivery-range-status-unexpected', {
+				route,
+				expected: 206,
+				actual: observation.status,
+			}),
+		);
 	}
 	const expectedRange = `bytes ${start}-${end}/${byteLength}`;
 	if (observation.headers.get('content-range') !== expectedRange) {
-		failures.push(failure('delivery-content-range-unexpected', {
-			route,
-			expected: expectedRange,
-			actual: observation.headers.get('content-range') ?? 'absent',
-		}));
+		failures.push(
+			failure('delivery-content-range-unexpected', {
+				route,
+				expected: expectedRange,
+				actual: observation.headers.get('content-range') ?? 'absent',
+			}),
+		);
 	}
 	if (!sameBytes(observation.bytes, bytes)) {
-		failures.push(failure('delivery-range-body-mismatch', {
-			route,
-			expected: bytes.byteLength,
-			actual: observation.bytes.byteLength,
-		}));
+		failures.push(
+			failure('delivery-range-body-mismatch', {
+				route,
+				expected: bytes.byteLength,
+				actual: observation.bytes.byteLength,
+			}),
+		);
 	}
 	return failures;
 }
@@ -162,9 +173,9 @@ export function checkRangeRead(observation, { route, start, end, byteLength, byt
 export function checkUnsatisfiableRange(observation, { route, byteLength }) {
 	const expectedRange = `bytes */${byteLength}`;
 	if (
-		observation.status !== 416
-		|| observation.headers.get('content-range') !== expectedRange
-		|| observation.bytes.byteLength > 0
+		observation.status !== 416 ||
+		observation.headers.get('content-range') !== expectedRange ||
+		observation.bytes.byteLength > 0
 	) {
 		return [
 			failure('delivery-unsatisfiable-range-not-refused', {
@@ -180,16 +191,12 @@ export function checkUnsatisfiableRange(observation, { route, byteLength }) {
 /** One representation keeps one strong validator for as long as it exists. */
 export function checkValidatorStability(validators, { route }) {
 	const distinct = new Set(validators.filter(Boolean));
-	if (validators.some(validator => !validator)) {
-		return [
-			failure('delivery-validator-missing', { route }),
-		];
+	if (validators.some((validator) => !validator)) {
+		return [failure('delivery-validator-missing', { route })];
 	}
 	return distinct.size === 1
 		? []
-		: [
-				failure('delivery-validator-unstable', { route, actual: distinct.size }),
-			];
+		: [failure('delivery-validator-unstable', { route, actual: distinct.size })];
 }
 
 /**
@@ -198,15 +205,12 @@ export function checkValidatorStability(validators, { route }) {
  * only one a harness can observe from outside.
  */
 export function checkCacheParity(first, second, { route }) {
-	const differs = first.status !== second.status
-		|| first.headers.get('etag') !== second.headers.get('etag')
-		|| first.headers.get('content-length') !== second.headers.get('content-length')
-		|| !sameBytes(first.bytes, second.bytes);
-	return differs
-		? [
-				failure('delivery-cache-parity-broken', { route }),
-			]
-		: [];
+	const differs =
+		first.status !== second.status ||
+		first.headers.get('etag') !== second.headers.get('etag') ||
+		first.headers.get('content-length') !== second.headers.get('content-length') ||
+		!sameBytes(first.bytes, second.bytes);
+	return differs ? [failure('delivery-cache-parity-broken', { route })] : [];
 }
 
 /**
@@ -216,9 +220,7 @@ export function checkCacheParity(first, second, { route }) {
  */
 export function checkCacheWarmed(observation, { route }) {
 	return observation.headers.get('age') === null
-		? [
-				failure('delivery-cache-never-hit', { route }),
-			]
+		? [failure('delivery-cache-never-hit', { route })]
 		: [];
 }
 
@@ -226,10 +228,12 @@ export function checkCacheWarmed(observation, { route }) {
 export function checkOriginExposure(headers, { route }) {
 	const failures = [];
 	if (headers.get('access-control-allow-origin')) {
-		failures.push(failure('cors-allow-origin-exposed', {
-			route,
-			actual: headers.get('access-control-allow-origin'),
-		}));
+		failures.push(
+			failure('cors-allow-origin-exposed', {
+				route,
+				actual: headers.get('access-control-allow-origin'),
+			}),
+		);
 	}
 	if (headers.get('access-control-allow-credentials'))
 		failures.push(failure('cors-allow-credentials-exposed', { route }));
@@ -256,17 +260,15 @@ export function checkOriginExposure(headers, { route }) {
 export function checkContentSecurityPolicy(headers, { route, settled }) {
 	const policy = headers.get('content-security-policy');
 	if (!policy) {
-		return settled === 'absent'
-			? []
-			: [
-					failure('csp-directive-missing', { route }),
-				];
+		return settled === 'absent' ? [] : [failure('csp-directive-missing', { route })];
 	}
 	const permissive = policy
 		.split(';')
-		.map(directive => directive.trim())
-		.filter(directive => /^(?:default|script|media|img|font|connect|frame)-src\b/.test(directive))
-		.filter(directive => /(?:^|\s)\*(?:$|\s)/.test(directive) || /\shttps?:(?:$|\s)/.test(directive));
+		.map((directive) => directive.trim())
+		.filter((directive) => /^(?:default|script|media|img|font|connect|frame)-src\b/.test(directive))
+		.filter(
+			(directive) => /(?:^|\s)\*(?:$|\s)/.test(directive) || /\shttps?:(?:$|\s)/.test(directive),
+		);
 	if (permissive.length > 0) {
 		return [
 			failure('csp-directive-permissive', {
@@ -275,11 +277,7 @@ export function checkContentSecurityPolicy(headers, { route, settled }) {
 			}),
 		];
 	}
-	return settled === 'absent'
-		? [
-				failure('csp-directive-unexpected', { route }),
-			]
-		: [];
+	return settled === 'absent' ? [failure('csp-directive-unexpected', { route })] : [];
 }
 
 /**
@@ -290,33 +288,29 @@ export function checkContentSecurityPolicy(headers, { route, settled }) {
 export function checkNoStorageAddressing(headers, { route }) {
 	const addressing = [];
 	for (const [name, value] of headers) {
-		if (/^(?:x-amz-|x-goog-|cf-r2-|x-object-|x-bucket)/i.test(name))
-			addressing.push(name);
-		if (name === 'content-disposition' && /filename/i.test(value))
-			addressing.push(name);
-		if (name === 'content-location')
-			addressing.push(name);
+		if (/^(?:x-amz-|x-goog-|cf-r2-|x-object-|x-bucket)/i.test(name)) addressing.push(name);
+		if (name === 'content-disposition' && /filename/i.test(value)) addressing.push(name);
+		if (name === 'content-location') addressing.push(name);
 	}
 	return addressing.length === 0
 		? []
-		: [
-				failure('private-storage-publicly-addressable', { route, header: addressing[0] }),
-			];
+		: [failure('private-storage-publicly-addressable', { route, header: addressing[0] })];
 }
 
 /** Content the installation holds but cannot read right now. */
 export function checkRetryableUnavailable(observation, { route }) {
 	const failures = [];
 	if (observation.status !== 503) {
-		failures.push(failure('outcome-not-retryable-unavailable', {
-			route,
-			expected: 503,
-			actual: observation.status,
-		}));
+		failures.push(
+			failure('outcome-not-retryable-unavailable', {
+				route,
+				expected: 503,
+				actual: observation.status,
+			}),
+		);
 	}
 	const retryAfter = observation.headers.get('retry-after');
-	if (retryAfter === null)
-		failures.push(failure('outcome-retry-after-missing', { route }));
+	if (retryAfter === null) failures.push(failure('outcome-retry-after-missing', { route }));
 	else if (!/^\d+$/.test(retryAfter.trim()))
 		failures.push(failure('outcome-retry-after-invalid', { route }));
 	return failures;
@@ -334,11 +328,13 @@ export function checkRetryableUnavailable(observation, { route }) {
 export function checkMissingIdentity(observation, { route }) {
 	const failures = [];
 	if (observation.status !== 404) {
-		failures.push(failure('outcome-not-missing-identity', {
-			route,
-			expected: 404,
-			actual: observation.status,
-		}));
+		failures.push(
+			failure('outcome-not-missing-identity', {
+				route,
+				expected: 404,
+				actual: observation.status,
+			}),
+		);
 	}
 	if (observation.headers.get('retry-after') !== null)
 		failures.push(failure('outcome-retry-after-present', { route }));
@@ -353,18 +349,18 @@ export function checkMissingIdentity(observation, { route }) {
  * repaired, the caller is told to retry rather than told it is gone.
  */
 export function checkIntegrityDisagreement(observation, { route }) {
-	const failures = [
-		...checkRetryableUnavailable(observation, { route }),
-	];
+	const failures = [...checkRetryableUnavailable(observation, { route })];
 	// Any successful status carrying a body is the failure worth naming
 	// separately from "did not answer 503": it means bytes the library had
 	// already decided not to trust reached a caller. A ranged read would answer
 	// 206 rather than 200, so the check is on success-with-content, not on 200.
 	if (observation.status < 400 && observation.bytes.byteLength > 0) {
-		failures.push(failure('outcome-not-integrity-failure', {
-			route,
-			reason: 'contradicting bytes were served',
-		}));
+		failures.push(
+			failure('outcome-not-integrity-failure', {
+				route,
+				reason: 'contradicting bytes were served',
+			}),
+		);
 	}
 	return failures;
 }
@@ -378,7 +374,10 @@ export function checkIntegrityDisagreement(observation, { route }) {
  * quietly.
  */
 export function checkDenialIndistinguishableFromMissing(denied, missing, { route }) {
-	if (denied.status !== missing.status || denied.headers.get('retry-after') !== missing.headers.get('retry-after')) {
+	if (
+		denied.status !== missing.status ||
+		denied.headers.get('retry-after') !== missing.headers.get('retry-after')
+	) {
 		return [
 			failure('outcome-detail-disclosed', {
 				route,
@@ -391,9 +390,7 @@ export function checkDenialIndistinguishableFromMissing(denied, missing, { route
 	// two bodies differ in length for a reason that discloses nothing. What may
 	// not differ is what they say happened.
 	if (statedReason(denied) !== statedReason(missing)) {
-		return [
-			failure('outcome-detail-disclosed', { route, reason: 'refusals read differently' }),
-		];
+		return [failure('outcome-detail-disclosed', { route, reason: 'refusals read differently' })];
 	}
 	return [];
 }
@@ -402,8 +399,7 @@ function statedReason(observation) {
 	const text = observation.text?.() ?? '';
 	try {
 		return JSON.parse(text).message ?? '';
-	}
-	catch {
+	} catch {
 		return text;
 	}
 }
@@ -415,11 +411,13 @@ function statedReason(observation) {
 export function checkCapabilityDenial(observation, { route, body, expectedStatus = 404 }) {
 	const failures = [];
 	if (observation.status !== expectedStatus) {
-		failures.push(failure('outcome-not-denied', {
-			route,
-			expected: expectedStatus,
-			actual: observation.status,
-		}));
+		failures.push(
+			failure('outcome-not-denied', {
+				route,
+				expected: expectedStatus,
+				actual: observation.status,
+			}),
+		);
 	}
 	if (observation.headers.get('retry-after') !== null)
 		failures.push(failure('outcome-retry-after-present', { route }));
@@ -442,7 +440,7 @@ export function checkStillImagePublication(settled, { format, byteLength }) {
 				format,
 				stage: settled.stage,
 				outcome: settled.report?.outcome ?? 'absent',
-				issues: (settled.report?.issues ?? []).map(issue => issue.code).join(',') || 'none',
+				issues: (settled.report?.issues ?? []).map((issue) => issue.code).join(',') || 'none',
 			}),
 		];
 	}

@@ -1,5 +1,8 @@
 import type { DropdownMenuItem } from '@nuxt/ui';
-import type { BroadcastDeckListResponse, BroadcastDeckListSummaryResponse } from '~~/shared/types/broadcastDeckList';
+import type {
+	BroadcastDeckListResponse,
+	BroadcastDeckListSummaryResponse,
+} from '~~/shared/types/broadcastDeckList';
 import type { Event } from '~/types';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
@@ -36,14 +39,10 @@ function summary(item: BroadcastDeckListResponse): BroadcastDeckListSummaryRespo
 
 const first = detail();
 const store = reactive({
-	summaries: [
-		summary(first),
-	] as BroadcastDeckListSummaryResponse[],
+	summaries: [summary(first)] as BroadcastDeckListSummaryResponse[],
 	loading: false,
 	error: null as string | null,
-	details: new Map([
-		[first.id, first],
-	]) as Map<number, BroadcastDeckListResponse>,
+	details: new Map([[first.id, first]]) as Map<number, BroadcastDeckListResponse>,
 	loadCollection: vi.fn(),
 	loadDetail: vi.fn(async (_eventId: number, listId: number) => store.details.get(listId) ?? null),
 	consumeDetail: vi.fn(() => vi.fn()),
@@ -75,7 +74,8 @@ const UCheckboxGroupStub = defineComponent({
 		name: { type: String, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<fieldset :data-name="name"><legend>{{ legend }}</legend><button v-for="item in items" :key="item.value" type="button" :data-color="item.value" :data-value="String(modelValue.includes(item.value))" @click="$emit(\'update:modelValue\', modelValue.includes(item.value) ? modelValue.filter(value => value !== item.value) : [...modelValue, item.value])">{{ item.label }}</button></fieldset>',
+	template:
+		'<fieldset :data-name="name"><legend>{{ legend }}</legend><button v-for="item in items" :key="item.value" type="button" :data-color="item.value" :data-value="String(modelValue.includes(item.value))" @click="$emit(\'update:modelValue\', modelValue.includes(item.value) ? modelValue.filter(value => value !== item.value) : [...modelValue, item.value])">{{ item.label }}</button></fieldset>',
 });
 const UFormStub = defineComponent({
 	props: {
@@ -107,20 +107,21 @@ async function mountComponent(value: Event = event()) {
 }
 
 function button(wrapper: Awaited<ReturnType<typeof mountComponent>>, label: string) {
-	const match = wrapper.findAll('button').find(candidate => candidate.text() === label);
-	if (!match)
-		throw new Error(`No "${label}" button`);
+	const match = wrapper.findAll('button').find((candidate) => candidate.text() === label);
+	if (!match) throw new Error(`No "${label}" button`);
 	return match;
 }
 
-async function chooseRowAction(wrapper: Awaited<ReturnType<typeof mountComponent>>, name: string, label: string) {
-	const row = wrapper.findAll('li').find(candidate => candidate.text().includes(name));
-	if (!row)
-		throw new Error(`No "${name}" row`);
+async function chooseRowAction(
+	wrapper: Awaited<ReturnType<typeof mountComponent>>,
+	name: string,
+	label: string,
+) {
+	const row = wrapper.findAll('li').find((candidate) => candidate.text().includes(name));
+	if (!row) throw new Error(`No "${name}" row`);
 	const items = row.findComponent({ name: 'UDropdownMenu' }).props('items') as DropdownMenuItem[];
-	const action = items.find(item => item.label === label);
-	if (!action)
-		throw new Error(`"${name}" offers no "${label}" action`);
+	const action = items.find((item) => item.label === label);
+	if (!action) throw new Error(`"${name}" offers no "${label}" action`);
 	action.onSelect?.(new Event('select') as never);
 	await flushPromises();
 }
@@ -132,12 +133,8 @@ async function submitEditor(wrapper: Awaited<ReturnType<typeof mountComponent>>)
 describe('event Broadcast Deck List library', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		store.summaries = [
-			summary(first),
-		];
-		store.details = new Map([
-			[first.id, first],
-		]);
+		store.summaries = [summary(first)];
+		store.details = new Map([[first.id, first]]);
 		store.error = null;
 		store.loadCollection.mockResolvedValue(store.summaries);
 		store.createList.mockResolvedValue(first);
@@ -173,7 +170,7 @@ describe('event Broadcast Deck List library', () => {
 
 	it('creates from one plaintext draft, normalizing blank optional metadata and preventing double-submit', async () => {
 		let resolveCreate!: (value: BroadcastDeckListResponse) => void;
-		store.createList.mockReturnValue(new Promise(resolve => resolveCreate = resolve));
+		store.createList.mockReturnValue(new Promise((resolve) => (resolveCreate = resolve)));
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await button(wrapper, 'Add Deck List').trigger('click');
@@ -184,7 +181,9 @@ describe('event Broadcast Deck List library', () => {
 		expect(wrapper.find('[data-field="name"]').exists()).toBe(true);
 		expect(wrapper.find('[data-field="sourceText"]').exists()).toBe(true);
 		expect(wrapper.get('fieldset').text()).toContain('Colors (optional, manually classified)');
-		const validate = wrapper.getComponent(UFormStub).props('validate') as (state: object) => Array<{ name: string; message: string }>;
+		const validate = wrapper.getComponent(UFormStub).props('validate') as (
+			state: object,
+		) => Array<{ name: string; message: string }>;
 		expect(validate({})).toEqual([
 			{ name: 'name', message: 'Name is required' },
 			{ name: 'sourceText', message: 'Deck List text is required' },
@@ -246,7 +245,9 @@ describe('event Broadcast Deck List library', () => {
 				},
 			},
 		});
-		store.createList.mockRejectedValue(new Error('Broadcast Deck List source is invalid', { cause: failure }));
+		store.createList.mockRejectedValue(
+			new Error('Broadcast Deck List source is invalid', { cause: failure }),
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await button(wrapper, 'Add Deck List').trigger('click');
@@ -258,20 +259,25 @@ describe('event Broadcast Deck List library', () => {
 		expect(wrapper.text()).toContain('Line 2: Expected a quantity — Island');
 		expect(wrapper.text()).toContain('Line 4: Could not resolve card — 1 Nope');
 		expect(wrapper.get('[role="alert"]').attributes('aria-live')).toBe('polite');
-		expect(wrapper.get('[name="sourceText"]').element).toHaveProperty('value', 'Deck\nIsland\nSideboard\n1 Nope');
+		expect(wrapper.get('[name="sourceText"]').element).toHaveProperty(
+			'value',
+			'Deck\nIsland\nSideboard\n1 Nope',
+		);
 	});
 
 	it('keeps an edit draft across a revision conflict and retries against the newer authority', async () => {
 		const current = detail({ revision: 2, name: 'Peer name', sourceText: '60 Plains' });
-		store.updateList.mockRejectedValueOnce(new Error('Broadcast Deck List changed since it was loaded', {
-			cause: transportFailure({
-				status: 409,
-				body: {
-					message: 'Broadcast Deck List changed since it was loaded',
-					data: { code: 'BROADCAST_DECK_LIST_REVISION_CONFLICT', current },
-				},
+		store.updateList.mockRejectedValueOnce(
+			new Error('Broadcast Deck List changed since it was loaded', {
+				cause: transportFailure({
+					status: 409,
+					body: {
+						message: 'Broadcast Deck List changed since it was loaded',
+						data: { code: 'BROADCAST_DECK_LIST_REVISION_CONFLICT', current },
+					},
+				}),
 			}),
-		}));
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await chooseRowAction(wrapper, 'Azorius', 'Edit');
@@ -285,15 +291,19 @@ describe('event Broadcast Deck List library', () => {
 		store.updateList.mockResolvedValueOnce(detail({ revision: 3, name: 'My draft' }));
 		await submitEditor(wrapper);
 		await flushPromises();
-		expect(store.updateList).toHaveBeenLastCalledWith(1, 11, expect.objectContaining({
-			expectedRevision: 2,
-			name: 'My draft',
-		}));
+		expect(store.updateList).toHaveBeenLastCalledWith(
+			1,
+			11,
+			expect.objectContaining({
+				expectedRevision: 2,
+				name: 'My draft',
+			}),
+		);
 	});
 
 	it('does not let a late edit load overwrite a newer add draft', async () => {
 		let resolveDetail!: (value: BroadcastDeckListResponse) => void;
-		store.loadDetail.mockReturnValueOnce(new Promise(resolve => resolveDetail = resolve));
+		store.loadDetail.mockReturnValueOnce(new Promise((resolve) => (resolveDetail = resolve)));
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await chooseRowAction(wrapper, 'Azorius', 'Edit');
@@ -307,7 +317,7 @@ describe('event Broadcast Deck List library', () => {
 
 	it('does not let a completed save close a newer editor surface', async () => {
 		let resolveCreate!: (value: BroadcastDeckListResponse) => void;
-		store.createList.mockReturnValueOnce(new Promise(resolve => resolveCreate = resolve));
+		store.createList.mockReturnValueOnce(new Promise((resolve) => (resolveCreate = resolve)));
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await button(wrapper, 'Add Deck List').trigger('click');
@@ -325,15 +335,17 @@ describe('event Broadcast Deck List library', () => {
 
 	it('does not let a late reload overwrite a newer editor surface', async () => {
 		const current = detail({ revision: 2, name: 'Peer name' });
-		store.updateList.mockRejectedValueOnce(new Error('Broadcast Deck List changed since it was loaded', {
-			cause: transportFailure({
-				status: 409,
-				body: {
-					message: 'Broadcast Deck List changed since it was loaded',
-					data: { code: 'BROADCAST_DECK_LIST_REVISION_CONFLICT', current },
-				},
+		store.updateList.mockRejectedValueOnce(
+			new Error('Broadcast Deck List changed since it was loaded', {
+				cause: transportFailure({
+					status: 409,
+					body: {
+						message: 'Broadcast Deck List changed since it was loaded',
+						data: { code: 'BROADCAST_DECK_LIST_REVISION_CONFLICT', current },
+					},
+				}),
 			}),
-		}));
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await chooseRowAction(wrapper, 'Azorius', 'Edit');
@@ -342,7 +354,7 @@ describe('event Broadcast Deck List library', () => {
 		await flushPromises();
 
 		let resolveReload!: (value: BroadcastDeckListResponse) => void;
-		store.loadDetail.mockReturnValueOnce(new Promise(resolve => resolveReload = resolve));
+		store.loadDetail.mockReturnValueOnce(new Promise((resolve) => (resolveReload = resolve)));
 		await button(wrapper, 'Reload Latest').trigger('click');
 		await wrapper.get('button[aria-label="Close"]').trigger('click');
 		await button(wrapper, 'Add Deck List').trigger('click');
@@ -354,15 +366,17 @@ describe('event Broadcast Deck List library', () => {
 	});
 
 	it('presents provider outages as retryable instead of invalid text', async () => {
-		store.createList.mockRejectedValue(new Error('Card data provider is temporarily unavailable', {
-			cause: transportFailure({
-				status: 503,
-				body: {
-					message: 'Card data provider is temporarily unavailable',
-					data: { code: 'BROADCAST_DECK_LIST_CARD_PROVIDER_UNAVAILABLE', retryable: true },
-				},
+		store.createList.mockRejectedValue(
+			new Error('Card data provider is temporarily unavailable', {
+				cause: transportFailure({
+					status: 503,
+					body: {
+						message: 'Card data provider is temporarily unavailable',
+						data: { code: 'BROADCAST_DECK_LIST_CARD_PROVIDER_UNAVAILABLE', retryable: true },
+					},
+				}),
 			}),
-		}));
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await button(wrapper, 'Add Deck List').trigger('click');
@@ -372,24 +386,26 @@ describe('event Broadcast Deck List library', () => {
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('Card data provider is temporarily unavailable');
-		expect(wrapper.findAll('button').some(candidate => candidate.text() === 'Retry Save')).toBe(true);
+		expect(wrapper.findAll('button').some((candidate) => candidate.text() === 'Retry Save')).toBe(
+			true,
+		);
 		expect(wrapper.text()).not.toContain('invalid text');
 	});
 
 	it('does not quote or act on a sanitized server failure body', async () => {
-		store.createList.mockRejectedValue(transportFailure({
-			status: 500,
-			body: {
-				message: 'Internal Server Error',
-				data: {
-					code: 'BROADCAST_DECK_LIST_INVALID',
-					retryable: true,
-					errors: [
-						{ code: 'LEAKED_DETAIL', message: 'Leaked detail' },
-					],
+		store.createList.mockRejectedValue(
+			transportFailure({
+				status: 500,
+				body: {
+					message: 'Internal Server Error',
+					data: {
+						code: 'BROADCAST_DECK_LIST_INVALID',
+						retryable: true,
+						errors: [{ code: 'LEAKED_DETAIL', message: 'Leaked detail' }],
+					},
 				},
-			},
-		}));
+			}),
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await button(wrapper, 'Add Deck List').trigger('click');
@@ -400,25 +416,29 @@ describe('event Broadcast Deck List library', () => {
 
 		expect(wrapper.text()).toContain('[POST] "/api/…": 500 Internal Server Error');
 		expect(wrapper.text()).not.toContain('Leaked detail');
-		expect(wrapper.findAll('button').some(candidate => candidate.text() === 'Retry Save')).toBe(false);
+		expect(wrapper.findAll('button').some((candidate) => candidate.text() === 'Retry Save')).toBe(
+			false,
+		);
 	});
 
 	it('confirms deletion and surfaces affected Screen names without removing the list', async () => {
-		store.removeList.mockRejectedValue(new Error('Broadcast Deck List is selected by Screens: Alpha, Studio', {
-			cause: transportFailure({
-				status: 409,
-				body: {
-					message: 'Broadcast Deck List is selected by Screens: Alpha, Studio',
-					data: {
-						code: 'BROADCAST_DECK_LIST_IN_USE',
-						screens: [
-							{ id: 2, name: 'Alpha' },
-							{ id: 4, name: 'Studio' },
-						],
+		store.removeList.mockRejectedValue(
+			new Error('Broadcast Deck List is selected by Screens: Alpha, Studio', {
+				cause: transportFailure({
+					status: 409,
+					body: {
+						message: 'Broadcast Deck List is selected by Screens: Alpha, Studio',
+						data: {
+							code: 'BROADCAST_DECK_LIST_IN_USE',
+							screens: [
+								{ id: 2, name: 'Alpha' },
+								{ id: 4, name: 'Studio' },
+							],
+						},
 					},
-				},
+				}),
 			}),
-		}));
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await chooseRowAction(wrapper, 'Azorius', 'Delete');
@@ -433,15 +453,17 @@ describe('event Broadcast Deck List library', () => {
 
 	it('recovers a stale delete by retrying against the newer authoritative revision', async () => {
 		const current = detail({ revision: 2, name: 'Peer rename' });
-		store.removeList.mockRejectedValueOnce(new Error('Broadcast Deck List changed since it was loaded', {
-			cause: transportFailure({
-				status: 409,
-				body: {
-					message: 'Broadcast Deck List changed since it was loaded',
-					data: { code: 'BROADCAST_DECK_LIST_REVISION_CONFLICT', current },
-				},
+		store.removeList.mockRejectedValueOnce(
+			new Error('Broadcast Deck List changed since it was loaded', {
+				cause: transportFailure({
+					status: 409,
+					body: {
+						message: 'Broadcast Deck List changed since it was loaded',
+						data: { code: 'BROADCAST_DECK_LIST_REVISION_CONFLICT', current },
+					},
+				}),
 			}),
-		}));
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 		await chooseRowAction(wrapper, 'Azorius', 'Delete');
@@ -457,7 +479,8 @@ describe('event Broadcast Deck List library', () => {
 
 	it('surfaces affected Screens when disabling is refused and reflects remote collection updates once', async () => {
 		eventStore.updateEvent.mockImplementationOnce(async () => {
-			eventStore.error = 'Broadcast Deck Lists cannot be disabled while selected by Screen: Program';
+			eventStore.error =
+				'Broadcast Deck Lists cannot be disabled while selected by Screen: Program';
 			return null;
 		});
 		const wrapper = await mountComponent(event({ broadcastDeckListsEnabled: true }));
@@ -465,14 +488,16 @@ describe('event Broadcast Deck List library', () => {
 		await wrapper.get('[role="switch"]').trigger('click');
 		await flushPromises();
 
-		expect(wrapper.text()).toContain('Broadcast Deck Lists cannot be disabled while selected by Screen: Program');
+		expect(wrapper.text()).toContain(
+			'Broadcast Deck Lists cannot be disabled while selected by Screen: Program',
+		);
 		expect(wrapper.get('[role="switch"]').attributes('aria-checked')).toBe('true');
 
-		store.summaries = [
-			summary(detail({ id: 22, name: 'Remote Deck', revision: 3 })),
-		];
+		store.summaries = [summary(detail({ id: 22, name: 'Remote Deck', revision: 3 }))];
 		await flushPromises();
-		expect(wrapper.findAll('li').filter(item => item.text().includes('Remote Deck'))).toHaveLength(1);
+		expect(
+			wrapper.findAll('li').filter((item) => item.text().includes('Remote Deck')),
+		).toHaveLength(1);
 		expect(wrapper.text()).not.toContain('Azorius');
 	});
 });

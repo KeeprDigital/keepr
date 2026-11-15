@@ -64,10 +64,7 @@ export const GRAPHICS_QUEUE_INSPECTION_EVIDENCE_LIMIT = 50;
 export interface GraphicsOperationalQueuesCatalogue {
 	countOpenDiscrepancies: () => Promise<Record<GraphicsDiscrepancyKind, number>>;
 	/** Complete counts, plus one independent bounded sample per queued state. */
-	summariseIngestionQueues: (input: {
-		now: string;
-		limit: number;
-	}) => Promise<{
+	summariseIngestionQueues: (input: { now: string; limit: number }) => Promise<{
 		counts: Partial<Record<GraphicsIngestionAttentionState, number>>;
 		retryable: GraphicsIngestionAttentionItem[];
 		expired: GraphicsIngestionAttentionItem[];
@@ -130,15 +127,12 @@ const DISCREPANCY_QUEUE_IDS = new Set<GraphicsOperationalQueueId>(
 const INGESTION_QUEUES: Partial<
 	Record<GraphicsIngestionAttentionState, GraphicsOperationalQueueId>
 > = {
-	'retryable': 'retryable-ingestion',
+	retryable: 'retryable-ingestion',
 	'input-expired': 'expired-ingestion-input',
 };
 
 /** A selection key that survives navigation, reload, and the next poll. */
-export function graphicsQueueItemKey(
-	queue: GraphicsOperationalQueueId,
-	subjectId: string,
-): string {
+export function graphicsQueueItemKey(queue: GraphicsOperationalQueueId, subjectId: string): string {
 	return `${queue}:${subjectId}`;
 }
 
@@ -149,19 +143,11 @@ export function graphicsQueueItemKey(
  * the whole of the risk. An item with no deadline sorts last: it is the only
  * kind of work nothing takes away.
  */
-function byDeadline(
-	first: { deadline?: string },
-	second: { deadline?: string },
-): number {
-	if (first.deadline === second.deadline)
-		return 0;
-	if (first.deadline === undefined)
-		return 1;
-	if (second.deadline === undefined)
-		return -1;
-	return first.deadline < second.deadline
-		? -1
-		: 1;
+function byDeadline(first: { deadline?: string }, second: { deadline?: string }): number {
+	if (first.deadline === second.deadline) return 0;
+	if (first.deadline === undefined) return 1;
+	if (second.deadline === undefined) return -1;
+	return first.deadline < second.deadline ? -1 : 1;
 }
 
 /**
@@ -183,9 +169,7 @@ function buildQueue(
 		id,
 		severity: graphicsQueueSeverity(id),
 		totalCount,
-		...(ordered[0]?.deadline === undefined
-			? {}
-			: { nextDeadline: ordered[0].deadline }),
+		...(ordered[0]?.deadline === undefined ? {} : { nextDeadline: ordered[0].deadline }),
 		items: ordered,
 	};
 }
@@ -200,10 +184,8 @@ function buildQueue(
  */
 function discrepancyTitle(discrepancy: GraphicsDiscrepancy): string {
 	const affected = discrepancy.affectedUsage[0];
-	if (affected)
-		return `${affected.assetName} · revision ${affected.revisionNumber}`;
-	if (discrepancy.derivative)
-		return `Graphics Derivative · ${discrepancy.derivative.kind}`;
+	if (affected) return `${affected.assetName} · revision ${affected.revisionNumber}`;
+	if (discrepancy.derivative) return `Graphics Derivative · ${discrepancy.derivative.kind}`;
 	return discrepancy.reasonCode;
 }
 
@@ -218,11 +200,11 @@ function discrepancyItem(discrepancy: GraphicsDiscrepancy): GraphicsOperationalQ
 		queue,
 		subject: { kind: 'graphics-discrepancy', id: discrepancy.id },
 		title: discrepancyTitle(discrepancy),
-		...(discrepancy.quarantine
-			? { deadline: discrepancy.quarantine.deleteAfter }
-			: {}),
-		referenceCount: discrepancy.affectedUsage
-			.reduce((total, usage) => total + usage.referenceCount, 0),
+		...(discrepancy.quarantine ? { deadline: discrepancy.quarantine.deleteAfter } : {}),
+		referenceCount: discrepancy.affectedUsage.reduce(
+			(total, usage) => total + usage.referenceCount,
+			0,
+		),
 		// Carried through unchanged: the library decides which actions are valid
 		// and re-proves that decision before writing anything.
 		actions: [...discrepancy.actions] as GraphicsQueueAction[],
@@ -280,9 +262,7 @@ function ingestionItem(
 		title: item.name,
 		deadline: item.inputExpiresAt,
 		// Expired staged input cannot be resumed: a new operation is required.
-		actions: queue === 'retryable-ingestion'
-			? ['retry-ingestion']
-			: [],
+		actions: queue === 'retryable-ingestion' ? ['retry-ingestion'] : [],
 	};
 }
 
@@ -366,19 +346,19 @@ export function createGraphicsOperationalQueues(
 				catalogue.listRetiredGraphicAssets({ limit: GRAPHICS_QUEUE_ITEM_LIMIT }),
 			]);
 
-			const discrepancyItems = new Map<GraphicsOperationalQueueId, GraphicsOperationalQueueItem[]>();
+			const discrepancyItems = new Map<
+				GraphicsOperationalQueueId,
+				GraphicsOperationalQueueItem[]
+			>();
 			for (const discrepancy of reconciliation.discrepancies) {
 				const item = discrepancyItem(discrepancy);
 				const existing = discrepancyItems.get(item.queue);
-				if (existing)
-					existing.push(item);
-				else
-					discrepancyItems.set(item.queue, [item]);
+				if (existing) existing.push(item);
+				else discrepancyItems.set(item.queue, [item]);
 			}
 
 			const totals: Record<GraphicsOperationalQueueId, number> = {
-				'critical-integrity-incident':
-					reconciliation.openCounts['critical-integrity-incident'],
+				'critical-integrity-incident': reconciliation.openCounts['critical-integrity-incident'],
 				'unavailable-content': reconciliation.openCounts['unavailable-content'],
 				'missing-derivative': reconciliation.openCounts['missing-derivative'],
 				'quarantined-object': reconciliation.openCounts['unexpected-object'],
@@ -395,15 +375,15 @@ export function createGraphicsOperationalQueues(
 				'unavailable-content': discrepancyItems.get('unavailable-content') ?? [],
 				'missing-derivative': discrepancyItems.get('missing-derivative') ?? [],
 				'quarantined-object': discrepancyItems.get('quarantined-object') ?? [],
-				'retryable-ingestion': ingestion.retryable
-					.map(operation => ingestionItem(operation, 'retryable-ingestion')),
-				'expired-ingestion-input': ingestion.expired
-					.map(operation => ingestionItem(operation, 'expired-ingestion-input')),
+				'retryable-ingestion': ingestion.retryable.map((operation) =>
+					ingestionItem(operation, 'retryable-ingestion'),
+				),
+				'expired-ingestion-input': ingestion.expired.map((operation) =>
+					ingestionItem(operation, 'expired-ingestion-input'),
+				),
 				'unreleased-staged-input': unreleasedStrands.map(unreleasedStagedInputItem),
 				'trashed-asset': trashDeadlines.map(trashItem),
-				'superseded-revision': revisionDeadlines
-					.filter(isPrunableRevision)
-					.map(supersededItem),
+				'superseded-revision': revisionDeadlines.filter(isPrunableRevision).map(supersededItem),
 				'retired-asset': retiredAssets.map(retiredItem),
 			};
 
@@ -412,8 +392,9 @@ export function createGraphicsOperationalQueues(
 				// The same contract reconciliation states, restated so a queue
 				// reader never has to infer which side decides what.
 				authority: reconciliation.authority,
-				queues: GRAPHICS_OPERATIONAL_QUEUES.map(id =>
-					buildQueue(id, totals[id], itemsByQueue[id])),
+				queues: GRAPHICS_OPERATIONAL_QUEUES.map((id) =>
+					buildQueue(id, totals[id], itemsByQueue[id]),
+				),
 			};
 		},
 
@@ -443,10 +424,7 @@ export function createGraphicsOperationalQueues(
 				authority,
 			};
 
-			async function evidenceFor(
-				kind: GraphicsAssetEvidenceEntry['subject']['kind'],
-				id: string,
-			) {
+			async function evidenceFor(kind: GraphicsAssetEvidenceEntry['subject']['kind'], id: string) {
 				return await catalogue.listGraphicsAssetEvidence({
 					limit: GRAPHICS_QUEUE_INSPECTION_EVIDENCE_LIMIT,
 					subject: { kind, id },
@@ -454,20 +432,17 @@ export function createGraphicsOperationalQueues(
 			}
 
 			if (DISCREPANCY_QUEUE_IDS.has(input.queue)) {
-				const discrepancy = await dependencies.reconciliation()
+				const discrepancy = await dependencies
+					.reconciliation()
 					.inspect({ discrepancyId: input.subjectId });
-				if (!discrepancy)
-					notFound('Graphics discrepancy not found');
+				if (!discrepancy) notFound('Graphics discrepancy not found');
 				const item = discrepancyItem(discrepancy);
-				if (item.queue !== input.queue)
-					notFound('Graphics discrepancy is no longer in that queue');
+				if (item.queue !== input.queue) notFound('Graphics discrepancy is no longer in that queue');
 				return {
 					...base,
 					subject: item.subject,
 					title: item.title,
-					...(item.deadline === undefined
-						? {}
-						: { deadline: item.deadline }),
+					...(item.deadline === undefined ? {} : { deadline: item.deadline }),
 					referenceCount: item.referenceCount ?? 0,
 					actions: item.actions,
 					detail: { kind: 'graphics-discrepancy', discrepancy },
@@ -478,11 +453,8 @@ export function createGraphicsOperationalQueues(
 			if (input.queue === 'trashed-asset' || input.queue === 'retired-asset') {
 				const assetId = input.subjectId as GraphicAssetId;
 				const retention = await dependencies.inspectRetention(assetId);
-				if (!retention)
-					notFound('Graphic Asset not found');
-				const expected = input.queue === 'trashed-asset'
-					? 'trashed'
-					: 'retired';
+				if (!retention) notFound('Graphic Asset not found');
+				const expected = input.queue === 'trashed-asset' ? 'trashed' : 'retired';
 				if (retention.lifecycle.state !== expected)
 					notFound('Graphic Asset is no longer in that queue');
 				const [usage, name] = await Promise.all([
@@ -497,9 +469,10 @@ export function createGraphicsOperationalQueues(
 						? { deadline: retention.lifecycle.recoverableUntil }
 						: {}),
 					referenceCount: usage.length,
-					actions: input.queue === 'trashed-asset'
-						? ['restore-graphic-asset', 'purge-now']
-						: ['restore-graphic-asset'],
+					actions:
+						input.queue === 'trashed-asset'
+							? ['restore-graphic-asset', 'purge-now']
+							: ['restore-graphic-asset'],
 					detail: {
 						kind: 'graphic-asset',
 						lifecycle: retention.lifecycle,
@@ -539,8 +512,7 @@ export function createGraphicsOperationalQueues(
 				const strand = await catalogue.findUnreleasedStagedInput(
 					input.subjectId as UnreleasedStagedInput['operationId'],
 				);
-				if (!strand)
-					notFound('Graphics Ingestion Operation is no longer in that queue');
+				if (!strand) notFound('Graphics Ingestion Operation is no longer in that queue');
 				const item = unreleasedStagedInputItem(strand);
 				return {
 					...base,
@@ -573,9 +545,7 @@ export function createGraphicsOperationalQueues(
 				...base,
 				subject: item.subject,
 				title: item.title,
-				...(item.deadline === undefined
-					? {}
-					: { deadline: item.deadline }),
+				...(item.deadline === undefined ? {} : { deadline: item.deadline }),
 				referenceCount: 0,
 				actions: item.actions,
 				detail: { kind: 'graphics-ingestion-operation', operation },

@@ -43,32 +43,33 @@ function makeEntry(overrides?: Partial<TokenRequirementEntry>): TokenRequirement
 }
 
 async function mountComponent() {
-	return mount(defineComponent({
-		components: { TokensTable },
-		setup() {
-			const loading = ref(false);
-			const entries = ref([
-				makeEntry(),
-				makeEntry({
-					id: 'token-reflection',
-					scryfallId: 'token-reflection',
-					name: 'Reflection',
-					typeLine: 'Token Creature - Reflection',
-					deckCount: 1,
-					sourceCards: [
-						{
-							id: 11,
-							name: 'Mirror Spell',
-							scryfallId: 'source-11',
-							cardType: 'Sorcery',
-						},
-					],
-				}),
-			]);
+	return mount(
+		defineComponent({
+			components: { TokensTable },
+			setup() {
+				const loading = ref(false);
+				const entries = ref([
+					makeEntry(),
+					makeEntry({
+						id: 'token-reflection',
+						scryfallId: 'token-reflection',
+						name: 'Reflection',
+						typeLine: 'Token Creature - Reflection',
+						deckCount: 1,
+						sourceCards: [
+							{
+								id: 11,
+								name: 'Mirror Spell',
+								scryfallId: 'source-11',
+								cardType: 'Sorcery',
+							},
+						],
+					}),
+				]);
 
-			return { entries, loading };
-		},
-		template: `
+				return { entries, loading };
+			},
+			template: `
 			<TokensTable
 				:entries="entries"
 				:loading="loading"
@@ -76,15 +77,17 @@ async function mountComponent() {
 				:get-source-card-link="card => '/card/' + card.id"
 			/>
 		`,
-	}), {
-		global: {
-			stubs: {
-				...nuxtUiStubs,
-				UTable: UTableStub,
-				MetagameCardThumbnail: true,
+		}),
+		{
+			global: {
+				stubs: {
+					...nuxtUiStubs,
+					UTable: UTableStub,
+					MetagameCardThumbnail: true,
+				},
 			},
 		},
-	});
+	);
 }
 
 describe('metagameTokensTable', () => {

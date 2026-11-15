@@ -4,12 +4,15 @@ import { defu } from 'defu';
 import { defaultMtgCardData } from './default';
 
 export function cardParser(card: ScryfallCard.Any): MtgCard {
-	const cardData = defu({
-		id: card.id,
-		name: card.name,
-		set: card.set_name,
-		layout: card.layout,
-	}, structuredClone(defaultMtgCardData));
+	const cardData = defu(
+		{
+			id: card.id,
+			name: card.name,
+			set: card.set_name,
+			layout: card.layout,
+		},
+		structuredClone(defaultMtgCardData),
+	);
 
 	switch (card.layout) {
 		case 'normal':
@@ -36,78 +39,89 @@ export function cardParser(card: ScryfallCard.Any): MtgCard {
 		case 'reversible_card':
 		case 'art_series':
 		case 'modal_dfc':
-			return defu({
-				imageData: {
-					front: card.card_faces[0]?.image_uris ?? null,
-					back: card.card_faces[1]?.image_uris ?? null,
+			return defu(
+				{
+					imageData: {
+						front: card.card_faces[0]?.image_uris ?? null,
+						back: card.card_faces[1]?.image_uris ?? null,
+					},
+					orientationData: {
+						turnable: true,
+					},
 				},
-				orientationData: {
-					turnable: true,
-				},
-			}, cardData);
+				cardData,
+			);
 
 		case 'transform':
-			return defu({
-				imageData: {
-					front: card.card_faces[0]?.image_uris ?? null,
-					back: card.card_faces[1]?.image_uris ?? null,
+			return defu(
+				{
+					imageData: {
+						front: card.card_faces[0]?.image_uris ?? null,
+						back: card.card_faces[1]?.image_uris ?? null,
+					},
+					orientationData: {
+						turnable: true,
+					},
+					displayData: {
+						rotated: card.type_line.includes('Battle'),
+					},
 				},
-				orientationData: {
-					turnable: true,
-				},
-				displayData: {
-					rotated: card.type_line.includes('Battle'),
-				},
-			}, cardData);
+				cardData,
+			);
 
 		case 'flip':
-			return defu({
-				imageData: {
-					front: card.image_uris ?? null,
-					back: null,
+			return defu(
+				{
+					imageData: {
+						front: card.image_uris ?? null,
+						back: null,
+					},
+					orientationData: {
+						flipable: true,
+					},
 				},
-				orientationData: {
-					flipable: true,
-				},
-			}, cardData);
+				cardData,
+			);
 
 		case 'split': {
 			const isAftermath = card.keywords?.includes('Aftermath');
-			return defu({
-				imageData: {
-					front: card.image_uris ?? null,
-					back: null,
+			return defu(
+				{
+					imageData: {
+						front: card.image_uris ?? null,
+						back: null,
+					},
+					displayData: {
+						rotated: !isAftermath,
+					},
+					orientationData: {
+						counterRotateable: isAftermath,
+					},
 				},
-				displayData: {
-					rotated: !isAftermath,
-				},
-				orientationData: {
-					counterRotateable: isAftermath,
-				},
-			}, cardData);
+				cardData,
+			);
 		}
 		case 'meld': {
-			const partOne = card.all_parts?.find(
-				part => part.component === 'meld_part',
-			);
+			const partOne = card.all_parts?.find((part) => part.component === 'meld_part');
 			const partTwo = card.all_parts?.find(
-				part => part.component === 'meld_part' && part.id !== partOne?.id,
+				(part) => part.component === 'meld_part' && part.id !== partOne?.id,
 			);
-			const result = card.all_parts?.find(
-				part => part.component === 'meld_result',
-			);
+			const result = card.all_parts?.find((part) => part.component === 'meld_result');
 
-			return defu({
-				imageData: {
-					front: card.image_uris ?? null,
-					back: null,
+			return defu(
+				{
+					imageData: {
+						front: card.image_uris ?? null,
+						back: null,
+					},
+					meldData: {
+						meldPartOne: partOne?.name ?? null,
+						meldPartTwo: partTwo?.name ?? null,
+						meldResult: result?.name ?? null,
+					},
 				},
-				meldData: {
-					meldPartOne: partOne?.name ?? null,
-					meldPartTwo: partTwo?.name ?? null,
-					meldResult: result?.name ?? null,
-				},
-			}, cardData);
+				cardData,
+			);
 		}
 	}
 

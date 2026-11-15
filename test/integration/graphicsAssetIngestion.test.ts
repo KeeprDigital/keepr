@@ -1,7 +1,4 @@
-import type {
-	GraphicAsset,
-	GraphicsIngestionOperation,
-} from '~~/shared/types/graphicsAsset';
+import type { GraphicAsset, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
 import { Buffer } from 'node:buffer';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -13,18 +10,21 @@ import { expectResponseStatus } from './responseStatus';
 
 /** Filled with the graphics author session cookie, the only author identity. */
 const authorHeaders: Record<string, string> = {};
-const transparentPixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const jpegPixel = Uint8Array.from(Buffer.from(
-	'/9j/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAABf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJtAEx7/2Q==',
-	'base64',
-));
-const webpPixel = Uint8Array.from(Buffer.from(
-	'UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAEAdQlFKUp4CBiOh/AAA=',
-	'base64',
-));
+const transparentPixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const jpegPixel = Uint8Array.from(
+	Buffer.from(
+		'/9j/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFAEBAAAAAAAAAAAAAAAAAAAABf/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AJtAEx7/2Q==',
+		'base64',
+	),
+);
+const webpPixel = Uint8Array.from(
+	Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAEAdQlFKUp4CBiOh/AAA=', 'base64'),
+);
 
 function browserDecodeEvidence(bytes: Uint8Array) {
 	return {
@@ -61,8 +61,7 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('reconnects to a durable operation, streams source bytes, and discovers the atomic result', async () => {
@@ -73,16 +72,22 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			browserDecodeEvidence: browserDecodeEvidence(transparentPixelPng),
 			declaredByteLength: transparentPixelPng.byteLength,
 		});
-		const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: initiationBody,
-		});
-		const reconnected = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: initiationBody,
-		});
+		const initiated = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: initiationBody,
+			},
+		);
+		const reconnected = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: initiationBody,
+			},
+		);
 		expect(reconnected).toEqual(initiated);
 
 		const undiscoverable = await $fetch<GraphicAsset[]>('/api/graphics-assets', {
@@ -103,7 +108,7 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			},
 		);
 		await expectResponseStatus(uploadResponse, 200);
-		const completed = await uploadResponse.json() as GraphicsIngestionOperation;
+		const completed = (await uploadResponse.json()) as GraphicsIngestionOperation;
 		expect(completed).toMatchObject({
 			stage: 'completed',
 			report: {
@@ -137,14 +142,14 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			}),
 		]);
 
-		const thumbnail = await fetch(
-			`/api/graphics-assets/${completed.result!.assetId}/thumbnail`,
-			{ headers: authorHeaders },
-		);
+		const thumbnail = await fetch(`/api/graphics-assets/${completed.result!.assetId}/thumbnail`, {
+			headers: authorHeaders,
+		});
 		expect(thumbnail.status).toBe(200);
 		expect(thumbnail.headers.get('content-type')).toBe('image/png');
-		expect(Array.from(new Uint8Array(await thumbnail.arrayBuffer()).slice(0, 8)))
-			.toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+		expect(Array.from(new Uint8Array(await thumbnail.arrayBuffer()).slice(0, 8))).toEqual([
+			137, 80, 78, 71, 13, 10, 26, 10,
+		]);
 
 		const pinnedContent = await fetch(
 			`/api/graphics-assets/${completed.result!.assetId}/revisions/${completed.result!.revisionId}/content`,
@@ -163,36 +168,41 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 		);
 		expect(missingRevision.status).toBe(404);
 
-		const duplicate = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-duplicate-scoreboard-logo',
-				name: 'Duplicate upload name',
-				defaultEventId: eventId,
-				// The one ingestion in the integration suites that asks for reuse,
-				// because reuse is what it is asserting. Every other initiation takes
-				// `graphicsIngestionRequest`'s `create-separate` default.
-				duplicateContentPolicy: 'reuse',
-				browserDecodeEvidence: browserDecodeEvidence(transparentPixelPng),
-				declaredByteLength: transparentPixelPng.byteLength,
-			}),
-		});
+		const duplicate = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-duplicate-scoreboard-logo',
+					name: 'Duplicate upload name',
+					defaultEventId: eventId,
+					// The one ingestion in the integration suites that asks for reuse,
+					// because reuse is what it is asserting. Every other initiation takes
+					// `graphicsIngestionRequest`'s `create-separate` default.
+					duplicateContentPolicy: 'reuse',
+					browserDecodeEvidence: browserDecodeEvidence(transparentPixelPng),
+					declaredByteLength: transparentPixelPng.byteLength,
+				}),
+			},
+		);
 		const duplicateResponse = await fetch(
 			`/api/graphics-assets/ingestion-operations/${duplicate.id}/content`,
 			{ method: 'PUT', headers: authorHeaders, body: transparentPixelPng },
 		);
 		await expectResponseStatus(duplicateResponse, 200);
-		const reused = await duplicateResponse.json() as GraphicsIngestionOperation;
+		const reused = (await duplicateResponse.json()) as GraphicsIngestionOperation;
 		expect(reused.result).toEqual({
 			outcome: 'reused',
 			assetId: completed.result!.assetId,
 			revisionId: completed.result!.revisionId,
 		});
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'scoreboard' },
-		})).resolves.toEqual([
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'scoreboard' },
+			}),
+		).resolves.toEqual([
 			expect.objectContaining({
 				name: 'Integration scoreboard logo',
 				eventIds: [eventId],
@@ -200,47 +210,55 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			}),
 		]);
 
-		const separate = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-separate-scoreboard-logo',
-				name: 'Separate scoreboard logo',
-				// Stated rather than defaulted: this is the assertion that
-				// `create-separate` publishes a second identity over shared content,
-				// so it must not be reading the helper's default back to itself.
-				duplicateContentPolicy: 'create-separate',
-				browserDecodeEvidence: browserDecodeEvidence(transparentPixelPng),
-				declaredByteLength: transparentPixelPng.byteLength,
-			}),
-		});
+		const separate = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-separate-scoreboard-logo',
+					name: 'Separate scoreboard logo',
+					// Stated rather than defaulted: this is the assertion that
+					// `create-separate` publishes a second identity over shared content,
+					// so it must not be reading the helper's default back to itself.
+					duplicateContentPolicy: 'create-separate',
+					browserDecodeEvidence: browserDecodeEvidence(transparentPixelPng),
+					declaredByteLength: transparentPixelPng.byteLength,
+				}),
+			},
+		);
 		const separateResponse = await fetch(
 			`/api/graphics-assets/ingestion-operations/${separate.id}/content`,
 			{ method: 'PUT', headers: authorHeaders, body: transparentPixelPng },
 		);
 		await expectResponseStatus(separateResponse, 200);
-		const separatelyPublished = await separateResponse.json() as GraphicsIngestionOperation;
+		const separatelyPublished = (await separateResponse.json()) as GraphicsIngestionOperation;
 		expect(separatelyPublished.result).toMatchObject({ outcome: 'published' });
 		expect(separatelyPublished.result?.assetId).not.toBe(completed.result?.assetId);
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'scoreboard' },
-		})).resolves.toHaveLength(2);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'scoreboard' },
+			}),
+		).resolves.toHaveLength(2);
 	});
 
 	it('resumes a multipart transfer from server-verified parts and tolerates an ambiguous duplicate request', async () => {
 		const bytes = new Uint8Array(GRAPHICS_MULTIPART_PART_BYTES + 1);
-		const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-resumable-large-image',
-				name: 'Interrupted large image',
-				declaredMime: 'image/png',
-				browserDecodeEvidence: rejectedBrowserDecodeEvidence(bytes),
-				declaredByteLength: bytes.byteLength,
-			}),
-		});
+		const initiated = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-resumable-large-image',
+					name: 'Interrupted large image',
+					declaredMime: 'image/png',
+					browserDecodeEvidence: rejectedBrowserDecodeEvidence(bytes),
+					declaredByteLength: bytes.byteLength,
+				}),
+			},
+		);
 
 		const started = await $fetch<GraphicsIngestionOperation>(
 			`/api/graphics-assets/ingestion-operations/${initiated.id}/multipart`,
@@ -306,7 +324,7 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			},
 		);
 		await expectResponseStatus(finalResponse, 200);
-		const ready = await finalResponse.json() as GraphicsIngestionOperation;
+		const ready = (await finalResponse.json()) as GraphicsIngestionOperation;
 		expect(ready.transferredByteLength).toBe(bytes.byteLength);
 
 		const completionResponse = await fetch(
@@ -319,28 +337,29 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			transferredByteLength: bytes.byteLength,
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'unsupported-image-format' },
-				],
+				issues: [{ code: 'unsupported-image-format' }],
 			},
 			failure: { code: 'validation-failed', retryable: false },
 		});
 	});
 
 	it('cancels active multipart state idempotently without publishing catalogue state', async () => {
-		const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
+		const initiated = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-cancelled-multipart-image',
+					name: 'Cancelled multipart image',
+					declaredByteLength: GRAPHICS_MULTIPART_PART_BYTES + 1,
+				}),
+			},
+		);
+		await $fetch(`/api/graphics-assets/ingestion-operations/${initiated.id}/multipart`, {
 			method: 'POST',
 			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-cancelled-multipart-image',
-				name: 'Cancelled multipart image',
-				declaredByteLength: GRAPHICS_MULTIPART_PART_BYTES + 1,
-			}),
 		});
-		await $fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/multipart`,
-			{ method: 'POST', headers: authorHeaders },
-		);
 
 		const cancelled = await $fetch<GraphicsIngestionOperation>(
 			`/api/graphics-assets/ingestion-operations/${initiated.id}`,
@@ -357,22 +376,27 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			transfer: { cleanupPending: false },
 		});
 		expect(cancelledAgain).toEqual(cancelled);
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'cancelled multipart image' },
-		})).resolves.toEqual([]);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'cancelled multipart image' },
+			}),
+		).resolves.toEqual([]);
 	});
 
 	it('exposes cancellation and permanent validation failure as structured operations', async () => {
-		const cancelled = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-cancelled-logo',
-				name: 'Cancelled integration logo',
-				declaredByteLength: transparentPixelPng.byteLength,
-			}),
-		});
+		const cancelled = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-cancelled-logo',
+					name: 'Cancelled integration logo',
+					declaredByteLength: transparentPixelPng.byteLength,
+				}),
+			},
+		);
 		const cancellation = await $fetch<GraphicsIngestionOperation>(
 			`/api/graphics-assets/ingestion-operations/${cancelled.id}`,
 			{ method: 'DELETE', headers: authorHeaders },
@@ -383,16 +407,19 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 		});
 
 		const invalidBytes = new TextEncoder().encode('not an image');
-		const invalid = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-invalid-logo',
-				name: 'Invalid integration logo',
-				browserDecodeEvidence: rejectedBrowserDecodeEvidence(invalidBytes),
-				declaredByteLength: invalidBytes.byteLength,
-			}),
-		});
+		const invalid = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-invalid-logo',
+					name: 'Invalid integration logo',
+					browserDecodeEvidence: rejectedBrowserDecodeEvidence(invalidBytes),
+					declaredByteLength: invalidBytes.byteLength,
+				}),
+			},
+		);
 		const response = await fetch(
 			`/api/graphics-assets/ingestion-operations/${invalid.id}/content`,
 			{ method: 'PUT', headers: authorHeaders, body: invalidBytes },
@@ -403,9 +430,7 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			report: {
 				outcome: 'rejected',
 				compatibilityProfile: 'still-image-v1',
-				issues: [
-					{ code: 'unsupported-image-format' },
-				],
+				issues: [{ code: 'unsupported-image-format' }],
 			},
 			failure: { code: 'validation-failed', retryable: false },
 		});
@@ -422,16 +447,19 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 	});
 
 	it('records a stable validation issue when declared MIME conflicts with the signature', async () => {
-		const operation = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-conflicting-png-mime',
-				name: 'Conflicting MIME',
-				browserDecodeEvidence: browserDecodeEvidence(transparentPixelPng),
-				declaredByteLength: transparentPixelPng.byteLength,
-			}),
-		});
+		const operation = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-conflicting-png-mime',
+					name: 'Conflicting MIME',
+					browserDecodeEvidence: browserDecodeEvidence(transparentPixelPng),
+					declaredByteLength: transparentPixelPng.byteLength,
+				}),
+			},
+		);
 		const response = await fetch(
 			`/api/graphics-assets/ingestion-operations/${operation.id}/content`,
 			{
@@ -446,9 +474,7 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'conflicting-image-mime' },
-				],
+				issues: [{ code: 'conflicting-image-mime' }],
 			},
 			failure: { code: 'validation-failed', retryable: false },
 		});
@@ -457,18 +483,21 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 	// One profile refusal proves the validator sits behind the seam; each rule is its own unit test.
 	it('rejects a truncated JPEG through the durable public ingestion seam', async () => {
 		const bytes = jpegPixel.subarray(0, -1);
-		const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-profile-rejection-partial-jpeg',
-				name: 'Rejected partial JPEG',
-				sourceFileName: 'partial.jpg',
-				declaredMime: 'image/jpeg',
-				browserDecodeEvidence: rejectedBrowserDecodeEvidence(bytes),
-				declaredByteLength: bytes.byteLength,
-			}),
-		});
+		const initiated = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-profile-rejection-partial-jpeg',
+					name: 'Rejected partial JPEG',
+					sourceFileName: 'partial.jpg',
+					declaredMime: 'image/jpeg',
+					browserDecodeEvidence: rejectedBrowserDecodeEvidence(bytes),
+					declaredByteLength: bytes.byteLength,
+				}),
+			},
+		);
 		const response = await fetch(
 			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
 			{
@@ -483,16 +512,16 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'incomplete-jpeg-frame' },
-				],
+				issues: [{ code: 'incomplete-jpeg-frame' }],
 			},
 			failure: { code: 'validation-failed', retryable: false },
 		});
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Rejected partial JPEG' },
-		})).resolves.toEqual([]);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Rejected partial JPEG' },
+			}),
+		).resolves.toEqual([]);
 	});
 
 	it.each([
@@ -510,88 +539,91 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			mime: 'image/webp',
 			format: 'webp',
 		},
-	])('publishes exact $label source bytes with verified facts and a PNG thumbnail', async ({
-		label,
-		bytes,
-		fileName,
-		mime,
-		format,
-	}) => {
-		const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: `integration-${format}-image`,
-				name: `Integration ${label} image`,
+	])(
+		'publishes exact $label source bytes with verified facts and a PNG thumbnail',
+		async ({ label, bytes, fileName, mime, format }) => {
+			const initiated = await $fetch<GraphicsIngestionOperation>(
+				'/api/graphics-assets/ingestion-operations',
+				{
+					method: 'POST',
+					headers: authorHeaders,
+					body: graphicsIngestionRequest({
+						idempotencyKey: `integration-${format}-image`,
+						name: `Integration ${label} image`,
+						sourceFileName: fileName,
+						declaredMime: mime,
+						browserDecodeEvidence: browserDecodeEvidence(bytes),
+						declaredByteLength: bytes.byteLength,
+					}),
+				},
+			);
+			const response = await fetch(
+				`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
+				{
+					method: 'PUT',
+					headers: { ...authorHeaders, 'content-type': mime },
+					body: bytes,
+				},
+			);
+
+			await expectResponseStatus(response, 200);
+			const completed = (await response.json()) as GraphicsIngestionOperation;
+			expect(completed).toMatchObject({
+				stage: 'completed',
 				sourceFileName: fileName,
 				declaredMime: mime,
-				browserDecodeEvidence: browserDecodeEvidence(bytes),
-				declaredByteLength: bytes.byteLength,
-			}),
-		});
-		const response = await fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
-			{
-				method: 'PUT',
-				headers: { ...authorHeaders, 'content-type': mime },
-				body: bytes,
-			},
-		);
-
-		await expectResponseStatus(response, 200);
-		const completed = await response.json() as GraphicsIngestionOperation;
-		expect(completed).toMatchObject({
-			stage: 'completed',
-			sourceFileName: fileName,
-			declaredMime: mime,
-			report: {
-				outcome: 'accepted',
-				compatibilityProfile: 'still-image-v1',
-				facts: {
-					format,
-					canonicalMime: mime,
-					width: 1,
-					height: 1,
-					frameCount: 1,
-					bitDepth: 8,
-					colorSpace: 'srgb',
-					orientation: 'normal',
-					browserDecodable: true,
+				report: {
+					outcome: 'accepted',
+					compatibilityProfile: 'still-image-v1',
+					facts: {
+						format,
+						canonicalMime: mime,
+						width: 1,
+						height: 1,
+						frameCount: 1,
+						bitDepth: 8,
+						colorSpace: 'srgb',
+						orientation: 'normal',
+						browserDecodable: true,
+					},
 				},
-			},
-		});
+			});
 
-		const pinnedContent = await fetch(
-			`/api/graphics-assets/${completed.result!.assetId}/revisions/${completed.result!.revisionId}/content`,
-			{ headers: authorHeaders },
-		);
-		expect(pinnedContent.status).toBe(200);
-		expect(pinnedContent.headers.get('content-type')).toBe(mime);
-		expect(new Uint8Array(await pinnedContent.arrayBuffer())).toEqual(bytes);
+			const pinnedContent = await fetch(
+				`/api/graphics-assets/${completed.result!.assetId}/revisions/${completed.result!.revisionId}/content`,
+				{ headers: authorHeaders },
+			);
+			expect(pinnedContent.status).toBe(200);
+			expect(pinnedContent.headers.get('content-type')).toBe(mime);
+			expect(new Uint8Array(await pinnedContent.arrayBuffer())).toEqual(bytes);
 
-		const thumbnail = await fetch(
-			`/api/graphics-assets/${completed.result!.assetId}/thumbnail`,
-			{ headers: authorHeaders },
-		);
-		expect(thumbnail.status).toBe(200);
-		expect(thumbnail.headers.get('content-type')).toBe('image/png');
-		expect(Array.from(new Uint8Array(await thumbnail.arrayBuffer()).slice(0, 8)))
-			.toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-	});
+			const thumbnail = await fetch(`/api/graphics-assets/${completed.result!.assetId}/thumbnail`, {
+				headers: authorHeaders,
+			});
+			expect(thumbnail.status).toBe(200);
+			expect(thumbnail.headers.get('content-type')).toBe('image/png');
+			expect(Array.from(new Uint8Array(await thumbnail.arrayBuffer()).slice(0, 8))).toEqual([
+				137, 80, 78, 71, 13, 10, 26, 10,
+			]);
+		},
+	);
 
 	it('publishes and privately delivers one exact verified font revision', async () => {
 		const bytes = new Uint8Array(await readFile('public/fonts/mana.woff'));
-		const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: authorHeaders,
-			body: graphicsIngestionRequest({
-				idempotencyKey: 'integration-mana-font',
-				name: 'Integration Mana',
-				sourceFileName: 'mana.woff',
-				declaredMime: 'font/woff',
-				declaredByteLength: bytes.byteLength,
-			}),
-		});
+		const initiated = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: authorHeaders,
+				body: graphicsIngestionRequest({
+					idempotencyKey: 'integration-mana-font',
+					name: 'Integration Mana',
+					sourceFileName: 'mana.woff',
+					declaredMime: 'font/woff',
+					declaredByteLength: bytes.byteLength,
+				}),
+			},
+		);
 		const response = await fetch(
 			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
 			{
@@ -601,7 +633,7 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 			},
 		);
 		expect(response.status).toBe(200);
-		const awaitingEvidence = await response.json() as GraphicsIngestionOperation;
+		const awaitingEvidence = (await response.json()) as GraphicsIngestionOperation;
 		expect(awaitingEvidence).toMatchObject({
 			stage: 'awaiting-confirmation',
 			report: {
@@ -609,7 +641,10 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 				facts: { kind: 'font' },
 			},
 		});
-		if (awaitingEvidence.report?.outcome !== 'accepted' || awaitingEvidence.report.facts.kind !== 'font')
+		if (
+			awaitingEvidence.report?.outcome !== 'accepted' ||
+			awaitingEvidence.report.facts.kind !== 'font'
+		)
 			throw new Error('Expected a server-selected font challenge');
 		const exact = '1'.repeat(64);
 		const completed = await $fetch<GraphicsIngestionOperation>(
@@ -621,13 +656,15 @@ describe('the bounded still-image ingestion and Library Workspace APIs', () => {
 					outcome: 'font-loaded',
 					sourceDigest: createHash('sha256').update(bytes).digest('hex'),
 					challengeDigest: awaitingEvidence.report.facts.browserChallenge.digest,
-					glyphProofs: awaitingEvidence.report.facts.browserChallenge.codePoints.map(codePoint => ({
-						codePoint,
-						exactWithSansDigest: exact,
-						exactWithMonoDigest: exact,
-						sansFallbackDigest: '2'.repeat(64),
-						monoFallbackDigest: '3'.repeat(64),
-					})),
+					glyphProofs: awaitingEvidence.report.facts.browserChallenge.codePoints.map(
+						(codePoint) => ({
+							codePoint,
+							exactWithSansDigest: exact,
+							exactWithMonoDigest: exact,
+							sansFallbackDigest: '2'.repeat(64),
+							monoFallbackDigest: '3'.repeat(64),
+						}),
+					),
 				},
 			},
 		);

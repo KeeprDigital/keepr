@@ -26,15 +26,19 @@ const WHEEL_LINE_PIXELS = 16;
 const WHEEL_ZOOM_RATE = 0.002;
 
 /** The scale a ⌘/Ctrl wheel or trackpad pinch takes the preview to. */
-export function wheelPreviewZoom(scale: number, wheel: { deltaY: number; deltaMode: number }): number {
-	const pixels = wheel.deltaMode === 1
-		? wheel.deltaY * WHEEL_LINE_PIXELS
-		: wheel.deltaY;
+export function wheelPreviewZoom(
+	scale: number,
+	wheel: { deltaY: number; deltaMode: number },
+): number {
+	const pixels = wheel.deltaMode === 1 ? wheel.deltaY * WHEEL_LINE_PIXELS : wheel.deltaY;
 	return clampPreviewZoom(scale * Math.exp(-pixels * WHEEL_ZOOM_RATE));
 }
 
 /** A position in CSS pixels. */
-export interface PreviewPoint { x: number; y: number }
+export interface PreviewPoint {
+	x: number;
+	y: number;
+}
 
 const SHORTCUT_ZOOM: Record<string, PreviewZoom> = {
 	0: 'fit',
@@ -56,12 +60,14 @@ export function previewZoomShortcut(event: {
 	shiftKey: boolean;
 	altKey: boolean;
 }): PreviewZoom | null {
-	if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey)
-		return null;
+	if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return null;
 	return SHORTCUT_ZOOM[event.key] ?? SHORTCUT_ZOOM[event.code ?? ''] ?? null;
 }
 
-interface Size { width: number; height: number }
+interface Size {
+	width: number;
+	height: number;
+}
 
 /**
  * Where to scroll a preview whose scale changes, so the canvas point under the
@@ -79,7 +85,8 @@ export function previewZoomScroll(input: {
 	to: number;
 }): { left: number; top: number } {
 	const axis = (size: 'width' | 'height', scroll: number, pointer: number) => {
-		const offset = (scale: number) => Math.max(0, (input.client[size] - input.canvas[size] * scale) / 2);
+		const offset = (scale: number) =>
+			Math.max(0, (input.client[size] - input.canvas[size] * scale) / 2);
 		const point = (scroll + pointer - offset(input.from)) / input.from;
 		const next = point * input.to + offset(input.to) - pointer;
 		const max = Math.max(0, input.canvas[size] * input.to - input.client[size]);

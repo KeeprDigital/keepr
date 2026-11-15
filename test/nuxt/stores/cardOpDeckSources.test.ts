@@ -4,7 +4,11 @@ import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deferred } from '~~/test/helpers/deferred';
 import { NAMI, opDeckListEntry, opSlotSide, ZORO } from '~~/test/helpers/opCards';
-import { createFollowedFeatureMatchSessions, followNoSession, followSwappedSession } from '~~/test/nuxt/helpers/followedFeatureMatchSession';
+import {
+	createFollowedFeatureMatchSessions,
+	followNoSession,
+	followSwappedSession,
+} from '~~/test/nuxt/helpers/followedFeatureMatchSession';
 
 // Cards page Feature Match Deck Lists on a One Piece Event (ADR-0057): a Slot side
 // shows its own Feature Match Deck List or its linked Player's. The server's
@@ -42,18 +46,18 @@ function deckListView(entries: OpDeckListEntry[], leaderNumber: string) {
 	};
 }
 
-const ALICE_LIST = deckListView([
-	opDeckListEntry(ZORO.number, 1, 'leader'),
-	opDeckListEntry('OP01-025', 4, 'character', 3),
-], ZORO.number);
-const ALICE_REPASTE = deckListView([
-	opDeckListEntry(ZORO.number, 1, 'leader'),
-	opDeckListEntry('OP01-026', 4, 'event', 1),
-], ZORO.number);
-const BOB_LIST = deckListView([
-	opDeckListEntry(NAMI.number, 1, 'leader'),
-	opDeckListEntry('OP01-060', 4, 'character', 2),
-], NAMI.number);
+const ALICE_LIST = deckListView(
+	[opDeckListEntry(ZORO.number, 1, 'leader'), opDeckListEntry('OP01-025', 4, 'character', 3)],
+	ZORO.number,
+);
+const ALICE_REPASTE = deckListView(
+	[opDeckListEntry(ZORO.number, 1, 'leader'), opDeckListEntry('OP01-026', 4, 'event', 1)],
+	ZORO.number,
+);
+const BOB_LIST = deckListView(
+	[opDeckListEntry(NAMI.number, 1, 'leader'), opDeckListEntry('OP01-060', 4, 'character', 2)],
+	NAMI.number,
+);
 
 /** Bob, Player 42, linked to a side, whose slot data names his own Deck List. */
 function linkedBob(deckListId: number | null) {
@@ -62,9 +66,10 @@ function linkedBob(deckListId: number | null) {
 		gameData: {
 			type: 'op' as const,
 			leader: NAMI,
-			deckList: deckListId === null
-				? null
-				: { id: deckListId, mainboardCount: 50, leaderNumber: NAMI.number },
+			deckList:
+				deckListId === null
+					? null
+					: { id: deckListId, mainboardCount: 50, leaderNumber: NAMI.number },
 		},
 	};
 }
@@ -84,12 +89,15 @@ function slot7(aliceDeckListId: number | null = 301, bobDeckListId: number | nul
 /** Who each side shows, with their Leader and Deck List's card numbers. */
 function shown() {
 	const store = useCardStore();
-	return [store.opDeckListPlayer1, store.opDeckListPlayer2].map(side => side && {
-		player: side.playerName,
-		leader: side.leader?.name ?? null,
-		cards: side.deckList?.entries.map(entry => entry.number) ?? null,
-		failed: side.failed,
-	});
+	return [store.opDeckListPlayer1, store.opDeckListPlayer2].map(
+		(side) =>
+			side && {
+				player: side.playerName,
+				leader: side.leader?.name ?? null,
+				cards: side.deckList?.entries.map((entry) => entry.number) ?? null,
+				failed: side.failed,
+			},
+	);
 }
 
 describe('useCardStore One Piece Feature Match Deck Lists', () => {
@@ -99,9 +107,7 @@ describe('useCardStore One Piece Feature Match Deck Lists', () => {
 		store = useCardStore();
 		store.$reset();
 		followNoSession(followed);
-		featureMatchStore.featureMatches = [
-			slot7(),
-		];
+		featureMatchStore.featureMatches = [slot7()];
 		deckLists = new Map<string, unknown>([
 			[
 				'/api/events/1/feature-match-slots/7/deck-lists/301',
@@ -135,8 +141,7 @@ describe('useCardStore One Piece Feature Match Deck Lists', () => {
 			],
 		]);
 		mockFetch.mockReset().mockImplementation(async (path: string) => {
-			if (!deckLists.has(path))
-				throw new Error(`500 ${path}`);
+			if (!deckLists.has(path)) throw new Error(`500 ${path}`);
 			return deckLists.get(path);
 		});
 	});
@@ -147,28 +152,16 @@ describe('useCardStore One Piece Feature Match Deck Lists', () => {
 	});
 
 	it.each([
-		[
-			'a pasted Deck List',
-			slot7(301, null),
-			true,
-		],
-		[
-			'a linked Player\'s Deck List',
-			slot7(null, 501),
-			true,
-		],
-		[
-			'no Deck List on either side',
-			slot7(null, null),
-			false,
-		],
+		['a pasted Deck List', slot7(301, null), true],
+		["a linked Player's Deck List", slot7(null, 501), true],
+		['no Deck List on either side', slot7(null, null), false],
 	])('offers the Deck List mode for a Slot holding %s: %s', (_, slot, usable) => {
 		featureMatchStore.featureMatches = [slot];
 
 		expect(store.canUseDeckListMode).toBe(usable);
 	});
 
-	it('shows a side\'s pasted Deck List and a linked side\'s Player Deck List', async () => {
+	it("shows a side's pasted Deck List and a linked side's Player Deck List", async () => {
 		await store.loadMatchDeckLists(7);
 
 		expect(shown()).toEqual([
@@ -200,9 +193,7 @@ describe('useCardStore One Piece Feature Match Deck Lists', () => {
 		[
 			'a re-paste shows the new Deck List',
 			() => {
-				featureMatchStore.featureMatches = [
-					slot7(302),
-				];
+				featureMatchStore.featureMatches = [slot7(302)];
 			},
 			['Alice', 'Bob'],
 			[
@@ -216,8 +207,8 @@ describe('useCardStore One Piece Feature Match Deck Lists', () => {
 		change();
 		await flushPromises();
 
-		expect(shown().map(side => side?.player)).toEqual(players);
-		expect(shown().map(side => side?.cards)).toEqual(cards);
+		expect(shown().map((side) => side?.player)).toEqual(players);
+		expect(shown().map((side) => side?.cards)).toEqual(cards);
 		expect(store.loadingDeckList).toBe(false);
 	});
 
@@ -294,7 +285,7 @@ describe('useCardStore One Piece Feature Match Deck Lists', () => {
 		});
 		await first;
 
-		expect(shown().map(side => side?.player)).toEqual(['Carol', 'Bob']);
+		expect(shown().map((side) => side?.player)).toEqual(['Carol', 'Bob']);
 		expect(store.loadingDeckList).toBe(false);
 	});
 });

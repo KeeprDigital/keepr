@@ -23,8 +23,7 @@ export async function verifyStaticFontBrowserLoad(
 	const face = new FontFace(family, bytes);
 	try {
 		await face.load();
-	}
-	catch {
+	} catch {
 		return {
 			outcome: 'font-rejected',
 			sourceDigest,
@@ -59,22 +58,18 @@ export async function verifyStaticFontBrowserLoad(
 					stage: 'render',
 				};
 			}
-			const [
-				exactWithSansDigest,
-				exactWithMonoDigest,
-				sansFallbackDigest,
-				monoFallbackDigest,
-			] = await Promise.all([
-				pixelDigest(context, `"${family}", sans-serif`, glyph),
-				pixelDigest(context, `"${family}", monospace`, glyph),
-				pixelDigest(context, 'sans-serif', glyph),
-				pixelDigest(context, 'monospace', glyph),
-			]);
+			const [exactWithSansDigest, exactWithMonoDigest, sansFallbackDigest, monoFallbackDigest] =
+				await Promise.all([
+					pixelDigest(context, `"${family}", sans-serif`, glyph),
+					pixelDigest(context, `"${family}", monospace`, glyph),
+					pixelDigest(context, 'sans-serif', glyph),
+					pixelDigest(context, 'monospace', glyph),
+				]);
 			if (
-				exactWithSansDigest !== exactWithMonoDigest
-				|| sansFallbackDigest === monoFallbackDigest
-				|| exactWithSansDigest === sansFallbackDigest
-				|| exactWithSansDigest === monoFallbackDigest
+				exactWithSansDigest !== exactWithMonoDigest ||
+				sansFallbackDigest === monoFallbackDigest ||
+				exactWithSansDigest === sansFallbackDigest ||
+				exactWithSansDigest === monoFallbackDigest
 			) {
 				return {
 					outcome: 'font-rejected',
@@ -97,8 +92,7 @@ export async function verifyStaticFontBrowserLoad(
 			challengeDigest: challenge.digest,
 			glyphProofs,
 		};
-	}
-	finally {
+	} finally {
 		document.fonts.delete(face);
 	}
 }

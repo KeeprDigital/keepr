@@ -78,16 +78,18 @@ describe('the R2 Graphic Asset object-store adapter', () => {
 		const get = vi.fn();
 		const store = createR2CanonicalGraphicsObjectStore({ put, get } as unknown as R2Bucket);
 
-		await expect(store.createImmutable({
-			identity,
-			bytes: createBoundedByteStream(new Uint8Array(4), {
-				byteLength: 5,
-				maximumByteLength: 5,
+		await expect(
+			store.createImmutable({
+				identity,
+				bytes: createBoundedByteStream(new Uint8Array(4), {
+					byteLength: 5,
+					maximumByteLength: 5,
+				}),
 			}),
-		})).rejects.toThrow('Byte stream length mismatch');
-		await expect(store.read(identity, { offset: -1, length: 1 }))
-			.rejects
-			.toThrow('Range offset must be a non-negative safe integer');
+		).rejects.toThrow('Byte stream length mismatch');
+		await expect(store.read(identity, { offset: -1, length: 1 })).rejects.toThrow(
+			'Range offset must be a non-negative safe integer',
+		);
 		expect(get).not.toHaveBeenCalled();
 	});
 
@@ -120,9 +122,7 @@ describe('the R2 Graphic Asset object-store adapter', () => {
 		});
 
 		expect(head).not.toHaveBeenCalled();
-		expect(complete).toHaveBeenCalledWith([
-			{ partNumber: 1, etag: 'etag-1' },
-		]);
+		expect(complete).toHaveBeenCalledWith([{ partNumber: 1, etag: 'etag-1' }]);
 		expect(outcome).toMatchObject({
 			outcome: 'created',
 			object: { identity },
@@ -132,10 +132,11 @@ describe('the R2 Graphic Asset object-store adapter', () => {
 	it('says what R2 threw when a multipart part becomes an outage (#633)', async () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const identity = graphicsObjectIdentity('staging/operation/multipart');
-		const uploadPart = vi.fn().mockRejectedValue(Object.assign(
-			new Error('We encountered an internal error. Please try again.'),
-			{ code: 10001 },
-		));
+		const uploadPart = vi.fn().mockRejectedValue(
+			Object.assign(new Error('We encountered an internal error. Please try again.'), {
+				code: 10001,
+			}),
+		);
 		const store = createR2StagingGraphicsObjectStore({
 			resumeMultipartUpload: vi.fn().mockReturnValue({ uploadId: 'upload-1', uploadPart }),
 		} as unknown as R2Bucket);
@@ -169,27 +170,29 @@ describe('the R2 Graphic Asset object-store adapter', () => {
 		}
 
 		// The code alone classifies: this wording is one the message fallback does not know.
-		await expect(abortAgainst(Object.assign(
-			new Error('R2 refused the abort.'),
-			{ code: 10024 },
-		))).resolves.toEqual({ outcome: 'missing' });
+		await expect(
+			abortAgainst(Object.assign(new Error('R2 refused the abort.'), { code: 10024 })),
+		).resolves.toEqual({ outcome: 'missing' });
 		// The wording alone, when a proxied refusal lost the code: the Workers API's, then Miniflare's.
-		await expect(abortAgainst(
-			new Error('Multipart upload does not exist or was aborted. (10024)'),
-		)).resolves.toEqual({ outcome: 'missing' });
-		await expect(abortAgainst(
-			new Error('The specified multipart upload does not exist.'),
-		)).resolves.toEqual({ outcome: 'missing' });
+		await expect(
+			abortAgainst(new Error('Multipart upload does not exist or was aborted. (10024)')),
+		).resolves.toEqual({ outcome: 'missing' });
+		await expect(
+			abortAgainst(new Error('The specified multipart upload does not exist.')),
+		).resolves.toEqual({ outcome: 'missing' });
 		// Anything else is an outage: reading it as reclaimed would strand a still-held upload.
-		await expect(abortAgainst(Object.assign(
-			new Error('We encountered an internal error. Please try again.'),
-			{ code: 10001 },
-		))).resolves.toMatchObject({ outcome: 'unavailable' });
-		await expect(abortAgainst(new Error('Network connection lost.')))
-			.resolves
-			.toMatchObject({ outcome: 'unavailable' });
-		await expect(abortAgainst('not an error at all'))
-			.resolves
-			.toMatchObject({ outcome: 'unavailable' });
+		await expect(
+			abortAgainst(
+				Object.assign(new Error('We encountered an internal error. Please try again.'), {
+					code: 10001,
+				}),
+			),
+		).resolves.toMatchObject({ outcome: 'unavailable' });
+		await expect(abortAgainst(new Error('Network connection lost.'))).resolves.toMatchObject({
+			outcome: 'unavailable',
+		});
+		await expect(abortAgainst('not an error at all')).resolves.toMatchObject({
+			outcome: 'unavailable',
+		});
 	});
 });

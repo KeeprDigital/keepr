@@ -25,13 +25,22 @@ vi.doMock('~~/server/utils/ably', () => ({
 	getOriginConnectionId: () => undefined,
 }));
 
-interface StubEvent { params: Record<string, string>; body?: unknown }
+interface StubEvent {
+	params: Record<string, string>;
+	body?: unknown;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 vi.stubGlobal('setResponseStatus', () => {});
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; data?: unknown }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 // Admission is ADR-0022's and pinned elsewhere; this suite is about what the read answers.
 vi.doMock('~~/server/utils/screenOutputRead', () => ({
@@ -53,16 +62,19 @@ const deleteTheme = handler(await import('~~/server/api/themes/[themeId]/index.d
 const setToken = handler(await import('~~/server/api/themes/[themeId]/tokens/[token].put'));
 const clearToken = handler(await import('~~/server/api/themes/[themeId]/tokens/[token].delete'));
 const updateEvent = handler(await import('~~/server/api/events/[id]/index.patch'));
-const readOutputEvent = handler(await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/event.get'));
+const readOutputEvent = handler(
+	await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/event.get'),
+);
 
 function call(handler: Handler, params: Record<string, string | number>, body?: unknown) {
-	return handler(stubH3Event({
-		params: Object.fromEntries(Object.entries(params).map(([key, value]) => [
-			key,
-			String(value),
-		])),
-		body,
-	}));
+	return handler(
+		stubH3Event({
+			params: Object.fromEntries(
+				Object.entries(params).map(([key, value]) => [key, String(value)]),
+			),
+			body,
+		}),
+	);
 }
 
 async function refusal(promise: Promise<unknown>) {
@@ -79,12 +91,16 @@ async function refusal(promise: Promise<unknown>) {
 }
 
 const create = (name: string): Promise<ThemeResponse> => call(createTheme, {}, { name });
-const set = (themeId: string, token: string, value: unknown): Promise<ThemeResponse> => call(setToken, { themeId, token }, { value });
-const clear = (themeId: string, token: string): Promise<ThemeResponse> => call(clearToken, { themeId, token });
-const select = (eventId: number, themeId: string | null) => call(updateEvent, { id: eventId }, { themeId });
+const set = (themeId: string, token: string, value: unknown): Promise<ThemeResponse> =>
+	call(setToken, { themeId, token }, { value });
+const clear = (themeId: string, token: string): Promise<ThemeResponse> =>
+	call(clearToken, { themeId, token });
+const select = (eventId: number, themeId: string | null) =>
+	call(updateEvent, { id: eventId }, { themeId });
 
 async function createEvent(name: string): Promise<number> {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name, game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	return event!.id;
@@ -97,8 +113,12 @@ async function storedTokens(themeId: string) {
 
 function announcedThemes() {
 	return published
-		.filter(message => message.type === 'theme:updated')
-		.map(message => ({ eventId: message.eventId, revision: message.data.theme.revision, tokens: message.data.theme.tokens }));
+		.filter((message) => message.type === 'theme:updated')
+		.map((message) => ({
+			eventId: message.eventId,
+			revision: message.data.theme.revision,
+			tokens: message.data.theme.tokens,
+		}));
 }
 
 beforeEach(() => {
@@ -119,11 +139,13 @@ describe('the Theme library', () => {
 		const renamed = await call(renameTheme, { themeId: theme.id }, { name: 'Winter Series' });
 		expect(renamed.name).toBe('Winter Series');
 		const { themes } = await call(listThemes, {});
-		expect(themes.map((listed: { id: string; name: string }) => [listed.id, listed.name])).toContainEqual([theme.id, 'Winter Series']);
+		expect(
+			themes.map((listed: { id: string; name: string }) => [listed.id, listed.name]),
+		).toContainEqual([theme.id, 'Winter Series']);
 		expect(published).toEqual([]);
 	});
 
-	it('stores only the tokens set, keeps other writers\' tokens, and lets the last write to one token win', async () => {
+	it("stores only the tokens set, keeps other writers' tokens, and lets the last write to one token win", async () => {
 		const theme = await create('Tokens');
 
 		await set(theme.id, 'accent', '#ff0000');
@@ -154,22 +176,10 @@ describe('the Theme library', () => {
 	});
 
 	it.each([
-		[
-			'read',
-			() => call(getTheme, { themeId: 'missing' }),
-		],
-		[
-			'rename',
-			() => call(renameTheme, { themeId: 'missing' }, { name: 'Anything' }),
-		],
-		[
-			'set a token of',
-			() => set('missing', 'accent', '#fff'),
-		],
-		[
-			'delete',
-			() => call(deleteTheme, { themeId: 'missing' }),
-		],
+		['read', () => call(getTheme, { themeId: 'missing' })],
+		['rename', () => call(renameTheme, { themeId: 'missing' }, { name: 'Anything' })],
+		['set a token of', () => set('missing', 'accent', '#fff')],
+		['delete', () => call(deleteTheme, { themeId: 'missing' })],
 	])('answers 404 to %s a Theme that does not exist', async (_case, attempt) => {
 		expect(await refusal(attempt())).toMatchObject({ statusCode: 404 });
 	});
@@ -209,7 +219,7 @@ describe('the Theme library', () => {
 	});
 });
 
-describe('a Theme\'s announcements', () => {
+describe("a Theme's announcements", () => {
 	it('announces a token write and clear on every Event using the Theme, and on no other', async () => {
 		const theme = await create('Announced');
 		const other = await create('Other');
@@ -239,7 +249,7 @@ describe('a Theme\'s announcements', () => {
 			{ eventId: first, revision: written.revision + 1, tokens: {} },
 			{ eventId: second, revision: written.revision + 1, tokens: {} },
 		]);
-		expect(published.map(message => message.eventId)).not.toContain(unthemed);
+		expect(published.map((message) => message.eventId)).not.toContain(unthemed);
 	});
 
 	it('announces nothing for clearing a token the Theme does not set', async () => {
@@ -259,31 +269,35 @@ describe('a Theme\'s announcements', () => {
 		['a former token', 'metagame.chart-series-1', '#ff0000'],
 		['a Mode Token', 'standings.rise', '#ff0000'],
 		['a Mode Token given a value it could never hold', 'standings.rise', 12],
-	])('accepts a write of %s and drops it, so nothing is stored, versioned or announced', async (_case, token, value) => {
-		const theme = await create('Dropped');
-		const event = await createEvent('Dropped Event');
-		await select(event, theme.id);
-		const written = await set(theme.id, 'accent', '#123456');
-		published.length = 0;
+	])(
+		'accepts a write of %s and drops it, so nothing is stored, versioned or announced',
+		async (_case, token, value) => {
+			const theme = await create('Dropped');
+			const event = await createEvent('Dropped Event');
+			await select(event, theme.id);
+			const written = await set(theme.id, 'accent', '#123456');
+			published.length = 0;
 
-		const answered = await set(theme.id, token, value);
+			const answered = await set(theme.id, token, value);
 
-		expect(answered).toMatchObject({
-			revision: written.revision,
-			tokens: { accent: '#123456' },
-		});
-		expect(await storedTokens(theme.id)).toEqual({ accent: '#123456' });
-		expect(published).toEqual([]);
-	});
+			expect(answered).toMatchObject({
+				revision: written.revision,
+				tokens: { accent: '#123456' },
+			});
+			expect(await storedTokens(theme.id)).toEqual({ accent: '#123456' });
+			expect(published).toEqual([]);
+		},
+	);
 
 	// A Mode Token stored before a Theme held Foundation Tokens only is read by nothing, but can still be cleared.
 	it('clears a Mode Token a Theme stored before, and announces it', async () => {
 		const theme = await create('Stored Mode Token');
 		const event = await createEvent('Stored Mode Token Event');
 		await select(event, theme.id);
-		await db.update(schema.themes)
+		await db
+			.update(schema.themes)
 			.set({
-				tokens: { 'accent': '#123456', 'standings.rise': '#00ff00' },
+				tokens: { accent: '#123456', 'standings.rise': '#00ff00' },
 			})
 			.where(eq(schema.themes.id, theme.id));
 		published.length = 0;
@@ -306,10 +320,11 @@ describe('a Theme\'s announcements', () => {
 
 		await select(event, theme.id);
 
-		expect(published.filter(message => message.eventId === event).map(message => [message.type, message.data.event?.themeId]))
-			.toEqual([
-				['event:updated', theme.id],
-			]);
+		expect(
+			published
+				.filter((message) => message.eventId === event)
+				.map((message) => [message.type, message.data.event?.themeId]),
+		).toEqual([['event:updated', theme.id]]);
 	});
 
 	it('refuses to select a Theme that does not exist', async () => {
@@ -331,7 +346,7 @@ describe('the Screen Output Event context', () => {
 		expect(await outputEvent(event)).toMatchObject({ themeId: null, theme: null });
 	});
 
-	it('carries the selected Theme\'s stored tokens at their revision, and follows a switch back', async () => {
+	it("carries the selected Theme's stored tokens at their revision, and follows a switch back", async () => {
 		const theme = await create('Selected');
 		const event = await createEvent('Selecting');
 		await select(event, theme.id);
@@ -353,40 +368,44 @@ describe('the Screen Output Event context', () => {
 
 // ADR-0051: the Event Canvas is set once in Event Presentation Settings, and every Screen Output reads it.
 describe('the Event Canvas', () => {
-	const setCanvas = (eventId: number, canvas: Record<string, unknown>) => call(updateEvent, { id: eventId }, canvas);
+	const setCanvas = (eventId: number, canvas: Record<string, unknown>) =>
+		call(updateEvent, { id: eventId }, canvas);
 	const outputCanvas = async (eventId: number) => {
-		const { canvasWidth, canvasHeight } = await call(readOutputEvent, { id: eventId, screenId: 1 }) as ScreenOutputEvent;
+		const { canvasWidth, canvasHeight } = (await call(readOutputEvent, {
+			id: eventId,
+			screenId: 1,
+		})) as ScreenOutputEvent;
 		return { canvasWidth, canvasHeight };
 	};
 
 	it('starts an Event at 1920×1080', async () => {
-		expect(await outputCanvas(await createEvent('New'))).toEqual({ canvasWidth: 1920, canvasHeight: 1080 });
+		expect(await outputCanvas(await createEvent('New'))).toEqual({
+			canvasWidth: 1920,
+			canvasHeight: 1080,
+		});
 	});
 
 	it.each([
-		[
-			'the smallest',
-			{ canvasWidth: 100, canvasHeight: 100 },
-		],
-		[
-			'the largest',
-			{ canvasWidth: 7680, canvasHeight: 7680 },
-		],
-		[
-			'a portrait',
-			{ canvasWidth: 1080, canvasHeight: 1920 },
-		],
-	])('stores %s canvas, announces it with the Event, and hands it to its Screen Outputs', async (_case, canvas) => {
-		const event = await createEvent('Resized');
+		['the smallest', { canvasWidth: 100, canvasHeight: 100 }],
+		['the largest', { canvasWidth: 7680, canvasHeight: 7680 }],
+		['a portrait', { canvasWidth: 1080, canvasHeight: 1920 }],
+	])(
+		'stores %s canvas, announces it with the Event, and hands it to its Screen Outputs',
+		async (_case, canvas) => {
+			const event = await createEvent('Resized');
 
-		await setCanvas(event, canvas);
+			await setCanvas(event, canvas);
 
-		expect(published.map(message => [message.type, message.data.event?.canvasWidth, message.data.event?.canvasHeight]))
-			.toEqual([
-				['event:updated', canvas.canvasWidth, canvas.canvasHeight],
-			]);
-		expect(await outputCanvas(event)).toEqual(canvas);
-	});
+			expect(
+				published.map((message) => [
+					message.type,
+					message.data.event?.canvasWidth,
+					message.data.event?.canvasHeight,
+				]),
+			).toEqual([['event:updated', canvas.canvasWidth, canvas.canvasHeight]]);
+			expect(await outputCanvas(event)).toEqual(canvas);
+		},
+	);
 
 	// The route's body validation answers these 400; the stubbed reader hands back the schema's refusal.
 	it.each([

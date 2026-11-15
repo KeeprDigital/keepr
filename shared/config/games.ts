@@ -1,6 +1,11 @@
 import type { Game, ScreenMode, Seat, Variant } from '../types/enums';
 import type { FeatureMatchDefaults } from '../types/featureMatchDefaults';
-import type { CounterTypeConfig, FeatureMatchStateTracking, GameConfig, MetagameRules } from '../types/game';
+import type {
+	CounterTypeConfig,
+	FeatureMatchStateTracking,
+	GameConfig,
+	MetagameRules,
+} from '../types/game';
 import { METAGAME_SCOPE_VALUES, PLAYER_SIDE_VALUES, SEAT_VALUES } from '../types/enums';
 import { DEFAULT_FEATURE_MATCH_DEFAULTS } from '../types/featureMatchDefaults';
 
@@ -87,13 +92,13 @@ export const GAME_CONFIGS: Record<Game, GameConfig> = {
  * key, so a Card Game cannot be passed where the Variant must be read too.
  */
 export const EVENT_KIND_VALUES = ['mtg-two-player', 'mtg-commander', 'op'] as const;
-export type EventKind = typeof EVENT_KIND_VALUES[number];
+export type EventKind = (typeof EVENT_KIND_VALUES)[number];
 
 /** The Card Game an Event of each kind is played in. */
 export const EVENT_KIND_CARD_GAME: Record<EventKind, Game> = {
 	'mtg-two-player': 'mtg',
 	'mtg-commander': 'mtg',
-	'op': 'op',
+	op: 'op',
 };
 
 /** Whether a Card Game's Events have a Variant: Magic: The Gathering's alone (ADR-0087). */
@@ -103,18 +108,13 @@ export function cardGameHasVariant(game: Game): boolean {
 
 /** The kind of Event its Card Game and Variant make it; a Magic: The Gathering Event is Two-Player unless it says Commander. */
 export function eventKind(event: { game: Game; variant?: Variant | null }): EventKind {
-	if (!cardGameHasVariant(event.game))
-		return event.game as Exclude<Game, 'mtg'>;
-	return event.variant === 'commander'
-		? 'mtg-commander'
-		: 'mtg-two-player';
+	if (!cardGameHasVariant(event.game)) return event.game as Exclude<Game, 'mtg'>;
+	return event.variant === 'commander' ? 'mtg-commander' : 'mtg-two-player';
 }
 
 /** The Seats a Feature Match Slot has on an Event of each kind: a pair, or a Commander Slot's four (ADR-0087). */
 export function eventSeats(kind: EventKind): readonly Seat[] {
-	return kind === 'mtg-commander'
-		? SEAT_VALUES
-		: PLAYER_SIDE_VALUES;
+	return kind === 'mtg-commander' ? SEAT_VALUES : PLAYER_SIDE_VALUES;
 }
 
 /** Every Event: what needs neither Players nor results declares. */
@@ -160,38 +160,44 @@ export const EVENT_PAGE_OFFERED_TO = {
  * no Players (ADR-0087).
  */
 export const SCREEN_MODE_OFFERED_TO = {
-	'background': EVERY_EVENT,
-	'card': EVERY_EVENT,
-	'deck': EVERY_EVENT,
-	'standings': TWO_PLAYER_MAGIC_ONLY,
+	background: EVERY_EVENT,
+	card: EVERY_EVENT,
+	deck: EVERY_EVENT,
+	standings: TWO_PLAYER_MAGIC_ONLY,
 	'top-cut': EVENTS_WITH_PLAYERS,
 	'feature-match': EVERY_EVENT,
 	'feature-match-overlay': EVERY_EVENT,
 	'broadcast-graphics': EVERY_EVENT,
-	'metagame': EVENTS_WITH_PLAYERS,
+	metagame: EVENTS_WITH_PLAYERS,
 	'top-cards': EVENTS_WITH_PLAYERS,
 	'player-history': TWO_PLAYER_MAGIC_ONLY,
-	'pairings': TWO_PLAYER_MAGIC_ONLY,
+	pairings: TWO_PLAYER_MAGIC_ONLY,
 	'archetype-spotlight': EVENTS_WITH_PLAYERS,
 	'head-to-head': TWO_PLAYER_MAGIC_ONLY,
 	'round-clock': TWO_PLAYER_MAGIC_ONLY,
-	'talent': EVERY_EVENT,
+	talent: EVERY_EVENT,
 } as const satisfies Record<ScreenMode, readonly EventKind[]>;
 
 /**
  * Whether something declaring `offeredTo` is offered to an Event of `kind`.
  * Before the Event is known, only what every Event is offered is.
  */
-export function isOfferedToEvent(offeredTo: readonly EventKind[], kind: EventKind | undefined): boolean {
+export function isOfferedToEvent(
+	offeredTo: readonly EventKind[],
+	kind: EventKind | undefined,
+): boolean {
 	return kind === undefined
-		? EVERY_EVENT.every(every => offeredTo.includes(every))
+		? EVERY_EVENT.every((every) => offeredTo.includes(every))
 		: offeredTo.includes(kind);
 }
 
 /** The items offered to an Event of `kind` (`isOfferedToEvent`), their declarations dropped. */
-export function itemsOfferedToEvent<T extends { offeredTo: readonly EventKind[] }>(items: readonly T[], kind: EventKind | undefined): Omit<T, 'offeredTo'>[] {
+export function itemsOfferedToEvent<T extends { offeredTo: readonly EventKind[] }>(
+	items: readonly T[],
+	kind: EventKind | undefined,
+): Omit<T, 'offeredTo'>[] {
 	return items
-		.filter(item => isOfferedToEvent(item.offeredTo, kind))
+		.filter((item) => isOfferedToEvent(item.offeredTo, kind))
 		.map(({ offeredTo: _offeredTo, ...item }) => item);
 }
 
@@ -221,7 +227,7 @@ export function getMatchFormatDefaults(kind: EventKind): FeatureMatchDefaults {
 	return {
 		...(kind === 'mtg-commander'
 			? COMMANDER_EVENT_DEFAULTS
-			: GAME_CONFIGS[EVENT_KIND_CARD_GAME[kind]]?.defaults ?? DEFAULT_FEATURE_MATCH_DEFAULTS),
+			: (GAME_CONFIGS[EVENT_KIND_CARD_GAME[kind]]?.defaults ?? DEFAULT_FEATURE_MATCH_DEFAULTS)),
 	};
 }
 
@@ -256,7 +262,7 @@ const COMMANDER_EVENT_TRACKS: FeatureMatchStateTracking = {
 export function getFeatureMatchStateTracking(kind: EventKind): FeatureMatchStateTracking {
 	return kind === 'mtg-commander'
 		? COMMANDER_EVENT_TRACKS
-		: GAME_CONFIGS[EVENT_KIND_CARD_GAME[kind]]?.tracks ?? TRACKS_NOTHING_OPTIONAL;
+		: (GAME_CONFIGS[EVENT_KIND_CARD_GAME[kind]]?.tracks ?? TRACKS_NOTHING_OPTIONAL);
 }
 
 export function getPlayerIdentityLabel(game: Game): string {

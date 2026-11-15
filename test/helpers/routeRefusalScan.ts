@@ -133,15 +133,13 @@ function constantInitialisers(source: ts.SourceFile): Map<string, ts.Expression 
 
 	function visit(node: ts.Node) {
 		if (
-			ts.isVariableDeclaration(node)
-			&& ts.isIdentifier(node.name)
-			&& node.initializer !== undefined
-			&& ts.isVariableDeclarationList(node.parent)
-			&& node.parent.getFirstToken()?.kind === ts.SyntaxKind.ConstKeyword
+			ts.isVariableDeclaration(node) &&
+			ts.isIdentifier(node.name) &&
+			node.initializer !== undefined &&
+			ts.isVariableDeclarationList(node.parent) &&
+			node.parent.getFirstToken()?.kind === ts.SyntaxKind.ConstKeyword
 		) {
-			constants.set(node.name.text, constants.has(node.name.text)
-				? undefined
-				: node.initializer);
+			constants.set(node.name.text, constants.has(node.name.text) ? undefined : node.initializer);
 		}
 		node.forEachChild(visit);
 	}
@@ -152,7 +150,11 @@ function constantInitialisers(source: ts.SourceFile): Map<string, ts.Expression 
 
 /** Unwrap the forms that mean "the same expression": `(x)`, `x as const`, `<T>x`. */
 function unwrap(expression: ts.Expression): ts.Expression {
-	if (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isTypeAssertionExpression(expression))
+	if (
+		ts.isParenthesizedExpression(expression) ||
+		ts.isAsExpression(expression) ||
+		ts.isTypeAssertionExpression(expression)
+	)
 		return unwrap(expression.expression);
 	return expression;
 }
@@ -168,26 +170,21 @@ function literalValue(
 	constants: Map<string, ts.Expression | undefined>,
 	read: (expression: ts.Expression) => string | number | undefined,
 ): string | number | undefined {
-	if (expression === undefined)
-		return undefined;
+	if (expression === undefined) return undefined;
 
 	const unwrapped = unwrap(expression);
 	const direct = read(unwrapped);
-	if (direct !== undefined)
-		return direct;
+	if (direct !== undefined) return direct;
 
 	if (ts.isIdentifier(unwrapped) && constants.has(unwrapped.text)) {
 		const initialiser = constants.get(unwrapped.text);
-		if (initialiser !== undefined)
-			return read(unwrap(initialiser));
+		if (initialiser !== undefined) return read(unwrap(initialiser));
 	}
 	return undefined;
 }
 
 function readNumber(expression: ts.Expression): number | undefined {
-	return ts.isNumericLiteral(expression)
-		? Number(expression.text)
-		: undefined;
+	return ts.isNumericLiteral(expression) ? Number(expression.text) : undefined;
 }
 
 function readString(expression: ts.Expression): string | undefined {
@@ -199,9 +196,7 @@ function readString(expression: ts.Expression): string | undefined {
 /** The call as one line, so a failure message stays readable. */
 function excerpt(node: ts.Node): string {
 	const text = node.getText().replace(/\s+/g, ' ').trim();
-	return text.length > 160
-		? `${text.slice(0, 157)}...`
-		: text;
+	return text.length > 160 ? `${text.slice(0, 157)}...` : text;
 }
 
 /**
@@ -218,7 +213,11 @@ export function scanSourceForRefusals(label: string, text: string): ScannedRefus
 	const refusals: ScannedRefusal[] = [];
 
 	function visit(node: ts.Node) {
-		if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'createError') {
+		if (
+			ts.isCallExpression(node) &&
+			ts.isIdentifier(node.expression) &&
+			node.expression.text === 'createError'
+		) {
 			const site = `${label}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}`;
 			refusals.push({
 				site,
@@ -242,23 +241,19 @@ function readRefusal(
 
 	const argument = node.arguments[0];
 	// `createError(somethingElse)` and `createError('a string')` hide the whole shape.
-	if (argument === undefined || !ts.isObjectLiteralExpression(argument))
-		return unreadable;
+	if (argument === undefined || !ts.isObjectLiteralExpression(argument)) return unreadable;
 	// A spread can supply or override either half, so neither half can be trusted.
-	if (argument.properties.some(property => ts.isSpreadAssignment(property)))
-		return unreadable;
+	if (argument.properties.some((property) => ts.isSpreadAssignment(property))) return unreadable;
 
 	const assigned = new Map<string, ts.Expression>();
 	for (const property of argument.properties) {
 		// A shorthand or a method hides its value the same way a spread does.
-		if (!ts.isPropertyAssignment(property))
-			return unreadable;
+		if (!ts.isPropertyAssignment(property)) return unreadable;
 		const name = propertyName(property.name);
 		// A key the scan cannot name might BE the status key, so the call is unreadable
 		// rather than a call with one property fewer. `['statusCode']: 403` used to
 		// satisfy neither arm here and was dropped in silence.
-		if (name === undefined)
-			return unreadable;
+		if (name === undefined) return unreadable;
 		assigned.set(name, property.initializer);
 	}
 
@@ -281,8 +276,7 @@ function readRefusal(
  */
 function namesCause(assigned: Map<string, ts.Expression>): boolean {
 	const cause = assigned.get(H3_CAUSE_KEY);
-	if (cause === undefined)
-		return false;
+	if (cause === undefined) return false;
 	// `cause: undefined` is the one way to name the key and supply nothing. No call under
 	// `server/` writes it today — this is a guard against the census being satisfiable by
 	// typing the word, not a case anyone has met. The nearest real shape is
@@ -301,8 +295,7 @@ function propertyName(name: ts.PropertyName): string | undefined {
 	// `['statusCode']` is a computed name whose text is still plain to read.
 	if (ts.isComputedPropertyName(name)) {
 		const inner = unwrap(name.expression);
-		if (ts.isStringLiteral(inner) || ts.isNoSubstitutionTemplateLiteral(inner))
-			return inner.text;
+		if (ts.isStringLiteral(inner) || ts.isNoSubstitutionTemplateLiteral(inner)) return inner.text;
 	}
 	return undefined;
 }
@@ -324,9 +317,8 @@ function composed<T extends string | number>(
 	constants: Map<string, ts.Expression | undefined>,
 	read: (expression: ts.Expression) => T | undefined,
 ): T | undefined {
-	const key = keys.find(candidate => assigned.has(candidate));
-	if (key === undefined)
-		return fallback;
+	const key = keys.find((candidate) => assigned.has(candidate));
+	if (key === undefined) return fallback;
 	return literalValue(assigned.get(key), constants, read) as T | undefined;
 }
 
@@ -373,35 +365,33 @@ const GENERATED_DIRECTORY = dirname(NUXT_TSCONFIG);
 export function firstPartyPathAliases(tsconfigPath: string = NUXT_TSCONFIG): readonly PathAlias[] {
 	if (!existsSync(tsconfigPath)) {
 		throw new Error(
-			`${relative(REPOSITORY_ROOT, tsconfigPath)} does not exist, so the scan has no aliases to follow `
-			+ 'and would report every first-party import as third-party. Run `pnpm nuxt prepare` (or `pnpm install`, '
-			+ 'which runs it) and try again.',
+			`${relative(REPOSITORY_ROOT, tsconfigPath)} does not exist, so the scan has no aliases to follow ` +
+				'and would report every first-party import as third-party. Run `pnpm nuxt prepare` (or `pnpm install`, ' +
+				'which runs it) and try again.',
 		);
 	}
 
-	const read = ts.readConfigFile(tsconfigPath, file => readFileSync(file, 'utf8'));
+	const read = ts.readConfigFile(tsconfigPath, (file) => readFileSync(file, 'utf8'));
 	if (read.error !== undefined)
-		throw new Error(`${relative(REPOSITORY_ROOT, tsconfigPath)} could not be parsed: ${ts.flattenDiagnosticMessageText(read.error.messageText, ' ')}`);
+		throw new Error(
+			`${relative(REPOSITORY_ROOT, tsconfigPath)} could not be parsed: ${ts.flattenDiagnosticMessageText(read.error.messageText, ' ')}`,
+		);
 
-	const config = read.config as { compilerOptions?: { paths?: Record<string, string[]> } } | undefined;
+	const config = read.config as
+		| { compilerOptions?: { paths?: Record<string, string[]> } }
+		| undefined;
 	const paths = config?.compilerOptions?.paths ?? {};
 	const base = dirname(tsconfigPath);
 	const aliases: PathAlias[] = [];
 
 	for (const [key, targets] of Object.entries(paths)) {
 		const target = targets[0];
-		if (target === undefined)
-			continue;
+		if (target === undefined) continue;
 		const wildcard = key.endsWith('/*');
-		const resolved = resolve(base, target.endsWith('/*')
-			? target.slice(0, -2)
-			: target);
-		if (!isFirstParty(resolved))
-			continue;
+		const resolved = resolve(base, target.endsWith('/*') ? target.slice(0, -2) : target);
+		if (!isFirstParty(resolved)) continue;
 		aliases.push({
-			prefix: wildcard
-				? `${key.slice(0, -2)}/`
-				: key,
+			prefix: wildcard ? `${key.slice(0, -2)}/` : key,
 			target: resolved,
 			wildcard,
 		});
@@ -409,9 +399,9 @@ export function firstPartyPathAliases(tsconfigPath: string = NUXT_TSCONFIG): rea
 
 	if (aliases.length === 0) {
 		throw new Error(
-			`${relative(REPOSITORY_ROOT, tsconfigPath)} names no first-party path alias, so every import through `
-			+ 'one would be read as third-party and skipped in silence. Expected `~~/*` and friends to resolve '
-			+ 'inside the repository.',
+			`${relative(REPOSITORY_ROOT, tsconfigPath)} names no first-party path alias, so every import through ` +
+				'one would be read as third-party and skipped in silence. Expected `~~/*` and friends to resolve ' +
+				'inside the repository.',
 		);
 	}
 
@@ -423,10 +413,13 @@ export function firstPartyPathAliases(tsconfigPath: string = NUXT_TSCONFIG): rea
 /** Whether a `paths` target is this repository's own source rather than something it resolves. */
 function isFirstParty(target: string): boolean {
 	const within = relative(REPOSITORY_ROOT, target);
-	if (within.startsWith('..'))
-		return false;
+	if (within.startsWith('..')) return false;
 	const segments = within.split(sep);
-	return !segments.includes('node_modules') && !target.startsWith(GENERATED_DIRECTORY + sep) && target !== GENERATED_DIRECTORY;
+	return (
+		!segments.includes('node_modules') &&
+		!target.startsWith(GENERATED_DIRECTORY + sep) &&
+		target !== GENERATED_DIRECTORY
+	);
 }
 
 let cachedAliases: readonly PathAlias[] | undefined;
@@ -437,21 +430,22 @@ function pathAliases(): readonly PathAlias[] {
 	return cachedAliases;
 }
 
-function resolveModule(specifier: string, fromFile: string): { file: string } | { unfollowed: string } | undefined {
-	const alias = pathAliases().find(candidate => (candidate.wildcard
-		? specifier.startsWith(candidate.prefix)
-		: specifier === candidate.prefix));
+function resolveModule(
+	specifier: string,
+	fromFile: string,
+): { file: string } | { unfollowed: string } | undefined {
+	const alias = pathAliases().find((candidate) =>
+		candidate.wildcard ? specifier.startsWith(candidate.prefix) : specifier === candidate.prefix,
+	);
 
 	let base: string;
 	if (alias !== undefined) {
 		base = alias.wildcard
 			? resolve(alias.target, specifier.slice(alias.prefix.length))
 			: alias.target;
-	}
-	else if (specifier.startsWith('.')) {
+	} else if (specifier.startsWith('.')) {
 		base = resolve(dirname(fromFile), specifier);
-	}
-	else {
+	} else {
 		// A bare or virtual specifier (`h3`, `ably`, `drizzle-orm`, `#imports`) is not the
 		// route's own code. A refusal from a dependency is not one this repository can
 		// list or rename.
@@ -459,8 +453,7 @@ function resolveModule(specifier: string, fromFile: string): { file: string } | 
 	}
 
 	for (const candidate of [`${base}.ts`, `${base}/index.ts`, base]) {
-		if (existsSync(candidate) && statSync(candidate).isFile())
-			return { file: candidate };
+		if (existsSync(candidate) && statSync(candidate).isFile()) return { file: candidate };
 	}
 	return { unfollowed: specifier };
 }
@@ -483,8 +476,7 @@ const scannedModules = new Map<string, ScannedModule>();
 function scanModule(file: string): ScannedModule {
 	const text = readFileSync(file, 'utf8');
 	const cached = scannedModules.get(file);
-	if (cached?.text === text)
-		return cached;
+	if (cached?.text === text) return cached;
 
 	const label = relative(REPOSITORY_ROOT, file);
 	const imports: ScannedModule['imports'] = [];
@@ -496,11 +488,12 @@ function scanModule(file: string): ScannedModule {
 			return;
 		}
 		const resolved = resolveModule(specifier.text, file);
-		if (resolved === undefined)
-			return;
-		imports.push('file' in resolved
-			? { file: resolved.file }
-			: { unfollowed: `${site}: ${resolved.unfollowed}` });
+		if (resolved === undefined) return;
+		imports.push(
+			'file' in resolved
+				? { file: resolved.file }
+				: { unfollowed: `${site}: ${resolved.unfollowed}` },
+		);
 	}
 
 	function visit(node: ts.Node) {
@@ -551,7 +544,10 @@ function scanModule(file: string): ScannedModule {
  * included. #292 gives middleware its own entry points; see `serverMiddlewareFiles`
  * for how they are found and where a middleware's graph stops.
  */
-export function scanRouteRefusals(entryFile: string, middlewareFiles: readonly string[] = []): RouteRefusalScan {
+export function scanRouteRefusals(
+	entryFile: string,
+	middlewareFiles: readonly string[] = [],
+): RouteRefusalScan {
 	const refusals: ScannedRefusal[] = [];
 	const unfollowedImports: string[] = [];
 	const visited = new Set<string>();
@@ -561,17 +557,14 @@ export function scanRouteRefusals(entryFile: string, middlewareFiles: readonly s
 
 		while (queue.length > 0) {
 			const file = queue.shift() as string;
-			if (visited.has(file))
-				continue;
+			if (visited.has(file)) continue;
 			visited.add(file);
 
 			const scanned = scanModule(file);
 			refusals.push(...scanned.refusals);
 			for (const edge of scanned.imports) {
-				if ('unfollowed' in edge)
-					unfollowedImports.push(edge.unfollowed);
-				else if (!(viaMiddleware && isDomainLayer(edge.file)))
-					queue.push(edge.file);
+				if ('unfollowed' in edge) unfollowedImports.push(edge.unfollowed);
+				else if (!(viaMiddleware && isDomainLayer(edge.file))) queue.push(edge.file);
 			}
 		}
 	}
@@ -585,7 +578,7 @@ export function scanRouteRefusals(entryFile: string, middlewareFiles: readonly s
 
 	return {
 		refusals,
-		files: [...visited].map(file => relative(REPOSITORY_ROOT, file)).sort(),
+		files: [...visited].map((file) => relative(REPOSITORY_ROOT, file)).sort(),
 		unfollowedImports,
 	};
 }
@@ -601,7 +594,7 @@ const DOMAIN_LAYER_ROOTS = ['server/services', 'server/modules'] as const;
 
 function isDomainLayer(file: string): boolean {
 	const within = relative(REPOSITORY_ROOT, file);
-	return DOMAIN_LAYER_ROOTS.some(root => within.startsWith(`${root}${sep}`));
+	return DOMAIN_LAYER_ROOTS.some((root) => within.startsWith(`${root}${sep}`));
 }
 
 /**
@@ -650,15 +643,13 @@ export function serverMiddlewareFiles(directory: string = MIDDLEWARE_DIRECTORY):
 	// one directory down runs on every request exactly as a top-level one does, and a
 	// flat read would have skipped it in silence. Declaration files are excluded for the
 	// reason a type-only import is — they cannot carry a throw.
-	const files = existsSync(directory)
-		? typeScriptFilesUnder(directory)
-		: [];
+	const files = existsSync(directory) ? typeScriptFilesUnder(directory) : [];
 
 	if (files.length === 0) {
 		throw new Error(
-			`${relative(REPOSITORY_ROOT, directory)} holds no middleware, so the scan would read a route's `
-			+ 'imports only and miss every refusal Nitro composes around it. If middleware moved, point this at '
-			+ 'the new directory.',
+			`${relative(REPOSITORY_ROOT, directory)} holds no middleware, so the scan would read a route's ` +
+				'imports only and miss every refusal Nitro composes around it. If middleware moved, point this at ' +
+				'the new directory.',
 		);
 	}
 
@@ -682,12 +673,12 @@ export function serverMiddlewareFiles(directory: string = MIDDLEWARE_DIRECTORY):
  */
 export function typeScriptFilesUnder(directory: string): string[] {
 	const found: string[] = [];
-	for (const entry of readdirSync(directory, { withFileTypes: true }).sort((left, right) => left.name.localeCompare(right.name))) {
+	for (const entry of readdirSync(directory, { withFileTypes: true }).sort((left, right) =>
+		left.name.localeCompare(right.name),
+	)) {
 		const path = resolve(directory, entry.name);
-		if (entry.isDirectory())
-			found.push(...typeScriptFilesUnder(path));
-		else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts'))
-			found.push(path);
+		if (entry.isDirectory()) found.push(...typeScriptFilesUnder(path));
+		else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) found.push(path);
 	}
 	return found;
 }

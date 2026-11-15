@@ -40,10 +40,11 @@ export function useArchetypeHoldings(eventId: MaybeRefOrGetter<number>) {
 	 * with no Deck List has a Pilot, and the server keeps it too.
 	 */
 	const emptyArchetypes = computed(() => {
-		if (!archetypeStore.isLoaded || !playerDeckStore.isLoaded || !playerStore.isLoaded)
-			return [];
-		const heldByPlayers = new Set(playerStore.players.map(player => player.archetypeId));
-		return archetypeStore.archetypes.filter(archetype => deckCountOf(archetype.id) === 0 && !heldByPlayers.has(archetype.id));
+		if (!archetypeStore.isLoaded || !playerDeckStore.isLoaded || !playerStore.isLoaded) return [];
+		const heldByPlayers = new Set(playerStore.players.map((player) => player.archetypeId));
+		return archetypeStore.archetypes.filter(
+			(archetype) => deckCountOf(archetype.id) === 0 && !heldByPlayers.has(archetype.id),
+		);
 	});
 
 	return { deckCountOf, emptyArchetypes };
@@ -51,7 +52,5 @@ export function useArchetypeHoldings(eventId: MaybeRefOrGetter<number>) {
 
 /** "1 deck", "3 decks". */
 export function countOf(count: number, noun: string) {
-	return `${count} ${noun}${count === 1
-		? ''
-		: 's'}`;
+	return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }

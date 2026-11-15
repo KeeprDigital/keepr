@@ -8,14 +8,14 @@ import { loadCurrentRound } from './currentRound';
  * the last poll's times, error and stop reason. Read on demand, since a quiet
  * tick announces nothing. 404 when the Event does not exist.
  */
-export async function loadLiveResultsStatus(eventId: number): Promise<MeleeLiveResultsStatusResponse> {
+export async function loadLiveResultsStatus(
+	eventId: number,
+): Promise<MeleeLiveResultsStatusResponse> {
 	const [event, { current }] = await Promise.all([
 		requireMeleeSyncEventData(eventId),
 		loadCurrentRound(eventId),
 	]);
-	const phase = current
-		? await phaseService().findById(current.phaseId, eventId)
-		: null;
+	const phase = current ? await phaseService().findById(current.phaseId, eventId) : null;
 	return {
 		enabled: event.meleeLiveResultsEnabled,
 		currentRound: current

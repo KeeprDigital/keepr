@@ -34,18 +34,18 @@ let auth: ThrowawayAuth;
 
 /** One sign-in attempt, with whatever headers the case is about. */
 async function signIn(headers: Record<string, string>) {
-	const response = await auth.handler(new Request(`${LOCAL_ORIGIN}/api/auth/sign-in/email`, {
-		method: 'POST',
-		headers: { 'content-type': 'application/json', 'host': LOCAL_HOST, ...headers },
-		body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
-	}));
+	const response = await auth.handler(
+		new Request(`${LOCAL_ORIGIN}/api/auth/sign-in/email`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json', host: LOCAL_HOST, ...headers },
+			body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+		}),
+	);
 	const text = await response.text();
 
 	return {
 		status: response.status,
-		code: text
-			? (JSON.parse(text) as { code?: string }).code
-			: undefined,
+		code: text ? (JSON.parse(text) as { code?: string }).code : undefined,
 	};
 }
 
@@ -68,8 +68,10 @@ describe('the origin check, under the environment the tests themselves run in', 
 		// The shape that cost #397 a day: a browser always sends `Origin` on a
 		// cross-document POST, so a request holding a session and sending none is
 		// not one, and must not be handed another session on trust.
-		expect(await signIn({ cookie: 'better-auth.session_token=stale', origin: '' }))
-			.toMatchObject({ status: 403, code: 'MISSING_OR_NULL_ORIGIN' });
+		expect(await signIn({ cookie: 'better-auth.session_token=stale', origin: '' })).toMatchObject({
+			status: 403,
+			code: 'MISSING_OR_NULL_ORIGIN',
+		});
 	});
 
 	it('admits the production hostname over plain http, which is what a local preview looks like', async () => {
@@ -81,22 +83,26 @@ describe('the origin check, under the environment the tests themselves run in', 
 		// existed. A deployment answers only over https, so nothing legitimate is
 		// at this address; if that ever stops being true, this is the test to
 		// argue with.
-		const response = await auth.handler(new Request('http://stream.keepr.digital/api/auth/sign-in/email', {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				'host': 'stream.keepr.digital',
-				'origin': 'http://stream.keepr.digital',
-			},
-			body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
-		}));
+		const response = await auth.handler(
+			new Request('http://stream.keepr.digital/api/auth/sign-in/email', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					host: 'stream.keepr.digital',
+					origin: 'http://stream.keepr.digital',
+				},
+				body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+			}),
+		);
 
 		expect(response.status).toBe(200);
 	});
 
 	it('refuses a sign-in offered by another site', async () => {
-		expect(await signIn({ origin: 'https://not-this-installation.example' }))
-			.toMatchObject({ status: 403, code: 'INVALID_ORIGIN' });
+		expect(await signIn({ origin: 'https://not-this-installation.example' })).toMatchObject({
+			status: 403,
+			code: 'INVALID_ORIGIN',
+		});
 	});
 
 	it('refuses a host the installation does not claim, rather than trusting the request about it', async () => {
@@ -105,15 +111,17 @@ describe('the origin check, under the environment the tests themselves run in', 
 		// answering on a hostname nobody configured signed people in as readily as
 		// the custom domain. `AUTH_ALLOWED_HOSTS` is now the installation's own
 		// answer to which hostnames those are.
-		const response = await auth.handler(new Request('https://stream-keepr.example.workers.dev/api/auth/sign-in/email', {
-			method: 'POST',
-			headers: {
-				'content-type': 'application/json',
-				'host': 'stream-keepr.example.workers.dev',
-				'origin': 'https://stream-keepr.example.workers.dev',
-			},
-			body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
-		}));
+		const response = await auth.handler(
+			new Request('https://stream-keepr.example.workers.dev/api/auth/sign-in/email', {
+				method: 'POST',
+				headers: {
+					'content-type': 'application/json',
+					host: 'stream-keepr.example.workers.dev',
+					origin: 'https://stream-keepr.example.workers.dev',
+				},
+				body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+			}),
+		);
 
 		expect(response.status).toBe(403);
 		expect(await response.json()).toMatchObject({ code: 'INVALID_ORIGIN' });

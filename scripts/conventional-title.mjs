@@ -57,8 +57,7 @@ export function isConventionalTitle(title) {
 export async function checkTitles(eventName, event, commitMessages) {
 	if (eventName === 'pull_request') {
 		const title = event?.pull_request?.title;
-		if (typeof title !== 'string')
-			return ['The pull_request event carries no title.'];
+		if (typeof title !== 'string') return ['The pull_request event carries no title.'];
 		return isConventionalTitle(title)
 			? []
 			: [`PR title ${JSON.stringify(title)} is not a Conventional Commit.`];
@@ -68,12 +67,14 @@ export async function checkTitles(eventName, event, commitMessages) {
 		const head = event?.merge_group?.head_sha;
 		if (!COMMIT_ID.test(base ?? '') || !COMMIT_ID.test(head ?? ''))
 			return ['The merge_group event names no base and head commit.'];
-		const subjects = (await commitMessages(base, head)).map(message => message.split('\n', 1)[0] ?? '');
+		const subjects = (await commitMessages(base, head)).map(
+			(message) => message.split('\n', 1)[0] ?? '',
+		);
 		if (subjects.length === 0)
 			return [`No commits between ${base} and ${head}: nothing shows what the group lands.`];
 		return subjects
-			.filter(subject => !isConventionalTitle(subject))
-			.map(subject => `Commit subject ${JSON.stringify(subject)} is not a Conventional Commit.`);
+			.filter((subject) => !isConventionalTitle(subject))
+			.map((subject) => `Commit subject ${JSON.stringify(subject)} is not a Conventional Commit.`);
 	}
 	return [`No title to check on a ${eventName || 'unknown'} event.`];
 }
@@ -83,12 +84,22 @@ export async function checkTitles(eventName, event, commitMessages) {
  * @param {string} head
  */
 async function compareViaGitHub(base, head) {
-	const comparison = JSON.parse(execFileSync('gh', ['api', `repos/${process.env.GITHUB_REPOSITORY}/compare/${base}...${head}`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
+	const comparison = JSON.parse(
+		execFileSync(
+			'gh',
+			['api', `repos/${process.env.GITHUB_REPOSITORY}/compare/${base}...${head}`],
+			{ encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+		),
+	);
 	/** @type {string[]} */
-	const messages = comparison.commits.map((/** @type {{ commit: { message: string } }} */ entry) => entry.commit.message);
+	const messages = comparison.commits.map(
+		(/** @type {{ commit: { message: string } }} */ entry) => entry.commit.message,
+	);
 	// The comparison lists at most 250 commits; a longer one is not all read.
 	if (comparison.total_commits !== messages.length)
-		throw new Error(`the comparison lists ${messages.length} of ${comparison.total_commits} commits`);
+		throw new Error(
+			`the comparison lists ${messages.length} of ${comparison.total_commits} commits`,
+		);
 	return messages;
 }
 
@@ -103,9 +114,10 @@ async function main() {
 		return;
 	}
 	for (const problem of problems)
-		console.log(`::error title=Not a Conventional Commit::${problem} Use 'type(scope): summary', e.g. 'fix(export): keep the canvas origin-clean'. Types: ${TYPES.join(', ')}.`);
+		console.log(
+			`::error title=Not a Conventional Commit::${problem} Use 'type(scope): summary', e.g. 'fix(export): keep the canvas origin-clean'. Types: ${TYPES.join(', ')}.`,
+		);
 	process.exitCode = 1;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href)
-	await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();

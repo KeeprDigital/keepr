@@ -21,8 +21,7 @@ describe('the Operations Cockpit API', () => {
 		);
 
 		expect(cockpit.outcome).toBe('complete');
-		if (cockpit.outcome !== 'complete')
-			return;
+		if (cockpit.outcome !== 'complete') return;
 
 		// D1 catalogue health and canonical R2 byte health are separate answers.
 		// The suite shares one database, so what earlier suites left behind
@@ -43,8 +42,9 @@ describe('the Operations Cockpit API', () => {
 			criticalFraction: 0.95,
 			fullFraction: 1,
 		});
-		expect(cockpit.capacity.canonical.boundaries.fullBytes)
-			.toBe(cockpit.capacity.canonical.limitBytes);
+		expect(cockpit.capacity.canonical.boundaries.fullBytes).toBe(
+			cockpit.capacity.canonical.limitBytes,
+		);
 		expect(cockpit.capacity.staging.limitBytes).toBeGreaterThan(0);
 		expect(cockpit.capacity.staging).not.toHaveProperty('boundaries');
 

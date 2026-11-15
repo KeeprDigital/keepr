@@ -8,7 +8,13 @@ export function useFeatureMatchModeData(context: ScreenContext) {
 	 * follows through the Live State Follower (#592); this mode keeps nothing
 	 * else of the read.
 	 */
-	const { slot: match, state: matchState, loading, error, answered } = useScreenFeatureMatchSlot<null>(context, {
+	const {
+		slot: match,
+		state: matchState,
+		loading,
+		error,
+		answered,
+	} = useScreenFeatureMatchSlot<null>(context, {
 		mode: 'feature-match',
 		config: () => config.value,
 		slotId: () => config.value.featureMatchId,

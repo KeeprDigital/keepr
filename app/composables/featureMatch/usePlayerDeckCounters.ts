@@ -10,7 +10,9 @@ import { getMtgGameData } from '~~/shared/utils/gameData';
 import { selectPlayerDeck } from '~/composables/data/usePlayerDeckCache';
 
 /** How a rendering of a Screen reads a Player it shows, with their decks (#604). */
-export type ScreenOutputPlayerDeckReader = (playerId: number) => Promise<ScreenOutputPlayerDecksResponse>;
+export type ScreenOutputPlayerDeckReader = (
+	playerId: number,
+) => Promise<ScreenOutputPlayerDecksResponse>;
 
 export function usePlayerDeckCounters(
 	matchId: MaybeRefOrGetter<number>,
@@ -32,50 +34,59 @@ export function usePlayerDeckCounters(
 	let requestId = 0;
 
 	const match = computed(() => {
-		return featureMatchStore.featureMatches.find(match => match.id === toValue(matchId)) ?? null;
+		return featureMatchStore.featureMatches.find((match) => match.id === toValue(matchId)) ?? null;
 	});
 
 	// The player this side seats, by the followed Session's side order (ADR-0058).
 	const playerLocator = computed(() => {
 		const m = match.value;
-		if (!m)
-			return { id: null, name: null };
-		const seated = featureMatchSidePlayer(withFollowedFeatureMatchSession(m, featureMatchStateStore), toValue(playerSide));
+		if (!m) return { id: null, name: null };
+		const seated = featureMatchSidePlayer(
+			withFollowedFeatureMatchSession(m, featureMatchStateStore),
+			toValue(playerSide),
+		);
 		return { id: seated.playerId, name: seated.data?.name ?? null };
 	});
 
 	const seatedDeckName = computed(() => {
 		const m = match.value;
 		return m
-			? getMtgGameData(featureMatchSidePlayer(withFollowedFeatureMatchSession(m, featureMatchStateStore), toValue(playerSide)).data?.gameData).deckName
+			? getMtgGameData(
+					featureMatchSidePlayer(
+						withFollowedFeatureMatchSession(m, featureMatchStateStore),
+						toValue(playerSide),
+					).data?.gameData,
+				).deckName
 			: undefined;
 	});
 
 	const matchedPlayer = computed(() => {
 		const playerId = playerLocator.value.id;
 		if (playerId) {
-			return playerStore.players.find(player => player.id === playerId) ?? null;
+			return playerStore.players.find((player) => player.id === playerId) ?? null;
 		}
 
 		const name = playerLocator.value.name;
-		if (!name)
-			return null;
-		return playerStore.players.find(player => player.name.toLowerCase() === name.toLowerCase()) ?? null;
+		if (!name) return null;
+		return (
+			playerStore.players.find((player) => player.name.toLowerCase() === name.toLowerCase()) ?? null
+		);
 	});
 
 	watch(
-		() => [
-			eventStore.eventId,
-			eventStore.displayEvent?.game,
-			playerLocator.value.id,
-			playerLocator.value.name,
-			matchedPlayer.value?.id,
-			matchedPlayer.value?.updatedAt,
-			getMtgGameData(matchedPlayer.value?.gameData).deckName,
-			// The Slot's own copy of the seated Player's deck name, which Reverse Sync
-			// writes: a rendering holds no roster a Player's own message would update.
-			seatedDeckName.value,
-		] as const,
+		() =>
+			[
+				eventStore.eventId,
+				eventStore.displayEvent?.game,
+				playerLocator.value.id,
+				playerLocator.value.name,
+				matchedPlayer.value?.id,
+				matchedPlayer.value?.updatedAt,
+				getMtgGameData(matchedPlayer.value?.gameData).deckName,
+				// The Slot's own copy of the seated Player's deck name, which Reverse Sync
+				// writes: a rendering holds no roster a Player's own message would update.
+				seatedDeckName.value,
+			] as const,
 		async () => {
 			const currentRequestId = ++requestId;
 			availableCounterTypes.value = undefined;
@@ -94,25 +105,21 @@ export function usePlayerDeckCounters(
 			let deck: PlayerDeckResponse | null;
 			if (readAsScreenOutput) {
 				const playerId = playerLocator.value.id;
-				const read = playerId
-					? await readAsScreenOutput(playerId).catch(() => null)
-					: null;
+				const read = playerId ? await readAsScreenOutput(playerId).catch(() => null) : null;
 				if (currentRequestId !== requestId) {
 					return;
 				}
 				player = read?.player ?? null;
-				deck = read
-					? selectPlayerDeck(read.decks)
-					: null;
+				deck = read ? selectPlayerDeck(read.decks) : null;
 				if (player && player.updatedAt !== matchedPlayer.value?.updatedAt)
 					playerStore.holdPlayer(player);
 				if (!player || !getMtgGameData(player.gameData).deckName) {
 					return;
 				}
-			}
-			else {
-				player = matchedPlayer.value
-					?? (playerLocator.value.id
+			} else {
+				player =
+					matchedPlayer.value ??
+					(playerLocator.value.id
 						? await playerStore.getPlayerById(eventId, playerLocator.value.id)
 						: null);
 				if (currentRequestId !== requestId) {
@@ -133,8 +140,11 @@ export function usePlayerDeckCounters(
 				return;
 			}
 
-			const counterTypes = deck.cards.flatMap(card => card.deckCounterTypes);
-			availableCounterTypes.value = counterConfigsForDeckCounterTypes(counterTypes, getCounterTypeConfigs('mtg'));
+			const counterTypes = deck.cards.flatMap((card) => card.deckCounterTypes);
+			availableCounterTypes.value = counterConfigsForDeckCounterTypes(
+				counterTypes,
+				getCounterTypeConfigs('mtg'),
+			);
 		},
 		{ immediate: true },
 	);

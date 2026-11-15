@@ -22,8 +22,7 @@ export function createPlayerMetagameRealtimeHandlers({ accept }: Options) {
 		// the reload.
 		'player:deckProjectionsChanged': accept('player:deckProjectionsChanged', async (data) => {
 			useMetagameStore().applyRemoteInvalidated();
-			if (!eventStore.event)
-				return;
+			if (!eventStore.event) return;
 			await usePlayerStore().loadPlayersByEventId(data.eventId);
 		}),
 		'player:deleted': accept('player:deleted', (data) => {
@@ -56,8 +55,12 @@ export function createPlayerMetagameRealtimeHandlers({ accept }: Options) {
 			useMetagameStore().applyRemoteInvalidated();
 		}),
 
-		'playerList:created': accept('playerList:created', data => usePlayerListStore().applyRemoteCreated(data)),
-		'playerList:updated': accept('playerList:updated', data => usePlayerListStore().applyRemoteUpdated(data)),
+		'playerList:created': accept('playerList:created', (data) =>
+			usePlayerListStore().applyRemoteCreated(data),
+		),
+		'playerList:updated': accept('playerList:updated', (data) =>
+			usePlayerListStore().applyRemoteUpdated(data),
+		),
 		'playerList:deleted': accept('playerList:deleted', (data) => {
 			usePlayerListStore().applyRemoteDeleted(data);
 			useMetagameStore().applyRemoteInvalidated();

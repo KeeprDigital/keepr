@@ -27,14 +27,14 @@ export interface FeatureMatchDeckListReference {
 	mainboardCount: number;
 }
 
-export type FeatureMatchDeckListPreviewAnswer
-	= | { available: false }
-		| { available: true; deckList: FeatureMatchDeckListView };
+export type FeatureMatchDeckListPreviewAnswer =
+	| { available: false }
+	| { available: true; deckList: FeatureMatchDeckListView };
 
 /** A save's answer, with the Slot it wrote: the server's response or the client's parsed one. */
-export type SaveFeatureMatchDeckListAnswer<TSlot>
-	= | { available: false }
-		| { available: true; deckList: SavedFeatureMatchDeckList; featureMatch: TSlot };
+export type SaveFeatureMatchDeckListAnswer<TSlot> =
+	| { available: false }
+	| { available: true; deckList: SavedFeatureMatchDeckList; featureMatch: TSlot };
 
 /**
  * One card of a Commander Seat's Feature Match Deck List: the exact printing
@@ -80,9 +80,9 @@ export interface CommanderDeckListRefusal {
 	sourceText?: string;
 }
 
-export type CommanderDeckListPreviewAnswer
-	= | { ok: true; deckList: CommanderDeckListPreview }
-		| { ok: false; errors: CommanderDeckListRefusal[] };
+export type CommanderDeckListPreviewAnswer =
+	| { ok: true; deckList: CommanderDeckListPreview }
+	| { ok: false; errors: CommanderDeckListRefusal[] };
 
 /** A save's answer, with the Slot it wrote. */
 export interface SaveCommanderDeckListAnswer<TSlot> {

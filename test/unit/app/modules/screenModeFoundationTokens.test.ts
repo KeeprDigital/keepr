@@ -12,8 +12,8 @@ import {
 // display reads the Theme's chrome directly (ADR-0049).
 
 const THEME = {
-	'accent': 'rgb(12, 34, 56)',
-	'heading': { ...FOUNDATION_TOKENS.heading.default, weight: 900 },
+	accent: 'rgb(12, 34, 56)',
+	heading: { ...FOUNDATION_TOKENS.heading.default, weight: 900 },
 	'motion-enter': { ...FOUNDATION_TOKENS['motion-enter'].default, duration: 1234 },
 };
 
@@ -31,19 +31,22 @@ const HOSTED_MODES = [
 ] as const satisfies readonly ScreenMode[];
 
 describe('the custom properties a Screen host sets', () => {
-	it.each(HOSTED_MODES)('carry the Theme\'s Foundation Tokens to the %s display, whatever Mode Tokens it declares', (mode) => {
-		const style = screenModeThemeTokenStyle(mode, THEME, {});
+	it.each(HOSTED_MODES)(
+		"carry the Theme's Foundation Tokens to the %s display, whatever Mode Tokens it declares",
+		(mode) => {
+			const style = screenModeThemeTokenStyle(mode, THEME, {});
 
-		expect({
-			accent: style[propertyOf(foundationTokenVar('accent'))],
-			headingWeight: style[propertyOf(foundationTypographyStyle('heading').fontWeight)],
-			bodyWeight: style[propertyOf(foundationTypographyStyle('body').fontWeight)],
-			enterDuration: style[propertyOf(foundationMotionVars('motion-enter').duration)],
-		}).toEqual({
-			accent: 'rgb(12, 34, 56)',
-			headingWeight: '900',
-			bodyWeight: String(FOUNDATION_TOKENS.body.default.weight),
-			enterDuration: '1234ms',
-		});
-	});
+			expect({
+				accent: style[propertyOf(foundationTokenVar('accent'))],
+				headingWeight: style[propertyOf(foundationTypographyStyle('heading').fontWeight)],
+				bodyWeight: style[propertyOf(foundationTypographyStyle('body').fontWeight)],
+				enterDuration: style[propertyOf(foundationMotionVars('motion-enter').duration)],
+			}).toEqual({
+				accent: 'rgb(12, 34, 56)',
+				headingWeight: '900',
+				bodyWeight: String(FOUNDATION_TOKENS.body.default.weight),
+				enterDuration: '1234ms',
+			});
+		},
+	);
 });

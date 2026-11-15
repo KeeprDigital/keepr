@@ -48,8 +48,7 @@ const CONTROL_CHARACTER = /[\t\n\r]/;
  * page is the form that presents it.
  */
 export function pageRequiresSession(path: string): boolean {
-	if (path === LOGIN_PATH || path === PASSWORD_RESET_PAGE_PATH)
-		return false;
+	if (path === LOGIN_PATH || path === PASSWORD_RESET_PAGE_PATH) return false;
 
 	return !isScreenOutputPage(path);
 }
@@ -77,8 +76,7 @@ export const REDIRECT_QUERY = 'redirect';
  */
 export function loginPathFor(fullPath: string): string {
 	const target = safeRedirectTarget(fullPath);
-	if (target === null || target === '/')
-		return LOGIN_PATH;
+	if (target === null || target === '/') return LOGIN_PATH;
 
 	return `${LOGIN_PATH}?${REDIRECT_QUERY}=${encodeURIComponent(target)}`;
 }
@@ -122,17 +120,13 @@ export function postSignInPath(query: Record<string, unknown>): string {
  * to the form they have finished with.
  */
 export function safeRedirectTarget(raw: unknown): string | null {
-	if (typeof raw !== 'string' || raw.length === 0)
-		return null;
+	if (typeof raw !== 'string' || raw.length === 0) return null;
 
-	if (CONTROL_CHARACTER.test(raw))
-		return null;
+	if (CONTROL_CHARACTER.test(raw)) return null;
 
-	if (!raw.startsWith('/'))
-		return null;
+	if (!raw.startsWith('/')) return null;
 
-	if (raw.startsWith('//') || raw.startsWith('/\\'))
-		return null;
+	if (raw.startsWith('//') || raw.startsWith('/\\')) return null;
 
 	if (raw === LOGIN_PATH || raw.startsWith(`${LOGIN_PATH}?`) || raw.startsWith(`${LOGIN_PATH}/`))
 		return null;

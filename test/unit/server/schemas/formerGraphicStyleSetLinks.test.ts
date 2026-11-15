@@ -7,7 +7,11 @@ import {
 } from '~~/server/schemas/api/screen';
 import { maximalBroadcastGraphicDocument } from '~~/test/helpers/broadcastGraphicDocument';
 import { maximalFeatureMatchLayoutDocument } from '~~/test/helpers/featureMatchLayoutDocument';
-import { GRAPHIC_STYLE_SET_LINK_KEYS, withFormerItemStyleRefs, withFormerStyleSetLink } from '~~/test/helpers/formerGraphicStyleSetLinks';
+import {
+	GRAPHIC_STYLE_SET_LINK_KEYS,
+	withFormerItemStyleRefs,
+	withFormerStyleSetLink,
+} from '~~/test/helpers/formerGraphicStyleSetLinks';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
 
 // A graphics document recorded while Graphic Style Sets existed still reads, keeping its
@@ -28,27 +32,23 @@ describe.each([
 		linked: withFormerStyleSetLink(graphic),
 	},
 	{
-		document: 'a Broadcast Graphics Screen\'s full write',
+		document: "a Broadcast Graphics Screen's full write",
 		parse: (value: unknown) => broadcastGraphicsModeConfigSchema.safeParse(value),
 		current: {
 			graphics: [graphic],
 		},
 		linked: {
-			graphics: [
-				withFormerStyleSetLink(graphic),
-			],
+			graphics: [withFormerStyleSetLink(graphic)],
 		},
 	},
 	{
-		document: 'a Broadcast Graphics Screen\'s PATCH',
+		document: "a Broadcast Graphics Screen's PATCH",
 		parse: (value: unknown) => modeConfigPatchSchemaMap['broadcast-graphics'].safeParse(value),
 		current: {
 			graphics: [graphic],
 		},
 		linked: {
-			graphics: [
-				withFormerStyleSetLink(graphic),
-			],
+			graphics: [withFormerStyleSetLink(graphic)],
 		},
 	},
 	{
@@ -67,6 +67,12 @@ describe.each([
 	});
 
 	it('still refuses a key the document never had', () => {
-		expect(parse(withFormerItemStyleRefs(JSON.parse(JSON.stringify(current).replace('"visible":', '"palette":{},"visible":')))).success).toBe(false);
+		expect(
+			parse(
+				withFormerItemStyleRefs(
+					JSON.parse(JSON.stringify(current).replace('"visible":', '"palette":{},"visible":')),
+				),
+			).success,
+		).toBe(false);
 	});
 });

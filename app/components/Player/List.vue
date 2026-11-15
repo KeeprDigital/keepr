@@ -56,9 +56,7 @@ function getPlayerActiveDeck(player: Player) {
 // Sorting state
 const sorting = ref<Array<{ id: string; desc: boolean }>>([
 	{
-		id: props.game === 'op'
-			? 'name'
-			: 'position',
+		id: props.game === 'op' ? 'name' : 'position',
 		desc: false,
 	},
 ]);
@@ -68,7 +66,7 @@ const rowSelection = ref<RowSelectionState>({});
 
 const selectedPlayerIds = computed(() =>
 	Object.keys(rowSelection.value)
-		.filter(key => rowSelection.value[key])
+		.filter((key) => rowSelection.value[key])
 		.map(Number),
 );
 
@@ -77,9 +75,12 @@ function clearSelection() {
 }
 
 // Clear selection when switching lists
-watch(() => props.activeListId, () => {
-	clearSelection();
-});
+watch(
+	() => props.activeListId,
+	() => {
+		clearSelection();
+	},
+);
 
 // Expose selection state for parent (toolbar bulk actions)
 defineExpose({ selectedPlayerIds, clearSelection });
@@ -90,8 +91,7 @@ const globalFilterOptions = {
 	globalFilterFn: (row: { original: Player }, _columnId: string, filterValue: string) => {
 		const player = row.original;
 		const query = filterValue.toLowerCase();
-		if (playerMatchesSearch(player, query))
-			return true;
+		if (playerMatchesSearch(player, query)) return true;
 		// Search across all deck names, not just the active one
 		const deckLists = getPlayerDeckLists(player);
 		return deckLists.some((dl: { name?: string | null }) => dl.name?.toLowerCase().includes(query));
@@ -106,7 +106,7 @@ function getRowMenuItems(player: Player): DropdownMenuItem[][] {
 		sendItems.push({
 			label: 'Add to List',
 			icon: 'i-lucide-list-plus',
-			children: props.lists.map(list => ({
+			children: props.lists.map((list) => ({
 				label: list.name,
 				icon: 'i-lucide-list',
 				onSelect: () => emit('addToList', list.id, [player.id]),
@@ -115,39 +115,43 @@ function getRowMenuItems(player: Player): DropdownMenuItem[][] {
 	}
 
 	if (getMtgGameData(player.gameData).deckName && hasDeckScreens.value) {
-		sendItems.push(deckScreens.value.length === 1
-			? {
-					label: 'Send Deck to Screen',
-					icon: 'i-lucide-send',
-					onSelect: () => emit('sendDeckToScreen', player.id),
-				}
-			: {
-					label: 'Send Deck to…',
-					icon: 'i-lucide-send',
-					children: deckScreens.value.map(screen => ({
-						label: screen.name,
-						icon: 'i-lucide-monitor',
-						onSelect: () => emit('sendDeckToScreen', player.id, screen.id),
-					})),
-				});
+		sendItems.push(
+			deckScreens.value.length === 1
+				? {
+						label: 'Send Deck to Screen',
+						icon: 'i-lucide-send',
+						onSelect: () => emit('sendDeckToScreen', player.id),
+					}
+				: {
+						label: 'Send Deck to…',
+						icon: 'i-lucide-send',
+						children: deckScreens.value.map((screen) => ({
+							label: screen.name,
+							icon: 'i-lucide-monitor',
+							onSelect: () => emit('sendDeckToScreen', player.id, screen.id),
+						})),
+					},
+		);
 	}
 
 	if (hasPlayerHistoryScreens.value && props.game === 'mtg') {
-		sendItems.push(playerHistoryScreens.value.length === 1
-			? {
-					label: 'Send Match History to Screen',
-					icon: 'i-lucide-history',
-					onSelect: () => emit('sendMatchHistoryToScreen', player.id),
-				}
-			: {
-					label: 'Send Match History to…',
-					icon: 'i-lucide-history',
-					children: playerHistoryScreens.value.map(screen => ({
-						label: screen.name,
-						icon: 'i-lucide-monitor',
-						onSelect: () => emit('sendMatchHistoryToScreen', player.id, screen.id),
-					})),
-				});
+		sendItems.push(
+			playerHistoryScreens.value.length === 1
+				? {
+						label: 'Send Match History to Screen',
+						icon: 'i-lucide-history',
+						onSelect: () => emit('sendMatchHistoryToScreen', player.id),
+					}
+				: {
+						label: 'Send Match History to…',
+						icon: 'i-lucide-history',
+						children: playerHistoryScreens.value.map((screen) => ({
+							label: screen.name,
+							icon: 'i-lucide-monitor',
+							onSelect: () => emit('sendMatchHistoryToScreen', player.id, screen.id),
+						})),
+					},
+		);
 	}
 
 	const destructiveItems: DropdownMenuItem[] = [];
@@ -182,20 +186,14 @@ function getRowMenuItems(player: Player): DropdownMenuItem[][] {
 		});
 	}
 
-	return [
-		editItems,
-		sendItems,
-		destructiveItems,
-	].filter(group => group.length > 0);
+	return [editItems, sendItems, destructiveItems].filter((group) => group.length > 0);
 }
 
 // Lazy dropdown: only mount UDropdownMenu when the trigger is clicked
 const activeDropdownPlayerId = ref<number | null>(null);
 
 function toggleDropdown(playerId: number) {
-	activeDropdownPlayerId.value = activeDropdownPlayerId.value === playerId
-		? null
-		: playerId;
+	activeDropdownPlayerId.value = activeDropdownPlayerId.value === playerId ? null : playerId;
 }
 
 // Static table config (avoid re-allocation on every render)
@@ -215,18 +213,21 @@ const columns = computed<TableColumn<Player>[]>(() => {
 	const cols: TableColumn<Player>[] = [
 		{
 			id: 'select',
-			header: ({ table }) => h(resolveComponent('UCheckbox') as any, {
-				'modelValue': table.getIsSomePageRowsSelected()
-					? 'indeterminate'
-					: table.getIsAllPageRowsSelected(),
-				'onUpdate:modelValue': (value: boolean | 'indeterminate') => table.toggleAllPageRowsSelected(!!value),
-				'ariaLabel': 'Select all',
-			}),
-			cell: ({ row }) => h(resolveComponent('UCheckbox') as any, {
-				'modelValue': row.getIsSelected(),
-				'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
-				'ariaLabel': 'Select row',
-			}),
+			header: ({ table }) =>
+				h(resolveComponent('UCheckbox') as any, {
+					modelValue: table.getIsSomePageRowsSelected()
+						? 'indeterminate'
+						: table.getIsAllPageRowsSelected(),
+					'onUpdate:modelValue': (value: boolean | 'indeterminate') =>
+						table.toggleAllPageRowsSelected(!!value),
+					ariaLabel: 'Select all',
+				}),
+			cell: ({ row }) =>
+				h(resolveComponent('UCheckbox') as any, {
+					modelValue: row.getIsSelected(),
+					'onUpdate:modelValue': (value: boolean | 'indeterminate') => row.toggleSelected(!!value),
+					ariaLabel: 'Select row',
+				}),
 		},
 	];
 
@@ -234,7 +235,7 @@ const columns = computed<TableColumn<Player>[]>(() => {
 		cols.push(
 			{
 				id: 'name',
-				accessorFn: row => row.name ?? '',
+				accessorFn: (row) => row.name ?? '',
 				header: createSortableHeader('Name'),
 				enableSorting: true,
 			},
@@ -271,7 +272,7 @@ const columns = computed<TableColumn<Player>[]>(() => {
 		},
 		{
 			id: 'record',
-			accessorFn: row => (row.wins ?? 0) * 1000 + (row.losses ?? 0),
+			accessorFn: (row) => (row.wins ?? 0) * 1000 + (row.losses ?? 0),
 			header: createSortableHeader('Record'),
 			enableSorting: true,
 		},
@@ -282,7 +283,7 @@ const columns = computed<TableColumn<Player>[]>(() => {
 		},
 		{
 			id: 'deckName',
-			accessorFn: row => getPlayerActiveDeck(row)?.name ?? '',
+			accessorFn: (row) => getPlayerActiveDeck(row)?.name ?? '',
 			header: createSortableHeader('Deck'),
 			enableSorting: true,
 		},
@@ -303,7 +304,11 @@ const columns = computed<TableColumn<Player>[]>(() => {
 			v-if="players.length === 0 && !loading"
 			icon="i-lucide-users"
 			:title="activeListId !== null ? 'No players in this list' : 'No players'"
-			:description="activeListId !== null ? 'Add players to this list to see them here.' : 'No players are available for this view.'"
+			:description="
+				activeListId !== null
+					? 'Add players to this list to see them here.'
+					: 'No players are available for this view.'
+			"
 		/>
 
 		<!-- Table -->
@@ -335,7 +340,9 @@ const columns = computed<TableColumn<Player>[]>(() => {
 			</template>
 
 			<template #name-cell="{ row }">
-				<span v-if="game === 'op'" :class="row.original.name ? undefined : 'text-muted'">{{ row.original.name || '-' }}</span>
+				<span v-if="game === 'op'" :class="row.original.name ? undefined : 'text-muted'">{{
+					row.original.name || '-'
+				}}</span>
 				<PlayerMatchHistoryButton v-else :player="row.original" />
 			</template>
 

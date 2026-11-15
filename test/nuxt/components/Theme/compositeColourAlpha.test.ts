@@ -27,10 +27,10 @@ const SURFACE = {
 	glow: { color: '#778899', size: 8, opacity: 0.5 },
 } as const;
 
-describe('a composite token\'s own colours', () => {
+describe("a composite token's own colours", () => {
 	it.each<[string, Component, Record<string, unknown>, string, boolean]>([
 		[
-			'a fill token\'s solid colour edits alpha',
+			"a fill token's solid colour edits alpha",
 			FillTokenInput,
 			{
 				modelValue: { type: 'solid', color: '#112233' },
@@ -39,28 +39,28 @@ describe('a composite token\'s own colours', () => {
 			true,
 		],
 		[
-			'a fill token\'s gradient stop has none, beside its opacity',
+			"a fill token's gradient stop has none, beside its opacity",
 			FillTokenInput,
 			{ modelValue: GRADIENT },
 			'Brand stop 1 colour',
 			false,
 		],
 		[
-			'a surface\'s fill has none, beside its Fill opacity',
+			"a surface's fill has none, beside its Fill opacity",
 			SurfaceStyleTokenInput,
 			{ modelValue: SURFACE },
 			'Brand fill colour',
 			false,
 		],
 		[
-			'a surface\'s outline edits alpha',
+			"a surface's outline edits alpha",
 			SurfaceStyleTokenInput,
 			{ modelValue: SURFACE },
 			'Brand outline colour',
 			true,
 		],
 		[
-			'a surface\'s glow has none, beside its opacity',
+			"a surface's glow has none, beside its opacity",
 			SurfaceStyleTokenInput,
 			{ modelValue: SURFACE },
 			'Brand glow colour',

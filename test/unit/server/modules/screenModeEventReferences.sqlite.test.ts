@@ -15,8 +15,11 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  * and the Deck Source guard triggers read, not what a mock says.
  */
 
-vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; statusMessage?: string }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode?: number; message?: string; statusMessage?: string }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -60,24 +63,48 @@ interface EventEntities {
 }
 
 async function seedEventEntities(eventId: number, label: string): Promise<EventEntities> {
-	const [phase] = await db.insert(schema.phases).values({ eventId, name: `${label} Phase` }).returning({ id: schema.phases.id });
-	const [round] = await db.insert(schema.rounds).values({
-		eventId,
-		phaseId: phase!.id,
-		name: `${label} Round`,
-		roundNumber: 1,
-	}).returning({ id: schema.rounds.id });
-	const [player] = await db.insert(schema.players).values({ eventId, name: `${label} Player` }).returning({ id: schema.players.id });
-	const [list] = await db.insert(schema.playerLists).values({ eventId, name: `${label} List` }).returning({ id: schema.playerLists.id });
-	const [slot] = await db.insert(schema.featureMatchSlots).values({ eventId }).returning({ id: schema.featureMatchSlots.id });
-	const [archetype] = await db.insert(schema.archetypes).values({ eventId, name: `${label} Archetype` }).returning({ id: schema.archetypes.id });
-	const [talent] = await db.insert(schema.eventTalents).values({ eventId, name: `${label} Talent` }).returning({ id: schema.eventTalents.id });
-	const [deckList] = await db.insert(schema.broadcastDeckLists).values({
-		eventId,
-		name: `${label} Deck List`,
-		normalizedName: `${label.toLowerCase()} deck list`,
-		sourceText: '1 Island',
-	}).returning({ id: schema.broadcastDeckLists.id });
+	const [phase] = await db
+		.insert(schema.phases)
+		.values({ eventId, name: `${label} Phase` })
+		.returning({ id: schema.phases.id });
+	const [round] = await db
+		.insert(schema.rounds)
+		.values({
+			eventId,
+			phaseId: phase!.id,
+			name: `${label} Round`,
+			roundNumber: 1,
+		})
+		.returning({ id: schema.rounds.id });
+	const [player] = await db
+		.insert(schema.players)
+		.values({ eventId, name: `${label} Player` })
+		.returning({ id: schema.players.id });
+	const [list] = await db
+		.insert(schema.playerLists)
+		.values({ eventId, name: `${label} List` })
+		.returning({ id: schema.playerLists.id });
+	const [slot] = await db
+		.insert(schema.featureMatchSlots)
+		.values({ eventId })
+		.returning({ id: schema.featureMatchSlots.id });
+	const [archetype] = await db
+		.insert(schema.archetypes)
+		.values({ eventId, name: `${label} Archetype` })
+		.returning({ id: schema.archetypes.id });
+	const [talent] = await db
+		.insert(schema.eventTalents)
+		.values({ eventId, name: `${label} Talent` })
+		.returning({ id: schema.eventTalents.id });
+	const [deckList] = await db
+		.insert(schema.broadcastDeckLists)
+		.values({
+			eventId,
+			name: `${label} Deck List`,
+			normalizedName: `${label.toLowerCase()} deck list`,
+			sourceText: '1 Island',
+		})
+		.returning({ id: schema.broadcastDeckLists.id });
 	return {
 		phaseId: phase!.id,
 		roundId: round!.id,
@@ -108,86 +135,82 @@ const SAMPLES: Record<EventReferenceKind, Sample[]> = {
 	phase: [
 		{
 			name: 'Phase',
-			naming: e => e.phaseId,
+			naming: (e) => e.phaseId,
 			refusal: { statusCode: 404, message: 'Phase not found' },
 		},
 	],
 	round: [
 		{
 			name: 'Round',
-			naming: e => e.roundId,
+			naming: (e) => e.roundId,
 			refusal: { statusCode: 404, message: 'Round not found' },
 		},
 	],
 	player: [
 		{
 			name: 'Player',
-			naming: e => e.playerId,
+			naming: (e) => e.playerId,
 			refusal: { statusCode: 404, message: 'Player not found' },
 		},
 	],
 	playerList: [
 		{
 			name: 'Player List',
-			naming: e => e.playerListId,
+			naming: (e) => e.playerListId,
 			refusal: { statusCode: 404, message: 'Player list not found' },
 		},
 	],
 	featureMatchSlot: [
 		{
 			name: 'Feature Match Slot',
-			naming: e => e.featureMatchSlotId,
+			naming: (e) => e.featureMatchSlotId,
 			refusal: { statusCode: 404, message: 'Feature match slot not found' },
 		},
 	],
 	archetype: [
 		{
 			name: 'Archetype',
-			naming: e => e.archetypeId,
+			naming: (e) => e.archetypeId,
 			refusal: { statusCode: 404, message: 'Archetype not found' },
 		},
 	],
 	talent: [
 		{
 			name: 'Talent',
-			naming: e => e.talentId,
+			naming: (e) => e.talentId,
 			refusal: { statusCode: 404, message: 'Talent not found' },
 		},
 	],
 	talentLineup: [
 		{
 			name: 'Talent lineup',
-			naming: e => [own.talentId, e.talentId],
+			naming: (e) => [own.talentId, e.talentId],
 			refusal: { statusCode: 404, message: 'Talent not found' },
 		},
 	],
 	deckSource: [
 		{
 			name: 'Player Deck Source',
-			naming: e => ({ type: 'player', playerId: e.playerId }),
+			naming: (e) => ({ type: 'player', playerId: e.playerId }),
 			refusal: { statusCode: 404, message: 'Player not found' },
 		},
 		{
 			name: 'Broadcast Deck Source',
-			naming: e => ({ type: 'broadcast', broadcastDeckListId: e.broadcastDeckListId }),
+			naming: (e) => ({ type: 'broadcast', broadcastDeckListId: e.broadcastDeckListId }),
 			refusal: { statusCode: 409, code: 'SCREEN_DECK_SOURCE_CONFLICT' },
 		},
 		{
 			name: 'Feature Match Slot side Deck Source',
-			naming: e => ({ type: 'featureMatchSlot', slotId: e.featureMatchSlotId, side: 'player2' }),
+			naming: (e) => ({ type: 'featureMatchSlot', slotId: e.featureMatchSlotId, side: 'player2' }),
 			refusal: { statusCode: 404, message: 'Feature match slot not found' },
 		},
 	],
 	manualBracket: [
 		{
 			name: 'Manual Bracket',
-			naming: e => ({
+			naming: (e) => ({
 				size: 4,
-				entrants: [
-					{ name: 'Typed Entrant' },
-					null,
-					{ playerId: e.playerId },
-				],
+				entrants: [{ name: 'Typed Entrant' }, null, { playerId: e.playerId }],
 				results: [],
 			}),
 			refusal: { statusCode: 404, message: 'Player not found' },
@@ -196,25 +219,32 @@ const SAMPLES: Record<EventReferenceKind, Sample[]> = {
 };
 
 beforeAll(async () => {
-	const [event, otherEvent] = await db.insert(schema.events).values([
-		{
-			name: 'Screen Event',
-			game: 'mtg',
-			featureMatchOrientation: 'horizontal',
-			broadcastDeckListsEnabled: true,
-		},
-		{
-			name: 'Other Event',
-			game: 'mtg',
-			featureMatchOrientation: 'horizontal',
-			broadcastDeckListsEnabled: true,
-		},
-	]).returning({ id: schema.events.id });
+	const [event, otherEvent] = await db
+		.insert(schema.events)
+		.values([
+			{
+				name: 'Screen Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+				broadcastDeckListsEnabled: true,
+			},
+			{
+				name: 'Other Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+				broadcastDeckListsEnabled: true,
+			},
+		])
+		.returning({ id: schema.events.id });
 	eventId = event!.id;
 	own = await seedEventEntities(eventId, 'Own');
 	foreign = await seedEventEntities(otherEvent!.id, 'Foreign');
 
-	const screen = await screenService().create(eventId, { name: 'Screen', slug: 'screen' } as never, capability);
+	const screen = await screenService().create(
+		eventId,
+		{ name: 'Screen', slug: 'screen' } as never,
+		capability,
+	);
 	screenId = screen.id;
 });
 
@@ -241,13 +271,14 @@ function saveModeConfig(mode: ScreenMode, config: Record<string, unknown>, state
 	});
 }
 
-const declaredFields = SCREEN_MODE_VALUES.flatMap(mode =>
+const declaredFields = SCREEN_MODE_VALUES.flatMap((mode) =>
 	Object.entries(SCREEN_MODES[mode].eventReferences).map(([field, kind]) => ({
 		mode,
 		field,
 		kind,
 		declared: `${mode}.${field}: ${kind}`,
-	})));
+	})),
+);
 
 describe('screen Mode Event References', () => {
 	it('declares every config field naming something in the Event', () => {
@@ -278,23 +309,27 @@ describe('screen Mode Event References', () => {
 	});
 
 	it('keeps every Event Reference through a display reset', () => {
-		const reset = declaredFields.filter(({ mode, field }) => field in getDisplayDefaultsForMode(mode));
+		const reset = declaredFields.filter(
+			({ mode, field }) => field in getDisplayDefaultsForMode(mode),
+		);
 		expect(reset.map(({ declared }) => declared)).toEqual([]);
 	});
 
 	it('refuses saving a Most Played Cards Screen whose Player List belongs to another Event, as for Metagame', async () => {
 		for (const mode of ['top-cards', 'metagame'] as const) {
 			const before = await current();
-			await expect(saveModeConfig(mode, { playerListId: foreign.playerListId }, before.stateVersion))
-				.rejects
-				.toMatchObject({ statusCode: 404, message: 'Player list not found' });
+			await expect(
+				saveModeConfig(mode, { playerListId: foreign.playerListId }, before.stateVersion),
+			).rejects.toMatchObject({ statusCode: 404, message: 'Player list not found' });
 			expect((await current()).modeConfigs?.[mode]).toEqual(before.modeConfigs?.[mode]);
 		}
 		expect(mockPublication.screenUpdated).not.toHaveBeenCalled();
 	});
 
 	// One check per kind reads every field declaring it, so the first field of each kind stands for the rest.
-	const firstOfEachKind = declaredFields.filter(({ kind }, index) => declaredFields.findIndex(other => other.kind === kind) === index);
+	const firstOfEachKind = declaredFields.filter(
+		({ kind }, index) => declaredFields.findIndex((other) => other.kind === kind) === index,
+	);
 
 	describe.each(firstOfEachKind)('$declared', ({ mode, field, kind }) => {
 		it.each(SAMPLES[kind].map((sample, index) => ({ ...sample, index })))(
@@ -306,18 +341,28 @@ describe('screen Mode Event References', () => {
 					[mode]: { [field]: value },
 				};
 
-				await expect(saveModeConfig(mode, { [field]: value }, before.stateVersion)).rejects.toMatchObject(refusal);
-				await expect(screenWriteModule().updateScreen({
-					authoringSessionId: undefined,
-					eventId,
-					screenId,
-					input: { stateVersion: before.stateVersion, modeConfigs } as never,
-				})).rejects.toMatchObject(refusal);
-				await expect(screenWriteModule().createScreen({
-					eventId,
-					input: { name: 'Refused', slug: `refused-${mode}-${field}-${index}`, modeConfigs } as never,
-					screenOutputAssetCapabilities: provideNoCapability as never,
-				})).rejects.toMatchObject(refusal);
+				await expect(
+					saveModeConfig(mode, { [field]: value }, before.stateVersion),
+				).rejects.toMatchObject(refusal);
+				await expect(
+					screenWriteModule().updateScreen({
+						authoringSessionId: undefined,
+						eventId,
+						screenId,
+						input: { stateVersion: before.stateVersion, modeConfigs } as never,
+					}),
+				).rejects.toMatchObject(refusal);
+				await expect(
+					screenWriteModule().createScreen({
+						eventId,
+						input: {
+							name: 'Refused',
+							slug: `refused-${mode}-${field}-${index}`,
+							modeConfigs,
+						} as never,
+						screenOutputAssetCapabilities: provideNoCapability as never,
+					}),
+				).rejects.toMatchObject(refusal);
 
 				expect((await current()).stateVersion).toBe(before.stateVersion);
 				expect(mockPublication.screenUpdated).not.toHaveBeenCalled();
@@ -325,11 +370,15 @@ describe('screen Mode Event References', () => {
 			},
 		);
 
-		it.each(SAMPLES[kind])('accepts a $name from the Screen\'s own Event', async ({ naming }) => {
+		it.each(SAMPLES[kind])("accepts a $name from the Screen's own Event", async ({ naming }) => {
 			const before = await current();
-			const saved = await saveModeConfig(mode, {
-				[field]: naming(own),
-			}, before.stateVersion);
+			const saved = await saveModeConfig(
+				mode,
+				{
+					[field]: naming(own),
+				},
+				before.stateVersion,
+			);
 			expect(saved.stateVersion).toBe(before.stateVersion + 1);
 		});
 	});

@@ -3,7 +3,7 @@ import { modeConfigPatchSchemaMap } from '~~/server/schemas/api/screen';
 import { deckModeConfigContract } from '~~/shared/screenModeConfigs/deck';
 import { resolveDeckBoards, resolveScreenModeConfig } from '~~/shared/types/screenConfig';
 
-describe('a Deck List board\'s Card Layout', () => {
+describe("a Deck List board's Card Layout", () => {
 	it('is all Auto until set', () => {
 		const { mainboard, sideboard } = resolveDeckBoards(resolveScreenModeConfig({}, 'deck'));
 
@@ -28,11 +28,13 @@ describe('a Deck List board\'s Card Layout', () => {
 		{ field: 'cardGap', value: 0, accepted: true },
 		{ field: 'cardGap', value: 100, accepted: true },
 		{ field: 'cardGap', value: 101, accepted: false },
-	])('a write of a board\'s $field $value is accepted: $accepted', ({ field, value, accepted }) => {
+	])("a write of a board's $field $value is accepted: $accepted", ({ field, value, accepted }) => {
 		for (const board of ['mainboard', 'sideboard'] as const) {
-			expect(modeConfigPatchSchemaMap.deck.safeParse({
-				[board]: { [field]: value },
-			}).success).toBe(accepted);
+			expect(
+				modeConfigPatchSchemaMap.deck.safeParse({
+					[board]: { [field]: value },
+				}).success,
+			).toBe(accepted);
 		}
 	});
 
@@ -44,21 +46,21 @@ describe('a Deck List board\'s Card Layout', () => {
 			most: { mainboard: 24, sideboard: 9 },
 		},
 		{
-			name: 'the field\'s minimum while it holds no cards',
+			name: "the field's minimum while it holds no cards",
 			cards: { mainboard: 0, sideboard: 0 },
 			most: { mainboard: 1, sideboard: 1 },
 		},
 		{
-			name: 'the contract\'s bound for a count past it',
+			name: "the contract's bound for a count past it",
 			cards: { mainboard: 250, sideboard: 101 },
 			most: { mainboard: 100, sideboard: 100 },
 		},
 		{
-			name: 'the contract\'s bound alone while no Deck List is resolved',
+			name: "the contract's bound alone while no Deck List is resolved",
 			cards: undefined,
 			most: { mainboard: undefined, sideboard: undefined },
 		},
-	])('the editor bounds each board\'s columns by $name', ({ cards, most }) => {
+	])("the editor bounds each board's columns by $name", ({ cards, most }) => {
 		const { fields } = deckModeConfigContract;
 		const context = { config: {}, event: null, deckBoardCards: cards };
 

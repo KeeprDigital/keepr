@@ -32,7 +32,10 @@ const mockPlayerStore = reactive({
 
 mockNuxtImport('useArchetypeStore', () => () => mockArchetypeStore);
 mockNuxtImport('usePlayerStore', () => () => mockPlayerStore);
-mockNuxtImport('usePlayerDeckStore', () => () => ({ reviewDeck: mockReviewDeck, clearDeckReview: mockClearDeckReview }));
+mockNuxtImport('usePlayerDeckStore', () => () => ({
+	reviewDeck: mockReviewDeck,
+	clearDeckReview: mockClearDeckReview,
+}));
 mockNuxtImport('useToast', () => () => mockToast);
 
 // ── Mock $fetch for key card PATCH ──
@@ -62,9 +65,7 @@ function makeEntry(opts?: {
 			id: opts?.deckId ?? 1,
 			playerId: opts?.playerId ?? 1,
 			archetypeId: opts?.archetypeId ?? null,
-			reviewedAt: opts?.deckReviewed
-				? new Date()
-				: null,
+			reviewedAt: opts?.deckReviewed ? new Date() : null,
 		},
 		displayName: opts?.deckName ?? '',
 		displayColors: opts?.deckColors ?? null,
@@ -131,10 +132,10 @@ function makeOptions(
 		commit: advance,
 		cancel: vi.fn(),
 	});
-	const archetypePlayerCounts = computed(() => archetypePlayerCountsOverride ?? new Map<number, number>());
-	const activeDeck = ref<any>(activeDeckCards
-		? makeDeck(activeDeckCards)
-		: null);
+	const archetypePlayerCounts = computed(
+		() => archetypePlayerCountsOverride ?? new Map<number, number>(),
+	);
+	const activeDeck = ref<any>(activeDeckCards ? makeDeck(activeDeckCards) : null);
 	return {
 		currentEntry,
 		activeDeck,
@@ -185,9 +186,7 @@ describe('useArchetypeAssignment', () => {
 					deckColors: 'R',
 				}),
 				undefined,
-				new Map([
-					[5, deckCount],
-				]),
+				new Map([[5, deckCount]]),
 			);
 			const assignment = useArchetypeAssignment(opts);
 			assignment.nameInput.value = 'Boros Burn';
@@ -201,12 +200,7 @@ describe('useArchetypeAssignment', () => {
 				'Rename for all 3 decks',
 				true,
 			],
-			[
-				'offers the rename alone for an Archetype\'s only deck',
-				1,
-				'Rename archetype',
-				false,
-			],
+			["offers the rename alone for an Archetype's only deck", 1, 'Rename archetype', false],
 		])('%s', (_case, deckCount, label, canSplit) => {
 			const assignment = reviewedAsBurn(deckCount);
 
@@ -225,7 +219,9 @@ describe('useArchetypeAssignment', () => {
 		});
 
 		it('makes a new Archetype for this deck alone when asked, leaving the old one its name', async () => {
-			mockCreateArchetype.mockResolvedValue(makeArchetype({ id: 9, name: 'Boros Burn', colors: 'R' }));
+			mockCreateArchetype.mockResolvedValue(
+				makeArchetype({ id: 9, name: 'Boros Burn', colors: 'R' }),
+			);
 			const assignment = reviewedAsBurn(3);
 
 			await assignment.createForDeck();
@@ -242,9 +238,7 @@ describe('useArchetypeAssignment', () => {
 			id: 5,
 			name: 'Control',
 			colors: 'WU',
-			keyCards: [
-				makeKeyCard('Counterspell', 1),
-			],
+			keyCards: [makeKeyCard('Counterspell', 1)],
 		});
 
 		it.each([
@@ -257,7 +251,7 @@ describe('useArchetypeAssignment', () => {
 				'Also updates “Control” for 3 other decks.',
 			],
 			[
-				'new key cards, counting the other decks of the deck\'s own Archetype',
+				"new key cards, counting the other decks of the deck's own Archetype",
 				{ archetypeId: 5, deckReviewed: true },
 				['W', 'U'],
 				['Counterspell', 'Opt'],
@@ -273,7 +267,7 @@ describe('useArchetypeAssignment', () => {
 				'Also updates “Control” for 1 other deck.',
 			],
 			[
-				'nothing, when colours and key cards are the Archetype\'s',
+				"nothing, when colours and key cards are the Archetype's",
 				{ archetypeId: null },
 				['W', 'U'],
 				['Counterspell'],
@@ -291,21 +285,21 @@ describe('useArchetypeAssignment', () => {
 		])('names %s', async (_case, entry, colors, keyCards, deckCount, note) => {
 			mockArchetypeStore.archetypes = [CONTROL];
 			mockFindByName.mockReturnValue(CONTROL);
-			mockFindByNameAndColors.mockImplementation((_name: string, typed: string[]) => [...typed].sort().join('') === 'UW'
-				? CONTROL
-				: undefined);
-			const assignment = useArchetypeAssignment(makeOptions(
-				makeEntry({
-					playerId: 10,
-					deckName: 'Control',
-					deckColors: 'WU',
-					...entry,
-				}),
-				undefined,
-				new Map([
-					[5, deckCount],
-				]),
-			));
+			mockFindByNameAndColors.mockImplementation((_name: string, typed: string[]) =>
+				[...typed].sort().join('') === 'UW' ? CONTROL : undefined,
+			);
+			const assignment = useArchetypeAssignment(
+				makeOptions(
+					makeEntry({
+						playerId: 10,
+						deckName: 'Control',
+						deckColors: 'WU',
+						...entry,
+					}),
+					undefined,
+					new Map([[5, deckCount]]),
+				),
+			);
 			await nextTick();
 
 			assignment.colorsInput.value = colors;
@@ -318,12 +312,17 @@ describe('useArchetypeAssignment', () => {
 	describe('clearing an assignment', () => {
 		it('returns a reviewed deck to unreviewed and stays on it', async () => {
 			const advance = vi.fn();
-			const assignment = useArchetypeAssignment(makeOptions(makeEntry({
-				playerId: 10,
-				deckId: 4,
-				archetypeId: 5,
-				deckReviewed: true,
-			}), advance));
+			const assignment = useArchetypeAssignment(
+				makeOptions(
+					makeEntry({
+						playerId: 10,
+						deckId: 4,
+						archetypeId: 5,
+						deckReviewed: true,
+					}),
+					advance,
+				),
+			);
 
 			await assignment.clearAssignment();
 
@@ -332,7 +331,9 @@ describe('useArchetypeAssignment', () => {
 		});
 
 		it('does nothing for a deck not yet reviewed', async () => {
-			const assignment = useArchetypeAssignment(makeOptions(makeEntry({ playerId: 10, deckId: 4 })));
+			const assignment = useArchetypeAssignment(
+				makeOptions(makeEntry({ playerId: 10, deckId: 4 })),
+			);
 
 			await assignment.clearAssignment();
 
@@ -348,9 +349,7 @@ describe('useArchetypeAssignment', () => {
 			const existing = makeArchetype({
 				id: 5,
 				name: 'Control',
-				keyCards: [
-					makeKeyCard('Counterspell', 1),
-				],
+				keyCards: [makeKeyCard('Counterspell', 1)],
 			});
 			mockFindByName.mockReturnValue(existing);
 			mockFindByNameAndColors.mockReturnValue(existing);
@@ -371,7 +370,10 @@ describe('useArchetypeAssignment', () => {
 			mockFindByName.mockReturnValue(existing);
 			mockFindByNameAndColors.mockReturnValue(existing);
 
-			const opts = makeOptions(makeEntry({ playerId: 10, archetypeId: 4, deckReviewed: true }), advance);
+			const opts = makeOptions(
+				makeEntry({ playerId: 10, archetypeId: 4, deckReviewed: true }),
+				advance,
+			);
 			const { nameInput, acceptName } = useArchetypeAssignment(opts);
 			nameInput.value = 'Control';
 
@@ -386,9 +388,7 @@ describe('useArchetypeAssignment', () => {
 			const existing = makeArchetype({
 				id: 5,
 				name: 'Control',
-				keyCards: [
-					makeKeyCard('Counterspell', 1),
-				],
+				keyCards: [makeKeyCard('Counterspell', 1)],
 			});
 			mockFindByName.mockReturnValue(existing);
 			mockFindByNameAndColors.mockReturnValue(existing);
@@ -417,17 +417,13 @@ describe('useArchetypeAssignment', () => {
 				id: 8,
 				name: 'Control',
 				colors: 'WU',
-				keyCards: [
-					makeKeyCard('Counterspell', 1),
-				],
+				keyCards: [makeKeyCard('Counterspell', 1)],
 			});
 			const updated = makeArchetype({
 				id: 8,
 				name: 'Control',
 				colors: 'UB',
-				keyCards: [
-					makeKeyCard('Counterspell', 1),
-				],
+				keyCards: [makeKeyCard('Counterspell', 1)],
 			});
 			mockFindByName.mockReturnValue(existing);
 			mockUpdateArchetype.mockResolvedValue(updated);
@@ -461,7 +457,10 @@ describe('useArchetypeAssignment', () => {
 
 			await acceptName();
 
-			expect(mockCreateArchetype).toHaveBeenCalledWith(1, expect.objectContaining({ name: 'New Deck' }));
+			expect(mockCreateArchetype).toHaveBeenCalledWith(
+				1,
+				expect.objectContaining({ name: 'New Deck' }),
+			);
 			expect(mockReviewDeck).toHaveBeenCalledWith(1, 7, 1, 99);
 			expect(advance).toHaveBeenCalledOnce();
 		});
@@ -579,9 +578,7 @@ describe('useArchetypeAssignment', () => {
 		const control = makeArchetype({
 			name: 'Control',
 			colors: 'WU',
-			keyCards: [
-				makeKeyCard('Counterspell', 1),
-			],
+			keyCards: [makeKeyCard('Counterspell', 1)],
 		});
 
 		it.each([
@@ -642,13 +639,13 @@ describe('useArchetypeAssignment', () => {
 				archetypeId: scenario.reviewed ? 5 : null,
 				deckReviewed: scenario.reviewed,
 			});
-			const { nameInput, colorsInput, selectedKeyCards, buttonLabel } = useArchetypeAssignment(makeOptions(entry));
+			const { nameInput, colorsInput, selectedKeyCards, buttonLabel } = useArchetypeAssignment(
+				makeOptions(entry),
+			);
 
 			nameInput.value = scenario.byName ? 'Control' : 'Brand New';
-			if ('colors' in scenario)
-				colorsInput.value = [...scenario.colors];
-			if ('keyCards' in scenario)
-				selectedKeyCards.value = new Set(scenario.keyCards);
+			if ('colors' in scenario) colorsInput.value = [...scenario.colors];
+			if ('keyCards' in scenario) selectedKeyCards.value = new Set(scenario.keyCards);
 
 			expect(buttonLabel.value).toBe(expected);
 		});
@@ -658,10 +655,7 @@ describe('useArchetypeAssignment', () => {
 	describe('hasKeyCardChanges', () => {
 		it('is false when selected key cards match stored exactly', () => {
 			const archetype = makeArchetype({
-				keyCards: [
-					makeKeyCard('A', 1),
-					makeKeyCard('B', 2),
-				],
+				keyCards: [makeKeyCard('A', 1), makeKeyCard('B', 2)],
 			});
 			mockFindByNameAndColors.mockReturnValue(archetype);
 			const opts = makeOptions();
@@ -673,9 +667,7 @@ describe('useArchetypeAssignment', () => {
 
 		it('is true when a key card is added', () => {
 			const archetype = makeArchetype({
-				keyCards: [
-					makeKeyCard('A', 1),
-				],
+				keyCards: [makeKeyCard('A', 1)],
 			});
 			mockFindByNameAndColors.mockReturnValue(archetype);
 			const opts = makeOptions();
@@ -687,10 +679,7 @@ describe('useArchetypeAssignment', () => {
 
 		it('is true when cards differ in content but not count', () => {
 			const archetype = makeArchetype({
-				keyCards: [
-					makeKeyCard('A', 1),
-					makeKeyCard('B', 2),
-				],
+				keyCards: [makeKeyCard('A', 1), makeKeyCard('B', 2)],
 			});
 			mockFindByNameAndColors.mockReturnValue(archetype);
 			const opts = makeOptions();
@@ -769,16 +758,12 @@ describe('useArchetypeAssignment', () => {
 			const archA = makeArchetype({
 				id: 1,
 				name: 'Arch A',
-				keyCards: [
-					makeKeyCard('Lightning Bolt', 1),
-				],
+				keyCards: [makeKeyCard('Lightning Bolt', 1)],
 			});
 			const archB = makeArchetype({
 				id: 2,
 				name: 'Arch B',
-				keyCards: [
-					makeKeyCard('Counterspell', 2),
-				],
+				keyCards: [makeKeyCard('Counterspell', 2)],
 			});
 			mockArchetypeStore.archetypes = [archA, archB];
 
@@ -795,17 +780,13 @@ describe('useArchetypeAssignment', () => {
 			const archA = makeArchetype({
 				id: 1,
 				name: 'Arch A',
-				keyCards: [
-					makeKeyCard('Lightning Bolt', 1),
-				],
+				keyCards: [makeKeyCard('Lightning Bolt', 1)],
 			});
 			const archB = makeArchetype({ id: 2, name: 'Arch B', keyCards: [] });
 			const archC = makeArchetype({
 				id: 3,
 				name: 'Arch C',
-				keyCards: [
-					makeKeyCard('Counterspell', 2),
-				],
+				keyCards: [makeKeyCard('Counterspell', 2)],
 			});
 			mockArchetypeStore.archetypes = [archA, archB, archC];
 
@@ -814,14 +795,9 @@ describe('useArchetypeAssignment', () => {
 				[2, 10],
 				[3, 2],
 			]);
-			const opts = makeOptions(
-				makeEntry(),
-				undefined,
-				playerCounts,
-				[
-					{ name: 'Lightning Bolt', cardId: 1 },
-				],
-			);
+			const opts = makeOptions(makeEntry(), undefined, playerCounts, [
+				{ name: 'Lightning Bolt', cardId: 1 },
+			]);
 			const { sortedArchetypes } = useArchetypeAssignment(opts);
 
 			// archA: 1 match > archB/archC: 0 matches; archB: 10 players > archC: 2 players
@@ -870,16 +846,8 @@ describe('useArchetypeAssignment', () => {
 		// reviewer typed holds until the deck under review, or its review, changes.
 		it.each([
 			['the same deck rebuilt by an unrelated update', {}, true],
-			[
-				'the same deck, its Player changed',
-				{ playerId: 2 },
-				true,
-			],
-			[
-				'another deck',
-				{ deckId: 2 },
-				false,
-			],
+			['the same deck, its Player changed', { playerId: 2 }, true],
+			['another deck', { deckId: 2 }, false],
 			[
 				'the same deck reviewed by a colleague',
 				{
@@ -896,9 +864,7 @@ describe('useArchetypeAssignment', () => {
 					id: 5,
 					name: 'Mono Red',
 					colors: 'R',
-					keyCards: [
-						makeKeyCard('Goblin Guide', 1),
-					],
+					keyCards: [makeKeyCard('Goblin Guide', 1)],
 				}),
 			];
 			const submitted = { deckName: 'Burn', deckColors: 'R' };

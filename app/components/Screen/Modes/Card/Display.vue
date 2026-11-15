@@ -6,15 +6,7 @@ const cardWidth = computed(() => `${config.value.cardWidth}px`);
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="!screenId"
-	>
-		<MtgCardDisplay
-			v-if="screenId"
-			:card="card"
-			:width="cardWidth"
-		/>
+	<ScreenModeBase :error="error" :ready="ready" :empty="!screenId">
+		<MtgCardDisplay v-if="screenId" :card="card" :width="cardWidth" />
 	</ScreenModeBase>
 </template>

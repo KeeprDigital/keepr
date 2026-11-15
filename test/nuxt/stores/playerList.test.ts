@@ -39,26 +39,21 @@ describe('usePlayerListStore', () => {
 		store.$reset();
 	});
 
-	it('loads an Event\'s Lists with every List\'s members cached', async () => {
-		mockRepo.list.mockResolvedValue([
-			createSummary({ id: 1 }),
-			createSummary({ id: 2 }),
+	it("loads an Event's Lists with every List's members cached", async () => {
+		mockRepo.list.mockResolvedValue([createSummary({ id: 1 }), createSummary({ id: 2 })]);
+		mockRepo.getMemberIds.mockImplementation(async (_eventId: number, listId: number) => [
+			listId * 10,
 		]);
-		mockRepo.getMemberIds.mockImplementation(async (_eventId: number, listId: number) => [listId * 10]);
 
 		await store.loadByEventId(1);
 
-		expect(store.lists.map(list => list.id)).toEqual([1, 2]);
-		expect(store.membersByListId).toEqual(new Map([
-			[
-				1,
-				[10],
-			],
-			[
-				2,
-				[20],
-			],
-		]));
+		expect(store.lists.map((list) => list.id)).toEqual([1, 2]);
+		expect(store.membersByListId).toEqual(
+			new Map([
+				[1, [10]],
+				[2, [20]],
+			]),
+		);
 	});
 
 	// The lifecycle's own suite owns how a load answers its failure; this store loads
@@ -66,7 +61,9 @@ describe('usePlayerListStore', () => {
 	it('raises a failed load to a caller that asked', async () => {
 		mockRepo.list.mockRejectedValue(new Error('Network unavailable'));
 
-		await expect(store.loadByEventId(1, { failure: 'raise' })).rejects.toThrow('Network unavailable');
+		await expect(store.loadByEventId(1, { failure: 'raise' })).rejects.toThrow(
+			'Network unavailable',
+		);
 	});
 
 	it('holds a created List with no members', async () => {
@@ -74,16 +71,12 @@ describe('usePlayerListStore', () => {
 
 		await store.createList(1, { name: 'New List' });
 
-		expect(store.lists).toEqual([
-			expect.objectContaining({ id: 3, memberCount: 0 }),
-		]);
+		expect(store.lists).toEqual([expect.objectContaining({ id: 3, memberCount: 0 })]);
 	});
 
 	describe('removeList', () => {
 		it('drops the List and its cached members', async () => {
-			store.lists = [
-				createSummary({ id: 1 }),
-			];
+			store.lists = [createSummary({ id: 1 })];
 			store.membersByListId.set(1, [10, 20]);
 			mockRepo.remove.mockResolvedValue({ success: true });
 
@@ -94,28 +87,26 @@ describe('usePlayerListStore', () => {
 		});
 
 		it('puts the List and its cached members back when the delete is refused', async () => {
-			store.lists = [
-				createSummary({ id: 1 }),
-			];
+			store.lists = [createSummary({ id: 1 })];
 			store.membersByListId.set(1, [10, 20]);
-			mockRepo.remove.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'The List is in use' },
-			}));
+			mockRepo.remove.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'The List is in use' },
+				}),
+			);
 
 			await store.removeList(1, 1);
 
-			expect(store.lists.map(list => list.id)).toEqual([1]);
+			expect(store.lists.map((list) => list.id)).toEqual([1]);
 			expect(store.membersByListId.get(1)).toEqual([10, 20]);
 			expect(store.error).toBe('The List is in use');
 		});
 	});
 
 	describe('member writes', () => {
-		it('adding counts and caches the new members while the request is pending, then takes the server\'s count', async () => {
-			store.lists = [
-				createSummary({ id: 1, memberCount: 2 }),
-			];
+		it("adding counts and caches the new members while the request is pending, then takes the server's count", async () => {
+			store.lists = [createSummary({ id: 1, memberCount: 2 })];
 			store.membersByListId.set(1, [10, 20]);
 			const added = deferred<{ added: number; memberCount: number }>();
 			mockRepo.addMembers.mockReturnValueOnce(added.promise);
@@ -133,9 +124,7 @@ describe('usePlayerListStore', () => {
 		});
 
 		it('adding only members the List already caches sends nothing', async () => {
-			store.lists = [
-				createSummary({ id: 1, memberCount: 2 }),
-			];
+			store.lists = [createSummary({ id: 1, memberCount: 2 })];
 			store.membersByListId.set(1, [10, 20]);
 
 			await store.addMembers(1, 1, [10]);
@@ -145,9 +134,7 @@ describe('usePlayerListStore', () => {
 		});
 
 		it('removing a member uncounts and uncaches it', async () => {
-			store.lists = [
-				createSummary({ id: 1, memberCount: 3 }),
-			];
+			store.lists = [createSummary({ id: 1, memberCount: 3 })];
 			store.membersByListId.set(1, [10, 20, 30]);
 			mockRepo.removeMember.mockResolvedValue({ success: true, memberCount: 2 });
 
@@ -168,9 +155,7 @@ describe('usePlayerListStore', () => {
 		});
 
 		it('reordering holds the new order', async () => {
-			store.lists = [
-				createSummary({ id: 1, memberCount: 3 }),
-			];
+			store.lists = [createSummary({ id: 1, memberCount: 3 })];
 			store.membersByListId.set(1, [10, 20, 30]);
 			mockRepo.reorderMembers.mockResolvedValue({ reordered: 3, memberCount: 3 });
 
@@ -179,7 +164,7 @@ describe('usePlayerListStore', () => {
 			expect(store.membersByListId.get(1)).toEqual([30, 20, 10]);
 		});
 
-		it('loading a List\'s members caches them', async () => {
+		it("loading a List's members caches them", async () => {
 			mockRepo.getMemberIds.mockResolvedValue([5, 10, 15]);
 
 			await store.loadListMembers(1, 42);
@@ -210,15 +195,15 @@ describe('usePlayerListStore', () => {
 			(s: ReturnType<typeof usePlayerListStore>) => s.reorderMembers(1, 1, [30, 20, 10]),
 		],
 	] as const)('a refused member write (%s)', (_, method, write) => {
-		it('reports the server\'s sentence and rolls the count and cached members back', async () => {
-			store.lists = [
-				createSummary({ id: 1, memberCount: 3 }),
-			];
+		it("reports the server's sentence and rolls the count and cached members back", async () => {
+			store.lists = [createSummary({ id: 1, memberCount: 3 })];
 			store.membersByListId.set(1, [10, 20, 30]);
-			mockRepo[method].mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'This list is locked for the current round' },
-			}));
+			mockRepo[method].mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'This list is locked for the current round' },
+				}),
+			);
 
 			await write(store);
 
@@ -228,15 +213,13 @@ describe('usePlayerListStore', () => {
 		});
 	});
 
-	describe('a peer\'s Player List messages', () => {
-		it('add, merge and remove Lists, dropping a removed List\'s cached members', () => {
+	describe("a peer's Player List messages", () => {
+		it("add, merge and remove Lists, dropping a removed List's cached members", () => {
 			deliver('playerList:created', {
 				playerList: { id: 10, name: 'Remote List' },
 			} as never);
 
-			expect(store.lists).toEqual([
-				expect.objectContaining({ id: 10, memberCount: 0 }),
-			]);
+			expect(store.lists).toEqual([expect.objectContaining({ id: 10, memberCount: 0 })]);
 
 			deliver('playerList:updated', {
 				playerList: { id: 10, name: 'Renamed' },
@@ -263,9 +246,7 @@ describe('usePlayerListStore', () => {
 		// A List on view keeps the members it shows until the re-read answers:
 		// dropping them emptied the Players table for good.
 		it('take the authoritative member count at once, and re-read cached members in place', async () => {
-			store.lists = [
-				createSummary({ id: 10, memberCount: 2 }),
-			];
+			store.lists = [createSummary({ id: 10, memberCount: 2 })];
 			store.membersByListId.set(10, [1, 2]);
 			const read = deferred<number[]>();
 			mockRepo.getMemberIds.mockReturnValueOnce(read.promise);
@@ -282,9 +263,7 @@ describe('usePlayerListStore', () => {
 		});
 
 		it('read nothing for a List whose members are not cached', async () => {
-			store.lists = [
-				createSummary({ id: 10, memberCount: 2 }),
-			];
+			store.lists = [createSummary({ id: 10, memberCount: 2 })];
 			mockRepo.getMemberIds.mockClear();
 
 			membersChanged(3);
@@ -296,9 +275,7 @@ describe('usePlayerListStore', () => {
 		});
 
 		it('drop cached members a failed re-read could not replace, so the next view reads them', async () => {
-			store.lists = [
-				createSummary({ id: 10, memberCount: 2 }),
-			];
+			store.lists = [createSummary({ id: 10, memberCount: 2 })];
 			store.membersByListId.set(10, [1, 2]);
 			mockRepo.getMemberIds.mockRejectedValueOnce(new Error('offline'));
 
@@ -309,10 +286,8 @@ describe('usePlayerListStore', () => {
 			expect(store.error).toBeNull();
 		});
 
-		it('hold the latest change\'s members when two re-reads answer out of order', async () => {
-			store.lists = [
-				createSummary({ id: 10, memberCount: 2 }),
-			];
+		it("hold the latest change's members when two re-reads answer out of order", async () => {
+			store.lists = [createSummary({ id: 10, memberCount: 2 })];
 			store.membersByListId.set(10, [1, 2]);
 			const first = deferred<number[]>();
 			const second = deferred<number[]>();
@@ -328,9 +303,7 @@ describe('usePlayerListStore', () => {
 		});
 
 		it('cache nothing from a re-read answered after the Event Lifetime ended', async () => {
-			store.lists = [
-				createSummary({ id: 10, memberCount: 2 }),
-			];
+			store.lists = [createSummary({ id: 10, memberCount: 2 })];
 			store.membersByListId.set(10, [1, 2]);
 			const read = deferred<number[]>();
 			mockRepo.getMemberIds.mockReturnValueOnce(read.promise);

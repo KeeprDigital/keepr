@@ -14,24 +14,40 @@ vi.doMock('~~/server/utils/screenOutputAuthorization', () => ({
 	screenOutputReader: async () => 'capability',
 }));
 
-interface StubEvent { params: Record<string, string> }
+interface StubEvent {
+	params: Record<string, string>;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
 vi.stubGlobal('setResponseHeader', vi.fn());
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 type Handler = (event: StubEvent) => Promise<any>;
-const readSpotlight = (await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/archetype-spotlight.get')).default as unknown as Handler;
-const readMetagame = (await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/metagame.get')).default as unknown as Handler;
+const readSpotlight = (
+	await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/archetype-spotlight.get')
+).default as unknown as Handler;
+const readMetagame = (
+	await import('~~/server/api/screen-output/events/[id]/screens/[screenId]/metagame.get')
+).default as unknown as Handler;
 
 let eventId: number;
 const screenIds: Record<string, number> = {};
 
 beforeAll(async () => {
-	const [event] = await db.insert(schema.events).values({ name: 'Pro Tour', game: 'mtg', featureMatchOrientation: 'horizontal' }).returning({ id: schema.events.id });
+	const [event] = await db
+		.insert(schema.events)
+		.values({ name: 'Pro Tour', game: 'mtg', featureMatchOrientation: 'horizontal' })
+		.returning({ id: schema.events.id });
 	eventId = event!.id;
-	const [archetype] = await db.insert(schema.archetypes).values({ eventId, name: 'Mono Red' }).returning({ id: schema.archetypes.id });
+	const [archetype] = await db
+		.insert(schema.archetypes)
+		.values({ eventId, name: 'Mono Red' })
+		.returning({ id: schema.archetypes.id });
 	// Two pilots: 1st on 15 points, 10th on 9 points.
 	await db.insert(schema.players).values([
 		{
@@ -52,23 +68,27 @@ beforeAll(async () => {
 
 	// Each Screen stores the per-Screen target it held before the Event had one.
 	const formerTarget = { conversionMetric: 'minPoints', conversionThreshold: 0 };
-	const screens = await db.insert(schema.screens).values([
-		['spotlight', 'archetype-spotlight'],
-		['metagame', 'metagame'],
-	].map(([slug, currentMode], index) => ({
-		eventId,
-		name: slug!,
-		slug: slug!,
-		currentMode: currentMode as 'metagame',
-		modeConfigs: {
-			'archetype-spotlight': { archetypeId: archetype!.id, ...formerTarget },
-			'metagame': formerTarget,
-		} as never,
-		assetCapabilitySeed: `seed-${index}`,
-		assetCapabilityDigest: `digest-${index}`,
-	}))).returning({ id: schema.screens.id, slug: schema.screens.slug });
-	for (const screen of screens)
-		screenIds[screen.slug] = screen.id;
+	const screens = await db
+		.insert(schema.screens)
+		.values(
+			[
+				['spotlight', 'archetype-spotlight'],
+				['metagame', 'metagame'],
+			].map(([slug, currentMode], index) => ({
+				eventId,
+				name: slug!,
+				slug: slug!,
+				currentMode: currentMode as 'metagame',
+				modeConfigs: {
+					'archetype-spotlight': { archetypeId: archetype!.id, ...formerTarget },
+					metagame: formerTarget,
+				} as never,
+				assetCapabilitySeed: `seed-${index}`,
+				assetCapabilityDigest: `digest-${index}`,
+			})),
+		)
+		.returning({ id: schema.screens.id, slug: schema.screens.slug });
+	for (const screen of screens) screenIds[screen.slug] = screen.id;
 });
 
 afterAll(async () => await harness.close());
@@ -87,11 +107,13 @@ async function conversionRates() {
 	const metagame = await readMetagame(params('metagame'));
 	return {
 		spotlight: spotlight.conversionRate,
-		metagame: metagame.breakdown.entries.find((entry: { name: string }) => entry.name === 'Mono Red').conversionRate,
+		metagame: metagame.breakdown.entries.find(
+			(entry: { name: string }) => entry.name === 'Mono Red',
+		).conversionRate,
 	};
 }
 
-describe('a Screen Output\'s Conversion Rate', () => {
+describe("a Screen Output's Conversion Rate", () => {
 	it.each([
 		{
 			target: { conversionMetric: 'topN', conversionThreshold: 8 },
@@ -109,7 +131,7 @@ describe('a Screen Output\'s Conversion Rate', () => {
 			target: { conversionMetric: 'minPoints', conversionThreshold: 0 },
 			rate: 100,
 		},
-	] as const)('counts against the Event\'s target $target', async ({ target, rate }) => {
+	] as const)("counts against the Event's target $target", async ({ target, rate }) => {
 		await db.update(schema.events).set(target).where(eq(schema.events.id, eventId));
 
 		await expect(conversionRates()).resolves.toEqual({ spotlight: rate, metagame: rate });

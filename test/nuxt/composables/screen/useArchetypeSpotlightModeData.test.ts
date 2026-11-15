@@ -1,5 +1,8 @@
 import type { EffectScope } from 'vue';
-import type { ScreenOutputArchetypePilot, ScreenOutputArchetypeSpotlightResponse } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputArchetypePilot,
+	ScreenOutputArchetypeSpotlightResponse,
+} from '~~/shared/types/screenOutputReads';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -55,7 +58,12 @@ const screenContext = screenContextOf({
 });
 mockNuxtImport('useScreenModeConfig', () => () => computed(() => mutableConfig));
 
-function pilot(id: number, name: string, position: number | null, overrides: Partial<ScreenOutputArchetypePilot> = {}): ScreenOutputArchetypePilot {
+function pilot(
+	id: number,
+	name: string,
+	position: number | null,
+	overrides: Partial<ScreenOutputArchetypePilot> = {},
+): ScreenOutputArchetypePilot {
 	return {
 		id,
 		name,
@@ -68,17 +76,16 @@ function pilot(id: number, name: string, position: number | null, overrides: Par
 	};
 }
 
-function answer(overrides: Partial<ScreenOutputArchetypeSpotlightResponse> = {}): ScreenOutputArchetypeSpotlightResponse {
+function answer(
+	overrides: Partial<ScreenOutputArchetypeSpotlightResponse> = {},
+): ScreenOutputArchetypeSpotlightResponse {
 	return {
 		archetype: { id: 7, name: 'Mono Red', colors: 'R' },
 		playerCount: 2,
 		metaShare: 25,
 		convertedCount: 1,
 		conversionRate: 50,
-		pilots: [
-			pilot(11, 'Nadia Rivers', 1),
-			pilot(12, 'Oskar Lind', 6),
-		],
+		pilots: [pilot(11, 'Nadia Rivers', 1), pilot(12, 'Oskar Lind', 6)],
 		topCards: [],
 		...overrides,
 	};
@@ -106,19 +113,22 @@ describe('useArchetypeSpotlightModeData', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
-	it('reads the configured Archetype\'s spotlight through the Screen', async () => {
+	it("reads the configured Archetype's spotlight through the Screen", async () => {
 		mutableConfig.archetypeId = 7;
 		mockFetch.mockResolvedValue(answer());
 
 		const { spotlight, pageData, isEmpty, error } = makeSpotlight();
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/archetype-spotlight', expect.anything());
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/archetype-spotlight',
+			expect.anything(),
+		);
 		expect(spotlight.value?.metaShare).toBe(25);
-		expect(pageData.value.map(row => row.name)).toEqual(['Nadia Rivers', 'Oskar Lind']);
+		expect(pageData.value.map((row) => row.name)).toEqual(['Nadia Rivers', 'Oskar Lind']);
 		expect(isEmpty.value).toBe(false);
 		expect(error.value).toBeNull();
 	});
@@ -141,7 +151,7 @@ describe('useArchetypeSpotlightModeData', () => {
 		expect(isEmpty.value).toBe(true);
 	});
 
-	it('re-reads when the Archetype, scope or its Event\'s Conversion Target changes', async () => {
+	it("re-reads when the Archetype, scope or its Event's Conversion Target changes", async () => {
 		mutableConfig.archetypeId = 7;
 		mockEventStore.displayEvent = { conversionMetric: 'topN', conversionThreshold: 8 };
 		mockFetch.mockResolvedValue(answer());
@@ -187,16 +197,18 @@ describe('useArchetypeSpotlightModeData', () => {
 		});
 	});
 
-	it('names its Event\'s Conversion Target', () => {
+	it("names its Event's Conversion Target", () => {
 		mockEventStore.displayEvent = { conversionMetric: 'minPoints', conversionThreshold: 18 };
 
 		expect(makeSpotlight().conversionLabel.value).toBe('18+ pts');
 	});
 
-	it('formats a pilot\'s record with the Event\'s record settings', () => {
+	it("formats a pilot's record with the Event's record settings", () => {
 		mockEventStore.displayEvent = { displayRecordSeparator: ' | ', displayHideZeroDraws: false };
 
-		expect(makeSpotlight().formatRecord(pilot(1, 'A', 1, { wins: 5, losses: 2, draws: 0 }))).toBe('5 | 2 | 0');
+		expect(makeSpotlight().formatRecord(pilot(1, 'A', 1, { wins: 5, losses: 2, draws: 0 }))).toBe(
+			'5 | 2 | 0',
+		);
 	});
 
 	it('pages pilots by the configured page size and current page', async () => {
@@ -208,7 +220,7 @@ describe('useArchetypeSpotlightModeData', () => {
 		const { pageData } = makeSpotlight();
 		await flushPromises();
 
-		expect(pageData.value.map(row => row.name)).toEqual(['Oskar Lind']);
+		expect(pageData.value.map((row) => row.name)).toEqual(['Oskar Lind']);
 	});
 
 	describe('freshness', () => {
@@ -221,14 +233,13 @@ describe('useArchetypeSpotlightModeData', () => {
 			return data;
 		}
 
-		it('shows a pilot\'s new standing without reload', async () => {
+		it("shows a pilot's new standing without reload", async () => {
 			const { pageData } = await showingSpotlight();
-			mockFetch.mockResolvedValue(answer({
-				pilots: [
-					pilot(11, 'Nadia Rivers', 1, { wins: 5 }),
-					pilot(12, 'Oskar Lind', 6),
-				],
-			}));
+			mockFetch.mockResolvedValue(
+				answer({
+					pilots: [pilot(11, 'Nadia Rivers', 1, { wins: 5 }), pilot(12, 'Oskar Lind', 6)],
+				}),
+			);
 
 			deliver('player:updated', {
 				player: { id: 11 },
@@ -239,7 +250,7 @@ describe('useArchetypeSpotlightModeData', () => {
 			expect(pageData.value[0]?.wins).toBe(5);
 		});
 
-		it('follows its Player List\'s members only while the scope names that list', async () => {
+		it("follows its Player List's members only while the scope names that list", async () => {
 			await showingSpotlight();
 			mutableConfig.playerListId = 3;
 

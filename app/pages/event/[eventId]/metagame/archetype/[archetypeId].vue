@@ -19,7 +19,10 @@ const metagameClient = useMetagameClient();
 const { openPlayerDeckList } = usePlayerDeckListModal();
 const { runRequest } = useRequestFeedback();
 const playerDeckStore = usePlayerDeckStore();
-const { archetype: heldArchetype, mergeInto } = useArchetypeManagement(() => eventStore.eventId!, () => Number(route.params.archetypeId));
+const { archetype: heldArchetype, mergeInto } = useArchetypeManagement(
+	() => eventStore.eventId!,
+	() => Number(route.params.archetypeId),
+);
 
 const game = computed(() => eventStore.event?.game);
 const isMtg = computed(() => game.value === 'mtg');
@@ -34,32 +37,26 @@ const loading = ref(false);
 
 const hasCardsSection = computed(() => detail.value != null);
 const availableSections = computed<DetailSection[]>(() => {
-	if (!detail.value)
-		return [];
+	if (!detail.value) return [];
 
 	const sections: DetailSection[] = [];
-	if (hasCardsSection.value)
-		sections.push('cards');
+	if (hasCardsSection.value) sections.push('cards');
 	sections.push('players');
 	return sections;
 });
 
-const sectionTabs = computed<TabsItem[]>(() => availableSections.value.map(section => ({
-	label: section === 'cards'
-		? 'Cards'
-		: 'Players',
-	value: section,
-})));
+const sectionTabs = computed<TabsItem[]>(() =>
+	availableSections.value.map((section) => ({
+		label: section === 'cards' ? 'Cards' : 'Players',
+		value: section,
+	})),
+);
 
 const showSectionTabs = computed(() => availableSections.value.length > 1);
 
 function parseSectionTab(tab: unknown): DetailSection | null {
-	const value = Array.isArray(tab)
-		? tab[0]
-		: tab;
-	return value === 'cards' || value === 'players'
-		? value
-		: null;
+	const value = Array.isArray(tab) ? tab[0] : tab;
+	return value === 'cards' || value === 'players' ? value : null;
 }
 
 const requestedSection = computed(() => parseSectionTab(route.query.tab));
@@ -71,9 +68,7 @@ function syncActiveSection(sections = availableSections.value, requested = reque
 		return null;
 	}
 
-	const nextSection = requested && sections.includes(requested)
-		? requested
-		: sections[0] ?? null;
+	const nextSection = requested && sections.includes(requested) ? requested : (sections[0] ?? null);
 
 	if (!nextSection) {
 		activeSection.value = null;
@@ -85,12 +80,9 @@ function syncActiveSection(sections = availableSections.value, requested = reque
 }
 
 async function setActiveSection(section: string | number) {
-	if (section !== 'cards' && section !== 'players')
-		return;
-	if (!availableSections.value.includes(section))
-		return;
-	if (activeSection.value === section)
-		return;
+	if (section !== 'cards' && section !== 'players') return;
+	if (!availableSections.value.includes(section)) return;
+	if (activeSection.value === section) return;
 
 	await router.replace({
 		query: {
@@ -102,52 +94,50 @@ async function setActiveSection(section: string | number) {
 
 /** Opens Archetype Review on the deck the Player holds in this Archetype: they can hold several. */
 function reviewDeck(player: { id: number }) {
-	const held = playerDeckStore.decks.filter(deck => deck.playerId === player.id && deck.archetypeId === archetypeId.value);
-	const deck = held.find(candidate => candidate.isPrimary) ?? held[0];
-	void navigateTo(deck
-		? `/event/${eventStore.eventId}/archetype-review?deckId=${deck.id}`
-		: `/event/${eventStore.eventId}/archetype-review`);
+	const held = playerDeckStore.decks.filter(
+		(deck) => deck.playerId === player.id && deck.archetypeId === archetypeId.value,
+	);
+	const deck = held.find((candidate) => candidate.isPrimary) ?? held[0];
+	void navigateTo(
+		deck
+			? `/event/${eventStore.eventId}/archetype-review?deckId=${deck.id}`
+			: `/event/${eventStore.eventId}/archetype-review`,
+	);
 }
 
 // ── Stat strip ──
 const conversionLabel = computed(() => conversionTargetLabel(metagameStore.conversionTarget));
 
 const stats = computed(() => {
-	if (!detail.value)
-		return [];
+	if (!detail.value) return [];
 	const participation = [
 		{ label: 'Players', value: detail.value.playerCount },
 		{
 			label: 'Meta Share',
-			value: detail.value.metaShare != null
-				? `${detail.value.metaShare}%`
-				: null,
+			value: detail.value.metaShare != null ? `${detail.value.metaShare}%` : null,
 		},
 	];
-	if (!readsStandings.value)
-		return participation;
+	if (!readsStandings.value) return participation;
 	return [
 		...participation,
 		{
 			label: 'Win Rate',
-			value: detail.value.winRate != null
-				? `${detail.value.winRate}%`
-				: null,
+			value: detail.value.winRate != null ? `${detail.value.winRate}%` : null,
 		},
 		{ label: 'Avg Place', value: detail.value.avgPosition },
 		{
 			label: `Conversion (${conversionLabel.value})`,
-			value: detail.value.conversionRate != null && detail.value.convertedCount != null
-				? `${detail.value.conversionRate}% (${detail.value.convertedCount}/${detail.value.playerCount})`
-				: null,
+			value:
+				detail.value.conversionRate != null && detail.value.convertedCount != null
+					? `${detail.value.conversionRate}% (${detail.value.convertedCount}/${detail.value.playerCount})`
+					: null,
 		},
 	];
 });
 
 // ── Fetch ──
 async function fetchDetail() {
-	if (!eventStore.eventId || !archetypeId.value)
-		return;
+	if (!eventStore.eventId || !archetypeId.value) return;
 	// An Archetype the Event no longer holds, deleted or merged away, has no details to read.
 	if (archetypeStore.isLoaded && !heldArchetype.value) {
 		detail.value = null;
@@ -155,12 +145,13 @@ async function fetchDetail() {
 		return;
 	}
 	await runRequest(
-		() => metagameClient.loadArchetypeDetail(
-			eventStore.eventId!,
-			archetypeId.value,
-			metagameStore.scopeQuery,
-			{ board: archetypeCardBoardFilter.value, ...metagameStore.conversionTarget },
-		),
+		() =>
+			metagameClient.loadArchetypeDetail(
+				eventStore.eventId!,
+				archetypeId.value,
+				metagameStore.scopeQuery,
+				{ board: archetypeCardBoardFilter.value, ...metagameStore.conversionTarget },
+			),
 		{
 			latestKey: 'detail',
 			loadingRef: loading,
@@ -180,11 +171,15 @@ async function fetchDetail() {
 
 useConsumedEventData(['players']);
 
-watch(() => eventStore.eventId, async (eventId) => {
-	if (eventId && !playerStore.isLoaded) {
-		await playerStore.loadPlayersByEventId(eventId);
-	}
-}, { immediate: true });
+watch(
+	() => eventStore.eventId,
+	async (eventId) => {
+		if (eventId && !playerStore.isLoaded) {
+			await playerStore.loadPlayersByEventId(eventId);
+		}
+	},
+	{ immediate: true },
+);
 
 watch(
 	[
@@ -206,8 +201,7 @@ watch(
 	[availableSections, requestedSection],
 	async ([sections, requested]) => {
 		const nextSection = syncActiveSection(sections, requested);
-		if (!nextSection)
-			return;
+		if (!nextSection) return;
 
 		if (nextSection !== requested) {
 			await router.replace({
@@ -273,21 +267,16 @@ watch(
 		<!-- Key Cards (MTG only) -->
 		<UCard v-if="isMtg && detail.keyCards.length > 0">
 			<template #header>
-				<h3 class="text-base font-semibold">
-					Key Cards
-				</h3>
+				<h3 class="text-base font-semibold">Key Cards</h3>
 			</template>
-			<MetagameKeyCards
-				:cards="detail.keyCards"
-				:event-id="eventStore.eventId!"
-			/>
+			<MetagameKeyCards :cards="detail.keyCards" :event-id="eventStore.eventId!" />
 		</UCard>
 
 		<UISegmentedTabs
 			v-if="showSectionTabs"
 			:items="sectionTabs"
 			:model-value="activeSection ?? undefined"
-			@update:model-value="value => value !== undefined && setActiveSection(value)"
+			@update:model-value="(value) => value !== undefined && setActiveSection(value)"
 		/>
 
 		<!-- Card Breakdown -->
@@ -299,7 +288,7 @@ watch(
 			:board-filter="archetypeCardBoardFilter"
 			:show-deck-count="false"
 			:game="game"
-			:get-row-link="entry => `/event/${eventStore.eventId}/metagame/card/${entry.id}`"
+			:get-row-link="(entry) => `/event/${eventStore.eventId}/metagame/card/${entry.id}`"
 			@update:sort-by="archetypeCardSortBy = $event"
 			@update:board-filter="archetypeCardBoardFilter = $event"
 		/>

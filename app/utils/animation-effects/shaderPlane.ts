@@ -74,17 +74,15 @@ export function createShaderPlaneEffect<Params>(
 		iResolution: {
 			value: new three.Vector2(1, 1),
 		},
-		...feedbackTargets
+		...(feedbackTargets
 			? {
 					iBuffer: { value: feedbackTargets.read.texture },
 				}
-			: {},
+			: {}),
 	};
 	for (const [key, value] of Object.entries(options.uniforms(params))) {
 		uniforms[key] = {
-			value: typeof value === 'string'
-				? new three.Color(value)
-				: value,
+			value: typeof value === 'string' ? new three.Color(value) : value,
 		};
 	}
 
@@ -109,10 +107,8 @@ export function createShaderPlaneEffect<Params>(
 		setParams: (next) => {
 			for (const [key, value] of Object.entries(options.uniforms(next))) {
 				const uniform = uniforms[key]!;
-				if (typeof value === 'string')
-					(uniform.value as THREE.Color).set(value);
-				else
-					uniform.value = value;
+				if (typeof value === 'string') (uniform.value as THREE.Color).set(value);
+				else uniform.value = value;
 			}
 			timeScale = options.timeScale?.(next) ?? 1;
 		},
@@ -143,9 +139,11 @@ export function createShaderPlaneEffect<Params>(
 				harness.renderer.render(scene, camera);
 				harness.renderer.setRenderTarget(null);
 				harness.renderer.render(scene, camera);
-				[feedbackTargets.read, feedbackTargets.write] = [feedbackTargets.write, feedbackTargets.read];
-			}
-			else {
+				[feedbackTargets.read, feedbackTargets.write] = [
+					feedbackTargets.write,
+					feedbackTargets.read,
+				];
+			} else {
 				harness.renderer.render(scene, camera);
 			}
 		},

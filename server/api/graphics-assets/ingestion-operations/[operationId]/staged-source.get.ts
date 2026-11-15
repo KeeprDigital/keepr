@@ -29,7 +29,9 @@ export default defineEventHandler(async (event) => {
 			// The cause is what carries this sentence past the 5xx sanitizer; without it
 			// the author waiting to confirm an ingestion reads 'Internal Server Error'
 			// and cannot tell a staging store that went away from a broken server (#321).
-			const cause = new TemporarilyUnavailableError('Staged Graphic Asset source bytes are temporarily unavailable');
+			const cause = new TemporarilyUnavailableError(
+				'Staged Graphic Asset source bytes are temporarily unavailable',
+			);
 			throw createError({
 				statusCode: cause.statusCode,
 				statusMessage: 'Service Unavailable',
@@ -42,11 +44,10 @@ export default defineEventHandler(async (event) => {
 				'content-type': 'application/octet-stream',
 				'content-length': String(staged.byteLength),
 				'cache-control': 'private, no-store',
-				'vary': 'cookie',
+				vary: 'cookie',
 			},
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

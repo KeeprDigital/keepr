@@ -2,7 +2,10 @@ import type { EventKind } from './config/games';
 import type { Seat } from './types/enums';
 import type { GraphicGroupChildConfig, GraphicItemConfig } from './types/graphics';
 import type { FeatureMatchLayoutConfig } from './types/screenConfig';
-import { FEATURE_MATCH_TOKEN_SEATS, featureMatchTokenCatalogue } from './featureMatchTokenCatalogue';
+import {
+	FEATURE_MATCH_TOKEN_SEATS,
+	featureMatchTokenCatalogue,
+} from './featureMatchTokenCatalogue';
 import { graphicTextTemplateInputKeys } from './modules/graphics/textTemplate';
 import { PLAYER_SIDE_VALUES } from './types/enums';
 
@@ -18,9 +21,13 @@ import { PLAYER_SIDE_VALUES } from './types/enums';
 const PAIR: readonly string[] = PLAYER_SIDE_VALUES;
 
 /** The tokens only a Commander Event is offered: its Commanders' images. */
-const COMMANDER_TOKENS: ReadonlySet<string> = new Set(featureMatchTokenCatalogue('mtg-commander')
-	.map(token => token.key)
-	.filter(key => !featureMatchTokenCatalogue('mtg-two-player').some(token => token.key === key)));
+const COMMANDER_TOKENS: ReadonlySet<string> = new Set(
+	featureMatchTokenCatalogue('mtg-commander')
+		.map((token) => token.key)
+		.filter(
+			(key) => !featureMatchTokenCatalogue('mtg-two-player').some((token) => token.key === key),
+		),
+);
 
 function isBeyondThePair(seat: Seat | undefined): boolean {
 	return seat !== undefined && !PAIR.includes(seat);
@@ -28,25 +35,31 @@ function isBeyondThePair(seat: Seat | undefined): boolean {
 
 /** Whether one Graphic Item names a third or fourth Seat, or a Commander term. */
 function namesAFourSeatTerm(item: GraphicItemConfig | GraphicGroupChildConfig): boolean {
-	if (item.type === 'group')
-		return item.children.some(namesAFourSeatTerm);
+	if (item.type === 'group') return item.children.some(namesAFourSeatTerm);
 	// Commander Damage, and an Eliminated Seat, are a Commander game's alone.
-	if (item.type === 'commander-damage' || (item.type === 'seat-indicator' && item.state === 'eliminated'))
+	if (
+		item.type === 'commander-damage' ||
+		(item.type === 'seat-indicator' && item.state === 'eliminated')
+	)
 		return true;
 	if (item.type === 'text') {
 		return [
 			...graphicTextTemplateInputKeys(item.text),
 			...Object.keys(item.placeholderStyles ?? {}),
-		]
-			.some(key => isBeyondThePair(FEATURE_MATCH_TOKEN_SEATS[key]) || COMMANDER_TOKENS.has(key));
+		].some((key) => isBeyondThePair(FEATURE_MATCH_TOKEN_SEATS[key]) || COMMANDER_TOKENS.has(key));
 	}
 	return 'playerSide' in item && isBeyondThePair(item.playerSide);
 }
 
 /** Whether a layout is a four-Seat layout: it names a third or fourth Seat, or a Commander term. */
-export function isFourSeatFeatureMatchLayout(layout: Pick<FeatureMatchLayoutConfig, 'sources' | 'composition'>): boolean {
-	return layout.sources.some(source => source.sourceRole !== 'main' && isBeyondThePair(source.sourceRole))
-		|| layout.composition.items.some(namesAFourSeatTerm);
+export function isFourSeatFeatureMatchLayout(
+	layout: Pick<FeatureMatchLayoutConfig, 'sources' | 'composition'>,
+): boolean {
+	return (
+		layout.sources.some(
+			(source) => source.sourceRole !== 'main' && isBeyondThePair(source.sourceRole),
+		) || layout.composition.items.some(namesAFourSeatTerm)
+	);
 }
 
 /** Whether a layout, four-Seat or not, is offered to an Event of this kind: a four-Seat one to a Commander Event alone, any other to every other Event. */
@@ -55,7 +68,10 @@ export function isFourSeatLayoutOfferedTo(fourSeat: boolean, kind: EventKind): b
 }
 
 /** Whether a layout is offered to an Event of this kind, by what it names. */
-export function isFeatureMatchLayoutOfferedTo(layout: Pick<FeatureMatchLayoutConfig, 'sources' | 'composition'>, kind: EventKind): boolean {
+export function isFeatureMatchLayoutOfferedTo(
+	layout: Pick<FeatureMatchLayoutConfig, 'sources' | 'composition'>,
+	kind: EventKind,
+): boolean {
 	return isFourSeatLayoutOfferedTo(isFourSeatFeatureMatchLayout(layout), kind);
 }
 
@@ -64,6 +80,9 @@ export function isFeatureMatchLayoutOfferedTo(layout: Pick<FeatureMatchLayoutCon
  * Commander Event alone, any other every Event. Wider than what is offered, as a
  * Commander Event's Screen may still hold a pair's layout.
  */
-export function isFeatureMatchLayoutHeldBy(layout: Pick<FeatureMatchLayoutConfig, 'sources' | 'composition'>, kind: EventKind): boolean {
+export function isFeatureMatchLayoutHeldBy(
+	layout: Pick<FeatureMatchLayoutConfig, 'sources' | 'composition'>,
+	kind: EventKind,
+): boolean {
 	return kind === 'mtg-commander' || !isFourSeatFeatureMatchLayout(layout);
 }

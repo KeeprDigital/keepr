@@ -4,7 +4,7 @@ import { LOAD_TOLERANT_WAIT_MS } from './loadTolerantBounds';
 /** One round: pending promises, then a short timer, so answers on later tasks land. */
 async function settleRound() {
 	await flushPromises();
-	await new Promise(resolve => setTimeout(resolve, 5));
+	await new Promise((resolve) => setTimeout(resolve, 5));
 }
 
 /**
@@ -35,12 +35,12 @@ export async function settleUntilStill(snapshot: () => unknown) {
 	let last = JSON.stringify(snapshot());
 	for (let still = 0; still < STILL_ROUNDS;) {
 		if (Date.now() >= deadline)
-			throw new Error(`settleUntilStill: the snapshot did not hold still within ${LOAD_TOLERANT_WAIT_MS} ms`);
+			throw new Error(
+				`settleUntilStill: the snapshot did not hold still within ${LOAD_TOLERANT_WAIT_MS} ms`,
+			);
 		await settleRound();
 		const next = JSON.stringify(snapshot());
-		still = next === last
-			? still + 1
-			: 0;
+		still = next === last ? still + 1 : 0;
 		last = next;
 	}
 }

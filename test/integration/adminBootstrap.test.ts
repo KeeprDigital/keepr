@@ -37,7 +37,10 @@ interface EnsureAdminResponse {
 async function ensureAdmin(body: unknown) {
 	return fetch(ROUTE, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json', 'x-admin-bootstrap-token': INTEGRATION_ADMIN_BOOTSTRAP_TOKEN },
+		headers: {
+			'Content-Type': 'application/json',
+			'x-admin-bootstrap-token': INTEGRATION_ADMIN_BOOTSTRAP_TOKEN,
+		},
 		body: JSON.stringify(body),
 	});
 }
@@ -50,7 +53,7 @@ async function signIn(email: string, password: string) {
 		// #410, and `auth.test.ts` is where what it refuses is asserted.
 		headers: {
 			'Content-Type': 'application/json',
-			'Origin': url('/'),
+			Origin: url('/'),
 		},
 		body: JSON.stringify({ email, password }),
 	});
@@ -60,7 +63,7 @@ async function signIn(email: string, password: string) {
 async function sessionFrom(signInResponse: Awaited<ReturnType<typeof signIn>>) {
 	const cookie = signInResponse.headers
 		.getSetCookie()
-		.map(entry => entry.split(';')[0])
+		.map((entry) => entry.split(';')[0])
 		.join('; ');
 	expect(cookie).toContain('better-auth.session_token=');
 
@@ -68,7 +71,7 @@ async function sessionFrom(signInResponse: Awaited<ReturnType<typeof signIn>>) {
 		headers: { Cookie: cookie },
 	});
 	expect(response.status).toBe(200);
-	return await response.json() as { user: { id: string; email: string; role?: string | null } };
+	return (await response.json()) as { user: { id: string; email: string; role?: string | null } };
 }
 
 describe('first-admin bootstrap', () => {
@@ -83,10 +86,14 @@ describe('first-admin bootstrap', () => {
 	});
 
 	it('creates an admin account that can sign in', async () => {
-		const response = await ensureAdmin({ email: EMAIL, password: PASSWORD, name: 'Bootstrap Admin' });
+		const response = await ensureAdmin({
+			email: EMAIL,
+			password: PASSWORD,
+			name: 'Bootstrap Admin',
+		});
 
 		expect(response.status).toBe(200);
-		const body = await response.json() as EnsureAdminResponse;
+		const body = (await response.json()) as EnsureAdminResponse;
 		expect(body).toMatchObject({ outcome: 'created', email: EMAIL, grantedAdminRole: true });
 
 		const session = await sessionFrom(await signIn(EMAIL, PASSWORD));
@@ -108,12 +115,9 @@ describe('first-admin bootstrap', () => {
 	it('does nothing on GET, so a password cannot travel in a query string', async () => {
 		// A query string is logged by every proxy between the operator and the
 		// Worker, which is why the handler is `.post.ts` and takes a body.
-		const response = await fetch(
-			`${ROUTE}?email=query@keepr.digital&password=${PASSWORD}`,
-			{
-				headers: { 'x-admin-bootstrap-token': INTEGRATION_ADMIN_BOOTSTRAP_TOKEN },
-			},
-		);
+		const response = await fetch(`${ROUTE}?email=query@keepr.digital&password=${PASSWORD}`, {
+			headers: { 'x-admin-bootstrap-token': INTEGRATION_ADMIN_BOOTSTRAP_TOKEN },
+		});
 
 		// Not 405: under `ssr: false` an unmatched path is answered by the SPA
 		// shell, so what says the handler was never reached is the absence of its

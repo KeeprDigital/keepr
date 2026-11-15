@@ -10,8 +10,13 @@ describe('formatPlayerRecord', () => {
 		expect(formatPlayerRecord({ wins: 3, losses: 1, draws: 1 }, null)).toBe('3-1-1');
 	});
 
-	it('follows the Event\'s separator and its choice to show no draws', () => {
-		expect(formatPlayerRecord({ wins: 2, losses: 0, draws: 0 }, { displayRecordSeparator: '/', displayHideZeroDraws: false })).toBe('2/0/0');
+	it("follows the Event's separator and its choice to show no draws", () => {
+		expect(
+			formatPlayerRecord(
+				{ wins: 2, losses: 0, draws: 0 },
+				{ displayRecordSeparator: '/', displayHideZeroDraws: false },
+			),
+		).toBe('2/0/0');
 	});
 
 	it('counts a missing figure as none', () => {

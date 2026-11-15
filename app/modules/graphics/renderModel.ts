@@ -1,6 +1,11 @@
 import type { CSSProperties } from 'vue';
 import type { SocialProfilePresentationProjection } from '~~/shared/modules/broadcast-graphics-live-session';
-import type { GraphicAnimationOwnerValues, GraphicAnimationValues, GraphicThemeTokens, ShapeGeometrySize } from '~~/shared/modules/graphics';
+import type {
+	GraphicAnimationOwnerValues,
+	GraphicAnimationValues,
+	GraphicThemeTokens,
+	ShapeGeometrySize,
+} from '~~/shared/modules/graphics';
 import type { GraphicsHostTokenPresentation } from '~~/shared/modules/graphics/hostContract';
 import type { OpCardColor } from '~~/shared/types/card/op';
 import type { Seat } from '~~/shared/types/enums';
@@ -227,7 +232,9 @@ export interface GraphicsCompositionRenderModelInput {
 	 * entry once the recipe's own end has passed, exactly as the Live Session stops
 	 * projecting a settled phase.
 	 */
-	itemAnimation?: Readonly<Record<string, Readonly<Record<string, readonly GraphicsAnimationProjection[]>>>>;
+	itemAnimation?: Readonly<
+		Record<string, Readonly<Record<string, readonly GraphicsAnimationProjection[]>>>
+	>;
 	/**
 	 * The accepted on-air Graphic Input values a Graphic Text Template renders,
 	 * keyed by Broadcast Graphic id.
@@ -243,9 +250,13 @@ export interface GraphicsCompositionRenderModelInput {
 	 */
 	socialProfileValues?: Readonly<Record<string, SocialProfileProjectionValues>>;
 	/** Sampled synchronized Presentation Group frames, keyed by graphic and projection. */
-	socialProfilePresentations?: Readonly<Record<string, Readonly<Record<string, SocialProfilePresentationProjection>>>>;
+	socialProfilePresentations?: Readonly<
+		Record<string, Readonly<Record<string, SocialProfilePresentationProjection>>>
+	>;
 	/** Sampled Presentation Group frames an update phase is transitioning away from. */
-	outgoingSocialProfilePresentations?: Readonly<Record<string, Readonly<Record<string, SocialProfilePresentationProjection>>>>;
+	outgoingSocialProfilePresentations?: Readonly<
+		Record<string, Readonly<Record<string, SocialProfilePresentationProjection>>>
+	>;
 	/** Correlated Social Profile values an update phase is transitioning away from. */
 	outgoingSocialProfileValues?: Readonly<Record<string, SocialProfileProjectionValues>>;
 	/**
@@ -748,18 +759,16 @@ function rectStyle(rect: GraphicRect): CSSProperties {
  * convention: zero degrees points up, ninety degrees points right.
  */
 function gradientAxis(angle: number) {
-	const radians = ((Number.isFinite(angle)
-		? angle
-		: 0) * Math.PI) / 180;
+	const radians = ((Number.isFinite(angle) ? angle : 0) * Math.PI) / 180;
 	const dx = Math.sin(radians);
 	const dy = -Math.cos(radians);
 	const round = (value: number) => `${Math.round(value * 10000) / 10000}`;
 
 	return {
-		x1: round(0.5 - (dx / 2)),
-		y1: round(0.5 - (dy / 2)),
-		x2: round(0.5 + (dx / 2)),
-		y2: round(0.5 + (dy / 2)),
+		x1: round(0.5 - dx / 2),
+		y1: round(0.5 - dy / 2),
+		x2: round(0.5 + dx / 2),
+		y2: round(0.5 + dy / 2),
 	};
 }
 
@@ -790,7 +799,7 @@ export function fillDescriptor(
 		gradient: {
 			id: gradientId,
 			...gradientAxis(style.fill.angle),
-			stops: style.fill.stops.map(stop => ({
+			stops: style.fill.stops.map((stop) => ({
 				offset: `${Math.round(clampOpacity(stop.position) * 10000) / 100}%`,
 				color: paintColour(output, stop.color),
 				opacity: clampOpacity(stop.opacity),
@@ -820,13 +829,14 @@ function paintedSurface(
 	geometry: ShapeGeometry,
 	style: GraphicSurfaceStyle,
 ): GraphicSurfaceRenderDescriptor {
-	const outline = style.outline && style.outline.width > 0
-		? {
-				color: paintColour(output, style.outline.color),
-				width: style.outline.width,
-				clipId: `graphic-outline-${scope}`,
-			}
-		: undefined;
+	const outline =
+		style.outline && style.outline.width > 0
+			? {
+					color: paintColour(output, style.outline.color),
+					width: style.outline.width,
+					clipId: `graphic-outline-${scope}`,
+				}
+			: undefined;
 
 	return {
 		width: Math.max(0, size.width),
@@ -845,13 +855,14 @@ function surfaceDescriptor(
 	geometry: ShapeGeometry,
 	style: GraphicSurfaceStyle | undefined,
 ): GraphicSurfaceRenderDescriptor | undefined {
-	return style
-		? paintedSurface(output, scope, size, geometry, style)
-		: undefined;
+	return style ? paintedSurface(output, scope, size, geometry, style) : undefined;
 }
 
 /** A glow is a drop-shadow of the element's own painted alpha. */
-function glowFilter(output: ScreenOutput, style: GraphicSurfaceStyle | undefined): string | undefined {
+function glowFilter(
+	output: ScreenOutput,
+	style: GraphicSurfaceStyle | undefined,
+): string | undefined {
 	return glowDropShadow(output, style?.glow);
 }
 
@@ -881,11 +892,9 @@ const REVEAL_MASK_DIRECTION: Record<GraphicRevealEdge, string> = {
  */
 function revealMask(values: GraphicAnimationOwnerValues): string | undefined {
 	const reveal = values.reveal;
-	if (!reveal)
-		return undefined;
+	if (!reveal) return undefined;
 	const visible = Math.max(0, Math.min(1, reveal.visible));
-	if (visible >= 1)
-		return undefined;
+	if (visible >= 1) return undefined;
 
 	const stop = `${motionValue(visible * 100)}%`;
 	return `linear-gradient(${REVEAL_MASK_DIRECTION[reveal.edge]}, #ffffff 0 ${stop}, #ffffff00 ${stop})`;
@@ -959,20 +968,17 @@ function motionStyle(
 			translateX += values.translate.x;
 			translateY += values.translate.y;
 		}
-		if (values.opacity !== undefined)
-			opacity = (opacity ?? 1) * values.opacity;
+		if (values.opacity !== undefined) opacity = (opacity ?? 1) * values.opacity;
 	}
 
 	if (translateX !== 0 || translateY !== 0)
 		parts.push(`translate(${motionValue(translateX)}px, ${motionValue(translateY)}px)`);
 
-	if (rotation !== 0)
-		parts.push(`rotate(${rotation}deg)`);
+	if (rotation !== 0) parts.push(`rotate(${rotation}deg)`);
 
 	for (let index = motion.length - 1; index >= 0; index -= 1) {
 		const values = motion[index]!;
-		if (values.scale === undefined)
-			continue;
+		if (values.scale === undefined) continue;
 		const scale = values.scale;
 		const origin = values.scaleOrigin ?? resolveGraphicAnimationOrigin(undefined);
 		const anchorPoint = resolveGraphicAnchorPoint(anchor);
@@ -997,9 +1003,7 @@ function motionStyle(
 			: {
 					opacity: motionValue(opacity),
 				}),
-		...(mask === undefined
-			? {}
-			: { maskImage: mask }),
+		...(mask === undefined ? {} : { maskImage: mask }),
 	};
 }
 
@@ -1032,12 +1036,9 @@ function enclosingMotionStyle(
 	// unreachable while at most two lifecycle phases are ever in play at one instant.
 	// `broadcastGraphicPhaseProjections` is where that bound is stated and tested.
 	const overflowing = revealMasks(enclosed)[1];
-	if (overflowing !== undefined)
-		style.maskImage = overflowing;
+	if (overflowing !== undefined) style.maskImage = overflowing;
 
-	return Object.keys(style).length === 0
-		? undefined
-		: style;
+	return Object.keys(style).length === 0 ? undefined : style;
 }
 
 const RESTING: readonly GraphicAnimationOwnerValues[] = [];
@@ -1047,10 +1048,13 @@ const RESTING: readonly GraphicAnimationOwnerValues[] = [];
  * `shrink` Text Overflow Policy clamps to this many lines, so the last visible
  * line ends in an ellipsis instead of overflowing.
  */
-export function graphicTextClampLines(height: number, fontSize: number, lineHeight: number): number {
+export function graphicTextClampLines(
+	height: number,
+	fontSize: number,
+	lineHeight: number,
+): number {
 	const lineBox = fontSize * lineHeight;
-	if (!Number.isFinite(lineBox) || lineBox <= 0)
-		return 1;
+	if (!Number.isFinite(lineBox) || lineBox <= 0) return 1;
 	return Math.max(1, Math.floor(height / lineBox));
 }
 
@@ -1067,7 +1071,10 @@ export function graphicTextClampLines(height: number, fontSize: number, lineHeig
  * exactly this vocabulary without being Text Graphic Items, and neither has a
  * Graphic Text Template for a `TextGraphicItemConfig` to promise.
  */
-export type GraphicTextStyled = Pick<TextGraphicItemConfig, 'typography' | 'overflowPolicy' | 'height'>;
+export type GraphicTextStyled = Pick<
+	TextGraphicItemConfig,
+	'typography' | 'overflowPolicy' | 'height'
+>;
 
 export function graphicTextStyle(
 	output: ScreenOutput,
@@ -1093,8 +1100,7 @@ export function graphicTextStyle(
 		position: 'relative',
 	};
 
-	if (item.overflowPolicy === 'clip')
-		return { ...base, textOverflow: 'clip' };
+	if (item.overflowPolicy === 'clip') return { ...base, textOverflow: 'clip' };
 
 	return {
 		...base,
@@ -1113,9 +1119,9 @@ const GROUP_ALIGNMENT: Record<GraphicGroupItemConfig['align'], string> = {
 };
 
 const GROUP_JUSTIFICATION: Record<GraphicGroupItemConfig['justify'], string> = {
-	'start': 'flex-start',
-	'center': 'center',
-	'end': 'flex-end',
+	start: 'flex-start',
+	center: 'center',
+	end: 'flex-end',
 	'space-between': 'space-between',
 };
 
@@ -1146,11 +1152,12 @@ function stackedPlacement(
 	const isRow = group.arrangement === 'row';
 	const mainExtent = isRow ? child.width : child.height;
 	const sizing = child.sizing ?? { mode: 'fixed' as const, size: mainExtent, weight: 1 };
-	const crossExtent = group.align === 'stretch'
-		? {}
-		: isRow
-			? { height: `${child.height}px` }
-			: { width: `${child.width}px` };
+	const crossExtent =
+		group.align === 'stretch'
+			? {}
+			: isRow
+				? { height: `${child.height}px` }
+				: { width: `${child.width}px` };
 
 	return {
 		// Load-bearing, and not only for this element's own children: a cross-transitioning
@@ -1158,9 +1165,10 @@ function stackedPlacement(
 		// this as unused would send them out to fill the canvas instead of the child.
 		position: 'relative',
 		boxSizing: 'border-box',
-		flex: sizing.mode === 'fill'
-			? `${Math.max(0, sizing.weight)} 1 0`
-			: `0 0 ${Math.max(0, sizing.size)}px`,
+		flex:
+			sizing.mode === 'fill'
+				? `${Math.max(0, sizing.weight)} 1 0`
+				: `0 0 ${Math.max(0, sizing.size)}px`,
 		alignSelf: GROUP_ALIGNMENT[group.align],
 		minWidth: 0,
 		minHeight: 0,
@@ -1182,14 +1190,11 @@ function textBoxStyle(): CSSProperties {
 }
 
 function groupBoxStyle(group: GraphicGroupItemConfig): CSSProperties {
-	if (group.arrangement === 'canvas')
-		return {};
+	if (group.arrangement === 'canvas') return {};
 
 	return {
 		display: 'flex',
-		flexDirection: group.arrangement === 'row'
-			? 'row'
-			: 'column',
+		flexDirection: group.arrangement === 'row' ? 'row' : 'column',
 		gap: `${Math.max(0, group.gap)}px`,
 		padding: `${Math.max(0, group.padding)}px`,
 		alignItems: GROUP_ALIGNMENT[group.align],
@@ -1202,10 +1207,8 @@ function groupBoxStyle(group: GraphicGroupItemConfig): CSSProperties {
  * clip holds them inside the group's own Shape Geometry.
  */
 function groupClip(group: GraphicGroupItemConfig): CSSProperties {
-	if (!group.clip)
-		return {};
-	if (isRectangularShapeGeometry(group.geometry))
-		return { overflow: 'hidden' };
+	if (!group.clip) return {};
+	if (isRectangularShapeGeometry(group.geometry)) return { overflow: 'hidden' };
 	return {
 		clipPath: `path('${shapeGeometryPath(group, group.geometry)}')`,
 	};
@@ -1239,28 +1242,18 @@ function placeholderStyle(
 	output: ScreenOutput,
 	style: GraphicPlaceholderStyle | undefined,
 ): CSSProperties | undefined {
-	if (!style || Object.keys(style).length === 0)
-		return undefined;
+	if (!style || Object.keys(style).length === 0) return undefined;
 
 	const resolved: CSSProperties = {};
-	if (style.font !== undefined)
-		resolved.fontFamily = resolveGraphicFontFamily(style.font);
-	if (style.fontSize !== undefined)
-		resolved.fontSize = `${style.fontSize}px`;
-	if (style.fontWeight !== undefined)
-		resolved.fontWeight = style.fontWeight;
-	if (style.fontStyle !== undefined)
-		resolved.fontStyle = style.fontStyle;
-	if (style.textTransform !== undefined)
-		resolved.textTransform = style.textTransform;
-	if (style.letterSpacing !== undefined)
-		resolved.letterSpacing = `${style.letterSpacing}px`;
-	if (style.color !== undefined)
-		resolved.color = paintColour(output, style.color);
+	if (style.font !== undefined) resolved.fontFamily = resolveGraphicFontFamily(style.font);
+	if (style.fontSize !== undefined) resolved.fontSize = `${style.fontSize}px`;
+	if (style.fontWeight !== undefined) resolved.fontWeight = style.fontWeight;
+	if (style.fontStyle !== undefined) resolved.fontStyle = style.fontStyle;
+	if (style.textTransform !== undefined) resolved.textTransform = style.textTransform;
+	if (style.letterSpacing !== undefined) resolved.letterSpacing = `${style.letterSpacing}px`;
+	if (style.color !== undefined) resolved.color = paintColour(output, style.color);
 
-	return Object.keys(resolved).length > 0
-		? resolved
-		: undefined;
+	return Object.keys(resolved).length > 0 ? resolved : undefined;
 }
 
 /**
@@ -1276,12 +1269,10 @@ function resolvedInputValues(
 	accepted: Readonly<Record<string, GraphicInputValue>> | undefined,
 	substituteAuthoredDefaults: boolean,
 ): Record<string, GraphicInputValue> {
-	if (!substituteAuthoredDefaults)
-		return { ...accepted };
+	if (!substituteAuthoredDefaults) return { ...accepted };
 
 	const values: Record<string, GraphicInputValue> = {};
-	for (const declaration of declarations)
-		values[declaration.key] = declaration.default;
+	for (const declaration of declarations) values[declaration.key] = declaration.default;
 	return {
 		...values,
 		...accepted,
@@ -1301,51 +1292,53 @@ function textDescriptor(
 		inputs.declarations,
 		inputs.values,
 		inputs.socialProfileValues,
-	)
-		.map((segment) => {
-			const presentation = segment.inputKey === undefined
+	).map((segment) => {
+		const presentation =
+			segment.inputKey === undefined
 				? undefined
 				: inputs.textTokenPresentations?.[segment.inputKey];
-			const symbolCount = presentation === 'mtg-mana-colors'
-				? segment.text.toUpperCase().split('').filter(color => 'WUBRGC'.includes(color)).length
+		const symbolCount =
+			presentation === 'mtg-mana-colors'
+				? segment.text
+						.toUpperCase()
+						.split('')
+						.filter((color) => 'WUBRGC'.includes(color)).length
 				: 0;
-			const manaColors = presentation === 'mtg-mana-colors' && symbolCount > 0
+		const manaColors =
+			presentation === 'mtg-mana-colors' && symbolCount > 0
 				? {
 						colors: segment.text,
 						symbolCount,
 						monochrome: output === 'key',
 					}
 				: undefined;
-			const opColors = presentation === 'op-colors'
-				? parseOpColors(segment.text)
-				: [];
-			return {
-				text: segment.text,
-				inputKey: segment.inputKey,
-				style: segment.inputKey === undefined
+		const opColors = presentation === 'op-colors' ? parseOpColors(segment.text) : [];
+		return {
+			text: segment.text,
+			inputKey: segment.inputKey,
+			style:
+				segment.inputKey === undefined
 					? undefined
 					: placeholderStyle(output, item.placeholderStyles?.[segment.inputKey]),
-				...(manaColors
-					? { manaColors }
-					: {}),
-				...(opColors.length > 0
-					? {
-							opColors: { colors: opColors, monochrome: output === 'key' },
-						}
-					: {}),
-				// Only a bandai-keepr Printing image or a Scryfall card image is loaded on air; any other value paints as its text.
-				...(presentation === 'op-card-image' && isOpCardImageUrl(segment.text)
-					? {
-							cardImage: { url: segment.text, monochrome: output === 'key', alt: 'Leader' },
-						}
-					: {}),
-				...(presentation === 'mtg-card-image' && isScryfallCardImageUrl(segment.text)
-					? {
-							cardImage: { url: segment.text, monochrome: output === 'key', alt: 'Commander' },
-						}
-					: {}),
-			};
-		});
+			...(manaColors ? { manaColors } : {}),
+			...(opColors.length > 0
+				? {
+						opColors: { colors: opColors, monochrome: output === 'key' },
+					}
+				: {}),
+			// Only a bandai-keepr Printing image or a Scryfall card image is loaded on air; any other value paints as its text.
+			...(presentation === 'op-card-image' && isOpCardImageUrl(segment.text)
+				? {
+						cardImage: { url: segment.text, monochrome: output === 'key', alt: 'Leader' },
+					}
+				: {}),
+			...(presentation === 'mtg-card-image' && isScryfallCardImageUrl(segment.text)
+				? {
+						cardImage: { url: segment.text, monochrome: output === 'key', alt: 'Commander' },
+					}
+				: {}),
+		};
+	});
 
 	return {
 		id: item.id,
@@ -1358,11 +1351,12 @@ function textDescriptor(
 		},
 		surface: surfaceDescriptor(output, scope, item, squareShapeGeometry(), surfaceStyle),
 		textStyle: graphicTextStyle(output, item),
-		text: segments.map(segment => segment.text).join(''),
+		text: segments.map((segment) => segment.text).join(''),
 		textSegments: segments,
-		shrink: item.overflowPolicy === 'shrink'
-			? { minFontSize: item.minFontSize, maxFontSize: item.typography.fontSize }
-			: undefined,
+		shrink:
+			item.overflowPolicy === 'shrink'
+				? { minFontSize: item.minFontSize, maxFontSize: item.typography.fontSize }
+				: undefined,
 	};
 }
 
@@ -1395,28 +1389,26 @@ function resolvedTextDescriptor(
 		surface: surfaceDescriptor(output, scope, item, squareShapeGeometry(), surfaceStyle),
 		textStyle: graphicTextStyle(output, item),
 		text,
-		textSegments: [
-			{ text },
-		],
-		shrink: item.overflowPolicy === 'shrink'
-			? { minFontSize: item.minFontSize, maxFontSize: item.typography.fontSize }
-			: undefined,
-		lifeChange: item.type === 'player-life'
-			? {
-					animation: item.lifeAnimation,
-					durationMs: item.lifeAnimationDurationMs,
-					accentColor: paintColour(output, item.lifeAnimationAccentColor),
-				}
-			: undefined,
+		textSegments: [{ text }],
+		shrink:
+			item.overflowPolicy === 'shrink'
+				? { minFontSize: item.minFontSize, maxFontSize: item.typography.fontSize }
+				: undefined,
+		lifeChange:
+			item.type === 'player-life'
+				? {
+						animation: item.lifeAnimation,
+						durationMs: item.lifeAnimationDurationMs,
+						accentColor: paintColour(output, item.lifeAnimationAccentColor),
+					}
+				: undefined,
 	};
 }
 
 /** A life total as it reads on air: an absent one renders nothing rather than a zero. */
 function lifeTotalText(state: GraphicsFeatureMatchPlayerState | undefined): string {
 	const total = state?.lifeTotal;
-	return total === null || total === undefined
-		? ''
-		: String(total);
+	return total === null || total === undefined ? '' : String(total);
 }
 
 /**
@@ -1431,9 +1423,12 @@ function winBoxStates(
 ): boolean[] {
 	const wins = Math.max(0, Math.floor(featureMatch?.[item.playerSide].gameWins ?? 0));
 	const bestOf = Math.max(1, Math.floor(featureMatch?.bestOf ?? 3));
-	return Array.from({
-		length: Math.ceil(bestOf / 2),
-	}, (_, index) => index < wins);
+	return Array.from(
+		{
+			length: Math.ceil(bestOf / 2),
+		},
+		(_, index) => index < wins,
+	);
 }
 
 /**
@@ -1476,9 +1471,7 @@ function gameWinsDescriptor(
 			// rather than reflowing: there is no Text Overflow Policy to author.
 			textStyle: graphicTextStyle(output, { ...item, overflowPolicy: 'clip' }),
 			text,
-			textSegments: [
-				{ text },
-			],
+			textSegments: [{ text }],
 		};
 	}
 
@@ -1488,9 +1481,7 @@ function gameWinsDescriptor(
 		style: {
 			...base.style,
 			display: 'flex',
-			flexDirection: item.boxOrientation === 'vertical'
-				? 'column'
-				: 'row',
+			flexDirection: item.boxOrientation === 'vertical' ? 'column' : 'row',
 			alignItems: 'center',
 			justifyContent: 'center',
 			gap: `${item.boxGap}px`,
@@ -1561,11 +1552,10 @@ function deckListGridLayout(
 
 	for (let columns = 1; columns <= count; columns++) {
 		const rows = Math.ceil(count / columns);
-		const widthLimit = (width - (DECK_LIST_GRID_GAP * (columns - 1))) / columns;
-		const heightLimit = ((height - (DECK_LIST_GRID_GAP * (rows - 1))) / rows) * DECK_LIST_CARD_ASPECT;
+		const widthLimit = (width - DECK_LIST_GRID_GAP * (columns - 1)) / columns;
+		const heightLimit = ((height - DECK_LIST_GRID_GAP * (rows - 1)) / rows) * DECK_LIST_CARD_ASPECT;
 		const cardWidth = Math.min(widthLimit, heightLimit);
-		if (cardWidth > best.cardWidth)
-			best = { columns, cardWidth };
+		if (cardWidth > best.cardWidth) best = { columns, cardWidth };
 	}
 
 	const cardWidth = Math.max(1, Math.floor(best.cardWidth));
@@ -1590,47 +1580,47 @@ function deckListCardDescriptor(
 		name: card.name,
 		quantity: card.quantity,
 		style: { position: 'relative', width: `${size.width}px`, height: `${size.height}px` },
-		image: card.imageUrl === null
-			? undefined
-			: {
-					src: card.imageUrl,
-					// Contained, never cropped: card art is legible content, not decor.
-					style: {
-						display: 'block',
-						width: '100%',
-						height: '100%',
-						objectFit: 'contain',
-						borderRadius: MTG_CARD_BORDER_RADIUS,
-						filter: output === 'key'
-							? KEY_MEDIA_ALPHA_TO_WHITE
-							: undefined,
+		image:
+			card.imageUrl === null
+				? undefined
+				: {
+						src: card.imageUrl,
+						// Contained, never cropped: card art is legible content, not decor.
+						style: {
+							display: 'block',
+							width: '100%',
+							height: '100%',
+							objectFit: 'contain',
+							borderRadius: MTG_CARD_BORDER_RADIUS,
+							filter: output === 'key' ? KEY_MEDIA_ALPHA_TO_WHITE : undefined,
+						},
 					},
-				},
-		placeholder: card.imageUrl !== null
-			? undefined
-			: {
-					surface: paintedSurface(
-						output,
-						scope,
-						size,
-						roundedShapeGeometry(Math.max(2, Math.round(size.width * 0.05))),
-						DECK_LIST_PLACEHOLDER_SURFACE_STYLE,
-					),
-					textStyle: {
-						position: 'absolute',
-						inset: '0',
-						display: 'flex',
-						alignItems: 'center',
-						justifyContent: 'center',
-						textAlign: 'center',
-						padding: `${Math.round(size.width * 0.08)}px`,
-						fontSize: `${nameFontSize}px`,
-						lineHeight: 1.15,
-						overflowWrap: 'break-word',
-						overflow: 'hidden',
-						color: paintColour(output, '#ffffff'),
+		placeholder:
+			card.imageUrl !== null
+				? undefined
+				: {
+						surface: paintedSurface(
+							output,
+							scope,
+							size,
+							roundedShapeGeometry(Math.max(2, Math.round(size.width * 0.05))),
+							DECK_LIST_PLACEHOLDER_SURFACE_STYLE,
+						),
+						textStyle: {
+							position: 'absolute',
+							inset: '0',
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							textAlign: 'center',
+							padding: `${Math.round(size.width * 0.08)}px`,
+							fontSize: `${nameFontSize}px`,
+							lineHeight: 1.15,
+							overflowWrap: 'break-word',
+							overflow: 'hidden',
+							color: paintColour(output, '#ffffff'),
+						},
 					},
-				},
 		badge: item.showQuantities
 			? {
 					text: `${card.quantity}x`,
@@ -1647,12 +1637,8 @@ function deckListCardDescriptor(
 						fontWeight: 700,
 						lineHeight: 1.4,
 						color: paintColour(output, '#ffffff'),
-						backgroundColor: output === 'key'
-							? undefined
-							: 'rgba(15, 23, 42, 0.85)',
-						borderRadius: output === 'key'
-							? undefined
-							: '4px',
+						backgroundColor: output === 'key' ? undefined : 'rgba(15, 23, 42, 0.85)',
+						borderRadius: output === 'key' ? undefined : '4px',
 					},
 				}
 			: undefined,
@@ -1696,9 +1682,7 @@ function deckListDescriptor(
 
 	if (item.view === 'list') {
 		const text = sideboard
-			.map(card => item.showQuantities
-				? `${card.quantity}x ${card.name}`
-				: card.name)
+			.map((card) => (item.showQuantities ? `${card.quantity}x ${card.name}` : card.name))
 			.join('\n');
 		return {
 			...base,
@@ -1718,9 +1702,7 @@ function deckListDescriptor(
 				height: item.height,
 			}),
 			text,
-			textSegments: [
-				{ text },
-			],
+			textSegments: [{ text }],
 			shrink: { minFontSize: DECK_LIST_MIN_FONT_SIZE, maxFontSize: item.typography.fontSize },
 		};
 	}
@@ -1740,7 +1722,8 @@ function deckListDescriptor(
 		},
 		deckList: {
 			cards: sideboard.map((card, index) =>
-				deckListCardDescriptor(output, `${scope}-card-${index}`, item, card, layout)),
+				deckListCardDescriptor(output, `${scope}-card-${index}`, item, card, layout),
+			),
 		},
 	};
 }
@@ -1760,7 +1743,10 @@ function deckListDescriptor(
  * path measured against the wrong box: an ignored shape is visible to its author,
  * while a misapplied one looks deliberate and is not.
  */
-function mediaClip(item: MediaGraphicItemConfig, size: ShapeGeometrySize | undefined): CSSProperties {
+function mediaClip(
+	item: MediaGraphicItemConfig,
+	size: ShapeGeometrySize | undefined,
+): CSSProperties {
 	if (!item.clipGeometry || isRectangularShapeGeometry(item.clipGeometry) || !size)
 		return { overflow: 'hidden' };
 	return {
@@ -1782,13 +1768,10 @@ function stackedChildClipSize(
 	group: GraphicGroupItemConfig,
 	child: GraphicGroupChildConfig,
 ): ShapeGeometrySize | undefined {
-	if (group.arrangement === 'canvas')
-		return child;
-	if (group.align === 'stretch')
-		return undefined;
+	if (group.arrangement === 'canvas') return child;
+	if (group.align === 'stretch') return undefined;
 	const sizing = child.sizing ?? { mode: 'fixed' as const, size: 0, weight: 1 };
-	if (sizing.mode !== 'fixed')
-		return undefined;
+	if (sizing.mode !== 'fixed') return undefined;
 	return group.arrangement === 'row'
 		? {
 				width: Math.max(0, sizing.size),
@@ -1815,9 +1798,7 @@ function mediaDescriptor(
 ): GraphicMediaRenderDescriptor {
 	return {
 		mediaKind: item.mediaKind,
-		src: item.asset && assetContent
-			? assetContent.url(item.asset)
-			: '',
+		src: item.asset && assetContent ? assetContent.url(item.asset) : '',
 		style: {
 			display: 'block',
 			width: '100%',
@@ -1825,9 +1806,7 @@ function mediaDescriptor(
 			objectFit: item.fit,
 			objectPosition: `${clampOpacity(item.focalPosition.horizontal) * 100}% ${clampOpacity(item.focalPosition.vertical) * 100}%`,
 			opacity: clampOpacity(item.opacity),
-			filter: output === 'key'
-				? KEY_MEDIA_ALPHA_TO_WHITE
-				: undefined,
+			filter: output === 'key' ? KEY_MEDIA_ALPHA_TO_WHITE : undefined,
 		},
 		loop: item.loop,
 		playbackRate: item.playbackRate,
@@ -1859,9 +1838,10 @@ function socialNetworkIconDescriptor(
 	placement: CSSProperties,
 	inputs: GraphicItemContentContext,
 ): GraphicItemRenderDescriptor {
-	const network = typeof item.network === 'string'
-		? item.network
-		: inputs.socialProfileValues?.[item.network.projectionKey]?.network;
+	const network =
+		typeof item.network === 'string'
+			? item.network
+			: inputs.socialProfileValues?.[item.network.projectionKey]?.network;
 	return {
 		id: item.id,
 		label: item.label,
@@ -1916,20 +1896,21 @@ interface GraphicItemContentContext {
  * ones a Text Graphic Item's host tokens belong to, and for a Graphic Group
  * every Seat its visible children read.
  */
-function seatsRead(item: GraphicItemConfig | GraphicGroupChildConfig, inputs: GraphicItemContentContext): Seat[] {
+function seatsRead(
+	item: GraphicItemConfig | GraphicGroupChildConfig,
+	inputs: GraphicItemContentContext,
+): Seat[] {
 	if (item.type === 'group')
-		return item.children.filter(child => child.visible).flatMap(child => seatsRead(child, inputs));
+		return item.children
+			.filter((child) => child.visible)
+			.flatMap((child) => seatsRead(child, inputs));
 	if (item.type === 'text') {
 		return graphicTextTemplateInputKeys(item.text).flatMap((key) => {
 			const seat = inputs.textTokenSeats?.[key];
-			return seat
-				? [seat]
-				: [];
+			return seat ? [seat] : [];
 		});
 	}
-	return ownsPlayerSide(item)
-		? [item.playerSide]
-		: [];
+	return ownsPlayerSide(item) ? [item.playerSide] : [];
 }
 
 /**
@@ -1937,16 +1918,21 @@ function seatsRead(item: GraphicItemConfig | GraphicGroupChildConfig, inputs: Gr
  * Such an item renders nothing: an empty Seat is not in the game (ADR-0087). An
  * item reading no Seat, or a filled one beside an empty one, renders.
  */
-function readsOnlyEmptySeats(item: GraphicItemConfig | GraphicGroupChildConfig, inputs: GraphicItemContentContext): boolean {
+function readsOnlyEmptySeats(
+	item: GraphicItemConfig | GraphicGroupChildConfig,
+	inputs: GraphicItemContentContext,
+): boolean {
 	const empty = inputs.featureMatch?.emptySeats;
-	if (!empty || empty.length === 0)
-		return false;
+	if (!empty || empty.length === 0) return false;
 	const seats = seatsRead(item, inputs);
-	return seats.length > 0 && seats.every(seat => empty.includes(seat));
+	return seats.length > 0 && seats.every((seat) => empty.includes(seat));
 }
 
 /** An item with nothing to show: its placement, and nothing painted in it. */
-function absentItemDescriptor(item: GraphicItemConfig | GraphicGroupChildConfig, placement: CSSProperties): GraphicItemRenderDescriptor {
+function absentItemDescriptor(
+	item: GraphicItemConfig | GraphicGroupChildConfig,
+	placement: CSSProperties,
+): GraphicItemRenderDescriptor {
 	return {
 		id: item.id,
 		label: item.label,
@@ -1968,16 +1954,13 @@ function commanderDamageDescriptor(
 	surfaceStyle: GraphicSurfaceStyle | undefined,
 	featureMatch: GraphicsFeatureMatchContext | undefined,
 ): GraphicItemRenderDescriptor {
-	const counts = (featureMatch?.[item.playerSide]?.commanderDamage ?? []).filter(count => count.damage > 0);
-	if (counts.length === 0)
-		return absentItemDescriptor(item, placement);
+	const counts = (featureMatch?.[item.playerSide]?.commanderDamage ?? []).filter(
+		(count) => count.damage > 0,
+	);
+	if (counts.length === 0) return absentItemDescriptor(item, placement);
 
 	const textSegments = counts.flatMap((count, index): GraphicTextRenderSegment[] => [
-		...(index > 0
-			? [
-					{ text: ' ' },
-				]
-			: []),
+		...(index > 0 ? [{ text: ' ' }] : []),
 		...(count.imageUrl && isScryfallCardImageUrl(count.imageUrl)
 			? [
 					{
@@ -2002,11 +1985,12 @@ function commanderDamageDescriptor(
 		},
 		surface: surfaceDescriptor(output, scope, item, squareShapeGeometry(), surfaceStyle),
 		textStyle: graphicTextStyle(output, item),
-		text: textSegments.map(segment => segment.text).join(''),
+		text: textSegments.map((segment) => segment.text).join(''),
 		textSegments,
-		shrink: item.overflowPolicy === 'shrink'
-			? { minFontSize: item.minFontSize, maxFontSize: item.typography.fontSize }
-			: undefined,
+		shrink:
+			item.overflowPolicy === 'shrink'
+				? { minFontSize: item.minFontSize, maxFontSize: item.typography.fontSize }
+				: undefined,
 	};
 }
 
@@ -2034,7 +2018,10 @@ function seatIndicatorDescriptor(
 	surfaceStyle: GraphicSurfaceStyle | undefined,
 	inputs: GraphicItemContentContext,
 ): GraphicItemRenderDescriptor {
-	if (!isSeatInIndicatorState(inputs.featureMatch, item.playerSide, item.state) && !(inputs.itemExitInPlay?.has(item.id) ?? false))
+	if (
+		!isSeatInIndicatorState(inputs.featureMatch, item.playerSide, item.state) &&
+		!(inputs.itemExitInPlay?.has(item.id) ?? false)
+	)
 		return absentItemDescriptor(item, placement);
 
 	return {
@@ -2050,7 +2037,10 @@ function seatIndicatorDescriptor(
 }
 
 /** A Clock Graphic Item with no clock to show: its placement, and nothing painted in it. */
-function absentClockDescriptor(item: ClockGraphicItemConfig, placement: CSSProperties): GraphicItemRenderDescriptor {
+function absentClockDescriptor(
+	item: ClockGraphicItemConfig,
+	placement: CSSProperties,
+): GraphicItemRenderDescriptor {
 	return {
 		id: item.id,
 		label: item.label,
@@ -2065,7 +2055,7 @@ function contextText(
 	featureMatch: GraphicsFeatureMatchContext | undefined,
 ): string {
 	return item.type === 'clock'
-		? featureMatch?.clockDisplayTime ?? ''
+		? (featureMatch?.clockDisplayTime ?? '')
 		: lifeTotalText(featureMatch?.[item.playerSide]);
 }
 
@@ -2080,14 +2070,19 @@ function childDescriptor(
 ): GraphicItemRenderDescriptor {
 	const scope = elementScope(graphicId, child.id);
 
-	if (readsOnlyEmptySeats(child, inputs))
-		return absentItemDescriptor(child, placement);
+	if (readsOnlyEmptySeats(child, inputs)) return absentItemDescriptor(child, placement);
 
 	// A Media Graphic Item and a Deck List Item carry no Graphic Surface Style, so
 	// neither inherits its Graphic Group's local style default either: there is
 	// nothing on them for that default to fill in.
 	if (child.type === 'media')
-		return mediaItemDescriptor(output, child, placement, assetContent, stackedChildClipSize(group, child));
+		return mediaItemDescriptor(
+			output,
+			child,
+			placement,
+			assetContent,
+			stackedChildClipSize(group, child),
+		);
 	if (child.type === 'social-network-icon')
 		return socialNetworkIconDescriptor(output, child, placement, inputs);
 	if (child.type === 'deck-list')
@@ -2116,7 +2111,14 @@ function childDescriptor(
 		return gameWinsDescriptor(output, scope, child, placement, surfaceStyle, inputs.featureMatch);
 
 	if (child.type === 'commander-damage')
-		return commanderDamageDescriptor(output, scope, child, placement, surfaceStyle, inputs.featureMatch);
+		return commanderDamageDescriptor(
+			output,
+			scope,
+			child,
+			placement,
+			surfaceStyle,
+			inputs.featureMatch,
+		);
 
 	if (child.type === 'seat-indicator')
 		return seatIndicatorDescriptor(output, scope, child, placement, surfaceStyle, inputs);
@@ -2193,8 +2195,7 @@ function enclosedItemDescriptor(
 	paint: (placement: CSSProperties) => GraphicItemRenderDescriptor,
 ): GraphicItemRenderDescriptor {
 	const enclosingStyle = enclosingMotionStyle(RESTING, motion, owner, owner.anchor);
-	if (!enclosingStyle)
-		return paint(placementOf(motion));
+	if (!enclosingStyle) return paint(placementOf(motion));
 
 	return {
 		id: owner.id,
@@ -2230,48 +2231,48 @@ function itemDescriptor(
 	const rotation = item.rotation ?? 0;
 
 	if (
-		item.type === 'group'
-		&& presentation
-		&& (
-			presentation.frame.phase.kind === 'transition'
-			|| presentation.frame.layers.length > 1
-			|| presentation.frame.layers.some(layer =>
-				layer.opacity !== 1 || layer.offsetX !== 0 || layer.offsetY !== 0,
-			)
-		)
+		item.type === 'group' &&
+		presentation &&
+		(presentation.frame.phase.kind === 'transition' ||
+			presentation.frame.layers.length > 1 ||
+			presentation.frame.layers.some(
+				(layer) => layer.opacity !== 1 || layer.offsetX !== 0 || layer.offsetY !== 0,
+			))
 	) {
 		return enclosedItemDescriptor(
 			motion,
 			item,
 			rotation,
-			values => canvasPlacement(item, { x: 0, y: 0 }, values),
-			placement => ({
+			(values) => canvasPlacement(item, { x: 0, y: 0 }, values),
+			(placement) => ({
 				id: item.id,
 				label: item.label,
 				kind: item.type,
 				style: { ...placement, overflow: 'hidden' },
-				presentationLayers: presentation.frame.layers.map(layer => paintedItemDescriptor(
-					output,
-					graphicId,
-					item,
-					assetContent,
-					{
-						...inputs,
-						socialProfileValues: {
-							...inputs.socialProfileValues,
-							[presentation.key]: layer.values,
+				presentationLayers: presentation.frame.layers.map((layer) =>
+					paintedItemDescriptor(
+						output,
+						graphicId,
+						item,
+						assetContent,
+						{
+							...inputs,
+							socialProfileValues: {
+								...inputs.socialProfileValues,
+								[presentation.key]: layer.values,
+							},
 						},
-					},
-					context,
-					{
-						position: 'absolute',
-						inset: '0',
-						width: '100%',
-						height: '100%',
-						opacity: layer.opacity,
-						transform: `translate(${layer.offsetX}%, ${layer.offsetY}%)`,
-					},
-				)),
+						context,
+						{
+							position: 'absolute',
+							inset: '0',
+							width: '100%',
+							height: '100%',
+							opacity: layer.opacity,
+							transform: `translate(${layer.offsetX}%, ${layer.offsetY}%)`,
+						},
+					),
+				),
 			}),
 		);
 	}
@@ -2281,8 +2282,9 @@ function itemDescriptor(
 			motion,
 			item,
 			rotation,
-			values => canvasPlacement(item, { x: 0, y: 0 }, values),
-			placement => paintedItemDescriptor(output, graphicId, item, assetContent, inputs, context, placement),
+			(values) => canvasPlacement(item, { x: 0, y: 0 }, values),
+			(placement) =>
+				paintedItemDescriptor(output, graphicId, item, assetContent, inputs, context, placement),
 		);
 	}
 
@@ -2313,7 +2315,9 @@ function itemDescriptor(
 	 * without it the children of the rendering being *replaced* would animate on the
 	 * arriving rendering's schedule.
 	 */
-	const halfContext = (motionOf: GraphicsItemAnimationContext['motionOf']): GraphicsItemAnimationContext => ({
+	const halfContext = (
+		motionOf: GraphicsItemAnimationContext['motionOf'],
+	): GraphicsItemAnimationContext => ({
 		phases: context.phases,
 		staggerOffsets: context.staggerOffsets,
 		parent: context.parent,
@@ -2324,52 +2328,56 @@ function itemDescriptor(
 		halfMotion: GraphicsItemAnimationContext['motionOf'],
 		placement: CSSProperties,
 		available: boolean,
-	): GraphicItemRenderDescriptor => available
-		? item.type === 'group' && presentation
-			? {
+	): GraphicItemRenderDescriptor =>
+		available
+			? item.type === 'group' && presentation
+				? {
+						id: item.id,
+						label: item.label,
+						kind: item.type,
+						style: { ...placement, overflow: 'hidden' },
+						presentationLayers: (
+							halfInputs.socialProfilePresentations?.[presentation.key]?.layers ?? []
+						).map((layer) =>
+							paintedItemDescriptor(
+								output,
+								graphicId,
+								item,
+								assetContent,
+								{
+									...halfInputs,
+									socialProfileValues: {
+										...halfInputs.socialProfileValues,
+										[presentation.key]: layer.values,
+									},
+								},
+								halfContext(halfMotion),
+								{
+									position: 'absolute',
+									inset: '0',
+									width: '100%',
+									height: '100%',
+									opacity: layer.opacity,
+									transform: `translate(${layer.offsetX}%, ${layer.offsetY}%)`,
+								},
+							),
+						),
+					}
+				: paintedItemDescriptor(
+						output,
+						graphicId,
+						item,
+						assetContent,
+						halfInputs,
+						halfContext(halfMotion),
+						placement,
+					)
+			: {
 					id: item.id,
 					label: item.label,
 					kind: item.type,
-					style: { ...placement, overflow: 'hidden' },
-					presentationLayers: (halfInputs.socialProfilePresentations?.[presentation.key]?.layers ?? [])
-						.map(layer => paintedItemDescriptor(
-							output,
-							graphicId,
-							item,
-							assetContent,
-							{
-								...halfInputs,
-								socialProfileValues: {
-									...halfInputs.socialProfileValues,
-									[presentation.key]: layer.values,
-								},
-							},
-							halfContext(halfMotion),
-							{
-								position: 'absolute',
-								inset: '0',
-								width: '100%',
-								height: '100%',
-								opacity: layer.opacity,
-								transform: `translate(${layer.offsetX}%, ${layer.offsetY}%)`,
-							},
-						)),
-				}
-			: paintedItemDescriptor(
-					output,
-					graphicId,
-					item,
-					assetContent,
-					halfInputs,
-					halfContext(halfMotion),
-					placement,
-				)
-		: {
-				id: item.id,
-				label: item.label,
-				kind: item.type,
-				style: { ...placement, visibility: 'hidden' },
-			};
+					style: { ...placement, visibility: 'hidden' },
+				};
 
 	return {
 		id: item.id,
@@ -2404,8 +2412,7 @@ function paintedItemDescriptor(
 ): GraphicItemRenderDescriptor {
 	const scope = elementScope(graphicId, item.id);
 
-	if (readsOnlyEmptySeats(item, inputs))
-		return absentItemDescriptor(item, placement);
+	if (readsOnlyEmptySeats(item, inputs)) return absentItemDescriptor(item, placement);
 
 	if (item.type === 'text')
 		return textDescriptor(output, scope, item, placement, item.surfaceStyle, inputs);
@@ -2444,13 +2451,26 @@ function paintedItemDescriptor(
 	}
 
 	if (item.type === 'game-wins')
-		return gameWinsDescriptor(output, scope, item, placement, item.surfaceStyle, inputs.featureMatch);
+		return gameWinsDescriptor(
+			output,
+			scope,
+			item,
+			placement,
+			item.surfaceStyle,
+			inputs.featureMatch,
+		);
 
-	if (item.type === 'deck-list')
-		return deckListDescriptor(output, scope, item, placement, inputs);
+	if (item.type === 'deck-list') return deckListDescriptor(output, scope, item, placement, inputs);
 
 	if (item.type === 'commander-damage')
-		return commanderDamageDescriptor(output, scope, item, placement, item.surfaceStyle, inputs.featureMatch);
+		return commanderDamageDescriptor(
+			output,
+			scope,
+			item,
+			placement,
+			item.surfaceStyle,
+			inputs.featureMatch,
+		);
 
 	if (item.type === 'seat-indicator')
 		return seatIndicatorDescriptor(output, scope, item, placement, item.surfaceStyle, inputs);
@@ -2467,8 +2487,10 @@ function paintedItemDescriptor(
 		},
 		surface: surfaceDescriptor(output, scope, item, item.geometry, item.surfaceStyle),
 		children: item.children
-			.filter(child => child.visible)
-			.map(child => groupChildDescriptor(output, graphicId, item, child, assetContent, inputs, context)),
+			.filter((child) => child.visible)
+			.map((child) =>
+				groupChildDescriptor(output, graphicId, item, child, assetContent, inputs, context),
+			),
 	};
 }
 
@@ -2495,28 +2517,27 @@ function groupChildDescriptor(
 	const staggerOffsets = staggerOffsetsFor(
 		context.phases,
 		group.animation,
-		group.children.map(entry => entry.id),
+		group.children.map((entry) => entry.id),
 		child.id,
 		context.staggerOffsets,
 	);
 	const motion = context.motionOf(child, staggerOffsets, group);
-	const rotation = group.arrangement === 'canvas'
-		? child.rotation ?? 0
-		: 0;
-	const placementOf = (values: readonly GraphicAnimationOwnerValues[]) => group.arrangement === 'canvas'
-		? canvasPlacement(child, {
-				x: Math.max(0, group.padding),
-				y: Math.max(0, group.padding),
-			}, values)
-		: stackedPlacement(group, child, values);
+	const rotation = group.arrangement === 'canvas' ? (child.rotation ?? 0) : 0;
+	const placementOf = (values: readonly GraphicAnimationOwnerValues[]) =>
+		group.arrangement === 'canvas'
+			? canvasPlacement(
+					child,
+					{
+						x: Math.max(0, group.padding),
+						y: Math.max(0, group.padding),
+					},
+					values,
+				)
+			: stackedPlacement(group, child, values);
 
 	if (!context.crossing?.(child.id)) {
-		return enclosedItemDescriptor(
-			motion,
-			child,
-			rotation,
-			placementOf,
-			placement => childDescriptor(output, graphicId, group, child, assetContent, inputs, placement),
+		return enclosedItemDescriptor(motion, child, rotation, placementOf, (placement) =>
+			childDescriptor(output, graphicId, group, child, assetContent, inputs, placement),
 		);
 	}
 
@@ -2541,7 +2562,15 @@ function groupChildDescriptor(
 				context.outgoing!.inputs,
 				half(context.outgoing!.motionOf(child, staggerOffsets, group)),
 			),
-			incoming: childDescriptor(output, graphicId, group, child, assetContent, inputs, half(motion)),
+			incoming: childDescriptor(
+				output,
+				graphicId,
+				group,
+				child,
+				assetContent,
+				inputs,
+				half(motion),
+			),
 		},
 	};
 }
@@ -2566,8 +2595,9 @@ function staggerOffsetsFor(
 ): GraphicStaggerOffsets {
 	const offsets: GraphicStaggerOffsets = {};
 	for (const phase of phases) {
-		offsets[phase] = (inherited[phase] ?? 0)
-			+ graphicAnimationStaggerOffset(animation?.stagger?.[phase], directItemIds, itemId);
+		offsets[phase] =
+			(inherited[phase] ?? 0) +
+			graphicAnimationStaggerOffset(animation?.stagger?.[phase], directItemIds, itemId);
 	}
 	return offsets;
 }
@@ -2685,26 +2715,21 @@ function graphicAnimationContext(
 	const withItemMotion = (
 		base: GraphicsItemAnimationContext['motionOf'],
 	): GraphicsItemAnimationContext['motionOf'] => {
-		if (!itemProjections)
-			return base;
+		if (!itemProjections) return base;
 		return (owner, staggerOffsets, parent) => {
 			const projected = itemProjections[owner.id];
-			if (!projected || projected.length === 0)
-				return base(owner, staggerOffsets, parent);
-			const extra = projected.map(({ phase, elapsed }) => resolveGraphicAnimationValues({
-				recipe: owner.animation?.[phase],
-				phase,
-				elapsed,
-				rect: owner,
-				parent,
-			}));
+			if (!projected || projected.length === 0) return base(owner, staggerOffsets, parent);
+			const extra = projected.map(({ phase, elapsed }) =>
+				resolveGraphicAnimationValues({
+					recipe: owner.animation?.[phase],
+					phase,
+					elapsed,
+					rect: owner,
+					parent,
+				}),
+			);
 			const own = base(owner, staggerOffsets, parent);
-			return own.length === 0
-				? extra
-				: [
-						...own,
-						...extra,
-					];
+			return own.length === 0 ? extra : [...own, ...extra];
 		};
 	};
 
@@ -2723,8 +2748,8 @@ function graphicAnimationContext(
 		};
 	}
 
-	const phases = projections.map(projection => projection.phase);
-	const topLevelIds = graphic.items.map(item => item.id);
+	const phases = projections.map((projection) => projection.phase);
+	const topLevelIds = graphic.items.map((item) => item.id);
 
 	// The two halves of a cross-transition are one projection read from both ends, so
 	// selecting a half is all this does — it never projects the outgoing rendering
@@ -2735,9 +2760,7 @@ function graphicAnimationContext(
 	// a phase running over an update moves both renderings together, so it belongs on
 	// the element enclosing the pair and would be applied twice if it were also here.
 	const halfOf = (values: GraphicAnimationValues): GraphicAnimationOwnerValues =>
-		half === 'outgoing'
-			? values.outgoing ?? {}
-			: values;
+		half === 'outgoing' ? (values.outgoing ?? {}) : values;
 
 	/**
 	 * An update recipe runs only where that owner's own rendered content changed. Outside
@@ -2745,46 +2768,52 @@ function graphicAnimationContext(
 	 * graphic's lifecycle rather than about its content.
 	 */
 	const animates = (ownerId: string | null, phase: GraphicAnimationPhase): boolean => {
-		if (phase !== 'update')
-			return true;
-		if (!crossTransition)
-			return false;
+		if (phase !== 'update') return true;
+		if (!crossTransition) return false;
 		// The graphic's own arm is redundant by construction rather than load-bearing:
 		// `wholeGraphic` is false only when the graphic authored no update recipe, and an
 		// owner with no recipe projects nothing anyway. It is stated because the invariant
 		// is worth reading at the point that relies on it, not because removing it would
 		// change a frame.
-		return ownerId === null
-			? crossTransition.wholeGraphic
-			: crossTransition.crossing.has(ownerId);
+		return ownerId === null ? crossTransition.wholeGraphic : crossTransition.crossing.has(ownerId);
 	};
 
-	const motionOf: GraphicsItemAnimationContext['motionOf'] = withItemMotion((owner, staggerOffsets, parent) =>
-		projections.map(({ phase, elapsed }) => animates(owner.id, phase)
-			? halfOf(resolveGraphicAnimationValues({
-					recipe: owner.animation?.[phase],
-					phase,
-					elapsed,
-					staggerOffset: staggerOffsets[phase] ?? 0,
-					rect: owner,
-					parent,
-				}))
-			: {}));
+	const motionOf: GraphicsItemAnimationContext['motionOf'] = withItemMotion(
+		(owner, staggerOffsets, parent) =>
+			projections.map(({ phase, elapsed }) =>
+				animates(owner.id, phase)
+					? halfOf(
+							resolveGraphicAnimationValues({
+								recipe: owner.animation?.[phase],
+								phase,
+								elapsed,
+								staggerOffset: staggerOffsets[phase] ?? 0,
+								rect: owner,
+								parent,
+							}),
+						)
+					: {},
+			),
+	);
 
 	return {
-		graphicMotion: projections.map(({ phase, elapsed }) => animates(null, phase)
-			? halfOf(resolveGraphicAnimationValues({
-					recipe: graphic.animation?.[phase],
-					phase,
-					elapsed,
-					// A whole-graphic recipe moves the composed frame, so its own bounds and
-					// its parent are both the Screen canvas.
-					rect: { x: 0, y: 0, ...canvas },
-					parent: canvas,
-				}))
-			: {}),
+		graphicMotion: projections.map(({ phase, elapsed }) =>
+			animates(null, phase)
+				? halfOf(
+						resolveGraphicAnimationValues({
+							recipe: graphic.animation?.[phase],
+							phase,
+							elapsed,
+							// A whole-graphic recipe moves the composed frame, so its own bounds and
+							// its parent are both the Screen canvas.
+							rect: { x: 0, y: 0, ...canvas },
+							parent: canvas,
+						}),
+					)
+				: {},
+		),
 		motionOf,
-		itemContext: item => ({
+		itemContext: (item) => ({
 			phases,
 			staggerOffsets: staggerOffsetsFor(phases, graphic.animation, topLevelIds, item.id),
 			parent: canvas,
@@ -2828,17 +2857,24 @@ function renderedContent(
 	inputs: Pick<GraphicItemContentContext, 'declarations' | 'socialProfileValues' | 'values'>,
 ): string {
 	if (owner.type === 'text') {
-		return renderGraphicTextTemplate(owner.text, inputs.declarations, inputs.values, inputs.socialProfileValues)
-			.map(segment => segment.text)
+		return renderGraphicTextTemplate(
+			owner.text,
+			inputs.declarations,
+			inputs.values,
+			inputs.socialProfileValues,
+		)
+			.map((segment) => segment.text)
 			.join('');
 	}
 	if (owner.type === 'social-network-icon') {
 		return typeof owner.network === 'string'
 			? owner.network
-			: inputs.socialProfileValues?.[owner.network.projectionKey]?.network ?? '';
+			: (inputs.socialProfileValues?.[owner.network.projectionKey]?.network ?? '');
 	}
 	if (owner.type === 'group')
-		return owner.children.map(child => renderedContent(child, inputs)).join(GROUP_CONTENT_SEPARATOR);
+		return owner.children
+			.map((child) => renderedContent(child, inputs))
+			.join(GROUP_CONTENT_SEPARATOR);
 	return '';
 }
 
@@ -2873,61 +2909,63 @@ function updateCrossTransition(
 	outgoing: GraphicItemContentContext,
 ): GraphicsUpdateCrossTransition | null {
 	const presentationKeyByGroupId = new Map(
-		(graphic.socialProfileProjections ?? []).map(projection => [
+		(graphic.socialProfileProjections ?? []).map((projection) => [
 			projection.presentationGroupId,
 			projection.key,
 		]),
 	);
 	const presentationChanged = (projectionKey: string | undefined): boolean => {
-		if (!projectionKey)
-			return false;
+		if (!projectionKey) return false;
 		const left = current.socialProfilePresentations?.[projectionKey]?.layers ?? [];
 		const right = outgoing.socialProfilePresentations?.[projectionKey]?.layers ?? [];
-		return left.length !== right.length || left.some((layer, index) => {
-			const candidate = right[index];
-			return candidate === undefined
-				|| layer.values.network !== candidate.values.network
-				|| layer.values.networkLabel !== candidate.values.networkLabel
-				|| layer.values.handle !== candidate.values.handle
-				|| layer.values.profileUrl !== candidate.values.profileUrl
-				|| layer.opacity !== candidate.opacity
-				|| layer.offsetX !== candidate.offsetX
-				|| layer.offsetY !== candidate.offsetY;
-		});
+		return (
+			left.length !== right.length ||
+			left.some((layer, index) => {
+				const candidate = right[index];
+				return (
+					candidate === undefined ||
+					layer.values.network !== candidate.values.network ||
+					layer.values.networkLabel !== candidate.values.networkLabel ||
+					layer.values.handle !== candidate.values.handle ||
+					layer.values.profileUrl !== candidate.values.profileUrl ||
+					layer.opacity !== candidate.opacity ||
+					layer.offsetX !== candidate.offsetX ||
+					layer.offsetY !== candidate.offsetY
+				);
+			})
+		);
 	};
 	const changed = (
 		owner: GraphicItemConfig | GraphicGroupChildConfig,
 		projectionKey?: string,
-	): boolean => renderedContent(owner, current) !== renderedContent(owner, outgoing)
-		|| presentationChanged(projectionKey);
+	): boolean =>
+		renderedContent(owner, current) !== renderedContent(owner, outgoing) ||
+		presentationChanged(projectionKey);
 
-	if (!graphic.items.some(item => changed(item, presentationKeyByGroupId.get(item.id))))
+	if (!graphic.items.some((item) => changed(item, presentationKeyByGroupId.get(item.id))))
 		return null;
 
 	const crossing = new Set<string>();
 	for (const item of graphic.items) {
 		const projectionKey = presentationKeyByGroupId.get(item.id);
-		if (item.animation?.update && changed(item, projectionKey))
-			crossing.add(item.id);
-		if (item.type !== 'group')
-			continue;
-		if (presentationChanged(projectionKey) && item.children.some(child => child.animation?.update))
+		if (item.animation?.update && changed(item, projectionKey)) crossing.add(item.id);
+		if (item.type !== 'group') continue;
+		if (
+			presentationChanged(projectionKey) &&
+			item.children.some((child) => child.animation?.update)
+		)
 			crossing.add(item.id);
 		for (const child of item.children) {
-			if (child.animation?.update && changed(child, projectionKey))
-				crossing.add(child.id);
+			if (child.animation?.update && changed(child, projectionKey)) crossing.add(child.id);
 		}
 	}
 
 	// A Broadcast Graphic's update recipe runs when any of its rendered content changes,
 	// and every item participates because the frame is what moves. An item's own update
 	// recipe still applies inside each copy, gated by its own content as above.
-	if (graphic.animation?.update)
-		return { wholeGraphic: true, crossing };
+	if (graphic.animation?.update) return { wholeGraphic: true, crossing };
 
-	return crossing.size === 0
-		? null
-		: { wholeGraphic: false, crossing };
+	return crossing.size === 0 ? null : { wholeGraphic: false, crossing };
 }
 
 function safeAreaGuide(
@@ -2946,8 +2984,8 @@ function safeAreaGuide(
 		style: rectStyle({
 			x: insetX,
 			y: insetY,
-			width: Math.max(0, canvasWidth - (insetX * 2)),
-			height: Math.max(0, canvasHeight - (insetY * 2)),
+			width: Math.max(0, canvasWidth - insetX * 2),
+			height: Math.max(0, canvasHeight - insetY * 2),
 		}),
 	};
 }
@@ -2959,16 +2997,17 @@ function safeAreaGuide(
  * rectangle is decided by the browser's own layout, so it is selected from the
  * authoring tree rather than from a guide the model would have to guess.
  */
-function guideRects(graphic: BroadcastGraphicConfig): Array<{ itemId: string; label: string; rect: GraphicRect }> {
+function guideRects(
+	graphic: BroadcastGraphicConfig,
+): Array<{ itemId: string; label: string; rect: GraphicRect }> {
 	return graphic.items.flatMap((item) => {
 		const own = { itemId: item.id, label: item.label, rect: item as GraphicRect };
-		if (item.type !== 'group' || item.arrangement !== 'canvas')
-			return [own];
+		if (item.type !== 'group' || item.arrangement !== 'canvas') return [own];
 
 		const padding = Math.max(0, item.padding);
 		return [
 			own,
-			...item.children.map(child => ({
+			...item.children.map((child) => ({
 				itemId: child.id,
 				label: child.label,
 				rect: { ...child, x: item.x + padding + child.x, y: item.y + padding + child.y },
@@ -2981,12 +3020,11 @@ export function resolveGraphicsCompositionRenderModel(
 	input: GraphicsCompositionRenderModelInput,
 ): GraphicsCompositionRenderModel {
 	const visible = input.visibleGraphicIds;
-	const composed = paintGraphicsThemeBindings(visible
-		? input.graphics.filter(graphic => visible.includes(graphic.id))
-		: input.graphics, input.themeTokens);
-	const selectedKey = input.selectedTarget
-		? graphicsSelectionKey(input.selectedTarget)
-		: null;
+	const composed = paintGraphicsThemeBindings(
+		visible ? input.graphics.filter((graphic) => visible.includes(graphic.id)) : input.graphics,
+		input.themeTokens,
+	);
+	const selectedKey = input.selectedTarget ? graphicsSelectionKey(input.selectedTarget) : null;
 	const selectedGraphicId = input.selectedTarget
 		? graphicsSelectionGraphicId(input.selectedTarget)
 		: null;
@@ -3007,9 +3045,7 @@ export function resolveGraphicsCompositionRenderModel(
 			// override the host's own placement and cover everything beneath it.
 			position: isLayer ? undefined : 'relative',
 			overflow: 'hidden',
-			background: isLayer
-				? 'transparent'
-				: screenOutputCanvasBackground(input.output),
+			background: isLayer ? 'transparent' : screenOutputCanvasBackground(input.output),
 		},
 		graphics: composed.map((graphic) => {
 			// A host that supplies its own declarations supplies all of them: a
@@ -3021,8 +3057,11 @@ export function resolveGraphicsCompositionRenderModel(
 			// rather than an empty set when nothing projects, so the common frame
 			// allocates nothing new.
 			const itemExitInPlay = itemProjections
-				? new Set(Object.keys(itemProjections).filter(itemId =>
-						itemProjections[itemId]!.some(projection => projection.phase === 'exit')))
+				? new Set(
+						Object.keys(itemProjections).filter((itemId) =>
+							itemProjections[itemId]!.some((projection) => projection.phase === 'exit'),
+						),
+					)
 				: undefined;
 			const inputs: GraphicItemContentContext = {
 				declarations,
@@ -3040,7 +3079,7 @@ export function resolveGraphicsCompositionRenderModel(
 			};
 			const canvas = { width: input.canvasWidth, height: input.canvasHeight };
 			const projections = input.animation?.[graphic.id] ?? [];
-			const phases = projections.map(projection => projection.phase);
+			const phases = projections.map((projection) => projection.phase);
 
 			// The rendering being replaced exists only inside an update phase, and only when
 			// the Live Session supplied it. Anything else — an editor preview, a settled
@@ -3067,14 +3106,16 @@ export function resolveGraphicsCompositionRenderModel(
 				textTokenPresentations: input.textTokenPresentations,
 				textTokenSeats: input.textTokenSeats,
 				socialProfileValues: outgoingSocialProfileValues ?? input.socialProfileValues?.[graphic.id],
-				socialProfilePresentations: input.outgoingSocialProfilePresentations?.[graphic.id]
-					?? input.socialProfilePresentations?.[graphic.id],
+				socialProfilePresentations:
+					input.outgoingSocialProfilePresentations?.[graphic.id] ??
+					input.socialProfilePresentations?.[graphic.id],
 				featureMatch: input.featureMatch,
 				itemExitInPlay,
 			};
-			const crossTransition = outgoingValues !== undefined || outgoingSocialProfileValues !== undefined
-				? updateCrossTransition(graphic, inputs, outgoingInputs)
-				: null;
+			const crossTransition =
+				outgoingValues !== undefined || outgoingSocialProfileValues !== undefined
+					? updateCrossTransition(graphic, inputs, outgoingInputs)
+					: null;
 			const perItem = crossTransition !== null && !crossTransition.wholeGraphic;
 
 			const { graphicMotion, itemContext } = graphicAnimationContext(
@@ -3086,7 +3127,14 @@ export function resolveGraphicsCompositionRenderModel(
 				itemProjections,
 			);
 			const outgoingHalf = crossTransition
-				? graphicAnimationContext(graphic, projections, canvas, 'outgoing', crossTransition, itemProjections)
+				? graphicAnimationContext(
+						graphic,
+						projections,
+						canvas,
+						'outgoing',
+						crossTransition,
+						itemProjections,
+					)
 				: null;
 
 			// Two whole frames means the graphic's own motion splits: what moves each frame
@@ -3094,21 +3142,17 @@ export function resolveGraphicsCompositionRenderModel(
 			// they sit inside. With one frame there is nothing to split and the graphic's
 			// element carries all of it, exactly as it did before concurrency existed.
 			const wholeGraphicPair = crossTransition?.wholeGraphic === true && outgoingHalf !== null;
-			const ownMotion = wholeGraphicPair
-				? crossingMotion(phases, graphicMotion)
-				: graphicMotion;
+			const ownMotion = wholeGraphicPair ? crossingMotion(phases, graphicMotion) : graphicMotion;
 			const style = motionStyle(ownMotion, canvas, 0, 'top-left');
 			const enclosingStyle = enclosingMotionStyle(
-				wholeGraphicPair
-					? enclosingMotion(phases, graphicMotion)
-					: RESTING,
+				wholeGraphicPair ? enclosingMotion(phases, graphicMotion) : RESTING,
 				ownMotion,
 				canvas,
 				'top-left',
 			);
 
 			const projectionByGroupId = new Map(
-				(graphic.socialProfileProjections ?? []).map(projection => [
+				(graphic.socialProfileProjections ?? []).map((projection) => [
 					projection.presentationGroupId,
 					projection,
 				]),
@@ -3117,63 +3161,66 @@ export function resolveGraphicsCompositionRenderModel(
 				values: GraphicItemContentContext,
 				context: (item: GraphicItemConfig) => GraphicsItemAnimationContext,
 				pairing: GraphicsItemAnimationContext['outgoing'],
-			) => graphic.items
-				.filter((item) => {
-					if (!item.visible)
-						return false;
-					const projection = projectionByGroupId.get(item.id);
-					if (!projection)
-						return true;
-					const presentation = values.socialProfilePresentations?.[projection.key];
-					return presentation
-						? presentation.layers.length > 0
-						|| (pairing?.inputs.socialProfilePresentations?.[projection.key]?.layers.length ?? 0) > 0
-						: values.socialProfileValues?.[projection.key] !== undefined
-							|| pairing?.inputs.socialProfileValues?.[projection.key] !== undefined;
-				})
-				.map((item) => {
-					const projection = projectionByGroupId.get(item.id);
-					const presentationFrame = projection
-						? values.socialProfilePresentations?.[projection.key]
-						: undefined;
-					const presentation = projection && presentationFrame
-						? { key: projection.key, frame: presentationFrame }
-						: undefined;
-					const currentValues = presentationFrame?.layers.at(-1)?.values;
-					const itemValues = projection && currentValues
-						? {
-								...values,
-								socialProfileValues: {
-									...values.socialProfileValues,
-									[projection.key]: currentValues,
-								},
-							}
-						: values;
-					const updateAvailability = projection && pairing
-						? {
-								incoming: itemValues.socialProfileValues?.[projection.key] !== undefined,
-								outgoing: pairing.inputs.socialProfileValues?.[projection.key] !== undefined,
-							}
-						: undefined;
-					return itemDescriptor(
-						input.output,
-						graphic.id,
-						item,
-						assetContent,
-						itemValues,
-						{
-							...context(item),
-							...(pairing === undefined
-								? {}
-								: {
-										crossing: (ownerId: string) => crossTransition!.crossing.has(ownerId),
-										outgoing: pairing,
-									}),
-						},
-						presentation,
-						updateAvailability,
-					);
-				});
+			) =>
+				graphic.items
+					.filter((item) => {
+						if (!item.visible) return false;
+						const projection = projectionByGroupId.get(item.id);
+						if (!projection) return true;
+						const presentation = values.socialProfilePresentations?.[projection.key];
+						return presentation
+							? presentation.layers.length > 0 ||
+									(pairing?.inputs.socialProfilePresentations?.[projection.key]?.layers.length ??
+										0) > 0
+							: values.socialProfileValues?.[projection.key] !== undefined ||
+									pairing?.inputs.socialProfileValues?.[projection.key] !== undefined;
+					})
+					.map((item) => {
+						const projection = projectionByGroupId.get(item.id);
+						const presentationFrame = projection
+							? values.socialProfilePresentations?.[projection.key]
+							: undefined;
+						const presentation =
+							projection && presentationFrame
+								? { key: projection.key, frame: presentationFrame }
+								: undefined;
+						const currentValues = presentationFrame?.layers.at(-1)?.values;
+						const itemValues =
+							projection && currentValues
+								? {
+										...values,
+										socialProfileValues: {
+											...values.socialProfileValues,
+											[projection.key]: currentValues,
+										},
+									}
+								: values;
+						const updateAvailability =
+							projection && pairing
+								? {
+										incoming: itemValues.socialProfileValues?.[projection.key] !== undefined,
+										outgoing: pairing.inputs.socialProfileValues?.[projection.key] !== undefined,
+									}
+								: undefined;
+						return itemDescriptor(
+							input.output,
+							graphic.id,
+							item,
+							assetContent,
+							itemValues,
+							{
+								...context(item),
+								...(pairing === undefined
+									? {}
+									: {
+											crossing: (ownerId: string) => crossTransition!.crossing.has(ownerId),
+											outgoing: pairing,
+										}),
+							},
+							presentation,
+							updateAvailability,
+						);
+					});
 
 			// Two whole frames only when the Broadcast Graphic's own recipe is what moves.
 			// A per-item cross-transition pairs inside each crossing item's box instead, so
@@ -3187,9 +3234,7 @@ export function resolveGraphicsCompositionRenderModel(
 					'top-left',
 				);
 				outgoing = {
-					...(Object.keys(outgoingStyle).length === 0
-						? {}
-						: { style: outgoingStyle }),
+					...(Object.keys(outgoingStyle).length === 0 ? {} : { style: outgoingStyle }),
 					items: buildItems(outgoingInputs, outgoingHalf.itemContext, undefined),
 				};
 			}
@@ -3199,12 +3244,8 @@ export function resolveGraphicsCompositionRenderModel(
 				name: graphic.name,
 				// Omitted entirely at rest, so an unanimated Broadcast Graphic keeps the
 				// descriptor it had before animation existed.
-				...(Object.keys(style).length === 0
-					? {}
-					: { style }),
-				...(enclosingStyle === undefined
-					? {}
-					: { enclosingStyle }),
+				...(Object.keys(style).length === 0 ? {} : { style }),
+				...(enclosingStyle === undefined ? {} : { enclosingStyle }),
 				items: buildItems(
 					inputs,
 					itemContext,
@@ -3212,26 +3253,40 @@ export function resolveGraphicsCompositionRenderModel(
 						? { inputs: outgoingInputs, motionOf: outgoingHalf.motionOf }
 						: undefined,
 				),
-				...(outgoing === undefined
-					? {}
-					: { outgoing }),
+				...(outgoing === undefined ? {} : { outgoing }),
 			};
 		}),
 		safeAreaGuides: input.safeAreaGuides
 			? [
-					safeAreaGuide('action-safe', 'Action safe', GRAPHICS_ACTION_SAFE_INSET, input.canvasWidth, input.canvasHeight),
-					safeAreaGuide('title-safe', 'Title safe', GRAPHICS_TITLE_SAFE_INSET, input.canvasWidth, input.canvasHeight),
+					safeAreaGuide(
+						'action-safe',
+						'Action safe',
+						GRAPHICS_ACTION_SAFE_INSET,
+						input.canvasWidth,
+						input.canvasHeight,
+					),
+					safeAreaGuide(
+						'title-safe',
+						'Title safe',
+						GRAPHICS_TITLE_SAFE_INSET,
+						input.canvasWidth,
+						input.canvasHeight,
+					),
 				]
 			: [],
 		itemGuides: input.itemGuides
-			? composed.flatMap(graphic => guideRects(graphic).map(guide => ({
-					graphicId: graphic.id,
-					itemId: guide.itemId,
-					label: guide.label,
-					selected: selectedKey === graphicsSelectionKey({ type: 'item', graphicId: graphic.id, itemId: guide.itemId }),
-					inSelectedGraphic: selectedGraphicId === graphic.id,
-					style: rectStyle(guide.rect),
-				})))
+			? composed.flatMap((graphic) =>
+					guideRects(graphic).map((guide) => ({
+						graphicId: graphic.id,
+						itemId: guide.itemId,
+						label: guide.label,
+						selected:
+							selectedKey ===
+							graphicsSelectionKey({ type: 'item', graphicId: graphic.id, itemId: guide.itemId }),
+						inSelectedGraphic: selectedGraphicId === graphic.id,
+						style: rectStyle(guide.rect),
+					})),
+				)
 			: [],
 	};
 }

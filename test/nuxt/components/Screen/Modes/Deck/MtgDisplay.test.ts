@@ -11,7 +11,7 @@ const measured = vi.hoisted(() => ({ width: 0, height: 0 }));
 vi.mock('@vueuse/core', async (importOriginal) => {
 	const { ref } = await import('vue');
 	return {
-		...await importOriginal<typeof import('@vueuse/core')>(),
+		...(await importOriginal<typeof import('@vueuse/core')>()),
 		useElementSize: () => ({
 			width: ref(measured.width),
 			height: ref(measured.height),
@@ -93,7 +93,8 @@ const DeckCardStub = defineComponent({
 		highlanderPointsBadgeStyle: { type: Object, required: false },
 		art: { type: String, required: false },
 	},
-	template: '<div data-testid="deck-card" :data-art="art" :data-tag="tag" :data-name="card.name" :data-show-quantity="String(showQuantity)" :data-quantity-size="quantityBadgeStyle?.fontSize" :data-points-size="highlanderPointsBadgeStyle?.fontSize" :data-show-highlander-points="String(showHighlanderPoints)" :data-point-position="highlanderPointsPositionClass" />',
+	template:
+		'<div data-testid="deck-card" :data-art="art" :data-tag="tag" :data-name="card.name" :data-show-quantity="String(showQuantity)" :data-quantity-size="quantityBadgeStyle?.fontSize" :data-points-size="highlanderPointsBadgeStyle?.fontSize" :data-show-highlander-points="String(showHighlanderPoints)" :data-point-position="highlanderPointsPositionClass" />',
 });
 
 function createCard(overrides: Partial<DeckListCardWithData> = {}): DeckListCardWithData {
@@ -109,7 +110,9 @@ function createCard(overrides: Partial<DeckListCardWithData> = {}): DeckListCard
 	};
 }
 
-function createHighlanderSummary(overrides: Partial<HighlanderDeckSummary> = {}): HighlanderDeckSummary {
+function createHighlanderSummary(
+	overrides: Partial<HighlanderDeckSummary> = {},
+): HighlanderDeckSummary {
 	return {
 		system: '7ph',
 		status: 'illegal',
@@ -182,17 +185,13 @@ describe('screenDeckDisplay', () => {
 			sideboard: 'normal',
 			companion: 'normal',
 		};
-		mainboard.value = [
-			createCard(),
-		];
+		mainboard.value = [createCard()];
 		sideboard.value = [];
 		companionCard.value = null;
 		commanders.value = [];
 		measured.width = 0;
 		measured.height = 0;
-		deckStats.value = [
-			{ type: 'Instants', count: 12 },
-		];
+		deckStats.value = [{ type: 'Instants', count: 12 }];
 		highlander.value = createHighlanderSummary();
 		tokenCards.value = [];
 		primaryName.value = 'Alice';
@@ -212,7 +211,9 @@ describe('screenDeckDisplay', () => {
 		expect(wrapper.text()).toContain('Mono Blue');
 		expect(wrapper.get('[data-testid="highlander-pointed-cards"]').text()).toContain('Mana Drain');
 		expect(wrapper.get('[data-testid="highlander-pointed-cards"]').text()).toContain('Sideboard');
-		expect(wrapper.get('[data-testid="highlander-pointed-cards"]').text()).toContain('Lutri, the Spellchaser');
+		expect(wrapper.get('[data-testid="highlander-pointed-cards"]').text()).toContain(
+			'Lutri, the Spellchaser',
+		);
 		expect(wrapper.get('[data-testid="highlander-pointed-cards"]').text()).toContain('Companion');
 	});
 
@@ -222,14 +223,16 @@ describe('screenDeckDisplay', () => {
 			mainboard: { view: 'list', listColumns: 3 },
 			sideboard: { view: 'list', listColumns: 2 },
 		};
-		sideboard.value = [
-			createCard({ name: 'Force of Will', compartment: 'sideboard' }),
-		];
+		sideboard.value = [createCard({ name: 'Force of Will', compartment: 'sideboard' })];
 
 		let wrapper = await mountComponent();
 
-		expect(wrapper.get('[data-testid="mainboard-list"]').attributes('style')).toContain('repeat(3, minmax(0, 1fr))');
-		expect(wrapper.get('[data-testid="sideboard-list"]').attributes('style')).toContain('repeat(2, minmax(0, 1fr))');
+		expect(wrapper.get('[data-testid="mainboard-list"]').attributes('style')).toContain(
+			'repeat(3, minmax(0, 1fr))',
+		);
+		expect(wrapper.get('[data-testid="sideboard-list"]').attributes('style')).toContain(
+			'repeat(2, minmax(0, 1fr))',
+		);
 		expect(wrapper.text()).toContain('Sideboard');
 
 		mutableConfig = {
@@ -249,50 +252,68 @@ describe('screenDeckDisplay', () => {
 			sideboardColumns: '6',
 		},
 		{
-			name: 'the mainboard\'s, uncustomised',
+			name: "the mainboard's, uncustomised",
 			sideboardLayout: { view: 'grid' },
 			sideboardColumns: '4',
 		},
-	])('gives the sideboard grid $name columns at board: full', async ({ sideboardLayout, sideboardColumns }) => {
-		mutableConfig = {
-			...mutableConfig,
-			mainboard: { view: 'grid', columns: 4 },
-			sideboard: sideboardLayout,
-			sideboardPlacement: 'below',
-		};
-		sideboard.value = [
-			createCard({ name: 'Force of Will', compartment: 'sideboard' }),
-		];
+	])(
+		'gives the sideboard grid $name columns at board: full',
+		async ({ sideboardLayout, sideboardColumns }) => {
+			mutableConfig = {
+				...mutableConfig,
+				mainboard: { view: 'grid', columns: 4 },
+				sideboard: sideboardLayout,
+				sideboardPlacement: 'below',
+			};
+			sideboard.value = [createCard({ name: 'Force of Will', compartment: 'sideboard' })];
 
-		const wrapper = await mountComponent();
+			const wrapper = await mountComponent();
 
-		expect(wrapper.get('[data-testid="mainboard-grid"]').attributes('data-columns')).toBe('4');
-		expect(wrapper.get('[data-testid="sideboard-grid"]').attributes('data-columns')).toBe(sideboardColumns);
-	});
+			expect(wrapper.get('[data-testid="mainboard-grid"]').attributes('data-columns')).toBe('4');
+			expect(wrapper.get('[data-testid="sideboard-grid"]').attributes('data-columns')).toBe(
+				sideboardColumns,
+			);
+		},
+	);
 
 	// A list is not laid out, so a grid beside or under one is laid out alone, in the space the list leaves it.
 	it.each([
 		{ placement: 'below', listGrow: 'flex-grow: 0', gridGrow: 'flex-grow: 1' },
 		{ placement: 'beside', listGrow: 'flex-grow: 2', gridGrow: 'flex-grow: 4' },
-	] as const)('lays a grid $placement a list out in the space the list leaves it', async ({ placement, listGrow, gridGrow }) => {
-		measured.width = 960;
-		measured.height = 480;
-		mutableConfig = {
-			...mutableConfig,
-			sideboardPlacement: placement,
-			mainboard: { view: 'list', listColumns: 2 },
-			sideboard: { view: 'grid', columns: 4 },
-		};
-		sideboard.value = Array.from({ length: 8 }, (_, index) => createCard({ name: `Side ${index}`, compartment: 'sideboard' }));
+	] as const)(
+		'lays a grid $placement a list out in the space the list leaves it',
+		async ({ placement, listGrow, gridGrow }) => {
+			measured.width = 960;
+			measured.height = 480;
+			mutableConfig = {
+				...mutableConfig,
+				sideboardPlacement: placement,
+				mainboard: { view: 'list', listColumns: 2 },
+				sideboard: { view: 'grid', columns: 4 },
+			};
+			sideboard.value = Array.from({ length: 8 }, (_, index) =>
+				createCard({ name: `Side ${index}`, compartment: 'sideboard' }),
+			);
 
-		const wrapper = await mountComponent();
+			const wrapper = await mountComponent();
 
-		expect(wrapper.get('[data-testid="mainboard-section"]').attributes('style')).toContain(listGrow);
-		expect(wrapper.get('[data-testid="sideboard-section"]').attributes('style')).toContain(gridGrow);
-		const grid = wrapper.get('[data-testid="sideboard-grid"]');
-		expect(grid.attributes('data-columns')).toBe('4');
-		expect(Number.parseFloat((grid.get('.grid').element as HTMLElement).style.gridTemplateColumns.match(/, (.+)\)$/)![1]!)).toBeGreaterThan(0);
-	});
+			expect(wrapper.get('[data-testid="mainboard-section"]').attributes('style')).toContain(
+				listGrow,
+			);
+			expect(wrapper.get('[data-testid="sideboard-section"]').attributes('style')).toContain(
+				gridGrow,
+			);
+			const grid = wrapper.get('[data-testid="sideboard-grid"]');
+			expect(grid.attributes('data-columns')).toBe('4');
+			expect(
+				Number.parseFloat(
+					(grid.get('.grid').element as HTMLElement).style.gridTemplateColumns.match(
+						/, (.+)\)$/,
+					)![1]!,
+				),
+			).toBeGreaterThan(0);
+		},
+	);
 
 	// The next card covers all of a stacked card but its board's stack-reveal slice; the last shows whole.
 	// The Screen's own sizes, not the Theme's, size each board and every badge, pill and chip (ADR-0054).
@@ -313,7 +334,9 @@ describe('screenDeckDisplay', () => {
 			metaPillSize: 23,
 			pointedCardSize: 24,
 		};
-		sideboard.value = ['Force of Will', 'Flusterstorm'].map(name => createCard({ name, compartment: 'sideboard' }));
+		sideboard.value = ['Force of Will', 'Flusterstorm'].map((name) =>
+			createCard({ name, compartment: 'sideboard' }),
+		);
 
 		const wrapper = await mountComponent();
 
@@ -326,13 +349,24 @@ describe('screenDeckDisplay', () => {
 		expect(mainCard.attributes('data-quantity-size')).toBe('21px');
 		expect(mainCard.attributes('data-points-size')).toBe('22px');
 		const strip = wrapper.get('[data-testid="sideboard-stack-column"]');
-		expect(strip.findAll('.stack-card').map(card => [(card.element as HTMLElement).style.width, (card.element as HTMLElement).style.height]))
-			.toEqual([
-				['120px', '40px'],
-				['120px', ''],
-			]);
-		expect((wrapper.get('[data-testid="deck-meta-pill"]').element as HTMLElement).style.fontSize).toBe('23px');
-		expect((wrapper.get('[data-testid="highlander-pointed-card-chip"]').element as HTMLElement).style.fontSize).toBe('24px');
+		expect(
+			strip
+				.findAll('.stack-card')
+				.map((card) => [
+					(card.element as HTMLElement).style.width,
+					(card.element as HTMLElement).style.height,
+				]),
+		).toEqual([
+			['120px', '40px'],
+			['120px', ''],
+		]);
+		expect(
+			(wrapper.get('[data-testid="deck-meta-pill"]').element as HTMLElement).style.fontSize,
+		).toBe('23px');
+		expect(
+			(wrapper.get('[data-testid="highlander-pointed-card-chip"]').element as HTMLElement).style
+				.fontSize,
+		).toBe('24px');
 	});
 
 	// An Auto badge follows its board's solved card width: today's 16 px quantity and 14 px point
@@ -347,30 +381,33 @@ describe('screenDeckDisplay', () => {
 			mainboard: { view: 'grid', columns: 4, maxCardSize },
 			sideboard: { view: 'list' },
 		};
-		sideboard.value = [
-			createCard({ name: 'Force of Will', compartment: 'sideboard' }),
-		];
+		sideboard.value = [createCard({ name: 'Force of Will', compartment: 'sideboard' })];
 
 		const wrapper = await mountComponent();
 
 		const card = wrapper.get('[data-testid="mainboard-grid"] [data-testid="deck-card"]');
-		expect([
-			card.attributes('data-quantity-size'),
-			card.attributes('data-points-size'),
-		]).toEqual([quantity, points]);
-		expect((wrapper.get('[data-testid="highlander-list-badge"]').element as HTMLElement).style.fontSize).toBe('14px');
+		expect([card.attributes('data-quantity-size'), card.attributes('data-points-size')]).toEqual([
+			quantity,
+			points,
+		]);
+		expect(
+			(wrapper.get('[data-testid="highlander-list-badge"]').element as HTMLElement).style.fontSize,
+		).toBe('14px');
 	});
 
 	it('shows each card but the last of the beside stack by its reveal', async () => {
-		sideboard.value = ['Force of Will', 'Flusterstorm', 'Pyroblast'].map(name => createCard({ name, compartment: 'sideboard' }));
+		sideboard.value = ['Force of Will', 'Flusterstorm', 'Pyroblast'].map((name) =>
+			createCard({ name, compartment: 'sideboard' }),
+		);
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.get('[data-testid="sideboard-stack-column"]').findAll('.stack-card').map(card => (card.element as HTMLElement).style.height)).toEqual([
-			'30px',
-			'30px',
-			'',
-		]);
+		expect(
+			wrapper
+				.get('[data-testid="sideboard-stack-column"]')
+				.findAll('.stack-card')
+				.map((card) => (card.element as HTMLElement).style.height),
+		).toEqual(['30px', '30px', '']);
 	});
 
 	// A sideboard stacks only beside the mainboard; anywhere else its stack reads as a grid.
@@ -391,26 +428,30 @@ describe('screenDeckDisplay', () => {
 			...mutableConfig,
 			...config,
 		};
-		sideboard.value = ['Force of Will', 'Flusterstorm'].map(name => createCard({ name, compartment: 'sideboard' }));
+		sideboard.value = ['Force of Will', 'Flusterstorm'].map((name) =>
+			createCard({ name, compartment: 'sideboard' }),
+		);
 
 		const wrapper = await mountComponent();
 
 		expect(wrapper.find('[data-testid="sideboard-stack-column"]').exists()).toBe(strip);
 		expect(wrapper.find('[data-testid="sideboard-grid"]').exists()).toBe(!strip);
-		expect(wrapper.findAll('[data-testid="sideboard-section"] [data-testid="deck-card"]')).toHaveLength(2);
+		expect(
+			wrapper.findAll('[data-testid="sideboard-section"] [data-testid="deck-card"]'),
+		).toHaveLength(2);
 	});
 
 	it('does not reserve an empty Mainboard section beside a populated Sideboard', async () => {
 		mainboard.value = [];
-		sideboard.value = [
-			createCard({ name: 'Force of Will', compartment: 'sideboard' }),
-		];
+		sideboard.value = [createCard({ name: 'Force of Will', compartment: 'sideboard' })];
 
 		const wrapper = await mountComponent();
 
 		expect(wrapper.find('[data-testid="mainboard-section"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="sideboard-stack-column"]').exists()).toBe(false);
-		expect(wrapper.get('[data-testid="sideboard-grid"]').findAll('[data-testid="deck-card"]')).toHaveLength(1);
+		expect(
+			wrapper.get('[data-testid="sideboard-grid"]').findAll('[data-testid="deck-card"]'),
+		).toHaveLength(1);
 	});
 
 	it('renders no cards at board: sideboard when the sideboard is empty', async () => {
@@ -443,9 +484,7 @@ describe('screenDeckDisplay', () => {
 				highlanderPoints: null,
 			}),
 		];
-		deckStats.value = [
-			{ type: 'Creatures', count: 0 },
-		];
+		deckStats.value = [{ type: 'Creatures', count: 0 }];
 		highlander.value = null;
 
 		const wrapper = await mountComponent();
@@ -454,7 +493,9 @@ describe('screenDeckDisplay', () => {
 		expect(wrapper.get('.deck-header p').text()).toBe('Azorius Control');
 		expect(wrapper.get('[data-testid="mana-colors"]').attributes('data-colors')).toBe('WU');
 		expect(wrapper.text()).toContain('Creatures');
-		expect(wrapper.get('[data-testid="sideboard-section"]').findAll('[data-testid="deck-card"]')).toHaveLength(1);
+		expect(
+			wrapper.get('[data-testid="sideboard-section"]').findAll('[data-testid="deck-card"]'),
+		).toHaveLength(1);
 		expect(wrapper.find('[data-testid="mainboard-section"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="highlander-total-inline"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="highlander-pointed-cards"]').exists()).toBe(false);
@@ -490,7 +531,9 @@ describe('screenDeckDisplay', () => {
 
 		const wrapper = await mountComponent();
 
-		expect((wrapper.get('[data-testid="deck-meta-pill"]').element as HTMLElement).style.fontSize).toBe('22px');
+		expect(
+			(wrapper.get('[data-testid="deck-meta-pill"]').element as HTMLElement).style.fontSize,
+		).toBe('22px');
 	});
 
 	// The companion is the sideboard's first card, tagged, and listed once; with no sideboard it stands alone.
@@ -507,16 +550,20 @@ describe('screenDeckDisplay', () => {
 			...config,
 		};
 		companionCard.value = createCard({ name: 'Lurrus of the Dream-Den', compartment: 'sideboard' });
-		sideboard.value = ['Lurrus of the Dream-Den', 'Force of Will'].map(name => createCard({ name, compartment: 'sideboard' }));
+		sideboard.value = ['Lurrus of the Dream-Den', 'Force of Will'].map((name) =>
+			createCard({ name, compartment: 'sideboard' }),
+		);
 
 		const wrapper = await mountComponent();
 
-		const holder = wrapper.get(inSideboard ? '[data-testid="sideboard-section"]' : '[data-testid="companion-section"]');
+		const holder = wrapper.get(
+			inSideboard ? '[data-testid="sideboard-section"]' : '[data-testid="companion-section"]',
+		);
 		const cards = holder.findAll('[data-testid="deck-card"]');
 		expect(cards[0]!.attributes('data-tag')).toBe('Companion');
-		expect(cards.map(card => card.attributes('data-name'))).toEqual(inSideboard
-			? ['Lurrus of the Dream-Den', 'Force of Will']
-			: ['Lurrus of the Dream-Den']);
+		expect(cards.map((card) => card.attributes('data-name'))).toEqual(
+			inSideboard ? ['Lurrus of the Dream-Den', 'Force of Will'] : ['Lurrus of the Dream-Den'],
+		);
 	});
 
 	// ADR-0087: a Seat's Commanders stand apart where a Sideboard would, ahead of the Mainboard.
@@ -527,34 +574,41 @@ describe('screenDeckDisplay', () => {
 			config: { sideboardPlacement: 'below' as const },
 			flow: 'flex-col',
 		},
-	])('shows a Seat\'s Commanders first, $placed, without a quantity badge', async ({ config, flow }) => {
-		mutableConfig = {
-			...mutableConfig,
-			...config,
-		};
-		commanders.value = ['Tymna the Weaver', 'Kraum, Ludevic\'s Opus'].map(name => createCard({ name }));
+	])(
+		"shows a Seat's Commanders first, $placed, without a quantity badge",
+		async ({ config, flow }) => {
+			mutableConfig = {
+				...mutableConfig,
+				...config,
+			};
+			commanders.value = ['Tymna the Weaver', "Kraum, Ludevic's Opus"].map((name) =>
+				createCard({ name }),
+			);
 
-		const wrapper = await mountComponent();
+			const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('[data-testid$="-section"]').map(section => section.attributes('data-testid')))
-			.toEqual(['commanders-section', 'mainboard-section']);
-		expect(wrapper.get('.deck-layout').classes()).toContain(flow);
-		const drawn = wrapper.get('[data-testid="commanders-section"]').findAll('[data-testid="deck-card"]');
-		expect(drawn.map(card => [
-			card.attributes('data-name'),
-			card.attributes('data-show-quantity'),
-		])).toEqual([
-			['Tymna the Weaver', 'false'],
-			['Kraum, Ludevic\'s Opus', 'false'],
-		]);
-	});
+			expect(
+				wrapper
+					.findAll('[data-testid$="-section"]')
+					.map((section) => section.attributes('data-testid')),
+			).toEqual(['commanders-section', 'mainboard-section']);
+			expect(wrapper.get('.deck-layout').classes()).toContain(flow);
+			const drawn = wrapper
+				.get('[data-testid="commanders-section"]')
+				.findAll('[data-testid="deck-card"]');
+			expect(
+				drawn.map((card) => [card.attributes('data-name'), card.attributes('data-show-quantity')]),
+			).toEqual([
+				['Tymna the Weaver', 'false'],
+				["Kraum, Ludevic's Opus", 'false'],
+			]);
+		},
+	);
 
 	it('hides the companion when it is turned off', async () => {
 		mutableConfig = { ...mutableConfig, showCompanion: false };
 		companionCard.value = createCard({ name: 'Lurrus of the Dream-Den', compartment: 'sideboard' });
-		sideboard.value = [
-			createCard({ name: 'Force of Will', compartment: 'sideboard' }),
-		];
+		sideboard.value = [createCard({ name: 'Force of Will', compartment: 'sideboard' })];
 
 		const wrapper = await mountComponent();
 
@@ -563,7 +617,7 @@ describe('screenDeckDisplay', () => {
 
 	// Measured, the boards share one card size and are sized and placed as one group.
 	// Each card draws the art its deck data chose for its board, the companion its own.
-	it('draws each board\'s cards at its chosen art', async () => {
+	it("draws each board's cards at its chosen art", async () => {
 		mutableConfig = {
 			...mutableConfig,
 			sideboard: { view: 'grid' },
@@ -574,19 +628,21 @@ describe('screenDeckDisplay', () => {
 			sideboard: 'small',
 			companion: 'normal',
 		};
-		sideboard.value = [
-			createCard({ name: 'Duress', compartment: 'sideboard' }),
-		];
+		sideboard.value = [createCard({ name: 'Duress', compartment: 'sideboard' })];
 		companionCard.value = createCard({ name: 'Lutri, the Spellchaser', compartment: 'sideboard' });
 
 		const wrapper = await mountComponent();
 
-		const drawn = Object.fromEntries(wrapper.findAll('[data-testid="deck-card"]')
-			.map(card => [
-				card.attributes('data-name'),
-				card.attributes('data-art'),
-			]));
-		expect(drawn).toEqual({ 'Mana Drain': 'small', 'Duress': 'small', 'Lutri, the Spellchaser': 'normal' });
+		const drawn = Object.fromEntries(
+			wrapper
+				.findAll('[data-testid="deck-card"]')
+				.map((card) => [card.attributes('data-name'), card.attributes('data-art')]),
+		);
+		expect(drawn).toEqual({
+			'Mana Drain': 'small',
+			Duress: 'small',
+			'Lutri, the Spellchaser': 'normal',
+		});
 	});
 
 	it('lays every board out at one card size from the space it measures', async () => {
@@ -600,21 +656,34 @@ describe('screenDeckDisplay', () => {
 			},
 			sideboard: { view: 'stack', alignment: 'bottom' },
 		};
-		mainboard.value = Array.from({ length: 23 }, (_, index) => createCard({ name: `Card ${index}` }));
-		sideboard.value = Array.from({ length: 15 }, (_, index) => createCard({ name: `Side ${index}`, compartment: 'sideboard' }));
+		mainboard.value = Array.from({ length: 23 }, (_, index) =>
+			createCard({ name: `Card ${index}` }),
+		);
+		sideboard.value = Array.from({ length: 15 }, (_, index) =>
+			createCard({ name: `Side ${index}`, compartment: 'sideboard' }),
+		);
 
 		const wrapper = await mountComponent();
 
 		const grid = wrapper.get('[data-testid="mainboard-grid"]');
 		const px = (value: string) => Number.parseFloat(value);
-		const cardWidth = px((wrapper.get('[data-testid="sideboard-stack-column"] .stack-card').element as HTMLElement).style.width);
-		const columns = (grid.get('.grid').element as HTMLElement).style.gridTemplateColumns.match(/^repeat\((\d+), (.+)\)$/)!;
+		const cardWidth = px(
+			(wrapper.get('[data-testid="sideboard-stack-column"] .stack-card').element as HTMLElement)
+				.style.width,
+		);
+		const columns = (grid.get('.grid').element as HTMLElement).style.gridTemplateColumns.match(
+			/^repeat\((\d+), (.+)\)$/,
+		)!;
 		expect(columns[1]).toBe(grid.attributes('data-columns'));
 		expect(px(columns[2]!)).toBeCloseTo(cardWidth, 3);
-		expect(px((wrapper.get('[data-testid="sideboard-section"]').element as HTMLElement).style.width)).toBeCloseTo(cardWidth, 3);
+		expect(
+			px((wrapper.get('[data-testid="sideboard-section"]').element as HTMLElement).style.width),
+		).toBeCloseTo(cardWidth, 3);
 		// The group sits at the mainboard's alignment; the sideboard sits along the mainboard at its own.
 		expect((wrapper.get('.deck-layout').element as HTMLElement).style.justifyContent).toBe('start');
-		expect((wrapper.get('[data-testid="sideboard-section"]').element as HTMLElement).style.alignSelf).toBe('end');
+		expect(
+			(wrapper.get('[data-testid="sideboard-section"]').element as HTMLElement).style.alignSelf,
+		).toBe('end');
 	});
 
 	// Below the mainboard, the sideboard and its heading sit at its own alignment across the whole space.
@@ -633,15 +702,21 @@ describe('screenDeckDisplay', () => {
 				alignment: 'right',
 			},
 		};
-		mainboard.value = Array.from({ length: 21 }, (_, index) => createCard({ name: `Card ${index}` }));
-		sideboard.value = Array.from({ length: 9 }, (_, index) => createCard({ name: `Side ${index}`, compartment: 'sideboard' }));
+		mainboard.value = Array.from({ length: 21 }, (_, index) =>
+			createCard({ name: `Card ${index}` }),
+		);
+		sideboard.value = Array.from({ length: 9 }, (_, index) =>
+			createCard({ name: `Side ${index}`, compartment: 'sideboard' }),
+		);
 
 		const wrapper = await mountComponent();
 
 		const section = wrapper.get('[data-testid="sideboard-section"]');
 		expect((section.element as HTMLElement).style.alignSelf).toBe('end');
 		expect((section.get('h3').element as HTMLElement).style.textAlign).toBe('right');
-		expect((wrapper.get('[data-testid="mainboard-section"]').element as HTMLElement).style.alignSelf).toBe('center');
+		expect(
+			(wrapper.get('[data-testid="mainboard-section"]').element as HTMLElement).style.alignSelf,
+		).toBe('center');
 	});
 
 	// A sideboard aligned away from the mainboard goes to that far edge; otherwise the two sit together.
@@ -674,35 +749,40 @@ describe('screenDeckDisplay', () => {
 			toEdge: false,
 			edge: 'marginLeft',
 		},
-	] as const)('places a $name at the far edge: $toEdge', async ({ placement, sideboardAlignment, toEdge, edge }) => {
-		measured.width = 1920;
-		measured.height = 960;
-		mutableConfig = {
-			...mutableConfig,
-			sideboardPlacement: placement,
-			mainboard: {
-				view: 'grid',
-				alignment: 'top-left',
-			},
-			sideboard: {
-				view: placement === 'beside'
-					? 'stack'
-					: 'grid',
-				alignment: sideboardAlignment,
-			},
-		};
-		mainboard.value = Array.from({ length: 21 }, (_, index) => createCard({ name: `Card ${index}` }));
-		sideboard.value = Array.from({ length: 9 }, (_, index) => createCard({ name: `Side ${index}`, compartment: 'sideboard' }));
+	] as const)(
+		'places a $name at the far edge: $toEdge',
+		async ({ placement, sideboardAlignment, toEdge, edge }) => {
+			measured.width = 1920;
+			measured.height = 960;
+			mutableConfig = {
+				...mutableConfig,
+				sideboardPlacement: placement,
+				mainboard: {
+					view: 'grid',
+					alignment: 'top-left',
+				},
+				sideboard: {
+					view: placement === 'beside' ? 'stack' : 'grid',
+					alignment: sideboardAlignment,
+				},
+			};
+			mainboard.value = Array.from({ length: 21 }, (_, index) =>
+				createCard({ name: `Card ${index}` }),
+			);
+			sideboard.value = Array.from({ length: 9 }, (_, index) =>
+				createCard({ name: `Side ${index}`, compartment: 'sideboard' }),
+			);
 
-		const wrapper = await mountComponent();
+			const wrapper = await mountComponent();
 
-		expect((wrapper.get('[data-testid="sideboard-section"]').element as HTMLElement).style[edge]).toBe(toEdge ? 'auto' : '');
-	});
+			expect(
+				(wrapper.get('[data-testid="sideboard-section"]').element as HTMLElement).style[edge],
+			).toBe(toEdge ? 'auto' : '');
+		},
+	);
 
 	it('does not render token metadata on the Deck display', async () => {
-		tokenCards.value = [
-			createCard({ name: 'Treasure Token', compartment: 'sideboard' }),
-		];
+		tokenCards.value = [createCard({ name: 'Treasure Token', compartment: 'sideboard' })];
 
 		const wrapper = await mountComponent();
 
@@ -761,12 +841,10 @@ describe('screenDeckDisplay', () => {
 		let pending: string | undefined;
 		function arrive() {
 			pending = arriving.shift();
-			if (pending)
-				pendingSwapVersion.value += 1;
+			if (pending) pendingSwapVersion.value += 1;
 		}
 		commitPendingDeck.mockImplementation(() => {
-			if (!pending)
-				return;
+			if (!pending) return;
 			primaryName.value = pending;
 			displayedDeckVersion.value += 1;
 			arrive();

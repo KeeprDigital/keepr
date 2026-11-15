@@ -13,11 +13,18 @@ import {
 	isSettledStatus,
 	openCleanupManifest,
 } from './graphics-acceptance/cleanup-manifest.mjs';
-import { loadCommittedInstallation, resolveDeployedTarget, stagingBucketOf } from './graphics-acceptance/deployed-target.mjs';
+import {
+	loadCommittedInstallation,
+	resolveDeployedTarget,
+	stagingBucketOf,
+} from './graphics-acceptance/deployed-target.mjs';
 import { AcceptanceFailure } from './graphics-acceptance/evidence.mjs';
 import { runAcceptanceHarness } from './graphics-acceptance/harness.mjs';
 import { openOperatorSession } from './graphics-acceptance/operator.mjs';
-import { createWranglerCommands, RemoteCommandFailure } from './graphics-acceptance/validator-commands.mjs';
+import {
+	createWranglerCommands,
+	RemoteCommandFailure,
+} from './graphics-acceptance/validator-commands.mjs';
 
 /**
  * Acceptance for the silent-video validation runtime.
@@ -52,10 +59,9 @@ import { createWranglerCommands, RemoteCommandFailure } from './graphics-accepta
 const HARNESS = 'silent-video-validator-v1';
 
 const FIXTURE_NAMES = ['h264Mp4', 'vp9Webm', 'vp9AlphaWebm'];
-const fixtures = JSON.parse(await readFile(
-	new URL('./silent-video-validator-fixtures.json', import.meta.url),
-	'utf8',
-));
+const fixtures = JSON.parse(
+	await readFile(new URL('./silent-video-validator-fixtures.json', import.meta.url), 'utf8'),
+);
 
 function sha256Hex(bytes) {
 	return createHash('sha256').update(bytes).digest('hex');
@@ -80,8 +86,8 @@ function validationInput(fixture, operationId) {
 	};
 }
 
-const sourceKey = operationId => `ingestion/${operationId}/source`;
-const posterKey = validationId => `validation/silent-video/${validationId}/poster`;
+const sourceKey = (operationId) => `ingestion/${operationId}/source`;
+const posterKey = (validationId) => `validation/silent-video/${validationId}/poster`;
 
 /**
  * Run one adapter command, turning its failure into `code` with `detail` and
@@ -90,8 +96,7 @@ const posterKey = validationId => `validation/silent-video/${validationId}/poste
 async function remote(code, detail, action) {
 	try {
 		return await action();
-	}
-	catch (error) {
+	} catch (error) {
 		if (error instanceof RemoteCommandFailure)
 			throw new AcceptanceFailure(code, { ...detail, exit: error.exit ?? 'signal' });
 		throw error;
@@ -106,12 +111,14 @@ function command(fixture, step, action) {
 const operationIdFor = (suffix, name) => `acceptance-${suffix}-${name.toLowerCase()}`;
 
 function stageFixture(commands, target, name, operationId) {
-	return command(name, 'put', () => commands.putObject({
-		target,
-		key: sourceKey(operationId),
-		bytes: Buffer.from(fixtures[name].base64, 'base64'),
-		contentType: fixtures[name].facts.canonicalMime,
-	}));
+	return command(name, 'put', () =>
+		commands.putObject({
+			target,
+			key: sourceKey(operationId),
+			bytes: Buffer.from(fixtures[name].base64, 'base64'),
+			contentType: fixtures[name].facts.canonicalMime,
+		}),
+	);
 }
 
 /**
@@ -119,23 +126,16 @@ function stageFixture(commands, target, name, operationId) {
  * a word of the shape the validator uses travels.
  */
 function stageWord(stage) {
-	return typeof stage === 'string' && /^[a-z][a-z-]{0,31}$/.test(stage)
-		? stage
-		: 'unrecognised';
+	return typeof stage === 'string' && /^[a-z][a-z-]{0,31}$/.test(stage) ? stage : 'unrecognised';
 }
 
 /** The first field of a settled output that is not an exact acceptance of `input`. */
 function inexactField(fixture, input, output) {
-	if (output.outcome !== 'accepted')
-		return 'outcome';
-	if (output.idempotencyKey !== input.idempotencyKey)
-		return 'idempotencyKey';
-	if (output.mutedInlinePlayback !== true)
-		return 'mutedInlinePlayback';
-	if (output.seeked !== true)
-		return 'seeked';
-	if (fixture.facts.hasAlpha && output.transparencyRendered !== true)
-		return 'transparencyRendered';
+	if (output.outcome !== 'accepted') return 'outcome';
+	if (output.idempotencyKey !== input.idempotencyKey) return 'idempotencyKey';
+	if (output.mutedInlinePlayback !== true) return 'mutedInlinePlayback';
+	if (output.seeked !== true) return 'seeked';
+	if (fixture.facts.hasAlpha && output.transparencyRendered !== true) return 'transparencyRendered';
 	if (typeof output.posterKey !== 'string' || typeof output.posterDigest !== 'string')
 		return 'poster';
 	return undefined;
@@ -145,29 +145,42 @@ function assertAccepted(fixture, input, headers, posterBytes, name) {
 	const required = (header) => {
 		const value = headers.get(header);
 		if (!value)
-			throw new AcceptanceFailure('validator-output-unexpected', { fixture: name, field: 'header-missing' });
+			throw new AcceptanceFailure('validator-output-unexpected', {
+				fixture: name,
+				field: 'header-missing',
+			});
 		return value;
 	};
-	const unexpected = field => new AcceptanceFailure('validator-output-unexpected', { fixture: name, field });
-	if (required('x-stream-keepr-operation-id') !== input.operationId
-		|| required('x-stream-keepr-idempotency-key') !== input.idempotencyKey
-		|| required('x-stream-keepr-source-digest') !== input.sourceDigest
-		|| required('x-stream-keepr-facts-digest') !== input.factsDigest) {
+	const unexpected = (field) =>
+		new AcceptanceFailure('validator-output-unexpected', { fixture: name, field });
+	if (
+		required('x-stream-keepr-operation-id') !== input.operationId ||
+		required('x-stream-keepr-idempotency-key') !== input.idempotencyKey ||
+		required('x-stream-keepr-source-digest') !== input.sourceDigest ||
+		required('x-stream-keepr-facts-digest') !== input.factsDigest
+	) {
 		throw unexpected('binding');
 	}
 	if (required('x-stream-keepr-muted-inline-playback') !== 'true')
 		throw unexpected('mutedInlinePlayback');
-	if (required('x-stream-keepr-seeked') !== 'true')
-		throw unexpected('seeked');
+	if (required('x-stream-keepr-seeked') !== 'true') throw unexpected('seeked');
 	if (fixture.facts.hasAlpha && required('x-stream-keepr-transparency-rendered') !== 'true')
 		throw unexpected('transparencyRendered');
-	if (Number(required('x-stream-keepr-video-width')) !== fixture.facts.width
-		|| Number(required('x-stream-keepr-video-height')) !== fixture.facts.height) {
+	if (
+		Number(required('x-stream-keepr-video-width')) !== fixture.facts.width ||
+		Number(required('x-stream-keepr-video-height')) !== fixture.facts.height
+	) {
 		throw unexpected('dimensions');
 	}
-	if (Math.abs(Number(required('x-stream-keepr-video-duration')) - fixture.facts.durationSeconds) > 0.05)
+	if (
+		Math.abs(Number(required('x-stream-keepr-video-duration')) - fixture.facts.durationSeconds) >
+		0.05
+	)
 		throw unexpected('duration');
-	if (Math.abs(Number(required('x-stream-keepr-poster-time')) - fixture.facts.posterTimeSeconds) > 0.001)
+	if (
+		Math.abs(Number(required('x-stream-keepr-poster-time')) - fixture.facts.posterTimeSeconds) >
+		0.001
+	)
 		throw unexpected('posterTime');
 	if (sha256Hex(posterBytes) !== required('x-stream-keepr-poster-digest'))
 		throw new AcceptanceFailure('validator-poster-mismatch', { fixture: name });
@@ -188,7 +201,7 @@ async function driveServiceBinding(baseUrl, fixture, operationId, name) {
 		});
 		if (response.status === 429 || response.status >= 500) {
 			await response.arrayBuffer();
-			await new Promise(resolve => setTimeout(resolve, 3000));
+			await new Promise((resolve) => setTimeout(resolve, 3000));
 			continue;
 		}
 		if (response.status === 422) {
@@ -200,7 +213,10 @@ async function driveServiceBinding(baseUrl, fixture, operationId, name) {
 			};
 		}
 		if (!response.ok)
-			throw new AcceptanceFailure('validator-settled-unsuccessfully', { fixture: name, status: response.status });
+			throw new AcceptanceFailure('validator-settled-unsuccessfully', {
+				fixture: name,
+				status: response.status,
+			});
 		const posterBytes = Buffer.from(await response.arrayBuffer());
 		assertAccepted(fixture, input, response.headers, posterBytes, name);
 		return { outcome: 'accepted', input };
@@ -210,22 +226,31 @@ async function driveServiceBinding(baseUrl, fixture, operationId, name) {
 
 /** `wrangler dev` for the validator, ready to serve, or a named failure. */
 function startLocalValidator({ validatorConfigPath, persistTo, port, repoRoot }) {
-	const dev = spawn('npx', [
-		'wrangler',
-		'dev',
-		'--config',
-		validatorConfigPath,
-		'--persist-to',
-		persistTo,
-		'--port',
-		String(port),
-	], {
-		cwd: repoRoot,
-		stdio: ['ignore', 'pipe', 'pipe'],
-	});
+	const dev = spawn(
+		'npx',
+		[
+			'wrangler',
+			'dev',
+			'--config',
+			validatorConfigPath,
+			'--persist-to',
+			persistTo,
+			'--port',
+			String(port),
+		],
+		{
+			cwd: repoRoot,
+			stdio: ['ignore', 'pipe', 'pipe'],
+		},
+	);
 	const ready = new Promise((resolve, reject) => {
 		const timeout = setTimeout(
-			() => reject(new AcceptanceFailure('validator-runtime-unavailable', { reason: 'not-ready-is-docker-running' })),
+			() =>
+				reject(
+					new AcceptanceFailure('validator-runtime-unavailable', {
+						reason: 'not-ready-is-docker-running',
+					}),
+				),
 			300_000,
 		);
 		let output = '';
@@ -247,13 +272,16 @@ function startLocalValidator({ validatorConfigPath, persistTo, port, repoRoot })
 		ready,
 		async stop() {
 			dev.kill('SIGTERM');
-			await new Promise(resolve => setTimeout(resolve, 2000));
+			await new Promise((resolve) => setTimeout(resolve, 2000));
 			dev.kill('SIGKILL');
 		},
 	};
 }
 
-async function runLocalAcceptance({ record }, { commands, installation, repoRoot, startValidator }) {
+async function runLocalAcceptance(
+	{ record },
+	{ commands, installation, repoRoot, startValidator },
+) {
 	const persistTo = await mkdtemp(join(tmpdir(), 'silent-video-validator-state-'));
 	const target = {
 		local: persistTo,
@@ -262,18 +290,12 @@ async function runLocalAcceptance({ record }, { commands, installation, repoRoot
 	};
 	const port = 8987;
 	const suffix = Date.now().toString(36);
-	const plan = FIXTURE_NAMES.map(name => [
-		name,
-		operationIdFor(suffix, name),
-	]);
+	const plan = FIXTURE_NAMES.map((name) => [name, operationIdFor(suffix, name)]);
 	// The tampered case declares WebM facts against staged MP4 bytes.
 	const tamperedOperation = `acceptance-${suffix}-tampered`;
 	let validator;
 	try {
-		for (const [name, operationId] of [
-			...plan,
-			['h264Mp4', tamperedOperation],
-		])
+		for (const [name, operationId] of [...plan, ['h264Mp4', tamperedOperation]])
 			await stageFixture(commands, target, name, operationId);
 		validator = startValidator({
 			validatorConfigPath: target.validatorConfigPath,
@@ -286,37 +308,57 @@ async function runLocalAcceptance({ record }, { commands, installation, repoRoot
 		for (const [name, operationId] of plan) {
 			const result = await driveServiceBinding(baseUrl, fixtures[name], operationId, name);
 			if (result.outcome !== 'accepted')
-				throw new AcceptanceFailure('validator-settled-unsuccessfully', { fixture: name, stage: result.stage });
+				throw new AcceptanceFailure('validator-settled-unsuccessfully', {
+					fixture: name,
+					stage: result.stage,
+				});
 			record([]);
 		}
-		const tampered = await driveServiceBinding(baseUrl, fixtures.vp9Webm, tamperedOperation, 'tampered');
+		const tampered = await driveServiceBinding(
+			baseUrl,
+			fixtures.vp9Webm,
+			tamperedOperation,
+			'tampered',
+		);
 		if (tampered.outcome !== 'rejected' || tampered.stage !== 'metadata')
-			throw new AcceptanceFailure('validator-tamper-not-rejected', { outcome: tampered.outcome, stage: tampered.stage ?? 'none' });
+			throw new AcceptanceFailure('validator-tamper-not-rejected', {
+				outcome: tampered.outcome,
+				stage: tampered.stage ?? 'none',
+			});
 		record([]);
 		return { mode: 'local', fixtures: plan.length, tampered: 'rejected' };
-	}
-	finally {
+	} finally {
 		await validator?.stop();
 		await rm(persistTo, { recursive: true, force: true });
 	}
 }
 
 /** Everything a deployed run checks before its first write. */
-async function preflightDeployed({ evidence }, { env, installation, manifest, commands, openSession }) {
+async function preflightDeployed(
+	{ evidence },
+	{ env, installation, manifest, commands, openSession },
+) {
 	const target = resolveDeployedTarget({ env, installation });
 	evidence.addSecret(target.accountId);
 	const left = await manifest.read();
 	if (left) {
-		process.stderr.write('An earlier deployed run could not delete everything it staged. Run '
-			+ '`pnpm accept silent-video-validator --deployed --cleanup` with the same target first.\n');
-		throw new AcceptanceFailure('harness-cleanup-pending', { remaining: left.objects?.length ?? 0 });
+		process.stderr.write(
+			'An earlier deployed run could not delete everything it staged. Run ' +
+				'`pnpm accept silent-video-validator --deployed --cleanup` with the same target first.\n',
+		);
+		throw new AcceptanceFailure('harness-cleanup-pending', {
+			remaining: left.objects?.length ?? 0,
+		});
 	}
 	// Read-only probes before the sign-in, because a bootstrapping sign-in
 	// creates or resets an account and is itself a write.
-	await remote('harness-target-unverified', { step: 'bucket' }, () => commands.probeBucket({ target }));
-	await remote('harness-target-unverified', { step: 'workflow' }, () => commands.probeWorkflow({ target }));
-	for (const cookie of await openSession(target.origin))
-		evidence.addSecret(cookie);
+	await remote('harness-target-unverified', { step: 'bucket' }, () =>
+		commands.probeBucket({ target }),
+	);
+	await remote('harness-target-unverified', { step: 'workflow' }, () =>
+		commands.probeWorkflow({ target }),
+	);
+	for (const cookie of await openSession(target.origin)) evidence.addSecret(cookie);
 	return target;
 }
 
@@ -331,40 +373,44 @@ async function runDeployedFixture({ commands, manifest, target, pollIntervalMs }
 	// The Workflow writes its poster under this key, so it is listed before the
 	// Workflow can write it, and stays listed until the instance has settled.
 	await manifest.record(posterKey(validationId), { instance: validationId });
-	await command(name, 'trigger', () => commands.triggerWorkflow({ target, id: validationId, params: input }));
+	await command(name, 'trigger', () =>
+		commands.triggerWorkflow({ target, id: validationId, params: input }),
+	);
 
 	let output;
 	for (let attempt = 1; attempt <= 120 && !output; attempt++) {
 		const { status, output: settled } = await command(name, 'describe', () =>
-			commands.describeInstance({ target, id: validationId }));
-		if (isSettledStatus(status))
-			await manifest.settle(posterKey(validationId));
+			commands.describeInstance({ target, id: validationId }),
+		);
+		if (isSettledStatus(status)) await manifest.settle(posterKey(validationId));
 		if (status.includes('Complete')) {
 			if (!settled || typeof settled !== 'object')
-				throw new AcceptanceFailure('validator-output-unexpected', { fixture: name, field: 'output' });
+				throw new AcceptanceFailure('validator-output-unexpected', {
+					fixture: name,
+					field: 'output',
+				});
 			output = settled;
-		}
-		else if (status.includes('Errored') || status.includes('Terminated')) {
+		} else if (status.includes('Errored') || status.includes('Terminated')) {
 			throw new AcceptanceFailure('validator-settled-unsuccessfully', {
 				fixture: name,
-				status: status.includes('Errored')
-					? 'errored'
-					: 'terminated',
+				status: status.includes('Errored') ? 'errored' : 'terminated',
 			});
-		}
-		else {
-			await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+		} else {
+			await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
 		}
 	}
-	if (!output)
-		throw new AcceptanceFailure('validator-did-not-settle', { fixture: name });
+	if (!output) throw new AcceptanceFailure('validator-did-not-settle', { fixture: name });
 	const field = inexactField(fixture, input, output);
-	if (field)
-		throw new AcceptanceFailure('validator-output-unexpected', { fixture: name, field });
+	if (field) throw new AcceptanceFailure('validator-output-unexpected', { fixture: name, field });
 	if (output.posterKey !== posterKey(validationId))
-		throw new AcceptanceFailure('validator-output-unexpected', { fixture: name, field: 'posterKey' });
+		throw new AcceptanceFailure('validator-output-unexpected', {
+			fixture: name,
+			field: 'posterKey',
+		});
 
-	const posterBytes = await command(name, 'get', () => commands.getObject({ target, key: output.posterKey }));
+	const posterBytes = await command(name, 'get', () =>
+		commands.getObject({ target, key: output.posterKey }),
+	);
 	if (!posterBytes || sha256Hex(posterBytes) !== output.posterDigest)
 		throw new AcceptanceFailure('validator-poster-mismatch', { fixture: name });
 }
@@ -381,13 +427,14 @@ async function runDeployedAcceptance(context, dependencies) {
 			await runDeployedFixture({ ...dependencies, target }, name, suffix);
 			context.record([]);
 		}
-	}
-	finally {
+	} finally {
 		const drained = await drainCleanupManifest({ manifest, commands, target });
 		cleaned = drained.cleaned;
 		if (drained.remaining > 0) {
-			process.stderr.write('Some staged objects could not be deleted, or a Workflow had not settled; they are '
-				+ 'listed in the cleanup manifest. Retry with `pnpm accept silent-video-validator --deployed --cleanup`.\n');
+			process.stderr.write(
+				'Some staged objects could not be deleted, or a Workflow had not settled; they are ' +
+					'listed in the cleanup manifest. Retry with `pnpm accept silent-video-validator --deployed --cleanup`.\n',
+			);
 			context.record([
 				{
 					code: 'harness-cleanup-incomplete',
@@ -410,23 +457,28 @@ async function runDeployedCleanup(context, { env, installation, manifest, comman
 	assertManifestTarget(left, target);
 	manifest.resume(left);
 	const { cleaned, remaining } = await drainCleanupManifest({ manifest, commands, target });
-	context.record(remaining > 0
-		? [
-				{
-					code: 'harness-cleanup-incomplete',
-					detail: { remaining },
-				},
-			]
-		: []);
+	context.record(
+		remaining > 0
+			? [
+					{
+						code: 'harness-cleanup-incomplete',
+						detail: { remaining },
+					},
+				]
+			: [],
+	);
 	return { cleaned };
 }
 
 /** Stands in for any dependency a caller did not inject, so an imported `main` cannot reach Wrangler. */
-const NOT_INJECTED = new Proxy({}, {
-	get: (_, name) => () => {
-		throw new Error(`run-silent-video-validator-acceptance: ${String(name)} was not injected`);
+const NOT_INJECTED = new Proxy(
+	{},
+	{
+		get: (_, name) => () => {
+			throw new Error(`run-silent-video-validator-acceptance: ${String(name)} was not injected`);
+		},
 	},
-});
+);
 
 /**
  * @param {string[]} [argv]
@@ -449,19 +501,20 @@ export async function main(argv = process.argv, options = {}) {
 		harness: HARNESS,
 		async run(context) {
 			if (cleanup && !deployed)
-				throw new AcceptanceFailure('harness-precondition-unmet', { reason: 'cleanup-needs-deployed' });
+				throw new AcceptanceFailure('harness-precondition-unmet', {
+					reason: 'cleanup-needs-deployed',
+				});
 			const dependencies = {
 				commands: options.commands ?? NOT_INJECTED,
 				env: options.env ?? process.env,
-				installation: options.installation ?? await loadCommittedInstallation(),
+				installation: options.installation ?? (await loadCommittedInstallation()),
 				manifest: openCleanupManifest(options.manifestPath ?? DEFAULT_CLEANUP_MANIFEST),
 				openSession: options.openSession ?? NOT_INJECTED.openSession,
 				startValidator: options.startValidator ?? NOT_INJECTED.startValidator,
 				pollIntervalMs: options.pollIntervalMs ?? 5000,
 				repoRoot: fileURLToPath(new URL('..', import.meta.url)),
 			};
-			if (!deployed)
-				return await runLocalAcceptance(context, dependencies);
+			if (!deployed) return await runLocalAcceptance(context, dependencies);
 			return cleanup
 				? await runDeployedCleanup(context, dependencies)
 				: await runDeployedAcceptance(context, dependencies);
@@ -473,7 +526,7 @@ if (import.meta.main) {
 	const repoRoot = fileURLToPath(new URL('..', import.meta.url));
 	await main(process.argv, {
 		commands: createWranglerCommands({ repoRoot }),
-		openSession: origin => openOperatorSession(origin, { deployed: true }),
+		openSession: (origin) => openOperatorSession(origin, { deployed: true }),
 		startValidator: startLocalValidator,
 	});
 }

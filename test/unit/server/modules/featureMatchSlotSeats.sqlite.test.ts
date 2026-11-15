@@ -14,7 +14,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 vi.stubGlobal('useRuntimeConfig', () => ({ bandaiKeeprApiKey: '', bandaiKeeprApiUrl: '' }));
 
 const harness = await createSqliteD1Harness();
@@ -33,7 +34,8 @@ afterAll(async () => {
 });
 
 async function stageSlot(event: { game: 'mtg' | 'op'; variant: Variant | null }) {
-	const [created] = await db.insert(schema.events)
+	const [created] = await db
+		.insert(schema.events)
 		.values({ name: 'Event', featureMatchOrientation: 'horizontal', ...event })
 		.returning({ id: schema.events.id });
 	const eventId = created!.id;
@@ -49,8 +51,8 @@ async function reloaded(eventId: number, slotId: number) {
 	return mapFeatureMatchToResponse((await featureMatchService().findById(slotId, eventId))!);
 }
 
-describe('a Commander Slot\'s Seats', () => {
-	it('stores a Seat\'s name, pronouns, LGS and Commanders, and reads them back as the chosen printings', async () => {
+describe("a Commander Slot's Seats", () => {
+	it("stores a Seat's name, pronouns, LGS and Commanders, and reads them back as the chosen printings", async () => {
 		const { eventId, slotId } = await commanderSlot();
 
 		await featureMatchSlotWriteModule().updateSetup({
@@ -80,7 +82,7 @@ describe('a Commander Slot\'s Seats', () => {
 		});
 	});
 
-	it('names a Seat\'s deck by its Commanders and colours it by their colour identity', async () => {
+	it("names a Seat's deck by its Commanders and colours it by their colour identity", async () => {
 		const { eventId, slotId } = await commanderSlot();
 
 		const saved = await featureMatchSlotWriteModule().updateSetup({
@@ -92,7 +94,7 @@ describe('a Commander Slot\'s Seats', () => {
 		});
 
 		expect(saved.player4Data?.gameData).toMatchObject({
-			deckName: 'Tymna the Weaver / Kraum, Ludevic\'s Opus',
+			deckName: "Tymna the Weaver / Kraum, Ludevic's Opus",
 			deckColors: 'WUBR',
 		});
 	});
@@ -122,7 +124,10 @@ describe('a Commander Slot\'s Seats', () => {
 			},
 		});
 
-		const [stored] = await db.select().from(schema.featureMatches).where(eq(schema.featureMatches.id, slotId));
+		const [stored] = await db
+			.select()
+			.from(schema.featureMatches)
+			.where(eq(schema.featureMatches.id, slotId));
 		expect(stored!.player2Data).toEqual({ name: 'Ben' });
 	});
 
@@ -146,8 +151,7 @@ describe('a Commander Slot\'s Seats', () => {
 			slot.player2Data ?? null,
 			slot.player3Data?.name,
 			slot.player4Data ?? null,
-		])
-			.toEqual(['Ana', null, 'Cyd', null]);
+		]).toEqual(['Ana', null, 'Cyd', null]);
 	});
 
 	it('clears a Seat that is saved empty', async () => {
@@ -171,7 +175,7 @@ describe('a Commander Slot\'s Seats', () => {
 });
 
 describe('swap Seats', () => {
-	it('leaves each of the two Seats\' players in the other Seat, on the Slot itself, and announces it', async () => {
+	it("leaves each of the two Seats' players in the other Seat, on the Slot itself, and announces it", async () => {
 		const { eventId, slotId } = await commanderSlot();
 		await featureMatchSlotWriteModule().updateSetup({
 			eventId,
@@ -190,7 +194,10 @@ describe('swap Seats', () => {
 			seats: ['player1', 'player3'],
 		});
 
-		const [stored] = await db.select().from(schema.featureMatches).where(eq(schema.featureMatches.id, slotId));
+		const [stored] = await db
+			.select()
+			.from(schema.featureMatches)
+			.where(eq(schema.featureMatches.id, slotId));
 		expect(stored!.player1Data).toMatchObject({
 			name: 'Cyd',
 			gameData: {
@@ -206,14 +213,15 @@ describe('swap Seats', () => {
 		});
 		expect(stored!.player2Data).toMatchObject({ name: 'Ben' });
 		expect(answer.player1Data?.name).toBe('Cyd');
-		expect(published.filter(message => message.type === 'featureMatch:updated').map(message => message.payload))
-			.toEqual([
-				{ featureMatch: answer },
-			]);
+		expect(
+			published
+				.filter((message) => message.type === 'featureMatch:updated')
+				.map((message) => message.payload),
+		).toEqual([{ featureMatch: answer }]);
 	});
 
 	// The Session's snapshot is corrected as a setup save corrects it, without reopening it.
-	it('reaches the Slot\'s active Session', async () => {
+	it("reaches the Slot's active Session", async () => {
 		const { eventId, slotId } = await commanderSlot();
 		await featureMatchSlotWriteModule().updateSetup({
 			eventId,
@@ -232,8 +240,11 @@ describe('swap Seats', () => {
 		});
 
 		const after = (await reloaded(eventId, slotId)).activeSession!;
-		expect([after.id, after.sourceSnapshot.player1.data?.name, after.sourceSnapshot.player2.data?.name])
-			.toEqual([before.id, 'Ben', 'Ana']);
+		expect([
+			after.id,
+			after.sourceSnapshot.player1.data?.name,
+			after.sourceSnapshot.player2.data?.name,
+		]).toEqual([before.id, 'Ben', 'Ana']);
 	});
 
 	it('moves a player into an empty Seat', async () => {
@@ -259,49 +270,55 @@ describe('swap Seats', () => {
 	it('refuses a Seat swapped with itself', async () => {
 		const { eventId, slotId } = await commanderSlot();
 
-		await expect(featureMatchSlotWriteModule().swapSeats({
-			eventId,
-			slotId,
-			seats: ['player2', 'player2'],
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
+		await expect(
+			featureMatchSlotWriteModule().swapSeats({
+				eventId,
+				slotId,
+				seats: ['player2', 'player2'],
+			}),
+		).rejects.toMatchObject({ statusCode: 400 });
 	});
 });
 
 // A Commander Event is its Slots alone: a Seat links no Player and a Slot shows no Match.
-describe('a Commander Slot and the Event\'s Players and Matches', () => {
+describe("a Commander Slot and the Event's Players and Matches", () => {
 	async function commanderSlotBesidePlayer() {
 		const { eventId, slotId } = await commanderSlot();
-		const [player] = await db.insert(schema.players).values({ eventId, name: 'Pat' }).returning({ id: schema.players.id });
+		const [player] = await db
+			.insert(schema.players)
+			.values({ eventId, name: 'Pat' })
+			.returning({ id: schema.players.id });
 		return { eventId, slotId, playerId: player!.id };
 	}
 
 	it.each([
 		{
 			write: 'a setup save',
-			run: (eventId: number, slotId: number, playerId: number) => featureMatchSlotWriteModule().updateSetup({
-				eventId,
-				slotId,
-				input: { player1Id: playerId },
-			}),
+			run: (eventId: number, slotId: number, playerId: number) =>
+				featureMatchSlotWriteModule().updateSetup({
+					eventId,
+					slotId,
+					input: { player1Id: playerId },
+				}),
 		},
 		{
 			write: 'a Slot create',
-			run: (eventId: number, _slotId: number, playerId: number) => featureMatchSlotWriteModule().create({
-				eventId,
-				input: { player2Id: playerId },
-			}),
+			run: (eventId: number, _slotId: number, playerId: number) =>
+				featureMatchSlotWriteModule().create({
+					eventId,
+					input: { player2Id: playerId },
+				}),
 		},
 	])('refuses $write that links a Seat to a Player', async ({ run }) => {
 		const { eventId, slotId, playerId } = await commanderSlotBesidePlayer();
 
 		await expect(run(eventId, slotId, playerId)).rejects.toMatchObject({ statusCode: 400 });
 
-		const slots = await db.select().from(schema.featureMatches).where(eq(schema.featureMatches.eventId, eventId));
-		expect(slots.map(slot => [slot.player1Id, slot.player2Id])).toEqual([
-			[null, null],
-		]);
+		const slots = await db
+			.select()
+			.from(schema.featureMatches)
+			.where(eq(schema.featureMatches.eventId, eventId));
+		expect(slots.map((slot) => [slot.player1Id, slot.player2Id])).toEqual([[null, null]]);
 	});
 
 	it('creates a Slot whose Seats keep only what a typed Seat holds', async () => {
@@ -342,7 +359,7 @@ describe('an Event that is not a Commander Event', () => {
 			},
 		},
 		{
-			refused: 'a Commander on a Two-Player Event\'s Seat',
+			refused: "a Commander on a Two-Player Event's Seat",
 			event: TWO_PLAYER,
 			input: {
 				player1Data: seat('Ana', [ATRAXA]),
@@ -351,25 +368,32 @@ describe('an Event that is not a Commander Event', () => {
 	])('refuses $refused, storing nothing', async ({ event, input }) => {
 		const { eventId, slotId } = await stageSlot(event);
 
-		await expect(featureMatchSlotWriteModule().updateSetup({ eventId, slotId, input }))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
+		await expect(
+			featureMatchSlotWriteModule().updateSetup({ eventId, slotId, input }),
+		).rejects.toMatchObject({ statusCode: 400 });
 
-		const [stored] = await db.select().from(schema.featureMatches).where(eq(schema.featureMatches.id, slotId));
-		expect([stored!.player1Data, stored!.player3Data, stored!.player4Data]).toEqual([null, null, null]);
+		const [stored] = await db
+			.select()
+			.from(schema.featureMatches)
+			.where(eq(schema.featureMatches.id, slotId));
+		expect([stored!.player1Data, stored!.player3Data, stored!.player4Data]).toEqual([
+			null,
+			null,
+			null,
+		]);
 	});
 
 	// Swap Players stays the Session's on these Events (ADR-0058).
 	it('refuses Swap Seats', async () => {
 		const { eventId, slotId } = await stageSlot(TWO_PLAYER);
 
-		await expect(featureMatchSlotWriteModule().swapSeats({
-			eventId,
-			slotId,
-			seats: ['player1', 'player2'],
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
+		await expect(
+			featureMatchSlotWriteModule().swapSeats({
+				eventId,
+				slotId,
+				seats: ['player1', 'player2'],
+			}),
+		).rejects.toMatchObject({ statusCode: 400 });
 	});
 
 	// The Slot response and its realtime message are public contracts: neither gains a Seat 3 or 4.
@@ -386,9 +410,11 @@ describe('an Event that is not a Commander Event', () => {
 			input: { player1Data: seatOne },
 		});
 
-		const announced = published.find(message => message.type === 'featureMatch:updated')!.payload as { featureMatch: object };
-		const laterSeatKeys = [answer, announced.featureMatch, await reloaded(eventId, slotId)]
-			.map(slot => Object.keys(slot).filter(key => /^player[34]/.test(key)));
+		const announced = published.find((message) => message.type === 'featureMatch:updated')!
+			.payload as { featureMatch: object };
+		const laterSeatKeys = [answer, announced.featureMatch, await reloaded(eventId, slotId)].map(
+			(slot) => Object.keys(slot).filter((key) => /^player[34]/.test(key)),
+		);
 		expect(laterSeatKeys).toEqual([[], [], []]);
 		expect(answer.player1Data).toEqual(seatOne);
 	});

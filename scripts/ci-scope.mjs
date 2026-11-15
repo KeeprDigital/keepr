@@ -63,12 +63,13 @@ const COMMIT_ID = /^[0-9a-f]{40}$/;
  * @returns {{ code: boolean, bundle: boolean, docs: boolean }} whether any file can affect the code gates, and the Worker bundle; and whether a change that skips the code gates touches a document
  */
 export function scopeOf(changedFiles) {
-	if (changedFiles.length === 0)
-		return { code: true, bundle: true, docs: false };
-	const code = changedFiles.some(file => !OUTSIDE_CODE.test(file));
-	const bundle = changedFiles.some(file => !OUTSIDE_CODE.test(file) && !OUTSIDE_BUNDLE.test(file));
+	if (changedFiles.length === 0) return { code: true, bundle: true, docs: false };
+	const code = changedFiles.some((file) => !OUTSIDE_CODE.test(file));
+	const bundle = changedFiles.some(
+		(file) => !OUTSIDE_CODE.test(file) && !OUTSIDE_BUNDLE.test(file),
+	);
 	// The code gates cover every document themselves.
-	const docs = !code && changedFiles.some(file => DOCUMENT.test(file));
+	const docs = !code && changedFiles.some((file) => DOCUMENT.test(file));
 	return { code, bundle, docs };
 }
 
@@ -81,12 +82,16 @@ export function scopeOf(changedFiles) {
  * @returns {{ base: string, head: string, fetch?: string } | undefined} the range, or `undefined` to run everything
  */
 export function diffRange(eventName, event) {
-	if (eventName === 'pull_request')
-		return { base: 'HEAD^1', head: 'HEAD' };
+	if (eventName === 'pull_request') return { base: 'HEAD^1', head: 'HEAD' };
 	if (eventName === 'merge_group') {
 		const base = event?.merge_group?.base_sha;
 		const head = event?.merge_group?.head_sha;
-		if (typeof base !== 'string' || typeof head !== 'string' || !COMMIT_ID.test(base) || !COMMIT_ID.test(head))
+		if (
+			typeof base !== 'string' ||
+			typeof head !== 'string' ||
+			!COMMIT_ID.test(base) ||
+			!COMMIT_ID.test(head)
+		)
 			return undefined;
 		// The checkout is the group's head and its parent; the base is further back.
 		return { base, head, fetch: base };
@@ -108,43 +113,36 @@ async function main() {
 		? JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
 		: {};
 	const range = diffRange(eventName, event);
-	const verified = eventName === 'merge_group' && range
-		? await verifiedRunOnGitHub(range.head)
-		: undefined;
+	const verified =
+		eventName === 'merge_group' && range ? await verifiedRunOnGitHub(range.head) : undefined;
 	if (verified) {
 		console.log('code=false bundle=false docs=false');
 		if (process.env.GITHUB_OUTPUT)
-			appendFileSync(process.env.GITHUB_OUTPUT, `code=false\nbundle=false\ndocs=false\nverified-by=${verified.url}\n`);
+			appendFileSync(
+				process.env.GITHUB_OUTPUT,
+				`code=false\nbundle=false\ndocs=false\nverified-by=${verified.url}\n`,
+			);
 		return;
 	}
 	/** @type {string[]} */
 	let changed = [];
 	if (range === undefined) {
-		console.log(`No base to measure a ${eventName || 'unknown'} event against: running everything.`);
-	}
-	else {
+		console.log(
+			`No base to measure a ${eventName || 'unknown'} event against: running everything.`,
+		);
+	} else {
 		try {
 			if (range.fetch) {
-				git([
-					'fetch',
-					'--no-tags',
-					'--depth=1',
-					'origin',
-					range.fetch,
-				]);
+				git(['fetch', '--no-tags', '--depth=1', 'origin', range.fetch]);
 			}
-			changed = git([
-				'diff',
-				'--name-only',
-				range.base,
-				range.head,
-			]).split('\n').filter(Boolean);
+			changed = git(['diff', '--name-only', range.base, range.head]).split('\n').filter(Boolean);
 			console.log(`Changed between ${range.base} and ${range.head}:\n${changed.join('\n')}`);
-		}
-		catch (error) {
-			console.log(`::warning::Could not diff ${range.base}..${range.head} (${error instanceof Error
-				? error.message
-				: error}): running everything.`);
+		} catch (error) {
+			console.log(
+				`::warning::Could not diff ${range.base}..${range.head} (${
+					error instanceof Error ? error.message : error
+				}): running everything.`,
+			);
 			changed = [];
 		}
 	}
@@ -154,5 +152,4 @@ async function main() {
 		appendFileSync(process.env.GITHUB_OUTPUT, `code=${code}\nbundle=${bundle}\ndocs=${docs}\n`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href)
-	await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) await main();

@@ -11,12 +11,21 @@ const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
 
 const publishMessage = vi.fn();
-interface StubEvent { params: Record<string, string>; body?: unknown }
+interface StubEvent {
+	params: Record<string, string>;
+	body?: unknown;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 vi.doMock('~~/server/db', () => ({ db }));
 vi.doMock('~~/server/utils/ably', () => ({
@@ -47,12 +56,15 @@ const stoppedPoll = {
 };
 
 async function stageEvent(values: Partial<typeof schema.events.$inferInsert>) {
-	const [event] = await db.insert(schema.events).values({
-		name: 'Melee Championship',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-		...values,
-	}).returning({ id: schema.events.id });
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'Melee Championship',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+			...values,
+		})
+		.returning({ id: schema.events.id });
 	return event!.id;
 }
 
@@ -122,7 +134,11 @@ describe('pUT /api/events/:id/melee/live-results', () => {
 			expected: stoppedPoll,
 		},
 	])('turning Live Results $case, and announces the Event', async ({ enabled, expected }) => {
-		const eventId = await stageEvent({ meleeEnabled: true, ...stoppedPoll, meleeLiveResultsEnabled: !enabled });
+		const eventId = await stageEvent({
+			meleeEnabled: true,
+			...stoppedPoll,
+			meleeLiveResultsEnabled: !enabled,
+		});
 
 		const response = await put(eventId, enabled);
 

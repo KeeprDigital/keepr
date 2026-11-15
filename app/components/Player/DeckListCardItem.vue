@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import type { DeckListCard } from '~~/shared/types/deckList';
 
-const props = withDefaults(defineProps<{
-	card: DeckListCard;
-	imageUrl: string | null;
-	isActive: boolean;
-	showQuantity?: boolean;
-	previewKey?: string;
-	/** Whether this card is marked as a key card */
-	keyCard?: boolean;
-	/** Whether click-to-select key card mode is enabled */
-	selectable?: boolean;
-}>(), {
-	showQuantity: true,
-});
+const props = withDefaults(
+	defineProps<{
+		card: DeckListCard;
+		imageUrl: string | null;
+		isActive: boolean;
+		showQuantity?: boolean;
+		previewKey?: string;
+		/** Whether this card is marked as a key card */
+		keyCard?: boolean;
+		/** Whether click-to-select key card mode is enabled */
+		selectable?: boolean;
+	}>(),
+	{
+		showQuantity: true,
+	},
+);
 
 const emit = defineEmits<{
 	(e: 'preview', cardKey: string, open: boolean): void;
@@ -52,12 +55,20 @@ function handleClick() {
 				:role="selectable ? 'checkbox' : undefined"
 				:tabindex="selectable ? 0 : undefined"
 				:aria-checked="selectable ? keyCard : undefined"
-				:aria-label="selectable ? (keyCard ? `Remove ${card.name} from key cards` : `Add ${card.name} to key cards`) : undefined"
+				:aria-label="
+					selectable
+						? keyCard
+							? `Remove ${card.name} from key cards`
+							: `Add ${card.name} to key cards`
+						: undefined
+				"
 				@click.stop="handleClick"
 				@keydown.enter.stop="handleClick"
 				@keydown.space.prevent.stop="handleClick"
 			>
-				<span v-if="showQuantity" class="font-mono w-5 text-center shrink-0 text-muted">{{ card.quantity }}</span>
+				<span v-if="showQuantity" class="font-mono w-5 text-center shrink-0 text-muted">{{
+					card.quantity
+				}}</span>
 				<span>{{ card.name }}</span>
 				<UBadge
 					v-if="card.highlanderPoints"

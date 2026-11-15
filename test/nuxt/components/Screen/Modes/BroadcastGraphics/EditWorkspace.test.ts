@@ -22,7 +22,14 @@ mockNuxtImport('useEventStore', () => () => ({
 const mockLiveState = {
 	value: createInitialBroadcastGraphicsLiveState() as BroadcastGraphicsLiveState,
 };
-mockNuxtImport('useBroadcastGraphicsLiveSessionStore', () => () => liveSessionSelectors(() => mockLiveState.value, () => 1_000));
+mockNuxtImport(
+	'useBroadcastGraphicsLiveSessionStore',
+	() => () =>
+		liveSessionSelectors(
+			() => mockLiveState.value,
+			() => 1_000,
+		),
+);
 mockNuxtImport('useBroadcastGraphicsPlayoutClock', () => () => ref(1_000));
 const mockToastAdd = vi.fn();
 mockNuxtImport('useToast', () => () => ({ add: mockToastAdd }));
@@ -42,22 +49,15 @@ const PreviewStub = defineComponent({
 			default: () => [],
 		},
 	},
-	emits: [
-		'selectTarget',
-		'manipulate',
-		'rotate',
-		'gestureStart',
-		'gestureEnd',
-	],
+	emits: ['selectTarget', 'manipulate', 'rotate', 'gestureStart', 'gestureEnd'],
 	setup(props) {
-		return () => h('div', {
-			'data-testid': 'preview',
-			'data-handles': props.selectionFrame
-				? JSON.stringify(props.selectionFrame.rect)
-				: 'none',
-			'data-label': props.selectionLabel,
-			'data-locked': String(props.lockedBoxes.length),
-		});
+		return () =>
+			h('div', {
+				'data-testid': 'preview',
+				'data-handles': props.selectionFrame ? JSON.stringify(props.selectionFrame.rect) : 'none',
+				'data-label': props.selectionLabel,
+				'data-locked': String(props.lockedBoxes.length),
+			});
 	},
 });
 /** Stands in for the inspector, reporting the Event facts the workspace hands it. */
@@ -68,12 +68,13 @@ const InspectorStub = defineComponent({
 	},
 	emits: ['update:graphics'],
 	setup(props, { attrs }) {
-		return () => h('div', {
-			'data-testid': 'inspector',
-			'data-writable': String(attrs.writable),
-			'data-event-id': String(props.eventId),
-			'data-game': props.game,
-		});
+		return () =>
+			h('div', {
+				'data-testid': 'inspector',
+				'data-writable': String(attrs.writable),
+				'data-event-id': String(props.eventId),
+				'data-game': props.game,
+			});
 	},
 });
 /** Stands in for the library panel, reporting the props the workspace hands it. */
@@ -88,14 +89,15 @@ const TemplateLibraryStub = defineComponent({
 	},
 	emits: ['placed', 'update:placing'],
 	setup(props, { emit }) {
-		return () => h('div', {
-			'data-testid': 'template-library',
-			'data-event-id': String(props.eventId),
-			'data-screen-id': String(props.screenId),
-			'data-selected-graphic': props.selectedGraphic?.id ?? '',
-			'data-writable': String(props.writable),
-			'onClick': () => emit('placed', 'placed-copy'),
-		});
+		return () =>
+			h('div', {
+				'data-testid': 'template-library',
+				'data-event-id': String(props.eventId),
+				'data-screen-id': String(props.screenId),
+				'data-selected-graphic': props.selectedGraphic?.id ?? '',
+				'data-writable': String(props.writable),
+				onClick: () => emit('placed', 'placed-copy'),
+			});
 	},
 });
 
@@ -114,10 +116,11 @@ const ChannelsStub = defineComponent({
 		writable: { type: Boolean, default: false },
 	},
 	setup(props) {
-		return () => h('div', {
-			'data-testid': 'graphic-channels-panel',
-			'data-writable': String(props.writable),
-		});
+		return () =>
+			h('div', {
+				'data-testid': 'graphic-channels-panel',
+				'data-writable': String(props.writable),
+			});
 	},
 });
 
@@ -168,8 +171,12 @@ describe('broadcastGraphicsEditWorkspace', () => {
 
 		const marked = wrapper.findAll('[data-testid="graphic-on-air"]');
 		expect(marked).toHaveLength(1);
-		expect(wrapper.get('[data-graphic-id="slate"] [data-testid="graphic-on-air"]').text()).toContain('On air');
-		expect(wrapper.find('[data-graphic-id="lower-third"] [data-testid="graphic-on-air"]').exists()).toBe(false);
+		expect(
+			wrapper.get('[data-graphic-id="slate"] [data-testid="graphic-on-air"]').text(),
+		).toContain('On air');
+		expect(
+			wrapper.find('[data-graphic-id="lower-third"] [data-testid="graphic-on-air"]').exists(),
+		).toBe(false);
 	});
 
 	// Reconnect Resync's rule, applied to a badge: expose the disconnection rather than act on it.
@@ -205,16 +212,15 @@ describe('broadcastGraphicsEditWorkspace', () => {
 		await wrapper.get('[data-testid="template-library"]').trigger('click');
 
 		expect(wrapper.emitted('update:selectedTarget')).toEqual([
-			[
-				{ type: 'graphic', graphicId: 'placed-copy' },
-			],
+			[{ type: 'graphic', graphicId: 'placed-copy' }],
 		]);
 	});
 
 	// An edit made while a placement is out is built on the stack from before it.
 	it('holds authoring while a placement is in flight, leaving the library and the lease notice as they were', async () => {
 		const wrapper = await mountWorkspace({ graphics: [] });
-		const authoring = () => wrapper.get('[data-testid="graphic-channels-panel"]').attributes('data-writable');
+		const authoring = () =>
+			wrapper.get('[data-testid="graphic-channels-panel"]').attributes('data-writable');
 		const library = wrapper.getComponent(TemplateLibraryStub);
 
 		library.vm.$emit('update:placing', true);
@@ -228,7 +234,7 @@ describe('broadcastGraphicsEditWorkspace', () => {
 		expect(authoring()).toBe('true');
 	});
 
-	it('hands the library the flush of this workspace\'s unsaved edits', async () => {
+	it("hands the library the flush of this workspace's unsaved edits", async () => {
 		const flushEdits = vi.fn(async () => true);
 		const wrapper = await mountWorkspace({ flushEdits });
 
@@ -266,9 +272,7 @@ describe('broadcastGraphicsEditWorkspace', () => {
 		wrapper.getComponent(InspectorStub).vm.$emit('update:graphics', projected);
 		await flushPromises();
 
-		expect(wrapper.emitted('update:graphics')).toEqual([
-			[projected],
-		]);
+		expect(wrapper.emitted('update:graphics')).toEqual([[projected]]);
 		// There is no projection-specific write that could bypass the mode document's
 		// Graphics Authoring Lease and strict save path.
 		expect(wrapper.emitted('update:socialProfileProjections')).toBeUndefined();
@@ -277,22 +281,29 @@ describe('broadcastGraphicsEditWorkspace', () => {
 	// Wiring: the shared save-state display is told this workspace's save and
 	// lease, and its Retry reaches the host. Its rules live with the display.
 	describe('save state', () => {
-		it('reports a failed save in the authority\'s own words, with a retry', async () => {
+		it("reports a failed save in the authority's own words, with a retry", async () => {
 			const wrapper = await mountWorkspace({
 				saveState: 'failed',
-				saveError: 'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
+				saveError:
+					'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
 			});
 
 			const state = wrapper.get('[data-testid="graphics-save-state"]');
 			expect(state.attributes('data-save-state')).toBe('failed');
-			expect(state.text()).toContain('Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable');
+			expect(state.text()).toContain(
+				'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
+			);
 
 			await wrapper.get('[data-testid="graphics-save-retry"]').trigger('click');
 			expect(wrapper.emitted('retrySave')).toHaveLength(1);
 		});
 
 		it('shows no save state to an observing session', async () => {
-			const wrapper = await mountWorkspace({ writable: false, saveState: 'failed', saveError: 'refused' });
+			const wrapper = await mountWorkspace({
+				writable: false,
+				saveState: 'failed',
+				saveError: 'refused',
+			});
 
 			expect(wrapper.find('[data-testid="graphics-save-state"]').exists()).toBe(false);
 		});
@@ -314,12 +325,17 @@ describe('broadcastGraphicsEditWorkspace', () => {
 			// silent or inventing a name.
 			const wrapper = await mountWorkspace({ writable: false, holderName: null });
 
-			expect(wrapper.get('[data-testid="edit-lease-notice"]').text())
-				.toContain('Another session holds the Graphics Authoring Lease');
+			expect(wrapper.get('[data-testid="edit-lease-notice"]').text()).toContain(
+				'Another session holds the Graphics Authoring Lease',
+			);
 		});
 
 		it('offers the takeover beside the name rather than instead of it', async () => {
-			const wrapper = await mountWorkspace({ writable: false, holderName: 'Marcus Angel', canTakeOver: true });
+			const wrapper = await mountWorkspace({
+				writable: false,
+				holderName: 'Marcus Angel',
+				canTakeOver: true,
+			});
 
 			expect(wrapper.get('[data-testid="edit-lease-notice"]').text()).toContain('Marcus Angel');
 			expect(wrapper.find('[data-testid="edit-lease-take-over"]').exists()).toBe(true);
@@ -343,13 +359,15 @@ describe('broadcastGraphicsEditWorkspace', () => {
 		];
 
 		async function press(code: string, init: KeyboardEventInit = {}) {
-			window.dispatchEvent(new KeyboardEvent('keydown', {
-				code,
-				metaKey: true,
-				bubbles: true,
-				cancelable: true,
-				...init,
-			}));
+			window.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					code,
+					metaKey: true,
+					bubbles: true,
+					cancelable: true,
+					...init,
+				}),
+			);
 			await flushPromises();
 		}
 
@@ -371,10 +389,8 @@ describe('broadcastGraphicsEditWorkspace', () => {
 			await press('KeyV');
 
 			const [next] = wrapper.emitted('update:graphics')!.at(-1) as [BroadcastGraphicConfig[]];
-			const pasted = next.find(graphic => graphic.id === 'slate')!.items;
-			expect(pasted).toMatchObject([
-				{ type: 'text', label: 'name', x: name.x + 20 },
-			]);
+			const pasted = next.find((graphic) => graphic.id === 'slate')!.items;
+			expect(pasted).toMatchObject([{ type: 'text', label: 'name', x: name.x + 20 }]);
 			expect(wrapper.emitted('update:selectedTarget')!.at(-1)).toEqual([
 				{ type: 'item', graphicId: 'slate', itemId: pasted[0]!.id },
 			]);
@@ -407,7 +423,9 @@ describe('broadcastGraphicsEditWorkspace', () => {
 			await press('KeyV');
 			await nextTick();
 
-			expect(mockToastAdd).toHaveBeenLastCalledWith(expect.objectContaining({ title: 'Copied 1 layer' }));
+			expect(mockToastAdd).toHaveBeenLastCalledWith(
+				expect.objectContaining({ title: 'Copied 1 layer' }),
+			);
 			expect(wrapper.emitted('update:graphics')).toBeUndefined();
 		});
 	});
@@ -419,16 +437,13 @@ describe('broadcastGraphicsEditWorkspace', () => {
 			{
 				id: 'lower-third',
 				name: 'Lower Third',
-				items: [
-					name,
-					shape('bed'),
-				],
+				items: [name, shape('bed')],
 			},
 			{ id: 'slate', name: 'Slate', items: [] },
 		];
-		const renamed = graphics.map(graphic => graphic.id === 'lower-third'
-			? { ...graphic, name: 'Talent' }
-			: graphic);
+		const renamed = graphics.map((graphic) =>
+			graphic.id === 'lower-third' ? { ...graphic, name: 'Talent' } : graphic,
+		);
 
 		// An edit to a graphic on a program output would reach program at once.
 		it.each([
@@ -436,9 +451,7 @@ describe('broadcastGraphicsEditWorkspace', () => {
 				playout: 'off air',
 				live: () => createInitialBroadcastGraphicsLiveState(),
 				writable: 'true',
-				written: [
-					[renamed],
-				],
+				written: [[renamed]],
 			},
 			{
 				playout: 'on air',
@@ -446,20 +459,25 @@ describe('broadcastGraphicsEditWorkspace', () => {
 				writable: 'false',
 				written: undefined,
 			},
-		])('lets the inspector edit a Broadcast Graphic $playout: writable=$writable', async ({ live, writable, written }) => {
-			mockLiveState.value = live();
-			const wrapper = await mountWorkspace({
-				graphics,
-				selectedTarget: { type: 'graphic', graphicId: 'lower-third' },
-				selectedGraphicId: 'lower-third',
-			});
+		])(
+			'lets the inspector edit a Broadcast Graphic $playout: writable=$writable',
+			async ({ live, writable, written }) => {
+				mockLiveState.value = live();
+				const wrapper = await mountWorkspace({
+					graphics,
+					selectedTarget: { type: 'graphic', graphicId: 'lower-third' },
+					selectedGraphicId: 'lower-third',
+				});
 
-			expect(wrapper.get('[data-testid="inspector"]').attributes('data-writable')).toBe(writable);
-			expect(wrapper.find('[data-testid="edit-on-air-notice"]').exists()).toBe(writable === 'false');
-			wrapper.getComponent(InspectorStub).vm.$emit('update:graphics', renamed);
-			await flushPromises();
-			expect(wrapper.emitted('update:graphics')).toEqual(written);
-		});
+				expect(wrapper.get('[data-testid="inspector"]').attributes('data-writable')).toBe(writable);
+				expect(wrapper.find('[data-testid="edit-on-air-notice"]').exists()).toBe(
+					writable === 'false',
+				);
+				wrapper.getComponent(InspectorStub).vm.$emit('update:graphics', renamed);
+				await flushPromises();
+				expect(wrapper.emitted('update:graphics')).toEqual(written);
+			},
+		);
 
 		it('undoes an inspector edit with ⌘Z', async () => {
 			const wrapper = await mountWorkspace({
@@ -470,12 +488,14 @@ describe('broadcastGraphicsEditWorkspace', () => {
 			wrapper.getComponent(InspectorStub).vm.$emit('update:graphics', renamed);
 			await wrapper.setProps({ graphics: renamed });
 
-			window.dispatchEvent(new KeyboardEvent('keydown', {
-				key: 'z',
-				metaKey: true,
-				bubbles: true,
-				cancelable: true,
-			}));
+			window.dispatchEvent(
+				new KeyboardEvent('keydown', {
+					key: 'z',
+					metaKey: true,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
 			await flushPromises();
 
 			expect(wrapper.emitted('update:graphics')!.at(-1)).toEqual([graphics]);
@@ -488,7 +508,9 @@ describe('broadcastGraphicsEditWorkspace', () => {
 				selectedGraphicId: 'lower-third',
 			});
 
-			await wrapper.get('[data-layer-key="item:lower-third:bed"] [data-testid="layer-select"]').trigger('click', { metaKey: true });
+			await wrapper
+				.get('[data-layer-key="item:lower-third:bed"] [data-testid="layer-select"]')
+				.trigger('click', { metaKey: true });
 
 			expect(wrapper.get('[data-testid="multi-layer-count"]').text()).toBe('2 layers');
 			expect(wrapper.find('[data-testid="inspector"]').exists()).toBe(false);
@@ -499,17 +521,13 @@ describe('broadcastGraphicsEditWorkspace', () => {
 	});
 
 	// Canvas handles: the preview moves what the editor has selected, as the editor may.
-	describe('the preview\'s canvas handles', () => {
+	describe("the preview's canvas handles", () => {
 		const bed = shape('bed');
 		const graphics: BroadcastGraphicConfig[] = [
 			{
 				id: 'lower-third',
 				name: 'Lower Third',
-				items: [
-					text('name'),
-					bed,
-					shape('frame', { locked: true }),
-				],
+				items: [text('name'), bed, shape('frame', { locked: true })],
 			},
 		];
 		const onBed = {
@@ -517,7 +535,8 @@ describe('broadcastGraphicsEditWorkspace', () => {
 			selectedTarget: { type: 'item', graphicId: 'lower-third', itemId: 'bed' },
 			selectedGraphicId: 'lower-third',
 		};
-		const preview = (wrapper: Awaited<ReturnType<typeof mountWorkspace>>) => wrapper.get('[data-testid="preview"]');
+		const preview = (wrapper: Awaited<ReturnType<typeof mountWorkspace>>) =>
+			wrapper.get('[data-testid="preview"]');
 
 		it.each([
 			{
@@ -565,23 +584,33 @@ describe('broadcastGraphicsEditWorkspace', () => {
 			const stub = wrapper.getComponent(PreviewStub);
 
 			stub.vm.$emit('gestureStart');
-			stub.vm.$emit('manipulate', {
-				x: 40,
-				y: 20,
-				width: 300,
-				height: 100,
-			}, 1);
-			await wrapper.setProps({ graphics: wrapper.emitted<[BroadcastGraphicConfig[]]>('update:graphics')!.at(-1)![0] });
-			stub.vm.$emit('manipulate', {
-				x: 90,
-				y: 60,
-				width: 300,
-				height: 100,
-			}, 1);
+			stub.vm.$emit(
+				'manipulate',
+				{
+					x: 40,
+					y: 20,
+					width: 300,
+					height: 100,
+				},
+				1,
+			);
+			await wrapper.setProps({
+				graphics: wrapper.emitted<[BroadcastGraphicConfig[]]>('update:graphics')!.at(-1)![0],
+			});
+			stub.vm.$emit(
+				'manipulate',
+				{
+					x: 90,
+					y: 60,
+					width: 300,
+					height: 100,
+				},
+				1,
+			);
 			stub.vm.$emit('gestureEnd');
 			await flushPromises();
 			const moved = wrapper.emitted<[BroadcastGraphicConfig[]]>('update:graphics')!.at(-1)![0];
-			expect(moved[0]!.items.find(item => item.id === 'bed')).toMatchObject({ x: 90, y: 60 });
+			expect(moved[0]!.items.find((item) => item.id === 'bed')).toMatchObject({ x: 90, y: 60 });
 
 			await wrapper.setProps({ graphics: moved });
 			await wrapper.get('[data-testid="editor-undo"]').trigger('click');
@@ -591,12 +620,16 @@ describe('broadcastGraphicsEditWorkspace', () => {
 		it('adds an item to the selection with a ⌘-click in the preview, and handles both together', async () => {
 			const wrapper = await mountWorkspace(onBed);
 
-			wrapper.getComponent(PreviewStub).vm.$emit('selectTarget', { type: 'item', graphicId: 'lower-third', itemId: 'name' }, true);
+			wrapper
+				.getComponent(PreviewStub)
+				.vm.$emit('selectTarget', { type: 'item', graphicId: 'lower-third', itemId: 'name' }, true);
 			await nextTick();
 
 			expect(wrapper.get('[data-testid="multi-layer-count"]').text()).toBe('2 layers');
 			expect(preview(wrapper).attributes('data-label')).toBe('2 layers');
-			expect(preview(wrapper).attributes('data-handles')).toBe(JSON.stringify({ x: 0, y: 0, width: 400, height: 120 }));
+			expect(preview(wrapper).attributes('data-handles')).toBe(
+				JSON.stringify({ x: 0, y: 0, width: 400, height: 120 }),
+			);
 		});
 
 		it('badges a selected locked item rather than handling it', async () => {

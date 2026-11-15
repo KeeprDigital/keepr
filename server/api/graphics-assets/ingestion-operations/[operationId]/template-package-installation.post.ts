@@ -18,8 +18,7 @@ export default defineEventHandler(async (event) => {
 			operationId: graphicsIngestionOperationId(getRouterParam(event, 'operationId') ?? ''),
 			initiatedBy,
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

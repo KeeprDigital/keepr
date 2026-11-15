@@ -39,8 +39,7 @@ export function useBroadcastDisplayData<T>(options: BroadcastDisplayDataOptions<
 			data.value = next;
 			hasDisplayedData.value = true;
 			error.value = null;
-		}
-		catch (cause) {
+		} catch (cause) {
 			console.error(errorMessage, cause);
 			if (id !== requestId) {
 				return;
@@ -49,8 +48,7 @@ export function useBroadcastDisplayData<T>(options: BroadcastDisplayDataOptions<
 			if (!hasDisplayedData.value) {
 				error.value = errorMessage;
 			}
-		}
-		finally {
+		} finally {
 			if (id === requestId) {
 				loading.value = false;
 			}

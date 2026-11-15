@@ -25,7 +25,8 @@ const EventListStub = defineComponent({
 		events: { type: Array, required: true },
 		error: { type: Object, required: false },
 	},
-	template: '<div data-testid="event-list">{{ error ? \'error:\' + error.message : events.length }}</div>',
+	template:
+		'<div data-testid="event-list">{{ error ? \'error:\' + error.message : events.length }}</div>',
 });
 
 const UIEmptyStateStub = defineComponent({

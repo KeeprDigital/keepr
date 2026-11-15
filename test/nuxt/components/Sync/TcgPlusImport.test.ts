@@ -24,12 +24,8 @@ const CSV = 'チームID,会員番号,ニックネーム\n';
 
 const PREVIEW: TcgPlusImportPreview = {
 	playerCount: 3,
-	added: [
-		{ memberNumber: '0001', nickname: 'ana', leaderNumber: 'OP01-001' },
-	],
-	deckListChanged: [
-		{ playerId: 4, shownAs: 'Ben', memberNumber: '0002' },
-	],
+	added: [{ memberNumber: '0001', nickname: 'ana', leaderNumber: 'OP01-001' }],
+	deckListChanged: [{ playerId: 4, shownAs: 'Ben', memberNumber: '0002' }],
 	deactivated: [],
 	leaders: [
 		{
@@ -47,12 +43,8 @@ const PREVIEW: TcgPlusImportPreview = {
 	],
 	warnings: {
 		ruleBreaches: [],
-		unknownCards: [
-			{ number: 'OP99-001', playerCount: 1 },
-		],
-		handEditConflicts: [
-			{ playerId: 5, shownAs: 'cal', memberNumber: '0003' },
-		],
+		unknownCards: [{ number: 'OP99-001', playerCount: 1 }],
+		handEditConflicts: [{ playerId: 5, shownAs: 'cal', memberNumber: '0003' }],
 		possibleDuplicates: [],
 	},
 };
@@ -84,9 +76,7 @@ function mountImport() {
 async function chooseExport(wrapper: ReturnType<typeof mountImport>) {
 	const input = wrapper.get('input[type="file"]');
 	Object.defineProperty(input.element, 'files', {
-		value: [
-			new File([CSV], 'sydney.csv', { type: 'text/csv' }),
-		],
+		value: [new File([CSV], 'sydney.csv', { type: 'text/csv' })],
 		configurable: true,
 	});
 	await input.trigger('change');
@@ -98,7 +88,7 @@ function status(wrapper: ReturnType<typeof mountImport>) {
 }
 
 function button(wrapper: ReturnType<typeof mountImport>, label: string) {
-	return wrapper.findAll('button').find(candidate => candidate.text().includes(label))!;
+	return wrapper.findAll('button').find((candidate) => candidate.text().includes(label))!;
 }
 
 describe('the TCG+ Import', () => {
@@ -125,22 +115,28 @@ describe('the TCG+ Import', () => {
 
 		expect(status(wrapper)).toBe('previewed');
 		expect(wrapper.get('[data-file-name]').text()).toBe('sydney.csv');
-		expect(wrapper.findAll('[data-preview-group]').map(group => [
-			group.attributes('data-preview-group'),
-			group.attributes('data-count'),
-		])).toEqual([
+		expect(
+			wrapper
+				.findAll('[data-preview-group]')
+				.map((group) => [group.attributes('data-preview-group'), group.attributes('data-count')]),
+		).toEqual([
 			['added', '1'],
 			['deckListChanged', '1'],
 			['deactivated', '0'],
 		]);
-		expect(wrapper.findAll('[data-preview-leader]').map(leader => [
-			leader.attributes('data-number'),
-			leader.attributes('data-count'),
-		])).toEqual([
+		expect(
+			wrapper
+				.findAll('[data-preview-leader]')
+				.map((leader) => [leader.attributes('data-number'), leader.attributes('data-count')]),
+		).toEqual([
 			['OP01-001', '2'],
 			['OP99-001', '1'],
 		]);
-		expect(wrapper.findAll('[data-preview-warning]').map(warning => warning.attributes('data-preview-warning'))).toEqual(['unknownCards', 'handEditConflicts']);
+		expect(
+			wrapper
+				.findAll('[data-preview-warning]')
+				.map((warning) => warning.attributes('data-preview-warning')),
+		).toEqual(['unknownCards', 'handEditConflicts']);
 	});
 
 	it('imports the previewed export only once confirmed, and says what it did', async () => {
@@ -185,9 +181,11 @@ describe('the TCG+ Import', () => {
 			body: { message: 'This is not a TCG+ deck list export.' },
 		});
 		const answers = [PREVIEW, ANSWER];
-		answers.forEach((answer, index) => index === failingCall
-			? mockFetch.mockRejectedValueOnce(failure)
-			: mockFetch.mockResolvedValueOnce(answer));
+		answers.forEach((answer, index) =>
+			index === failingCall
+				? mockFetch.mockRejectedValueOnce(failure)
+				: mockFetch.mockResolvedValueOnce(answer),
+		);
 		const wrapper = mountImport();
 		await chooseExport(wrapper);
 		if (failingCall === 1) {

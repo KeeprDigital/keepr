@@ -12,14 +12,16 @@ import { z } from 'zod';
  * misspelt key silently ignored would create an admin with a password nobody
  * has.
  */
-export const ensureAdminSchema = z.object({
-	email: z.email().max(320),
-	password: z.string(),
-	/**
-	 * Optional, and only ever used where the account is created — the email
-	 * stands in when it is absent. An existing account's name is left alone.
-	 */
-	name: z.string().max(200).optional(),
-}).strict();
+export const ensureAdminSchema = z
+	.object({
+		email: z.email().max(320),
+		password: z.string(),
+		/**
+		 * Optional, and only ever used where the account is created — the email
+		 * stands in when it is absent. An existing account's name is left alone.
+		 */
+		name: z.string().max(200).optional(),
+	})
+	.strict();
 
 export type EnsureAdminInput = z.infer<typeof ensureAdminSchema>;

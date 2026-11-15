@@ -41,7 +41,8 @@ function slotRead(slotId: number) {
 }
 
 const realtime = createFakeEventChannel();
-const deliver = (type: string, payload: Record<string, unknown>) => realtime.deliver(type, payload, 7);
+const deliver = (type: string, payload: Record<string, unknown>) =>
+	realtime.deliver(type, payload, 7);
 mockNuxtImport('tryUseRealtime', () => () => realtime.transport);
 
 mockNuxtImport('useEventStore', () => () => mockEventStore);
@@ -55,9 +56,7 @@ mockNuxtImport('$fetch', () => mockApiFetch);
  */
 function layoutNamed(sourceItemId: string): FeatureMatchOverlayModeConfig {
 	const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
-	config.layout.sources = [
-		{ ...config.layout.sources[0]!, id: sourceItemId },
-	];
+	config.layout.sources = [{ ...config.layout.sources[0]!, id: sourceItemId }];
 	return config;
 }
 
@@ -101,20 +100,20 @@ enableAutoUnmount(afterEach);
  * spelled as the literal that goes on the wire: a rename there is a break (#260).
  */
 function pushPreviewConfig(config: FeatureMatchOverlayModeConfig) {
-	window.dispatchEvent(new MessageEvent('message', {
-		origin: window.location.origin,
-		source: window.parent,
-		data: { type: 'feature-match-overlay:preview-config', config },
-	}));
+	window.dispatchEvent(
+		new MessageEvent('message', {
+			origin: window.location.origin,
+			source: window.parent,
+			data: { type: 'feature-match-overlay:preview-config', config },
+		}),
+	);
 }
 
 /** A live Screen Output on Slot 11, whose Session state is already cached. */
 function mountBoundOutput() {
 	const config = layoutNamed('saved-source');
 	config.featureMatchId = 11;
-	mockFeatureMatchStateStore.featureMatchStates = new Map([
-		[11, {}],
-	]);
+	mockFeatureMatchStateStore.featureMatchStates = new Map([[11, {}]]);
 	return mountOverlay({
 		isPreview: ref(false),
 		screen: ref({
@@ -133,14 +132,15 @@ describe('useFeatureMatchOverlayModeData', () => {
 		mockFeatureMatchStateStore.featureMatchSessions = new Map();
 		mockFeatureMatchStateStore.sessionIdBySlotId = new Map();
 		mockFeatureMatchStateStore.currentEventId = 7;
-		mockFeatureMatchStore.holdFeatureMatch.mockImplementation((slot: { id: number; matchId: number | null }) => {
-			mockFeatureMatchStore.featureMatches = [slot];
-			return true;
-		});
+		mockFeatureMatchStore.holdFeatureMatch.mockImplementation(
+			(slot: { id: number; matchId: number | null }) => {
+				mockFeatureMatchStore.featureMatches = [slot];
+				return true;
+			},
+		);
 		mockApiFetch.mockImplementation(async (path: string) => {
 			const slotId = Number(/feature-match-slots\/(\d+)$/.exec(path)?.[1]);
-			if (!slotId)
-				throw new Error(`unexpected request ${path}`);
+			if (!slotId) throw new Error(`unexpected request ${path}`);
 			return slotRead(slotId);
 		});
 		realtime.transport.connectionState = 'connected';
@@ -191,28 +191,32 @@ describe('useFeatureMatchOverlayModeData', () => {
 		await flushPromises();
 
 		// A window that did not embed this frame.
-		window.dispatchEvent(new MessageEvent('message', {
-			origin: window.location.origin,
-			source: {
-				postMessage: vi.fn(),
-			} as unknown as MessageEventSource,
-			data: {
-				type: 'feature-match-overlay:preview-config',
-				config: layoutNamed('stranger-source'),
-			},
-		}));
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				origin: window.location.origin,
+				source: {
+					postMessage: vi.fn(),
+				} as unknown as MessageEventSource,
+				data: {
+					type: 'feature-match-overlay:preview-config',
+					config: layoutNamed('stranger-source'),
+				},
+			}),
+		);
 		await nextTick();
 		expect(data().config.value.layout.sources[0]?.id).toBe('saved-source');
 
 		// The embedding window, speaking from somewhere else.
-		window.dispatchEvent(new MessageEvent('message', {
-			origin: 'https://example.invalid',
-			source: window.parent,
-			data: {
-				type: 'feature-match-overlay:preview-config',
-				config: layoutNamed('cross-origin-source'),
-			},
-		}));
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				origin: 'https://example.invalid',
+				source: window.parent,
+				data: {
+					type: 'feature-match-overlay:preview-config',
+					config: layoutNamed('cross-origin-source'),
+				},
+			}),
+		);
 		await nextTick();
 		expect(data().config.value.layout.sources[0]?.id).toBe('saved-source');
 
@@ -224,11 +228,13 @@ describe('useFeatureMatchOverlayModeData', () => {
 
 		// The right sender, carrying no configuration at all. Adopting it would take
 		// the preview back off the working configuration it is now showing.
-		window.dispatchEvent(new MessageEvent('message', {
-			origin: window.location.origin,
-			source: window.parent,
-			data: { type: 'feature-match-overlay:preview-config', config: null },
-		}));
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				origin: window.location.origin,
+				source: window.parent,
+				data: { type: 'feature-match-overlay:preview-config', config: null },
+			}),
+		);
 		await nextTick();
 		expect(data().config.value.layout.sources[0]?.id).toBe('working-source');
 	});
@@ -261,8 +267,12 @@ describe('useFeatureMatchOverlayModeData', () => {
 				'/api/screen-output/events/7/screens/42/feature-match-slots/11',
 				expect.anything(),
 			);
-			expect(mockApiFetch.mock.calls.every(([path]) => String(path).startsWith('/api/screen-output/'))).toBe(true);
-			expect(mockFeatureMatchStore.holdFeatureMatch).toHaveBeenCalledWith(expect.objectContaining({ id: 11 }));
+			expect(
+				mockApiFetch.mock.calls.every(([path]) => String(path).startsWith('/api/screen-output/')),
+			).toBe(true);
+			expect(mockFeatureMatchStore.holdFeatureMatch).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 11 }),
+			);
 			expect(mockFeatureMatchStore.loadFeatureMatchesByEventId).not.toHaveBeenCalled();
 			expect(data().sourceMatch.value).toMatchObject({ id: 300 });
 			expect(data().round.value).toMatchObject({ name: 'Round 3' });

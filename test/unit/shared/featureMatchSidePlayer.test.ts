@@ -57,7 +57,7 @@ describe('the player a Feature Match Slot side shows', () => {
 	// Seats 3 and 4 are a Commander Slot's: typed, linking no Player (ADR-0087).
 	it.each([
 		{
-			with: 'no active Session, from the Slot\'s own Seat',
+			with: "no active Session, from the Slot's own Seat",
 			activeSession: null,
 			seated: {
 				playerId: null,
@@ -89,7 +89,10 @@ describe('the player a Feature Match Slot side shows', () => {
 		};
 
 		expect(featureMatchSidePlayer(commanderSlot, 'player3')).toEqual(seated);
-		expect(featureMatchSidePlayer(commanderSlot, 'player4')).toEqual({ playerId: null, data: null });
+		expect(featureMatchSidePlayer(commanderSlot, 'player4')).toEqual({
+			playerId: null,
+			data: null,
+		});
 	});
 
 	it('seats nobody without a Slot', () => {
@@ -97,7 +100,7 @@ describe('the player a Feature Match Slot side shows', () => {
 	});
 });
 
-describe('a Seat as a layout\'s author names it', () => {
+describe("a Seat as a layout's author names it", () => {
 	// A Commander Slot's places are Seats; a pair's are its two Players (ADR-0087).
 	it.each([
 		['mtg-two-player', 'player2', 'Player 2'],

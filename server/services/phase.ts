@@ -16,10 +16,7 @@ export type PhaseUpsertInput = CreatePhaseInput & {
 export function phaseService() {
 	const findById = async (id: number, eventId: number) => {
 		return await db.query.phases.findFirst({
-			where: and(
-				eq(phases.id, id),
-				eq(phases.eventId, eventId),
-			),
+			where: and(eq(phases.id, id), eq(phases.eventId, eventId)),
 		});
 	};
 
@@ -31,10 +28,7 @@ export function phaseService() {
 			.orderBy(phases.sortOrder, phases.id);
 	};
 
-	const create = async (
-		eventId: number,
-		data: CreatePhaseInput,
-	): Promise<DbPhase> => {
+	const create = async (eventId: number, data: CreatePhaseInput): Promise<DbPhase> => {
 		const [newPhase] = await db
 			.insert(phases)
 			.values({
@@ -61,12 +55,7 @@ export function phaseService() {
 		const [updatedPhase] = await db
 			.update(phases)
 			.set(pickManualWritable('phases', data))
-			.where(
-				and(
-					eq(phases.id, id),
-					eq(phases.eventId, eventId),
-				),
-			)
+			.where(and(eq(phases.id, id), eq(phases.eventId, eventId)))
 			.returning();
 
 		return updatedPhase;
@@ -76,7 +65,10 @@ export function phaseService() {
 	 * Deletes the Phase, and its Rounds by cascade, and in the same write releases
 	 * every Screen reference to them (ADR-0060).
 	 */
-	const remove = async (id: number, eventId: number): Promise<{ deleted: boolean; clearedScreens: DbScreen[] }> => {
+	const remove = async (
+		id: number,
+		eventId: number,
+	): Promise<{ deleted: boolean; clearedScreens: DbScreen[] }> => {
 		const [deleted, clearedScreens] = await db.batch([
 			db
 				.delete(phases)
@@ -90,10 +82,7 @@ export function phaseService() {
 
 	const exists = async (id: number, eventId: number): Promise<boolean> => {
 		const phase = await db.query.phases.findFirst({
-			where: and(
-				eq(phases.id, id),
-				eq(phases.eventId, eventId),
-			),
+			where: and(eq(phases.id, id), eq(phases.eventId, eventId)),
 			columns: { id: true },
 		});
 
@@ -108,7 +97,11 @@ export function phaseService() {
 		return result?.max ?? -1;
 	};
 
-	const findByExternalId = async (eventId: number, externalId: string, externalSource: ExternalSource) => {
+	const findByExternalId = async (
+		eventId: number,
+		externalId: string,
+		externalSource: ExternalSource,
+	) => {
 		return await db.query.phases.findFirst({
 			where: and(
 				eq(phases.eventId, eventId),
@@ -118,7 +111,9 @@ export function phaseService() {
 		});
 	};
 
-	const upsertByExternalId = async (data: PhaseUpsertInput): Promise<{ phase: DbPhase; created: boolean }> => {
+	const upsertByExternalId = async (
+		data: PhaseUpsertInput,
+	): Promise<{ phase: DbPhase; created: boolean }> => {
 		if (!data.externalId || !data.externalSource) {
 			const newPhase = await create(data.eventId, data);
 			return { phase: newPhase, created: true };

@@ -17,10 +17,13 @@ vi.stubGlobal('defineNitroPlugin', (plugin: unknown) => plugin);
 // The plugins get the real library with its two sweeps replaced in place, so a
 // sweep the library no longer has cannot be replaced and its plugin's run fails.
 vi.doMock('~~/server/modules/graphics-asset-library/runtime', async (importOriginal) => {
-	const runtime = await importOriginal<typeof import('~~/server/modules/graphics-asset-library/runtime')>();
+	const runtime =
+		await importOriginal<typeof import('~~/server/modules/graphics-asset-library/runtime')>();
 	return {
 		...runtime,
-		graphicsAssetLibraryForBindings: (...bindings: Parameters<typeof runtime.graphicsAssetLibraryForBindings>) => {
+		graphicsAssetLibraryForBindings: (
+			...bindings: Parameters<typeof runtime.graphicsAssetLibraryForBindings>
+		) => {
 			const library = runtime.graphicsAssetLibraryForBindings(...bindings);
 			vi.spyOn(library, 'runGraphicsRetention').mockImplementation(runGraphicsRetention);
 			vi.spyOn(library, 'runGraphicsReconciliation').mockImplementation(runGraphicsReconciliation);

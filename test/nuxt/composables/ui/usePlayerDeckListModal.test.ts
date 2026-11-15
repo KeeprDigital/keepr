@@ -38,12 +38,12 @@ mockNuxtImport('useEventStore', () => () => eventStore);
 mockNuxtImport('usePlayerDeckCache', () => () => deckCache);
 
 function player(id: number, name: string, nickname: string | null = null) {
-	return ({
+	return {
 		id,
 		name,
 		nickname,
 		updatedAt: new Date('2026-02-01'),
-	}) as never;
+	} as never;
 }
 
 describe('usePlayerDeckListModal', () => {
@@ -55,10 +55,8 @@ describe('usePlayerDeckListModal', () => {
 		deckCache.fetchDecks.mockResolvedValue(undefined);
 	});
 
-	it('shows a Player\'s cached deck lists at once, fetching nothing', async () => {
-		const cached = [
-			deckList('Main'),
-		];
+	it("shows a Player's cached deck lists at once, fetching nothing", async () => {
+		const cached = [deckList('Main')];
 		deckCache.getDeckLists.mockReturnValue(cached);
 
 		await usePlayerDeckListModal().openPlayerDeckList(player(7, 'Alice'));
@@ -73,19 +71,19 @@ describe('usePlayerDeckListModal', () => {
 	});
 
 	it('opens loading for an uncached Player, then fills in what the fetch brought', async () => {
-		const fetched = [
-			deckList('Fetched'),
-		];
+		const fetched = [deckList('Fetched')];
 		deckCache.getDeckLists.mockReturnValueOnce([]).mockReturnValueOnce(fetched);
 
 		await usePlayerDeckListModal().openPlayerDeckList(player(8, 'Bob'));
 
-		expect(modal.open).toHaveBeenCalledWith(expect.objectContaining({ playerId: 8, deckLists: [], loading: true }));
+		expect(modal.open).toHaveBeenCalledWith(
+			expect.objectContaining({ playerId: 8, deckLists: [], loading: true }),
+		);
 		expect(deckCache.fetchDecks).toHaveBeenCalledWith(8, 1, new Date('2026-02-01'));
 		expect(modal.patch).toHaveBeenCalledWith({ deckLists: fetched, loading: false });
 	});
 
-	it('drops a fetch that a later Player\'s opening overtook', async () => {
+	it("drops a fetch that a later Player's opening overtook", async () => {
 		const bobFetch = deferred();
 		deckCache.fetchDecks.mockReturnValueOnce(bobFetch.promise);
 		const { openPlayerDeckList } = usePlayerDeckListModal();
@@ -100,7 +98,7 @@ describe('usePlayerDeckListModal', () => {
 	});
 
 	// An OP Player's Deck List is theirs alone, shown in the OP layout and never edited from here (ADR-0074).
-	it('shows a One Piece Player\'s Deck List read-only, fetching no MTG decks', async () => {
+	it("shows a One Piece Player's Deck List read-only, fetching no MTG decks", async () => {
 		eventStore.event.game = 'op';
 		const ana = player(4, '', 'ana');
 

@@ -50,11 +50,7 @@ const mtgGameData = defineModel<MtgPlayerGameData>('mtgGameData', { required: tr
 	</UFormField>
 
 	<UFormField v-if="lgsEnabled" label="LGS">
-		<UInput
-			v-model="formData.lgs"
-			placeholder="Local game store"
-			class="w-full"
-		/>
+		<UInput v-model="formData.lgs" placeholder="Local game store" class="w-full" />
 	</UFormField>
 
 	<!-- Game-specific fields. A One Piece Player's Leader is their Deck List's, edited with it (ADR-0074). -->

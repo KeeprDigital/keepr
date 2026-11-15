@@ -8,44 +8,45 @@ import type { GraphicAssetPickerScope } from '~/composables/useGraphicAssetPicke
 import { graphicAssetReferenceStatusOrUnavailable } from '~/utils/graphicAssetReferenceStatus';
 import { createGuardedSequence } from '~/utils/guardedSequence';
 
-const props = withDefaults(defineProps<{
-	modelValue?: GraphicAssetReference;
-	/**
-	 * The Event whose adopted assets the picker offers first. Without one, as
-	 * in the installation-scoped Theme editor, it offers the whole library.
-	 */
-	eventId?: number;
-	fieldLabel: string;
-	assetKind?: GraphicAsset['kind'] | GraphicAsset['kind'][];
-	/** Withhold every affordance, without hiding what is already pinned. */
-	disabled?: boolean;
-	/**
-	 * Whether to offer Clear beside Choose.
-	 *
-	 * A host that shows and clears the pinned reference itself passes `false`, so it
-	 * can still hand the picker the reference — and get its Missing, Unavailable, and
-	 * retry reporting on it — without offering the operator two Clears.
-	 */
-	clearable?: boolean;
-}>(), {
-	assetKind: 'image',
-	disabled: false,
-	clearable: true,
-});
+const props = withDefaults(
+	defineProps<{
+		modelValue?: GraphicAssetReference;
+		/**
+		 * The Event whose adopted assets the picker offers first. Without one, as
+		 * in the installation-scoped Theme editor, it offers the whole library.
+		 */
+		eventId?: number;
+		fieldLabel: string;
+		assetKind?: GraphicAsset['kind'] | GraphicAsset['kind'][];
+		/** Withhold every affordance, without hiding what is already pinned. */
+		disabled?: boolean;
+		/**
+		 * Whether to offer Clear beside Choose.
+		 *
+		 * A host that shows and clears the pinned reference itself passes `false`, so it
+		 * can still hand the picker the reference — and get its Missing, Unavailable, and
+		 * retry reporting on it — without offering the operator two Clears.
+		 */
+		clearable?: boolean;
+	}>(),
+	{
+		assetKind: 'image',
+		disabled: false,
+		clearable: true,
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [reference: GraphicAssetReference | undefined];
-	'select': [asset: GraphicAsset, reference: GraphicAssetReference];
+	select: [asset: GraphicAsset, reference: GraphicAssetReference];
 }>();
 
 const open = ref(false);
 const search = ref('');
 const referenceStatus = ref<GraphicAssetReferenceStatus>();
 const referenceStatusFlights = createGuardedSequence();
-const {
-	signal: referenceStatusRefreshSignal,
-	requestRefresh: retryReferenceStatus,
-} = useGraphicAssetReferenceStatusRefresh();
+const { signal: referenceStatusRefreshSignal, requestRefresh: retryReferenceStatus } =
+	useGraphicAssetReferenceStatusRefresh();
 const {
 	data: assets,
 	status,
@@ -70,10 +71,8 @@ const {
  */
 const loadFailureMessage = computed(() => reportedMessage(error.value));
 
-const acceptedKinds = computed<GraphicAsset['kind'][]>(
-	() => Array.isArray(props.assetKind)
-		? props.assetKind
-		: [props.assetKind],
+const acceptedKinds = computed<GraphicAsset['kind'][]>(() =>
+	Array.isArray(props.assetKind) ? props.assetKind : [props.assetKind],
 );
 
 /* ────────────────────────────────────────────────
@@ -90,25 +89,27 @@ const { chosen: chosenScope, choose: chooseScope } = useGraphicAssetPickerScope(
  * on the next opening, when the Event may well have adopted something.
  */
 const widenedForThisOpening = ref(false);
-const scope = computed<GraphicAssetPickerScope>(() => props.eventId === undefined
-	? 'library'
-	: chosenScope.value ?? (widenedForThisOpening.value ? 'library' : 'event'));
+const scope = computed<GraphicAssetPickerScope>(() =>
+	props.eventId === undefined
+		? 'library'
+		: (chosenScope.value ?? (widenedForThisOpening.value ? 'library' : 'event')),
+);
 
-const libraryAssets = computed(() => (assets.value ?? []).filter(asset =>
-	acceptedKinds.value.includes(asset.kind),
-));
-const eventAssets = computed(() => libraryAssets.value.filter(asset =>
-	props.eventId !== undefined && asset.eventIds.includes(props.eventId),
-));
-const visibleAssets = computed(() => scope.value === 'event'
-	? eventAssets.value
-	: libraryAssets.value);
+const libraryAssets = computed(() =>
+	(assets.value ?? []).filter((asset) => acceptedKinds.value.includes(asset.kind)),
+);
+const eventAssets = computed(() =>
+	libraryAssets.value.filter(
+		(asset) => props.eventId !== undefined && asset.eventIds.includes(props.eventId),
+	),
+);
+const visibleAssets = computed(() =>
+	scope.value === 'event' ? eventAssets.value : libraryAssets.value,
+);
 
 /** How many the Event scope is holding back — the number that says 'not gone'. */
 const hiddenByScope = computed(() =>
-	scope.value === 'event'
-		? libraryAssets.value.length - eventAssets.value.length
-		: 0,
+	scope.value === 'event' ? libraryAssets.value.length - eventAssets.value.length : 0,
 );
 
 /**
@@ -122,41 +123,39 @@ const hiddenByScope = computed(() =>
  * scope with no matches is an answer about the search, and moving the ground
  * under them mid-keystroke would be worse than the empty result.
  */
-watch(
-	[
-		open,
-		() => eventAssets.value.length,
-		() => libraryAssets.value.length,
-	],
-	() => {
-		if (!open.value) {
-			widenedForThisOpening.value = false;
-			return;
-		}
-		if (chosenScope.value !== null || search.value.length > 0)
-			return;
-		if (eventAssets.value.length === 0 && libraryAssets.value.length > 0)
-			widenedForThisOpening.value = true;
-	},
-);
-const selectedAsset = computed(() => (assets.value ?? []).find(asset =>
-	acceptedKinds.value.includes(asset.kind)
-	&& asset.id === props.modelValue?.assetId
-	&& asset.revisionId === props.modelValue?.revisionId,
-));
-watch(() => ({
-	reference: props.modelValue,
-	refreshSignal: referenceStatusRefreshSignal.value,
-}), async ({ reference }) => {
-	const flight = referenceStatusFlights.begin();
-	if (!reference) {
-		referenceStatus.value = undefined;
+watch([open, () => eventAssets.value.length, () => libraryAssets.value.length], () => {
+	if (!open.value) {
+		widenedForThisOpening.value = false;
 		return;
 	}
-	const status = await graphicAssetReferenceStatusOrUnavailable(reference);
-	if (flight.current)
-		referenceStatus.value = status;
-}, { immediate: true });
+	if (chosenScope.value !== null || search.value.length > 0) return;
+	if (eventAssets.value.length === 0 && libraryAssets.value.length > 0)
+		widenedForThisOpening.value = true;
+});
+const selectedAsset = computed(() =>
+	(assets.value ?? []).find(
+		(asset) =>
+			acceptedKinds.value.includes(asset.kind) &&
+			asset.id === props.modelValue?.assetId &&
+			asset.revisionId === props.modelValue?.revisionId,
+	),
+);
+watch(
+	() => ({
+		reference: props.modelValue,
+		refreshSignal: referenceStatusRefreshSignal.value,
+	}),
+	async ({ reference }) => {
+		const flight = referenceStatusFlights.begin();
+		if (!reference) {
+			referenceStatus.value = undefined;
+			return;
+		}
+		const status = await graphicAssetReferenceStatusOrUnavailable(reference);
+		if (flight.current) referenceStatus.value = status;
+	},
+	{ immediate: true },
+);
 
 function selectAsset(asset: GraphicAsset) {
 	const reference = {
@@ -197,7 +196,10 @@ function selectAsset(asset: GraphicAsset) {
 		<p v-if="selectedAsset" class="text-xs text-muted">
 			{{ selectedAsset.name }} · revision {{ selectedAsset.revisionNumber }}
 		</p>
-		<p v-else-if="modelValue && referenceStatus?.outcome === 'available'" class="text-xs text-muted">
+		<p
+			v-else-if="modelValue && referenceStatus?.outcome === 'available'"
+			class="text-xs text-muted"
+		>
 			Pinned revision {{ modelValue.revisionId }} is available outside active discovery.
 		</p>
 		<UAlert
@@ -234,17 +236,14 @@ function selectAsset(asset: GraphicAsset) {
 								{{ fieldLabel }}
 							</h2>
 							<p class="text-sm text-muted">
-								{{ eventId === undefined
-									? 'Choose one exact Graphic Asset Revision.'
-									: `Choose one exact Graphic Asset Revision for Event ${eventId}.` }}
+								{{
+									eventId === undefined
+										? 'Choose one exact Graphic Asset Revision.'
+										: `Choose one exact Graphic Asset Revision for Event ${eventId}.`
+								}}
 							</p>
 						</div>
-						<UButton
-							color="neutral"
-							variant="ghost"
-							icon="i-lucide-x"
-							@click="open = false"
-						>
+						<UButton color="neutral" variant="ghost" icon="i-lucide-x" @click="open = false">
 							Close
 						</UButton>
 					</div>
@@ -315,9 +314,7 @@ function selectAsset(asset: GraphicAsset) {
 						:description="loadFailureMessage"
 						data-testid="library-listing-error"
 					/>
-					<p v-else-if="status === 'pending'" class="text-sm text-muted">
-						Loading Graphic Assets…
-					</p>
+					<p v-else-if="status === 'pending'" class="text-sm text-muted">Loading Graphic Assets…</p>
 					<div v-else class="grid min-h-0 gap-3 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
 						<article
 							v-for="asset in visibleAssets"
@@ -328,7 +325,7 @@ function selectAsset(asset: GraphicAsset) {
 								:src="`/api/graphics-assets/${encodeURIComponent(asset.id)}/thumbnail`"
 								:alt="`${asset.name} preview`"
 								class="aspect-video w-full rounded bg-muted object-contain"
-							>
+							/>
 							<div class="min-w-0">
 								<h3 class="truncate font-medium">
 									{{ asset.name }}
@@ -339,7 +336,8 @@ function selectAsset(asset: GraphicAsset) {
 										· {{ asset.facts.width }} × {{ asset.facts.height }}
 									</template>
 									<template v-else-if="asset.facts.kind === 'silent-video'">
-										· {{ asset.facts.width }} × {{ asset.facts.height }} · {{ asset.facts.durationSeconds.toFixed(2) }}s
+										· {{ asset.facts.width }} × {{ asset.facts.height }} ·
+										{{ asset.facts.durationSeconds.toFixed(2) }}s
 									</template>
 									<template v-else>
 										· {{ asset.facts.family }} {{ asset.facts.subfamily }}
@@ -349,7 +347,11 @@ function selectAsset(asset: GraphicAsset) {
 									<UBadge size="xs" variant="soft">
 										{{ asset.facts.format.toUpperCase() }} compatible
 									</UBadge>
-									<UBadge v-if="asset.facts.kind !== 'font' && asset.facts.hasAlpha" size="xs" variant="soft">
+									<UBadge
+										v-if="asset.facts.kind !== 'font' && asset.facts.hasAlpha"
+										size="xs"
+										variant="soft"
+									>
 										Alpha
 									</UBadge>
 									<UBadge
@@ -370,7 +372,10 @@ function selectAsset(asset: GraphicAsset) {
 								Select revision {{ asset.revisionNumber }}
 							</UButton>
 						</article>
-						<div v-if="visibleAssets.length === 0" class="text-sm text-muted sm:col-span-2 lg:col-span-3">
+						<div
+							v-if="visibleAssets.length === 0"
+							class="text-sm text-muted sm:col-span-2 lg:col-span-3"
+						>
 							<p>No compatible Graphic Assets match this view.</p>
 							<!--
 								What the scope is holding back, where an empty grid otherwise

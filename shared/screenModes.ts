@@ -2,9 +2,17 @@ import type { EventKind } from './config/games';
 import type { PageRotationDeclaration } from './modules/page-rotation';
 import type { ThemeTokenType } from './modules/theme/tokens';
 import type { AnyDeclaredModeTokenDefinition } from './modules/theme/vocabulary';
-import type { ScreenModeConfigContract, ScreenModeConfigOf, ScreenSettingsGroupOf } from './screenModeConfigs/contract';
+import type {
+	ScreenModeConfigContract,
+	ScreenModeConfigOf,
+	ScreenSettingsGroupOf,
+} from './screenModeConfigs/contract';
 import type { DeckModeConfig } from './screenModeConfigs/deck';
-import type { EventReferenceKind, EventReferenceValues, ScreenModeEventReferences } from './screenModeConfigs/eventReferences';
+import type {
+	EventReferenceKind,
+	EventReferenceValues,
+	ScreenModeEventReferences,
+} from './screenModeConfigs/eventReferences';
 import type { FeatureMatchModeConfig } from './screenModeConfigs/featureMatch';
 import type { FeatureMatchOverlayModeConfig } from './screenModeConfigs/featureMatchOverlay';
 import type { HeadToHeadModeConfig } from './screenModeConfigs/headToHead';
@@ -35,14 +43,20 @@ import { isColumnVisible } from './screenModeConfigs/subShapes';
 import { talentModeConfigContract, talentScreenTalentIds } from './screenModeConfigs/talent';
 import { topCardsModeConfigContract } from './screenModeConfigs/topCards';
 import { topCutModeConfigContract } from './screenModeConfigs/topCut';
-import { archetypeSpotlightFormerModeTokens, archetypeSpotlightModeTokens } from './screenModeTokens/archetypeSpotlight';
+import {
+	archetypeSpotlightFormerModeTokens,
+	archetypeSpotlightModeTokens,
+} from './screenModeTokens/archetypeSpotlight';
 import { cardModeTokens } from './screenModeTokens/card';
 import { deckFormerModeTokens, deckModeTokens } from './screenModeTokens/deck';
 import { featureMatchOverlayModeTokens } from './screenModeTokens/featureMatchOverlay';
 import { headToHeadFormerModeTokens } from './screenModeTokens/headToHead';
 import { metagameFormerModeTokens, metagameModeTokens } from './screenModeTokens/metagame';
 import { pairingsFormerModeTokens, pairingsModeTokens } from './screenModeTokens/pairings';
-import { playerHistoryFormerModeTokens, playerHistoryModeTokens } from './screenModeTokens/playerHistory';
+import {
+	playerHistoryFormerModeTokens,
+	playerHistoryModeTokens,
+} from './screenModeTokens/playerHistory';
 import { roundClockFormerModeTokens, roundClockModeTokens } from './screenModeTokens/roundClock';
 import { standingsFormerModeTokens, standingsModeTokens } from './screenModeTokens/standings';
 import { talentFormerModeTokens } from './screenModeTokens/talent';
@@ -50,7 +64,10 @@ import { topCardsFormerModeTokens, topCardsModeTokens } from './screenModeTokens
 import { topCutFormerModeTokens, topCutModeTokens } from './screenModeTokens/topCut';
 import { SCREEN_MODE_VALUES } from './types/enums';
 
-export type { EventReferenceKind, ScreenModeEventReferences } from './screenModeConfigs/eventReferences';
+export type {
+	EventReferenceKind,
+	ScreenModeEventReferences,
+} from './screenModeConfigs/eventReferences';
 
 export interface ScreenModeDefinition {
 	label: string;
@@ -164,16 +181,21 @@ export interface ScreenModeDefinition {
 
 /** A Feature Match Slot a config names, or nothing while it names none. */
 function namedSlot(slotId: number | null | undefined): OutputFollowNarrowing | false {
-	return slotId != null && {
-		slotIds: [slotId],
-	};
+	return (
+		slotId != null && {
+			slotIds: [slotId],
+		}
+	);
 }
 
 /** The Player a Deck Source selects, whose record and decks a Deck List Screen reads. */
 function deckSourcePlayer({ deckSource }: DeckModeConfig): OutputFollowNarrowing | false {
-	return deckSource.type === 'player' && deckSource.playerId !== null && {
-		playerIds: [deckSource.playerId],
-	};
+	return (
+		deckSource.type === 'player' &&
+		deckSource.playerId !== null && {
+			playerIds: [deckSource.playerId],
+		}
+	);
 }
 
 /** The Feature Match Slot whose side a Deck Source shows; its Session decides who sits there (ADR-0058). */
@@ -193,7 +215,8 @@ const METAGAME_OUTPUT_FOLLOWS = {
 	archetype: true,
 	roundStandings: true,
 	playerList: ({ scope, playerListId }: { scope: MetagameScope; playerListId?: number }) =>
-		scope === 'playerList' && playerListId != null && {
+		scope === 'playerList' &&
+		playerListId != null && {
 			playerListIds: [playerListId],
 		},
 } as const satisfies ScreenModeOutputFollows;
@@ -214,7 +237,8 @@ function selectsHeadToHead(config: HeadToHeadModeConfig): boolean {
 		: config.player1Id != null || config.player2Id != null;
 }
 
-const headToHeadSlot = (config: HeadToHeadModeConfig) => config.playerSource === 'featureMatchSlot' && namedSlot(config.featureMatchId);
+const headToHeadSlot = (config: HeadToHeadModeConfig) =>
+	config.playerSource === 'featureMatchSlot' && namedSlot(config.featureMatchId);
 
 /** Whether a Round Clock follows the Current Round, which any Round, Phase or Match may move. */
 const followsCurrentRound = (config: RoundClockModeConfig) => config.roundId == null;
@@ -232,20 +256,24 @@ function overlayFollowed(field: 'matchIds' | 'roundIds' | 'phaseIds') {
 
 /** The Players a named Feature Match Slot seats, or nothing while none is named. */
 function seatedPlayers(slotId: number | null | undefined): OutputFollowNarrowing | false {
-	return slotId != null && {
-		playerIds: { seatedIn: slotId },
-	};
+	return (
+		slotId != null && {
+			playerIds: { seatedIn: slotId },
+		}
+	);
 }
 
 /** The Players the Overlay's Slot seats, whose sideboards a Deck List Graphic Item shows. */
-const overlaySeatedPlayers = (config: FeatureMatchOverlayModeConfig) => seatedPlayers(config.featureMatchId);
+const overlaySeatedPlayers = (config: FeatureMatchOverlayModeConfig) =>
+	seatedPlayers(config.featureMatchId);
 
 /**
  * The Players a control Screen's Slot seats, whose decks say which deck
  * counters it offers. Reverse Sync announces the Slot only when its snapshot
  * changes, and the snapshot holds no deck cards.
  */
-const controlsSeatedPlayers = (config: FeatureMatchModeConfig) => seatedPlayers(config.featureMatchId);
+const controlsSeatedPlayers = (config: FeatureMatchModeConfig) =>
+	seatedPlayers(config.featureMatchId);
 
 /**
  * Single source of truth for all screen modes and their display characteristics.
@@ -256,7 +284,7 @@ const controlsSeatedPlayers = (config: FeatureMatchModeConfig) => seatedPlayers(
  * widened for readers asking about any mode.
  */
 const SCREEN_MODE_DEFINITIONS = {
-	'background': {
+	background: {
 		label: 'Background',
 		icon: 'i-lucide-wallpaper',
 		displayType: 'overlay',
@@ -266,7 +294,7 @@ const SCREEN_MODE_DEFINITIONS = {
 		eventReferences: backgroundModeConfigContract.eventReferences,
 		outputFollows: {},
 	},
-	'card': {
+	card: {
 		label: 'Card Spotlight',
 		icon: 'i-lucide-square',
 		displayType: 'overlay',
@@ -279,7 +307,7 @@ const SCREEN_MODE_DEFINITIONS = {
 		outputFollows: { screenCard: true },
 		modeTokens: cardModeTokens,
 	},
-	'deck': {
+	deck: {
 		label: 'Deck List',
 		icon: 'i-lucide-layers',
 		displayType: 'overlay',
@@ -303,7 +331,7 @@ const SCREEN_MODE_DEFINITIONS = {
 		modeTokens: deckModeTokens,
 		formerModeTokens: deckFormerModeTokens,
 	},
-	'standings': {
+	standings: {
 		label: 'Standings',
 		icon: 'i-lucide-trophy',
 		displayType: 'overlay',
@@ -319,15 +347,13 @@ const SCREEN_MODE_DEFINITIONS = {
 			// Phase, since either may reorder the Event's Rounds. Fixed at no
 			// Round it names none, and still hears a sync of them all, as today.
 			round: (config: StandingsModeConfig) =>
-				isColumnVisible(config.columns, 'positionChange')
-				|| {
-					roundIds: config.roundId == null
-						? []
-						: [config.roundId],
+				isColumnVisible(config.columns, 'positionChange') || {
+					roundIds: config.roundId == null ? [] : [config.roundId],
 				},
 			phase: (config: StandingsModeConfig) => isColumnVisible(config.columns, 'positionChange'),
 			playerList: (config: StandingsModeConfig) =>
-				config.viewMode === 'watchlist' && config.playerListId != null && {
+				config.viewMode === 'watchlist' &&
+				config.playerListId != null && {
 					playerListIds: [config.playerListId],
 				},
 		},
@@ -349,11 +375,12 @@ const SCREEN_MODE_DEFINITIONS = {
 			// bracket seats whoever its Matches do, which only its read knows,
 			// and a One Piece Card Game Event shows its Manual Bracket whatever
 			// `bracketSource` says (ADR-0075), so that source hears every Player.
-			player: (config: TopCutModeConfig) => config.bracketSource !== 'manual' || {
-				playerIds: config.manualBracket.entrants.flatMap(entrant => entrant && 'playerId' in entrant
-					? [entrant.playerId]
-					: []),
-			},
+			player: (config: TopCutModeConfig) =>
+				config.bracketSource !== 'manual' || {
+					playerIds: config.manualBracket.entrants.flatMap((entrant) =>
+						entrant && 'playerId' in entrant ? [entrant.playerId] : [],
+					),
+				},
 			playerDeck: showsTopCutArchetypes,
 			archetype: showsTopCutArchetypes,
 			// Over-approximation: which Rounds and Matches are the Phase's, and
@@ -392,7 +419,8 @@ const SCREEN_MODE_DEFINITIONS = {
 		eventReferences: featureMatchOverlayModeConfigContract.eventReferences,
 		outputFollows: {
 			featureMatchSlot: (config: FeatureMatchOverlayModeConfig) => namedSlot(config.featureMatchId),
-			featureMatchSession: (config: FeatureMatchOverlayModeConfig) => namedSlot(config.featureMatchId),
+			featureMatchSession: (config: FeatureMatchOverlayModeConfig) =>
+				namedSlot(config.featureMatchId),
 			// The one Match its Slot follows, and that Match's Round and Phase.
 			// A Slot's Match changes only in a write announcing the Slot, so the
 			// Slot as it stands after any write names the Match its output shows.
@@ -418,7 +446,7 @@ const SCREEN_MODE_DEFINITIONS = {
 		// Its Graphic Input Bindings are resolved into its Live Session, which is all it reads.
 		outputFollows: { broadcastGraphicsLiveSession: true },
 	},
-	'metagame': {
+	metagame: {
 		label: 'Metagame',
 		icon: 'i-lucide-pie-chart',
 		displayType: 'overlay',
@@ -469,7 +497,7 @@ const SCREEN_MODE_DEFINITIONS = {
 		modeTokens: playerHistoryModeTokens,
 		formerModeTokens: playerHistoryFormerModeTokens,
 	},
-	'pairings': {
+	pairings: {
 		label: 'Pairings',
 		icon: 'i-lucide-list-ordered',
 		displayType: 'overlay',
@@ -479,9 +507,10 @@ const SCREEN_MODE_DEFINITIONS = {
 		config: pairingsModeConfigContract,
 		eventReferences: pairingsModeConfigContract.eventReferences,
 		outputFollows: {
-			round: (config: PairingsModeConfig) => config.roundId != null && {
-				roundIds: [config.roundId],
-			},
+			round: (config: PairingsModeConfig) =>
+				config.roundId != null && {
+					roundIds: [config.roundId],
+				},
 			// Over-approximation: a Match moved out of its Round names only the
 			// Round it joined, and which Players its Matches seat only its read knows.
 			match: selectsPairings,
@@ -495,7 +524,7 @@ const SCREEN_MODE_DEFINITIONS = {
 		label: 'Archetype Spotlight',
 		icon: 'i-lucide-crosshair',
 		displayType: 'overlay',
-		description: 'One archetype\'s pilots, numbers and top cards',
+		description: "One archetype's pilots, numbers and top cards",
 		offeredTo: SCREEN_MODE_OFFERED_TO['archetype-spotlight'],
 		backgroundLayers: true,
 		config: archetypeSpotlightModeConfigContract,
@@ -518,11 +547,12 @@ const SCREEN_MODE_DEFINITIONS = {
 			featureMatchSlot: headToHeadSlot,
 			featureMatchSession: headToHeadSlot,
 			// The two Players it picks, or the two its Slot seats.
-			player: (config: HeadToHeadModeConfig) => config.playerSource === 'featureMatchSlot'
-				? seatedPlayers(config.featureMatchId)
-				: {
-						playerIds: [config.player1Id, config.player2Id].filter(id => id != null),
-					},
+			player: (config: HeadToHeadModeConfig) =>
+				config.playerSource === 'featureMatchSlot'
+					? seatedPlayers(config.featureMatchId)
+					: {
+							playerIds: [config.player1Id, config.player2Id].filter((id) => id != null),
+						},
 			// Over-approximation: the earlier Matches between its Players, their
 			// Rounds and Phases, and the Players' Archetypes, only its read knows.
 			match: selectsHeadToHead,
@@ -545,9 +575,10 @@ const SCREEN_MODE_DEFINITIONS = {
 		config: roundClockModeConfigContract,
 		eventReferences: roundClockModeConfigContract.eventReferences,
 		outputFollows: {
-			round: (config: RoundClockModeConfig) => config.roundId == null || {
-				roundIds: [config.roundId],
-			},
+			round: (config: RoundClockModeConfig) =>
+				config.roundId == null || {
+					roundIds: [config.roundId],
+				},
 			match: followsCurrentRound,
 			phase: followsCurrentRound,
 		},
@@ -555,11 +586,11 @@ const SCREEN_MODE_DEFINITIONS = {
 		formerModeTokens: roundClockFormerModeTokens,
 	},
 	// Talent needs no results or Deck Lists, so ADR-0057 leaves it to every Card Game.
-	'talent': {
+	talent: {
 		label: 'Talent',
 		icon: 'i-lucide-mic',
 		displayType: 'overlay',
-		description: 'The broadcast\'s presenters and commentators, with their Social Profiles',
+		description: "The broadcast's presenters and commentators, with their Social Profiles",
 		offeredTo: SCREEN_MODE_OFFERED_TO.talent,
 		backgroundLayers: true,
 		config: talentModeConfigContract,
@@ -579,20 +610,27 @@ export const SCREEN_MODES: Record<ScreenMode, ScreenModeDefinition> = SCREEN_MOD
 
 /** The Screen Modes whose definition declares a Background Layer stack. */
 export type BackgroundLayersCapableMode = {
-	[M in ScreenMode]: typeof SCREEN_MODE_DEFINITIONS[M] extends { backgroundLayers: true } ? M : never;
+	[M in ScreenMode]: (typeof SCREEN_MODE_DEFINITIONS)[M] extends { backgroundLayers: true }
+		? M
+		: never;
 }[ScreenMode];
 
-export function screenModeSupportsBackgroundLayers(mode: ScreenMode): mode is BackgroundLayersCapableMode {
+export function screenModeSupportsBackgroundLayers(
+	mode: ScreenMode,
+): mode is BackgroundLayersCapableMode {
 	return SCREEN_MODES[mode].backgroundLayers === true;
 }
 
 /** The same modes as a list, in Screen Mode order, derived from the declaration. */
-export const BACKGROUND_LAYERS_CAPABLE_MODES: readonly BackgroundLayersCapableMode[]
-	= SCREEN_MODE_VALUES.filter(screenModeSupportsBackgroundLayers);
+export const BACKGROUND_LAYERS_CAPABLE_MODES: readonly BackgroundLayersCapableMode[] =
+	SCREEN_MODE_VALUES.filter(screenModeSupportsBackgroundLayers);
 
 /** A mode's config, as its contract defines it. */
-type ConfigOfMode<M extends ScreenMode> = ScreenModeConfigOf<typeof SCREEN_MODE_DEFINITIONS[M]['config']>;
-type EventReferencesOfMode<M extends ScreenMode> = typeof SCREEN_MODE_DEFINITIONS[M]['eventReferences'];
+type ConfigOfMode<M extends ScreenMode> = ScreenModeConfigOf<
+	(typeof SCREEN_MODE_DEFINITIONS)[M]['config']
+>;
+type EventReferencesOfMode<M extends ScreenMode> =
+	(typeof SCREEN_MODE_DEFINITIONS)[M]['eventReferences'];
 
 /**
  * Each declared Event Reference that is not one of its mode's config fields, or
@@ -601,7 +639,10 @@ type EventReferencesOfMode<M extends ScreenMode> = typeof SCREEN_MODE_DEFINITION
 type MisdeclaredEventReference = {
 	[M in ScreenMode]: {
 		[F in keyof EventReferencesOfMode<M> & string]: F extends keyof ConfigOfMode<M>
-			? ConfigOfMode<M>[F] extends EventReferenceValues[EventReferencesOfMode<M>[F] & EventReferenceKind] ? never : `${M}.${F}`
+			? ConfigOfMode<M>[F] extends EventReferenceValues[EventReferencesOfMode<M>[F] &
+					EventReferenceKind]
+				? never
+				: `${M}.${F}`
 			: `${M}.${F}`;
 	}[keyof EventReferencesOfMode<M> & string];
 }[ScreenMode];
@@ -611,11 +652,19 @@ type MisdeclaredEventReference = {
  * `MisdeclaredEventReference` resolves to each offending `mode.field`.
  * Exported only so the check is not an unused binding.
  */
-export const EVENT_REFERENCES_FIT_THEIR_CONFIG: [MisdeclaredEventReference] extends [never] ? true : MisdeclaredEventReference = true;
+export const EVENT_REFERENCES_FIT_THEIR_CONFIG: [MisdeclaredEventReference] extends [never]
+	? true
+	: MisdeclaredEventReference = true;
 
 /** Each mode whose `outputFollows` reads a config that is not its own. */
 type MisdeclaredOutputFollows = {
-	[M in ScreenMode]: typeof SCREEN_MODE_DEFINITIONS[M]['outputFollows'] extends ScreenModeOutputFollows<ConfigOfMode<M>> ? never : M;
+	[
+		M in ScreenMode
+	]: (typeof SCREEN_MODE_DEFINITIONS)[M]['outputFollows'] extends ScreenModeOutputFollows<
+		ConfigOfMode<M>
+	>
+		? never
+		: M;
 }[ScreenMode];
 
 /**
@@ -623,9 +672,15 @@ type MisdeclaredOutputFollows = {
  * config; the error's `MisdeclaredOutputFollows` resolves to each offending mode.
  * Exported only so the check is not an unused binding.
  */
-export const OUTPUT_FOLLOWS_FIT_THEIR_CONFIG: [MisdeclaredOutputFollows] extends [never] ? true : MisdeclaredOutputFollows = true;
+export const OUTPUT_FOLLOWS_FIT_THEIR_CONFIG: [MisdeclaredOutputFollows] extends [never]
+	? true
+	: MisdeclaredOutputFollows = true;
 
-type ModeTokensOfMode<M extends ScreenMode> = typeof SCREEN_MODE_DEFINITIONS[M] extends { modeTokens: infer Tokens } ? Tokens : Record<never, never>;
+type ModeTokensOfMode<M extends ScreenMode> = (typeof SCREEN_MODE_DEFINITIONS)[M] extends {
+	modeTokens: infer Tokens;
+}
+	? Tokens
+	: Record<never, never>;
 
 /**
  * Each Mode Token naming a Screen Settings Group its mode's contract does not
@@ -633,7 +688,9 @@ type ModeTokensOfMode<M extends ScreenMode> = typeof SCREEN_MODE_DEFINITIONS[M] 
  */
 type MisplacedModeToken = {
 	[M in ScreenMode]: {
-		[T in keyof ModeTokensOfMode<M> & string]: ModeTokensOfMode<M>[T] extends { settingsGroup: ScreenSettingsGroupOf<typeof SCREEN_MODE_DEFINITIONS[M]['config']> }
+		[T in keyof ModeTokensOfMode<M> & string]: ModeTokensOfMode<M>[T] extends {
+			settingsGroup: ScreenSettingsGroupOf<(typeof SCREEN_MODE_DEFINITIONS)[M]['config']>;
+		}
 			? never
 			: `${M}.${T}`;
 	}[keyof ModeTokensOfMode<M> & string];
@@ -644,11 +701,17 @@ type MisplacedModeToken = {
  * not declare; the error's `MisplacedModeToken` resolves to each offending
  * `mode.token`. Exported only so the check is not an unused binding.
  */
-export const MODE_TOKEN_GROUPS_FIT_THEIR_CONTRACT: [MisplacedModeToken] extends [never] ? true : MisplacedModeToken = true;
+export const MODE_TOKEN_GROUPS_FIT_THEIR_CONTRACT: [MisplacedModeToken] extends [never]
+	? true
+	: MisplacedModeToken = true;
 
 /** The Screen Modes whose definition declares a Page Rotation. */
 export type PageRotationMode = {
-	[M in ScreenMode]: typeof SCREEN_MODE_DEFINITIONS[M] extends { pageRotation: PageRotationDeclaration } ? M : never;
+	[M in ScreenMode]: (typeof SCREEN_MODE_DEFINITIONS)[M] extends {
+		pageRotation: PageRotationDeclaration;
+	}
+		? M
+		: never;
 }[ScreenMode];
 
 /** A paginated mode's Page Rotation declaration. */
@@ -663,11 +726,17 @@ export function screenModePageRotation(mode: PageRotationMode): PageRotationDecl
  * a rotation field without declaring a Page Rotation.
  */
 type MisdeclaredPageRotation = {
-	[M in ScreenMode]: typeof SCREEN_MODE_DEFINITIONS[M] extends { pageRotation: { pageSize: infer PageSize extends string } }
+	[M in ScreenMode]: (typeof SCREEN_MODE_DEFINITIONS)[M] extends {
+		pageRotation: { pageSize: infer PageSize extends string };
+	}
 		? PageSize extends keyof ConfigOfMode<M>
-			? ConfigOfMode<M> extends PageRotationConfig & Partial<Record<PageSize, number>> ? never : M
+			? ConfigOfMode<M> extends PageRotationConfig & Partial<Record<PageSize, number>>
+				? never
+				: M
 			: M
-		: Extract<keyof ConfigOfMode<M>, keyof PageRotationConfig> extends never ? never : M;
+		: Extract<keyof ConfigOfMode<M>, keyof PageRotationConfig> extends never
+			? never
+			: M;
 }[ScreenMode];
 
 /**
@@ -675,29 +744,37 @@ type MisdeclaredPageRotation = {
  * `MisdeclaredPageRotation` resolves to each offending mode.
  * Exported only so the check is not an unused binding.
  */
-export const PAGE_ROTATIONS_FIT_THEIR_CONFIG: [MisdeclaredPageRotation] extends [never] ? true : MisdeclaredPageRotation = true;
+export const PAGE_ROTATIONS_FIT_THEIR_CONFIG: [MisdeclaredPageRotation] extends [never]
+	? true
+	: MisdeclaredPageRotation = true;
 
 /** A mode's config contract. */
-export function screenModeConfigContract<M extends ScreenMode>(mode: M): typeof SCREEN_MODE_DEFINITIONS[M]['config'] {
+export function screenModeConfigContract<M extends ScreenMode>(
+	mode: M,
+): (typeof SCREEN_MODE_DEFINITIONS)[M]['config'] {
 	return SCREEN_MODE_DEFINITIONS[mode].config;
 }
 
 /** The Screen Modes whose definition declares Mode Tokens. */
 export type ThemedScreenMode = {
-	[M in ScreenMode]: typeof SCREEN_MODE_DEFINITIONS[M] extends { modeTokens: object } ? M : never;
+	[M in ScreenMode]: (typeof SCREEN_MODE_DEFINITIONS)[M] extends { modeTokens: object } ? M : never;
 }[ScreenMode];
 
 /**
  * The Screen Modes a Theme preview shows, in Screen Mode order: each mode
  * declaring Mode Tokens, and each mode declaring a Theme preview without any.
  */
-export const THEME_PREVIEW_SCREEN_MODES: readonly ScreenMode[] = SCREEN_MODE_VALUES.filter(mode =>
-	SCREEN_MODES[mode].modeTokens || SCREEN_MODES[mode].themePreview);
+export const THEME_PREVIEW_SCREEN_MODES: readonly ScreenMode[] = SCREEN_MODE_VALUES.filter(
+	(mode) => SCREEN_MODES[mode].modeTokens || SCREEN_MODES[mode].themePreview,
+);
 
 /** A themed mode's Mode Tokens of one type, by name within the mode. */
 export type ScreenModeTokenOfType<M extends ThemedScreenMode, T extends ThemeTokenType> = {
-	[K in keyof typeof SCREEN_MODE_DEFINITIONS[M]['modeTokens']]: typeof SCREEN_MODE_DEFINITIONS[M]['modeTokens'][K] extends { type: T } ? K : never;
-}[keyof typeof SCREEN_MODE_DEFINITIONS[M]['modeTokens']] & string;
+	[
+		K in keyof (typeof SCREEN_MODE_DEFINITIONS)[M]['modeTokens']
+	]: (typeof SCREEN_MODE_DEFINITIONS)[M]['modeTokens'][K] extends { type: T } ? K : never;
+}[keyof (typeof SCREEN_MODE_DEFINITIONS)[M]['modeTokens']] &
+	string;
 
 /**
  * A Mode Token's full name, as a Theme or a Screen Theme Override stores it:
@@ -710,15 +787,21 @@ export function screenModeTokenName(mode: ScreenMode, token: string): ScreenMode
 }
 
 /** A mode's declared Mode Tokens by full name, as `resolveThemeTokens` reads them; none for a mode declaring none. */
-export function screenModeTokens(mode: ScreenMode): Readonly<Record<ScreenModeTokenName, AnyDeclaredModeTokenDefinition>> {
+export function screenModeTokens(
+	mode: ScreenMode,
+): Readonly<Record<ScreenModeTokenName, AnyDeclaredModeTokenDefinition>> {
 	const declared = SCREEN_MODES[mode].modeTokens ?? {};
-	return Object.fromEntries(Object.entries(declared).map(([token, definition]) => [
-		screenModeTokenName(mode, token),
-		definition,
-	]));
+	return Object.fromEntries(
+		Object.entries(declared).map(([token, definition]) => [
+			screenModeTokenName(mode, token),
+			definition,
+		]),
+	);
 }
 
 /** A mode's former Mode Tokens by full name; none for a mode that dropped none. */
 export function screenModeFormerTokens(mode: ScreenMode): ScreenModeTokenName[] {
-	return (SCREEN_MODES[mode].formerModeTokens ?? []).map(token => screenModeTokenName(mode, token));
+	return (SCREEN_MODES[mode].formerModeTokens ?? []).map((token) =>
+		screenModeTokenName(mode, token),
+	);
 }

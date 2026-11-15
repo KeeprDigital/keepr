@@ -37,14 +37,19 @@ interface StubEvent {
 	body: unknown;
 }
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 vi.stubGlobal('getRouterParam', (event: StubEvent, name: string) => event.params[name]);
 vi.stubGlobal('setResponseHeader', () => {});
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 type Handler = (event: H3Event) => Promise<unknown>;
-const act = (await import('~~/server/api/admin/graphics-assets/discrepancies/[discrepancyId]/actions.post')).default as unknown as Handler;
+const act = (
+	await import('~~/server/api/admin/graphics-assets/discrepancies/[discrepancyId]/actions.post')
+).default as unknown as Handler;
 
 async function takeAction(discrepancy: GraphicsDiscrepancy, action: string) {
 	const request: StubEvent = {
@@ -56,9 +61,8 @@ async function takeAction(discrepancy: GraphicsDiscrepancy, action: string) {
 
 async function openDiscrepancy(kind: GraphicsDiscrepancy['kind']) {
 	const { discrepancies } = await context.library.getReconciliationOverview();
-	const found = discrepancies.find(discrepancy => discrepancy.kind === kind);
-	if (!found)
-		throw new Error(`No open ${kind} discrepancy was recorded`);
+	const found = discrepancies.find((discrepancy) => discrepancy.kind === kind);
+	if (!found) throw new Error(`No open ${kind} discrepancy was recorded`);
 	return found;
 }
 
@@ -72,7 +76,7 @@ async function contentReturnedAltered() {
 	await context.canonical.delete(identity);
 	await context.library.runGraphicsReconciliation();
 	const altered = Uint8Array.from(pixelPng);
-	altered[altered.length - 20] = altered[altered.length - 20]! ^ 0xFF;
+	altered[altered.length - 20] = altered[altered.length - 20]! ^ 0xff;
 	await context.canonical.createImmutable({
 		identity,
 		bytes: boundedBytes(altered),
@@ -123,17 +127,22 @@ describe('an action on one Graphics Discrepancy', () => {
 			discrepancy: thumbnailMissing,
 			answered: { outcome: 'resolved', resolution: 'derivative-regenerated' },
 		},
-	])('answers $action with what that action alone decides', async ({ action, discrepancy, answered }) => {
-		const target = await discrepancy();
+	])(
+		'answers $action with what that action alone decides',
+		async ({ action, discrepancy, answered }) => {
+			const target = await discrepancy();
 
-		expect(await takeAction(target, action)).toMatchObject(answered);
-	});
+			expect(await takeAction(target, action)).toMatchObject(answered);
+		},
+	);
 
 	// Adopting an unexpected object is never offered, so its name is refused before any action runs.
 	it('refuses an action it does not offer, leaving the Graphics Discrepancy as it was', async () => {
 		const target = await contentReturnedAltered();
 
-		await expect(takeAction(target, 'adopt-unexpected-object')).rejects.toMatchObject({ name: 'ZodError' });
+		await expect(takeAction(target, 'adopt-unexpected-object')).rejects.toMatchObject({
+			name: 'ZodError',
+		});
 
 		expect(await openDiscrepancy('unavailable-content')).toEqual(target);
 	});

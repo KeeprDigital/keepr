@@ -18,9 +18,7 @@ function tableOf(places: Array<{ top: number; height: number }>) {
 	}
 	return {
 		table,
-		rows: [
-			...layout.keys(),
-		],
+		rows: [...layout.keys()],
 		relayout: (row: HTMLElement, place: { top: number; height: number }) => layout.set(row, place),
 	};
 }
@@ -33,20 +31,23 @@ describe('createLeavingRowHold', () => {
 		{ row: 'the first row', index: 0, top: '0px' },
 		{ row: 'a row further down', index: 3, top: '381px' },
 	])('holds $row where it stood before the table updated', ({ index, top }) => {
-		const { table, rows, relayout } = tableOf([0, 127, 254, 381].map(at => ({ top: at, height: 127 })));
+		const { table, rows, relayout } = tableOf(
+			[0, 127, 254, 381].map((at) => ({ top: at, height: 127 })),
+		);
 		const { remember, hold } = createLeavingRowHold();
 		remember(table);
 		relayout(rows[index]!, { top: 0, height: 0 });
 
 		hold(rows[index]!);
 
-		expect({ top: rows[index]!.style.top, height: rows[index]!.style.height }).toEqual({ top, height: '127px' });
+		expect({ top: rows[index]!.style.top, height: rows[index]!.style.height }).toEqual({
+			top,
+			height: '127px',
+		});
 	});
 
 	it('leaves a row it never saw alone', () => {
-		const { rows } = tableOf([
-			{ top: 127, height: 127 },
-		]);
+		const { rows } = tableOf([{ top: 127, height: 127 }]);
 
 		createLeavingRowHold().hold(rows[0]!);
 

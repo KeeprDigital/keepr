@@ -29,26 +29,26 @@ interface ScreenOutputAssetAuthorizationInput {
 	revisionId: string;
 }
 
-type ScreenOutputAssetAuthorization
-	= { outcome: 'authorized'; contentIdentity: string }
-		| { outcome: 'missing' };
+type ScreenOutputAssetAuthorization =
+	| { outcome: 'authorized'; contentIdentity: string }
+	| { outcome: 'missing' };
 
-type ScreenOutputAssetResolution
-	= {
-		outcome: 'available';
-		body: ReadableStream<Uint8Array>;
-		byteLength: number;
-		contentType: string;
-	}
+type ScreenOutputAssetResolution =
+	| {
+			outcome: 'available';
+			body: ReadableStream<Uint8Array>;
+			byteLength: number;
+			contentType: string;
+	  }
 	| { outcome: 'missing' }
 	| { outcome: 'unavailable'; retryable: true };
 
-type ScreenOutputAssetInspection
-	= {
-		outcome: 'available';
-		byteLength: number;
-		contentType: string;
-	}
+type ScreenOutputAssetInspection =
+	| {
+			outcome: 'available';
+			byteLength: number;
+			contentType: string;
+	  }
 	| { outcome: 'missing' }
 	| { outcome: 'unavailable'; retryable: true };
 
@@ -62,10 +62,7 @@ interface ScreenOutputAssetDeliveryDependencies {
 	authorize: (
 		input: ScreenOutputAssetAuthorizationInput,
 	) => Promise<ScreenOutputAssetAuthorization>;
-	inspect: (input: {
-		assetId: string;
-		revisionId: string;
-	}) => Promise<ScreenOutputAssetInspection>;
+	inspect: (input: { assetId: string; revisionId: string }) => Promise<ScreenOutputAssetInspection>;
 	resolve: (input: {
 		assetId: string;
 		revisionId: string;
@@ -83,24 +80,20 @@ interface ScreenOutputAssetDeliveryInput {
 	headers: Headers;
 }
 
-type ScreenOutputAssetDeliveryOutcome
-	= { outcome: 'delivered'; response: Response }
-		| { outcome: 'missing' }
-		| { outcome: 'unavailable'; retryable: true };
+type ScreenOutputAssetDeliveryOutcome =
+	| { outcome: 'delivered'; response: Response }
+	| { outcome: 'missing' }
+	| { outcome: 'unavailable'; retryable: true };
 
 function opaqueEtag(representationTag: string): string {
 	return `"sk-${representationTag}"`;
 }
 
-function internalCacheRequest(
-	representationTag: string,
-	requestHeaders: Headers,
-): Request {
+function internalCacheRequest(representationTag: string, requestHeaders: Headers): Request {
 	const headers = new Headers();
 	for (const name of ['range', 'if-none-match', 'if-modified-since'] as const) {
 		const value = requestHeaders.get(name);
-		if (value)
-			headers.set(name, value);
+		if (value) headers.set(name, value);
 	}
 	return new Request(`https://screen-output-content.invalid/${representationTag}`, {
 		headers,
@@ -133,7 +126,7 @@ function immutableHeaders(input: {
 		'cache-control': 'public, max-age=31536000, immutable',
 		'content-length': String(input.byteLength),
 		'content-type': input.contentType,
-		'etag': input.etag,
+		etag: input.etag,
 	});
 }
 
@@ -151,12 +144,10 @@ export function createScreenOutputAssetDelivery(
 				assetId: input.assetId,
 				revisionId: input.revisionId,
 			});
-		}
-		catch {
+		} catch {
 			return { outcome: 'unavailable', retryable: true };
 		}
-		if (authorization.outcome === 'missing')
-			return { outcome: 'missing' };
+		if (authorization.outcome === 'missing') return { outcome: 'missing' };
 
 		const representationTag = await screenOutputAssetRepresentationTag({
 			signingKey: dependencies.signingKey,
@@ -180,14 +171,11 @@ export function createScreenOutputAssetDelivery(
 				assetId: input.assetId,
 				revisionId: input.revisionId,
 			});
-		}
-		catch {
+		} catch {
 			return { outcome: 'unavailable', retryable: true };
 		}
-		if (inspection.outcome === 'missing')
-			return { outcome: 'missing' };
-		if (inspection.outcome === 'unavailable')
-			return inspection;
+		if (inspection.outcome === 'missing') return { outcome: 'missing' };
+		if (inspection.outcome === 'unavailable') return inspection;
 
 		const headers = immutableHeaders({
 			contentType: inspection.contentType,
@@ -227,17 +215,14 @@ export function createScreenOutputAssetDelivery(
 					revisionId: input.revisionId,
 					range: { offset: requestedRange.start, length: rangeLength },
 				});
-			}
-			catch {
+			} catch {
 				return { outcome: 'unavailable', retryable: true };
 			}
-			if (resolution.outcome === 'missing')
-				return { outcome: 'missing' };
-			if (resolution.outcome === 'unavailable')
-				return resolution;
+			if (resolution.outcome === 'missing') return { outcome: 'missing' };
+			if (resolution.outcome === 'unavailable') return resolution;
 			if (
-				resolution.byteLength !== inspection.byteLength
-				|| resolution.contentType !== inspection.contentType
+				resolution.byteLength !== inspection.byteLength ||
+				resolution.contentType !== inspection.contentType
 			) {
 				await resolution.body.cancel();
 				return { outcome: 'unavailable', retryable: true };
@@ -249,13 +234,10 @@ export function createScreenOutputAssetDelivery(
 			headers.set('content-length', String(rangeLength));
 			return {
 				outcome: 'delivered',
-				response: new Response(
-					resolution.body,
-					{
-						status: 206,
-						headers: publicHeaders(headers),
-					},
-				),
+				response: new Response(resolution.body, {
+					status: 206,
+					headers: publicHeaders(headers),
+				}),
 			};
 		}
 
@@ -265,26 +247,23 @@ export function createScreenOutputAssetDelivery(
 				assetId: input.assetId,
 				revisionId: input.revisionId,
 			});
-		}
-		catch {
+		} catch {
 			return { outcome: 'unavailable', retryable: true };
 		}
-		if (resolution.outcome === 'missing')
-			return { outcome: 'missing' };
-		if (resolution.outcome === 'unavailable')
-			return resolution;
+		if (resolution.outcome === 'missing') return { outcome: 'missing' };
+		if (resolution.outcome === 'unavailable') return resolution;
 		if (
-			resolution.byteLength !== inspection.byteLength
-			|| resolution.contentType !== inspection.contentType
+			resolution.byteLength !== inspection.byteLength ||
+			resolution.contentType !== inspection.contentType
 		) {
 			await resolution.body.cancel();
 			return { outcome: 'unavailable', retryable: true };
 		}
 		const immutableResponse = new Response(resolution.body, { headers });
 		if (
-			dependencies.cache
-			&& dependencies.defer
-			&& inspection.byteLength <= SCREEN_OUTPUT_ASSET_CACHE_MAXIMUM_BYTES
+			dependencies.cache &&
+			dependencies.defer &&
+			inspection.byteLength <= SCREEN_OUTPUT_ASSET_CACHE_MAXIMUM_BYTES
 		) {
 			dependencies.defer(
 				dependencies.cache
@@ -301,7 +280,4 @@ export function createScreenOutputAssetDelivery(
 	return { deliver };
 }
 
-export type {
-	ScreenOutputAssetAuthorizationInput,
-	ScreenOutputAssetDeliveryOutcome,
-};
+export type { ScreenOutputAssetAuthorizationInput, ScreenOutputAssetDeliveryOutcome };

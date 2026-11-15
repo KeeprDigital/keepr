@@ -46,17 +46,13 @@ const GROUPS: ReadonlyArray<{ key: OpDeckGroupKey; label: string }> = [
 
 function groupOf(entry: FeatureMatchDeckListEntry): OpDeckGroupKey | null {
 	const category = entry.card?.category;
-	if (!category)
-		return 'unknown';
-	return category === 'leader'
-		? null
-		: category;
+	if (!category) return 'unknown';
+	return category === 'leader' ? null : category;
 }
 
 function byCostThenNumber(left: OpDeckCard, right: OpDeckCard): number {
 	const cost = (left.cost ?? Number.POSITIVE_INFINITY) - (right.cost ?? Number.POSITIVE_INFINITY);
-	if (cost !== 0 && !Number.isNaN(cost))
-		return cost;
+	if (cost !== 0 && !Number.isNaN(cost)) return cost;
 	return left.number.localeCompare(right.number);
 }
 
@@ -64,8 +60,7 @@ export function opDeckLayout(entries: readonly FeatureMatchDeckListEntry[]): OpD
 	const cardsByGroup = new Map<OpDeckGroupKey, OpDeckCard[]>();
 	for (const entry of entries) {
 		const key = groupOf(entry);
-		if (!key)
-			continue;
+		if (!key) continue;
 		const cards = cardsByGroup.get(key) ?? [];
 		cards.push({
 			number: entry.number,
@@ -92,19 +87,18 @@ export function opDeckLayout(entries: readonly FeatureMatchDeckListEntry[]): OpD
 	});
 
 	const countByCost = new Map<number, number>();
-	for (const card of groups.flatMap(group => group.cards)) {
+	for (const card of groups.flatMap((group) => group.cards)) {
 		if (card.cost !== null)
 			countByCost.set(card.cost, (countByCost.get(card.cost) ?? 0) + card.quantity);
 	}
-	const costs = [
-		...countByCost.keys(),
-	];
-	const costCurve = costs.length === 0
-		? []
-		: Array.from({ length: Math.max(...costs) - Math.min(1, ...costs) + 1 }, (_, index) => {
-				const cost = Math.min(1, ...costs) + index;
-				return { cost, count: countByCost.get(cost) ?? 0 };
-			});
+	const costs = [...countByCost.keys()];
+	const costCurve =
+		costs.length === 0
+			? []
+			: Array.from({ length: Math.max(...costs) - Math.min(1, ...costs) + 1 }, (_, index) => {
+					const cost = Math.min(1, ...costs) + index;
+					return { cost, count: countByCost.get(cost) ?? 0 };
+				});
 
 	return { groups, costCurve };
 }

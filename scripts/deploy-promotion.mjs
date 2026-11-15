@@ -61,8 +61,8 @@ function sha256(bytes) {
 
 function filesBelow(directory) {
 	return readdirSync(directory, { recursive: true, withFileTypes: true })
-		.filter(entry => entry.isFile())
-		.map(entry => join(entry.parentPath, entry.name));
+		.filter((entry) => entry.isFile())
+		.map((entry) => join(entry.parentPath, entry.name));
 }
 
 /**
@@ -73,18 +73,24 @@ function filesBelow(directory) {
  * @param {{ root: string, outDir: string }} options
  */
 export function bundleValidator({ root, outDir }) {
-	const result = spawnSync(join(root, 'node_modules/.bin/wrangler'), [
-		'deploy',
-		'--dry-run',
-		'--containers-rollout=none',
-		'--config',
-		VALIDATOR_CONFIG,
-		// Absolute: a relative --outdir resolves against the config's directory (scripts/worker-dry-run.mjs).
-		'--outdir',
-		outDir,
-	], { cwd: root, encoding: 'utf8' });
+	const result = spawnSync(
+		join(root, 'node_modules/.bin/wrangler'),
+		[
+			'deploy',
+			'--dry-run',
+			'--containers-rollout=none',
+			'--config',
+			VALIDATOR_CONFIG,
+			// Absolute: a relative --outdir resolves against the config's directory (scripts/worker-dry-run.mjs).
+			'--outdir',
+			outDir,
+		],
+		{ cwd: root, encoding: 'utf8' },
+	);
 	if (result.status !== 0)
-		throw new Error(`could not bundle the validator: ${result.error?.message ?? `${result.stdout}${result.stderr}`.trim()}`);
+		throw new Error(
+			`could not bundle the validator: ${result.error?.message ?? `${result.stdout}${result.stderr}`.trim()}`,
+		);
 }
 
 /**
@@ -103,22 +109,20 @@ export function fingerprintValidator({ root, bundle = bundleValidator }) {
 		bundle({ root, outDir });
 		const entries = [
 			...filesBelow(outDir)
-				.filter(path => !path.endsWith('.map') && relative(outDir, path) !== 'README.md')
-				.map(path => [`bundle/${relative(outDir, path)}`, path]),
-			...filesBelow(join(root, VALIDATOR_CONTAINER_CONTEXT))
-				.map(path => [`container/${relative(join(root, VALIDATOR_CONTAINER_CONTEXT), path)}`, path]),
-			[
-				'config',
-				join(root, VALIDATOR_CONFIG),
-			],
+				.filter((path) => !path.endsWith('.map') && relative(outDir, path) !== 'README.md')
+				.map((path) => [`bundle/${relative(outDir, path)}`, path]),
+			...filesBelow(join(root, VALIDATOR_CONTAINER_CONTEXT)).map((path) => [
+				`container/${relative(join(root, VALIDATOR_CONTAINER_CONTEXT), path)}`,
+				path,
+			]),
+			['config', join(root, VALIDATOR_CONFIG)],
 		];
 		const manifest = entries
 			.map(([name, path]) => `${name}\0${sha256(readFileSync(path))}\n`)
 			.sort()
 			.join('');
 		return `sha256:${sha256(manifest)}`;
-	}
-	finally {
+	} finally {
 		rmSync(outDir, { recursive: true, force: true });
 	}
 }
@@ -145,14 +149,15 @@ export function formatMarker(fields) {
  * @returns {Record<string, string> | undefined} its fields, or undefined when unreadable
  */
 export function parseMarker(text) {
-	const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
-	if (lines[0] !== MARKER_HEADER)
-		return undefined;
+	const lines = text
+		.split('\n')
+		.map((line) => line.trim())
+		.filter(Boolean);
+	if (lines[0] !== MARKER_HEADER) return undefined;
 	const fields = {};
 	for (const line of lines.slice(1)) {
 		const match = /^([a-z]+): (.+)$/.exec(line);
-		if (!match)
-			return undefined;
+		if (!match) return undefined;
 		fields[match[1]] = match[2];
 	}
 	return fields;
@@ -171,26 +176,48 @@ export function parseMarker(text) {
  * @returns {{ deploy: boolean, reason: string }} whether to deploy, and why
  */
 export function decideValidatorDeploy({ mode, targetFingerprint, markerText }) {
-	if (mode === 'always')
-		return { deploy: true, reason: 'forced by the always input' };
-	if (mode === 'never')
-		return { deploy: false, reason: 'suppressed by the never input' };
+	if (mode === 'always') return { deploy: true, reason: 'forced by the always input' };
+	if (mode === 'never') return { deploy: false, reason: 'suppressed by the never input' };
 	if (!MODES.includes(mode))
-		throw new Error(`unknown validator mode ${JSON.stringify(mode)}; expected ${MODES.join(', ')}.`);
+		throw new Error(
+			`unknown validator mode ${JSON.stringify(mode)}; expected ${MODES.join(', ')}.`,
+		);
 	if (targetFingerprint === undefined)
-		return { deploy: true, reason: 'the target validator could not be fingerprinted; deploying is the safe default' };
+		return {
+			deploy: true,
+			reason: 'the target validator could not be fingerprinted; deploying is the safe default',
+		};
 	if (markerText === undefined)
-		return { deploy: true, reason: `no ${VALIDATOR_MARKER} marker exists; deploying is the safe default` };
+		return {
+			deploy: true,
+			reason: `no ${VALIDATOR_MARKER} marker exists; deploying is the safe default`,
+		};
 	const marker = parseMarker(markerText);
-	if (!marker || marker.component !== 'validator' || !['deployed', 'pending'].includes(marker.state)
-		|| !FINGERPRINT.test(marker.fingerprint ?? '')) {
-		return { deploy: true, reason: `the ${VALIDATOR_MARKER} marker is unreadable or its fingerprint unknown; deploying is the safe default` };
+	if (
+		!marker ||
+		marker.component !== 'validator' ||
+		!['deployed', 'pending'].includes(marker.state) ||
+		!FINGERPRINT.test(marker.fingerprint ?? '')
+	) {
+		return {
+			deploy: true,
+			reason: `the ${VALIDATOR_MARKER} marker is unreadable or its fingerprint unknown; deploying is the safe default`,
+		};
 	}
 	if (marker.state === 'pending')
-		return { deploy: true, reason: `the validator deploy of ${marker.commit} started but was never confirmed; deploying is the safe default` };
+		return {
+			deploy: true,
+			reason: `the validator deploy of ${marker.commit} started but was never confirmed; deploying is the safe default`,
+		};
 	if (marker.fingerprint === targetFingerprint)
-		return { deploy: false, reason: `validator fingerprint unchanged since the deployed ${marker.commit}` };
-	return { deploy: true, reason: `validator fingerprint changed since the deployed ${marker.commit}` };
+		return {
+			deploy: false,
+			reason: `validator fingerprint unchanged since the deployed ${marker.commit}`,
+		};
+	return {
+		deploy: true,
+		reason: `validator fingerprint changed since the deployed ${marker.commit}`,
+	};
 }
 
 /**
@@ -209,25 +236,24 @@ export function decideValidatorDeploy({ mode, targetFingerprint, markerText }) {
 
 function writeMarker(store, name, fields) {
 	const commit = store.head();
-	store.write(name, commit, formatMarker({
-		component: fields.component,
-		state: fields.state,
+	store.write(
+		name,
 		commit,
-		worktree: store.dirty()
-			? 'dirty'
-			: 'clean',
-		...(fields.fingerprint
-			? { fingerprint: fields.fingerprint }
-			: {}),
-		source: fields.source,
-	}));
+		formatMarker({
+			component: fields.component,
+			state: fields.state,
+			commit,
+			worktree: store.dirty() ? 'dirty' : 'clean',
+			...(fields.fingerprint ? { fingerprint: fields.fingerprint } : {}),
+			source: fields.source,
+		}),
+	);
 }
 
 function tryFingerprint(fingerprint, log) {
 	try {
 		return fingerprint();
-	}
-	catch (error) {
+	} catch (error) {
 		log(`deploy-promotion: ${error.message}`);
 		return undefined;
 	}
@@ -291,10 +317,16 @@ export function promoteValidator({ store, fingerprint, deploy, source, log = con
  *   log?: (line: string) => void,
  * }} options
  */
-export function promote({ store, mode, fingerprint, deployValidator, deployApp, source, log = console.log }) {
-	const target = mode === 'never'
-		? undefined
-		: tryFingerprint(fingerprint, log);
+export function promote({
+	store,
+	mode,
+	fingerprint,
+	deployValidator,
+	deployApp,
+	source,
+	log = console.log,
+}) {
+	const target = mode === 'never' ? undefined : tryFingerprint(fingerprint, log);
 	const validator = decideValidatorDeploy({
 		mode,
 		targetFingerprint: target,
@@ -320,7 +352,9 @@ function runGit(cwd) {
 	return (args, { input } = {}) => {
 		const result = spawnSync('git', args, { cwd, encoding: 'utf8', input });
 		if (result.status !== 0)
-			throw new Error(`git ${args.join(' ')} failed: ${result.error?.message ?? result.stderr.trim()}`);
+			throw new Error(
+				`git ${args.join(' ')} failed: ${result.error?.message ?? result.stderr.trim()}`,
+			);
 		return result.stdout;
 	};
 }
@@ -339,47 +373,22 @@ function runGit(cwd) {
  * @returns {MarkerStore} the store
  */
 export function gitMarkerStore({ cwd = process.cwd(), remote = 'origin', git = runGit(cwd) } = {}) {
-	const ref = name => `refs/tags/${name}`;
+	const ref = (name) => `refs/tags/${name}`;
 	return {
 		head: () => git(['rev-parse', 'HEAD']).trim(),
 		dirty: () => git(['status', '--porcelain', '--untracked-files=all']).trim() !== '',
 		read(name) {
-			if (git([
-				'ls-remote',
-				'--tags',
-				remote,
-				ref(name),
-			]).trim() === '') {
+			if (git(['ls-remote', '--tags', remote, ref(name)]).trim() === '') {
 				return undefined;
 			}
-			git([
-				'fetch',
-				'--no-tags',
-				remote,
-				`+${ref(name)}:${ref(name)}`,
-			]);
-			if (git([
-				'cat-file',
-				'-t',
-				ref(name),
-			]).trim() !== 'tag') {
+			git(['fetch', '--no-tags', remote, `+${ref(name)}:${ref(name)}`]);
+			if (git(['cat-file', '-t', ref(name)]).trim() !== 'tag') {
 				return '';
 			}
-			return git([
-				'for-each-ref',
-				'--format=%(contents)',
-				ref(name),
-			]);
+			return git(['for-each-ref', '--format=%(contents)', ref(name)]);
 		},
 		write(name, commit, message) {
-			git([
-				'tag',
-				'--force',
-				'--annotate',
-				'--file=-',
-				name,
-				commit,
-			], { input: message });
+			git(['tag', '--force', '--annotate', '--file=-', name, commit], { input: message });
 			git(['push', remote, `+${ref(name)}:${ref(name)}`]);
 		},
 	};
@@ -391,8 +400,7 @@ export function gitMarkerStore({ cwd = process.cwd(), remote = 'origin', git = r
  * @param {string | undefined} text the marker tag's message, undefined when it does not exist
  */
 export function describeMarker(text) {
-	if (text === undefined)
-		return 'missing';
+	if (text === undefined) return 'missing';
 	const marker = parseMarker(text);
 	if (!marker)
 		return 'unreadable (not a promotion marker; a pre-#616 lightweight tag reads this way)';
@@ -401,20 +409,25 @@ export function describeMarker(text) {
 		marker.worktree && `${marker.worktree} worktree`,
 		marker.source && `from ${marker.source}`,
 	].filter(Boolean);
-	const state = marker.state === 'pending'
-		? 'pending (started, never confirmed)'
-		: marker.state ?? '(no state)';
-	return `${state} ${marker.commit ?? '(no commit)'}${details.length
-		? ` (${details.join(', ')})`
-		: ''}`;
+	const state =
+		marker.state === 'pending'
+			? 'pending (started, never confirmed)'
+			: (marker.state ?? '(no state)');
+	return `${state} ${marker.commit ?? '(no commit)'}${
+		details.length ? ` (${details.join(', ')})` : ''
+	}`;
 }
 
 function run(command, args, cwd) {
 	const result = spawnSync(command, args, { cwd, stdio: 'inherit' });
 	if (result.status !== 0) {
-		throw new Error(`${command} ${args.join(' ')} failed${result.error
-			? `: ${result.error.message}`
-			: ` with status ${result.status ?? result.signal}`}`);
+		throw new Error(
+			`${command} ${args.join(' ')} failed${
+				result.error
+					? `: ${result.error.message}`
+					: ` with status ${result.status ?? result.signal}`
+			}`,
+		);
 	}
 }
 
@@ -434,10 +447,10 @@ function main(argv, env) {
 	const root = process.cwd();
 	const store = gitMarkerStore({ cwd: root });
 	const fingerprint = () => fingerprintValidator({ root });
-	const deployValidator = () => run(join(root, 'node_modules/.bin/wrangler'), ['deploy', '--config', VALIDATOR_CONFIG], root);
+	const deployValidator = () =>
+		run(join(root, 'node_modules/.bin/wrangler'), ['deploy', '--config', VALIDATOR_CONFIG], root);
 	const summary = (line) => {
-		if (env.GITHUB_STEP_SUMMARY)
-			appendFileSync(env.GITHUB_STEP_SUMMARY, `${line}\n`);
+		if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, `${line}\n`);
 	};
 	const markers = () => [
 		`${APP_MARKER}: ${describeMarker(store.read(APP_MARKER))}`,
@@ -460,14 +473,13 @@ function main(argv, env) {
 				source: deployer(env),
 				log,
 			});
-		}
-		catch (error) {
-			log(`Promotion stopped: ${error.message}. Markers now (README.md § Recovering from a partial promotion):`);
+		} catch (error) {
+			log(
+				`Promotion stopped: ${error.message}. Markers now (README.md § Recovering from a partial promotion):`,
+			);
 			try {
-				for (const line of markers())
-					log(`- ${line}`);
-			}
-			catch (readError) {
+				for (const line of markers()) log(`- ${line}`);
+			} catch (readError) {
 				log(`- unread: ${readError.message}; run pnpm deploy:status`);
 			}
 			return 1;
@@ -494,14 +506,15 @@ function main(argv, env) {
 		return 0;
 	}
 	if (command === 'status' && argument === undefined) {
-		for (const line of markers())
-			console.log(line);
+		for (const line of markers()) console.log(line);
 		const decision = decideValidatorDeploy({
 			mode: 'auto',
 			targetFingerprint: tryFingerprint(fingerprint, console.error),
 			markerText: store.read(VALIDATOR_MARKER),
 		});
-		console.log(`this checkout's validator: ${decision.deploy ? 'would deploy' : 'would not deploy'} (${decision.reason})`);
+		console.log(
+			`this checkout's validator: ${decision.deploy ? 'would deploy' : 'would not deploy'} (${decision.reason})`,
+		);
 		return 0;
 	}
 	console.error(USAGE);

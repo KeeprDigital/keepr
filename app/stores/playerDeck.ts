@@ -33,83 +33,90 @@ export const usePlayerDeckStore = defineStore('playerDeck', () => {
 		loading.value = true;
 		error.value = null;
 		try {
-			const response = await $fetch<{ decks: PlayerDeckSummaryResponse[] }>(`/api/events/${eventId}/decks`, {
-				headers: apiHeaders.getHeaders(),
-			});
-			if (flight.stale)
-				return null;
+			const response = await $fetch<{ decks: PlayerDeckSummaryResponse[] }>(
+				`/api/events/${eventId}/decks`,
+				{
+					headers: apiHeaders.getHeaders(),
+				},
+			);
+			if (flight.stale) return null;
 			decks.value = response.decks;
 			isLoaded.value = true;
 			return decks.value;
-		}
-		catch (cause) {
-			if (flight.stale)
-				return null;
-			error.value = cause instanceof Error
-				? cause.message
-				: 'Failed to load submitted decks';
+		} catch (cause) {
+			if (flight.stale) return null;
+			error.value = cause instanceof Error ? cause.message : 'Failed to load submitted decks';
 			throw cause;
-		}
-		finally {
-			if (flight.current)
-				loading.value = false;
+		} finally {
+			if (flight.current) loading.value = false;
 		}
 	}
 
 	/** Holds a review's answer, or a cleared review's, and follows up on what a deck's Archetype touches. */
-	async function holdReviewAnswer(eventId: number, deckId: number, result: PlayerDeckReviewResponse, flight: { stale: boolean }) {
-		if (flight.stale)
-			return result;
-		const deckIndex = decks.value.findIndex(deck => deck.id === deckId);
-		if (deckIndex !== -1)
-			decks.value[deckIndex] = result.deck;
+	async function holdReviewAnswer(
+		eventId: number,
+		deckId: number,
+		result: PlayerDeckReviewResponse,
+		flight: { stale: boolean },
+	) {
+		if (flight.stale) return result;
+		const deckIndex = decks.value.findIndex((deck) => deck.id === deckId);
+		if (deckIndex !== -1) decks.value[deckIndex] = result.deck;
 
 		if (result.player) {
-			const player = usePlayerStore().players.find(item => item.id === result.player!.id);
-			if (player)
-				Object.assign(player, result.player);
+			const player = usePlayerStore().players.find((item) => item.id === result.player!.id);
+			if (player) Object.assign(player, result.player);
 		}
 		useMetagameStore().applyRemoteInvalidated();
-		await Promise.allSettled([
-			useFeatureMatchStore().loadFeatureMatchesByEventId(eventId),
-		]);
+		await Promise.allSettled([useFeatureMatchStore().loadFeatureMatchesByEventId(eventId)]);
 		return result;
 	}
 
-	async function reviewDeck(eventId: number, playerId: number, deckId: number, archetypeId: number) {
+	async function reviewDeck(
+		eventId: number,
+		playerId: number,
+		deckId: number,
+		archetypeId: number,
+	) {
 		const flight = lifetime;
-		return holdReviewAnswer(eventId, deckId, await deckCache.reviewDeck(eventId, playerId, deckId, archetypeId), flight);
+		return holdReviewAnswer(
+			eventId,
+			deckId,
+			await deckCache.reviewDeck(eventId, playerId, deckId, archetypeId),
+			flight,
+		);
 	}
 
 	/** Returns a reviewed deck to unreviewed; its Archetype stays. */
 	async function clearDeckReview(eventId: number, playerId: number, deckId: number) {
 		const flight = lifetime;
-		return holdReviewAnswer(eventId, deckId, await deckCache.clearDeckReview(eventId, playerId, deckId), flight);
+		return holdReviewAnswer(
+			eventId,
+			deckId,
+			await deckCache.clearDeckReview(eventId, playerId, deckId),
+			flight,
+		);
 	}
 
 	function applyRemoteReviewed(data: { deck: PlayerDeckSummaryResponse }) {
 		deckCache.applyReviewedDeck(data.deck);
-		const index = decks.value.findIndex(deck => deck.id === data.deck.id);
-		if (index !== -1)
-			decks.value[index] = data.deck;
+		const index = decks.value.findIndex((deck) => deck.id === data.deck.id);
+		if (index !== -1) decks.value[index] = data.deck;
 	}
 
 	/** Resolved cards rewrote these Players' Deck Lists; their next read fetches them. */
 	function applyRemoteCardsResolved(data: MessagePayload<'playerDeck:cardsResolved'>) {
-		for (const playerId of data.playerIds)
-			deckCache.clearCachedDeck(playerId);
+		for (const playerId of data.playerIds) deckCache.clearCachedDeck(playerId);
 	}
 
 	function applyArchetypeUpdated(archetype: Archetype) {
 		deckCache.applyArchetypeUpdated(archetype);
 		for (const deck of decks.value) {
-			if (deck.reviewedAt == null || deck.archetypeId !== archetype.id)
-				continue;
+			if (deck.reviewedAt == null || deck.archetypeId !== archetype.id) continue;
 
 			deck.name = archetype.name;
 			deck.colors = archetype.colors ?? '';
-			if (deck.isPrimary)
-				applyPrimaryDeckProjection(deck);
+			if (deck.isPrimary) applyPrimaryDeckProjection(deck);
 		}
 	}
 
@@ -117,40 +124,34 @@ export const usePlayerDeckStore = defineStore('playerDeck', () => {
 	function applyArchetypeMerged(mergedArchetypeId: number, survivor: Archetype) {
 		deckCache.applyArchetypeMerged(mergedArchetypeId, survivor);
 		for (const deck of decks.value) {
-			if (deck.archetypeId !== mergedArchetypeId)
-				continue;
+			if (deck.archetypeId !== mergedArchetypeId) continue;
 
 			deck.archetypeId = survivor.id;
 			deck.name = survivor.name;
 			deck.colors = survivor.colors ?? '';
-			if (deck.isPrimary)
-				applyPrimaryDeckProjection(deck);
+			if (deck.isPrimary) applyPrimaryDeckProjection(deck);
 		}
 	}
 
 	function applyArchetypeDeleted(archetypeId: number) {
 		deckCache.applyArchetypeDeleted(archetypeId);
 		for (const deck of decks.value) {
-			if (deck.archetypeId !== archetypeId)
-				continue;
+			if (deck.archetypeId !== archetypeId) continue;
 
 			deck.name = deck.submittedName;
 			deck.colors = deck.submittedColors;
 			deck.archetypeId = null;
 			deck.reviewedAt = null;
-			if (deck.isPrimary)
-				applyPrimaryDeckProjection(deck);
+			if (deck.isPrimary) applyPrimaryDeckProjection(deck);
 		}
 	}
 
 	function applyPrimaryDeckProjection(deck: PlayerDeckSummaryResponse) {
-		const player = usePlayerStore().players.find(item => item.id === deck.playerId);
-		if (!player)
-			return;
+		const player = usePlayerStore().players.find((item) => item.id === deck.playerId);
+		if (!player) return;
 
 		player.archetypeId = deck.archetypeId;
-		if ((player.gameData as { type?: string } | null)?.type !== 'mtg')
-			return;
+		if ((player.gameData as { type?: string } | null)?.type !== 'mtg') return;
 
 		player.gameData = {
 			...getMtgGameData(player.gameData),

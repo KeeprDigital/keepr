@@ -20,14 +20,13 @@ function mountField() {
 describe('fontSelectionField application picker', () => {
 	it('groups the application fonts by category', () => {
 		const groups = mountField().findAll('[data-testid="item-font"] optgroup');
-		expect(groups.map(group => group.attributes('label')))
-			.toEqual([
-				'Sans',
-				'Condensed',
-				'Serif',
-				'Monospace',
-				'System',
-			]);
+		expect(groups.map((group) => group.attributes('label'))).toEqual([
+			'Sans',
+			'Condensed',
+			'Serif',
+			'Monospace',
+			'System',
+		]);
 	});
 
 	it('paints each option in its own face', () => {
@@ -39,8 +38,6 @@ describe('fontSelectionField application picker', () => {
 		const field = mountField();
 		const select = field.find('[data-testid="item-font"]');
 		await select.setValue('roboto');
-		expect(field.emitted('application')).toEqual([
-			['roboto'],
-		]);
+		expect(field.emitted('application')).toEqual([['roboto']]);
 	});
 });

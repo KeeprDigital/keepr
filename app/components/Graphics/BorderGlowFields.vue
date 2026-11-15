@@ -10,24 +10,27 @@ import type { BorderFieldsValue, BorderGlowEdit, GlowFieldsValue } from '~/types
  * stores. The host names its border with `borderLabel`. The colour field is
  * the `color` slot, so a host can offer its own colour picker.
  */
-const props = withDefaults(defineProps<{
-	/** What the host calls its border: "Outline". */
-	borderLabel: string;
-	/** The border, or null while it is off. */
-	border: BorderFieldsValue | null;
-	/** The glow, or null while it is off. */
-	glow: GlowFieldsValue | null;
-	/** The default colour picker accepts complete `#rrggbb` values only. */
-	hexOnly?: boolean;
-	disabled?: boolean;
-	size?: 'xs' | 'sm';
-	/** Qualifies accessible names where one form shows several surfaces. */
-	ariaLabelPrefix?: string;
-	borderTestId?: string;
-	glowTestId?: string;
-}>(), {
-	size: 'sm',
-});
+const props = withDefaults(
+	defineProps<{
+		/** What the host calls its border: "Outline". */
+		borderLabel: string;
+		/** The border, or null while it is off. */
+		border: BorderFieldsValue | null;
+		/** The glow, or null while it is off. */
+		glow: GlowFieldsValue | null;
+		/** The default colour picker accepts complete `#rrggbb` values only. */
+		hexOnly?: boolean;
+		disabled?: boolean;
+		size?: 'xs' | 'sm';
+		/** Qualifies accessible names where one form shows several surfaces. */
+		ariaLabelPrefix?: string;
+		borderTestId?: string;
+		glowTestId?: string;
+	}>(),
+	{
+		size: 'sm',
+	},
+);
 
 const emit = defineEmits<{ edit: [edit: BorderGlowEdit] }>();
 
@@ -47,9 +50,7 @@ const MAX_PIXELS = 500;
 
 /** "Outline width" alone; "Won box outline width" where a prefix tells surfaces apart. */
 function ariaLabel(label: string) {
-	return props.ariaLabelPrefix
-		? `${props.ariaLabelPrefix} ${label.toLowerCase()}`
-		: label;
+	return props.ariaLabelPrefix ? `${props.ariaLabelPrefix} ${label.toLowerCase()}` : label;
 }
 
 function editBorder(patch: Partial<BorderFieldsValue> | null) {
@@ -89,7 +90,7 @@ function editGlow(patch: Partial<GlowFieldsValue> | null) {
 						:disabled="disabled"
 						:size="size"
 						:aria-label="ariaLabel(`${borderLabel} colour`)"
-						@update:model-value="color => color && editBorder({ color })"
+						@update:model-value="(color) => color && editBorder({ color })"
 					/>
 				</slot>
 			</UFormField>
@@ -131,7 +132,7 @@ function editGlow(patch: Partial<GlowFieldsValue> | null) {
 						:disabled="disabled"
 						:size="size"
 						:aria-label="ariaLabel('Glow colour')"
-						@update:model-value="color => color && editGlow({ color })"
+						@update:model-value="(color) => color && editGlow({ color })"
 					/>
 				</slot>
 			</UFormField>

@@ -40,16 +40,22 @@ interface ScreenFeatureMatchSlotOptions<T, M extends ScreenMode> {
  * A gap in the Session's notifications reloads through the Screen as well: the
  * store's reader is installed here for as long as the rendering lives.
  */
-export function useScreenFeatureMatchSlot<T, M extends ScreenMode = ScreenMode>(context: ScreenContext, options: ScreenFeatureMatchSlotOptions<T, M>) {
+export function useScreenFeatureMatchSlot<T, M extends ScreenMode = ScreenMode>(
+	context: ScreenContext,
+	options: ScreenFeatureMatchSlotOptions<T, M>,
+) {
 	const featureMatchStore = useFeatureMatchStore();
 	const featureMatchStateStore = useFeatureMatchStateStore();
 	const outputReads = useScreenOutputReads(context);
-	onScopeDispose(featureMatchStateStore.readSessionsAsScreenOutput(outputReads.featureMatchSession));
+	onScopeDispose(
+		featureMatchStateStore.readSessionsAsScreenOutput(outputReads.featureMatchSession),
+	);
 
 	// The Session's own messages reach the Live State Follower whole on either
 	// channel, a Screen's forwarding those of the Slot it shows, so none asks for a read.
-	const follows = (Object.keys(SCREEN_MODES[options.mode].outputFollows) as DeclaredOutputChangeKind[])
-		.filter(kind => kind !== 'featureMatchSession');
+	const follows = (
+		Object.keys(SCREEN_MODES[options.mode].outputFollows) as DeclaredOutputChangeKind[]
+	).filter((kind) => kind !== 'featureMatchSession');
 
 	/** The Slot what is shown was kept from. */
 	let keptSlotId: number | null = null;
@@ -69,9 +75,7 @@ export function useScreenFeatureMatchSlot<T, M extends ScreenMode = ScreenMode>(
 			// so nothing it says replaces what is shown — unless what is shown
 			// belongs to the Slot this mode has just left.
 			if (!featureMatchStore.holdFeatureMatch(read.slot)) {
-				return keptSlotId === slotId
-					? freshness.data.value
-					: options.initialData;
+				return keptSlotId === slotId ? freshness.data.value : options.initialData;
 			}
 			keptSlotId = slotId;
 			return options.keep(read);
@@ -84,18 +88,14 @@ export function useScreenFeatureMatchSlot<T, M extends ScreenMode = ScreenMode>(
 	const slot = computed<FeatureMatch | null>(() => {
 		const slotId = options.slotId();
 		const held = slotId
-			? featureMatchStore.featureMatches.find(candidate => candidate.id === slotId) ?? null
+			? (featureMatchStore.featureMatches.find((candidate) => candidate.id === slotId) ?? null)
 			: null;
-		return held
-			? withFollowedFeatureMatchSession(held, featureMatchStateStore)
-			: null;
+		return held ? withFollowedFeatureMatchSession(held, featureMatchStateStore) : null;
 	});
 
 	const state = computed<FeatureMatchState | null>(() => {
 		const slotId = options.slotId();
-		return slotId
-			? featureMatchStateStore.featureMatchStates.get(slotId) ?? null
-			: null;
+		return slotId ? (featureMatchStateStore.featureMatchStates.get(slotId) ?? null) : null;
 	});
 
 	return {
@@ -112,7 +112,11 @@ export function useScreenFeatureMatchSlot<T, M extends ScreenMode = ScreenMode>(
  * A Theme preview's Slot: the sample's, read once and held here. The Feature
  * Match store holds the loaded Event's Slots, and a preview has no Event.
  */
-export function useSampleFeatureMatchSlot(context: ScreenContext, slotId: () => number | null, errorMessage: string) {
+export function useSampleFeatureMatchSlot(
+	context: ScreenContext,
+	slotId: () => number | null,
+	errorMessage: string,
+) {
 	const outputReads = useScreenOutputReads(context);
 	const slot = shallowRef<FeatureMatch | null>(null);
 	const error = ref<string | null>(null);
@@ -120,18 +124,20 @@ export function useSampleFeatureMatchSlot(context: ScreenContext, slotId: () => 
 	const id = slotId();
 	if (id === null) {
 		answered.value = true;
-	}
-	else {
-		outputReads.featureMatchSlot(id).then(
-			(read) => {
-				slot.value = read.slot;
-			},
-			() => {
-				error.value = errorMessage;
-			},
-		).finally(() => {
-			answered.value = true;
-		});
+	} else {
+		outputReads
+			.featureMatchSlot(id)
+			.then(
+				(read) => {
+					slot.value = read.slot;
+				},
+				() => {
+					error.value = errorMessage;
+				},
+			)
+			.finally(() => {
+				answered.value = true;
+			});
 	}
 	return {
 		slot: computed(() => slot.value),

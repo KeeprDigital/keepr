@@ -7,19 +7,13 @@ const loading = computed(() => eventStore.loading);
 
 <template>
 	<div class="flex flex-col gap-6">
-		<h2 class="text-xl font-semibold">
-			Presentation
-		</h2>
+		<h2 class="text-xl font-semibold">Presentation</h2>
 		<EventPresentationSettings :event="event" :loading="loading" />
 
-		<h2 class="text-xl font-semibold">
-			Card Spotlight
-		</h2>
+		<h2 class="text-xl font-semibold">Card Spotlight</h2>
 		<EventConfigCardSpotlight :event="event" :loading="loading" />
 
-		<h2 class="text-xl font-semibold">
-			Talents
-		</h2>
+		<h2 class="text-xl font-semibold">Talents</h2>
 		<EventConfigTalents :talents="event.talents" :event-id="event.id" />
 
 		<EventBroadcastDeckListLibrary :event="event" />

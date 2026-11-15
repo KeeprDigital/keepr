@@ -38,8 +38,7 @@ export async function refuseInstalledBroadcastGraphicTemplateWrite(
 	templateId: string,
 ): Promise<void> {
 	const entry = await findBroadcastGraphicTemplateLibraryEntry(event, templateId);
-	if (!entry || entry.authored)
-		return;
+	if (!entry || entry.authored) return;
 	throw createError({
 		statusCode: 409,
 		statusMessage: 'Conflict',

@@ -21,8 +21,7 @@ export function useTopCutModeData(context: ScreenContext) {
 	// The server reads the source itself; this only says when what it reads may have changed.
 	const readKey = () => {
 		const scope = outputReads.scopeKey.value;
-		if (!scope)
-			return null;
+		if (!scope) return null;
 		const shown = `${config.value.showSeeds}:${config.value.showArchetypes}:${config.value.playerNameShown}`;
 		if (source.value === 'manual')
 			return `${scope}:manual:${JSON.stringify(config.value.manualBracket)}:${shown}`;
@@ -43,9 +42,11 @@ export function useTopCutModeData(context: ScreenContext) {
 	const bracket = computed(() => freshness.data.value.bracket);
 
 	const headerText = computed(() => config.value.headerText || phase.value?.name || 'Top Cut');
-	const isEmpty = computed(() => freshness.answered.value && (
-		(source.value === 'phase' && !config.value.phaseId)
-		|| bracket.value.columns.length === 0));
+	const isEmpty = computed(
+		() =>
+			freshness.answered.value &&
+			((source.value === 'phase' && !config.value.phaseId) || bracket.value.columns.length === 0),
+	);
 
 	return {
 		/** Rendering Readiness: its first read has answered or failed. */

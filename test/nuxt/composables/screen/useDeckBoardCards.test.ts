@@ -8,7 +8,11 @@ import { effectScope, reactive, ref } from 'vue';
 import { ATRAXA, storedSeat, TYMNA } from '~~/test/helpers/commanders';
 import { deferred } from '~~/test/helpers/deferred';
 import { opSlotSide } from '~~/test/helpers/opCards';
-import { createFollowedFeatureMatchSessions, followNoSession, followSwappedSession } from '~~/test/nuxt/helpers/followedFeatureMatchSession';
+import {
+	createFollowedFeatureMatchSessions,
+	followNoSession,
+	followSwappedSession,
+} from '~~/test/nuxt/helpers/followedFeatureMatchSession';
 import { clearPlayerDeckCache } from '~/composables/data/usePlayerDeckCache';
 import { useDeckBoardCards } from '~/composables/screen/useDeckBoardCards';
 
@@ -63,9 +67,7 @@ function playerDecks(cards: ReturnType<typeof card>[] | null, companion: string 
 						id: 10,
 						isPrimary: true,
 						cards,
-						companion: companion === null
-							? null
-							: { name: companion },
+						companion: companion === null ? null : { name: companion },
 					},
 				],
 				selectedDeckId: 10,
@@ -88,9 +90,8 @@ function opPlayer(id: number, mainboardCount: number | null) {
 		updatedAt: '2026-08-01T00:00:00.000Z',
 		gameData: {
 			type: 'op',
-			deckList: mainboardCount === null
-				? null
-				: { id: 600 + id, mainboardCount, leaderNumber: 'OP01-001' },
+			deckList:
+				mainboardCount === null ? null : { id: 600 + id, mainboardCount, leaderNumber: 'OP01-001' },
 		},
 	};
 }
@@ -151,10 +152,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 		clearPlayerDeckCache();
 		mockFetch.mockResolvedValue(playerDecks(BURN));
 		eventStore.event = { id: 1, game: 'mtg' };
-		playerStore.players = [
-			mtgPlayer(1),
-			mtgPlayer(2),
-		];
+		playerStore.players = [mtgPlayer(1), mtgPlayer(2)];
 		featureMatchStore.featureMatches = [SLOT];
 		followNoSession(featureMatchStateStore);
 		broadcastDeckListStore.summaries = [];
@@ -162,8 +160,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 	});
 
 	afterEach(() => {
-		for (const scope of scopes.splice(0))
-			scope.stop();
+		for (const scope of scopes.splice(0)) scope.stop();
 	});
 
 	// A card is one Deck List entry, a grid cell, whatever its copies. A shown companion heads the sideboard, once.
@@ -176,7 +173,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 		},
 		{
 			name: 'no sideboard cards for a Deck List without one',
-			decks: playerDecks(BURN.filter(held => held.compartment === 'mainboard')),
+			decks: playerDecks(BURN.filter((held) => held.compartment === 'mainboard')),
 			config: {},
 			cards: { mainboard: 3, sideboard: 0 },
 		},
@@ -198,7 +195,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 			config: { showCompanion: false },
 			cards: { mainboard: 3, sideboard: 2 },
 		},
-	])('counts a Magic Player\'s Deck List as $name', async ({ decks, config, cards }) => {
+	])("counts a Magic Player's Deck List as $name", async ({ decks, config, cards }) => {
 		mockFetch.mockResolvedValue(decks);
 
 		const counted = await follow({ deckSource: PLAYER, ...config });
@@ -211,9 +208,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 	it.each([
 		{
 			name: 'its entries where the list is loaded',
-			summaries: [
-				summary(23),
-			],
+			summaries: [summary(23)],
 			detail: {
 				...summary(23),
 				entries: [
@@ -227,9 +222,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 		},
 		{
 			name: 'its entries with its companion heading the sideboard',
-			summaries: [
-				summary(23, { hasCompanion: true }),
-			],
+			summaries: [summary(23, { hasCompanion: true })],
 			detail: {
 				...summary(23, { hasCompanion: true }),
 				entries: [
@@ -243,61 +236,45 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 		},
 		{
 			name: 'its copies where only its summary is held',
-			summaries: [
-				summary(23),
-			],
+			summaries: [summary(23)],
 			detail: null,
 			config: {},
 			cards: { mainboard: 60, sideboard: 15 },
 		},
 		{
 			name: 'its copies and its companion where only its summary is held',
-			summaries: [
-				summary(23, { hasCompanion: true }),
-			],
+			summaries: [summary(23, { hasCompanion: true })],
 			detail: null,
 			config: {},
 			cards: { mainboard: 60, sideboard: 16 },
 		},
 		{
 			name: 'its copies without a companion the Screen hides',
-			summaries: [
-				summary(23, { hasCompanion: true }),
-			],
+			summaries: [summary(23, { hasCompanion: true })],
 			detail: null,
 			config: { showCompanion: false },
 			cards: { mainboard: 60, sideboard: 15 },
 		},
 		{
 			name: 'its copies where the list held is older than its summary',
-			summaries: [
-				summary(23, { revision: 2, mainboardQuantity: 40, sideboardQuantity: 0 }),
-			],
+			summaries: [summary(23, { revision: 2, mainboardQuantity: 40, sideboardQuantity: 0 })],
 			detail: {
 				...summary(23),
-				entries: [
-					entry('Mountain', 'mainboard', 60),
-				],
+				entries: [entry('Mountain', 'mainboard', 60)],
 			},
 			config: {},
 			cards: { mainboard: 40, sideboard: 0 },
 		},
 		{
 			name: 'no cards for an empty list',
-			summaries: [
-				summary(23, { mainboardQuantity: 0, sideboardQuantity: 0 }),
-			],
+			summaries: [summary(23, { mainboardQuantity: 0, sideboardQuantity: 0 })],
 			detail: null,
 			config: {},
 			cards: { mainboard: 0, sideboard: 0 },
 		},
 	])('counts a Broadcast Deck List as $name', async ({ summaries, detail, config, cards }) => {
 		broadcastDeckListStore.summaries = summaries;
-		broadcastDeckListStore.details = new Map(detail
-			? [
-					[23, detail],
-				]
-			: []);
+		broadcastDeckListStore.details = new Map(detail ? [[23, detail]] : []);
 
 		const counted = await follow({ deckSource: BROADCAST, ...config });
 
@@ -313,7 +290,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 			cards: { mainboard: 50, sideboard: 0 },
 		},
 		{
-			name: 'a Slot side showing its linked Player\'s Deck List',
+			name: "a Slot side showing its linked Player's Deck List",
 			deckSource: { ...SLOT_SIDE, side: 'player2' },
 			cards: { mainboard: 42, sideboard: 0 },
 		},
@@ -322,17 +299,18 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 			deckSource: { type: 'player', playerId: 5 },
 			cards: { mainboard: 38, sideboard: 0 },
 		},
-	] as { name: string; deckSource: DeckSource; cards: { mainboard: number; sideboard: number } }[])('counts the Mainboard copies of a One Piece Deck List from $name', async ({ deckSource, cards }) => {
-		eventStore.event = { id: 1, game: 'op' };
-		playerStore.players = [
-			opPlayer(5, 38),
-		];
+	] as { name: string; deckSource: DeckSource; cards: { mainboard: number; sideboard: number } }[])(
+		'counts the Mainboard copies of a One Piece Deck List from $name',
+		async ({ deckSource, cards }) => {
+			eventStore.event = { id: 1, game: 'op' };
+			playerStore.players = [opPlayer(5, 38)];
 
-		const counted = await follow({ deckSource });
+			const counted = await follow({ deckSource });
 
-		expect(counted.value).toEqual(cards);
-		expect(mockFetch).not.toHaveBeenCalled();
-	});
+			expect(counted.value).toEqual(cards);
+			expect(mockFetch).not.toHaveBeenCalled();
+		},
+	);
 
 	// A Commander Seat's Commanders lay out where a Sideboard would; its Mainboard is counted by its reference (ADR-0087).
 	it.each([
@@ -435,28 +413,25 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 			game: null,
 			deckSource: PLAYER,
 		},
-	] as { name: string; game: Game | null; deckSource: DeckSource; decks?: unknown; slot?: typeof SLOT }[])('counts nothing for $name', async ({ game, deckSource, decks, slot }) => {
+	] as {
+		name: string;
+		game: Game | null;
+		deckSource: DeckSource;
+		decks?: unknown;
+		slot?: typeof SLOT;
+	}[])('counts nothing for $name', async ({ game, deckSource, decks, slot }) => {
 		eventStore.event = game && { id: 1, game };
-		playerStore.players = game === 'op'
-			? [
-					opPlayer(5, null),
-				]
-			: [
-					mtgPlayer(1),
-				];
-		if (slot)
-			featureMatchStore.featureMatches = [slot];
-		if (decks instanceof Error)
-			mockFetch.mockRejectedValue(decks);
-		else if (decks)
-			mockFetch.mockResolvedValue(decks);
+		playerStore.players = game === 'op' ? [opPlayer(5, null)] : [mtgPlayer(1)];
+		if (slot) featureMatchStore.featureMatches = [slot];
+		if (decks instanceof Error) mockFetch.mockRejectedValue(decks);
+		else if (decks) mockFetch.mockResolvedValue(decks);
 
 		const counted = await follow({ deckSource });
 
 		expect(counted.value).toBeUndefined();
 	});
 
-	it('counts nothing while a Player\'s Deck List is still being read, then its cards', async () => {
+	it("counts nothing while a Player's Deck List is still being read, then its cards", async () => {
 		const read = deferred<unknown>();
 		mockFetch.mockReturnValue(read.promise);
 
@@ -471,9 +446,9 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 	// Live: the count follows the Deck Source and its Deck List while the page stays open.
 	it('follows the Deck Source to another Player, counting nothing of the first while the second is read', async () => {
 		const second = deferred<unknown>();
-		mockFetch.mockImplementation((url: string) => url.includes('/players/2/')
-			? second.promise
-			: Promise.resolve(playerDecks(BURN)));
+		mockFetch.mockImplementation((url: string) =>
+			url.includes('/players/2/') ? second.promise : Promise.resolve(playerDecks(BURN)),
+		);
 		const config = ref<Partial<DeckModeConfig>>({ deckSource: PLAYER });
 		const counted = await follow(() => config.value);
 		expect(counted.value).toEqual({ mainboard: 3, sideboard: 2 });
@@ -484,36 +459,27 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 		await flushPromises();
 		expect(counted.value).toBeUndefined();
 
-		second.resolve(playerDecks([
-			card('Island', 'mainboard', 60),
-		]));
+		second.resolve(playerDecks([card('Island', 'mainboard', 60)]));
 		await flushPromises();
 		expect(counted.value).toEqual({ mainboard: 1, sideboard: 0 });
 	});
 
-	it('follows a Player\'s rewritten Deck List, keeping the count held until the new one is read', async () => {
+	it("follows a Player's rewritten Deck List, keeping the count held until the new one is read", async () => {
 		const counted = await follow({ deckSource: PLAYER });
 		const rewritten = deferred<unknown>();
 		mockFetch.mockReturnValue(rewritten.promise);
 
-		playerStore.players = [
-			mtgPlayer(1, '2026-08-02T00:00:00.000Z'),
-		];
+		playerStore.players = [mtgPlayer(1, '2026-08-02T00:00:00.000Z')];
 		await flushPromises();
 		expect(counted.value).toEqual({ mainboard: 3, sideboard: 2 });
 
-		rewritten.resolve(playerDecks([
-			...BURN,
-			card('Skullcrack', 'mainboard', 4),
-		]));
+		rewritten.resolve(playerDecks([...BURN, card('Skullcrack', 'mainboard', 4)]));
 		await flushPromises();
 		expect(counted.value).toEqual({ mainboard: 4, sideboard: 2 });
 	});
 
 	it('follows a Deck Source changed to another kind', async () => {
-		broadcastDeckListStore.summaries = [
-			summary(23),
-		];
+		broadcastDeckListStore.summaries = [summary(23)];
 		const config = ref<Partial<DeckModeConfig>>({ deckSource: PLAYER });
 		const counted = await follow(() => config.value);
 
@@ -524,9 +490,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 	});
 
 	it('follows a Broadcast Deck List from its copies to its entries once the list loads', async () => {
-		broadcastDeckListStore.summaries = [
-			summary(23),
-		];
+		broadcastDeckListStore.summaries = [summary(23)];
 		const counted = await follow({ deckSource: BROADCAST });
 		expect(counted.value).toEqual({ mainboard: 60, sideboard: 15 });
 
@@ -535,10 +499,7 @@ describe('the cards each board of a Deck List Screen lays out', () => {
 				23,
 				{
 					...summary(23),
-					entries: [
-						entry('Mountain', 'mainboard', 60),
-						entry('Roiling Vortex', 'sideboard', 15),
-					],
+					entries: [entry('Mountain', 'mainboard', 60), entry('Roiling Vortex', 'sideboard', 15)],
 				},
 			],
 		]);

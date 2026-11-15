@@ -1,7 +1,5 @@
 import type { PlayerLifeAnimation } from '~~/shared/types/graphics';
-import type {
-	GraphicItemRenderDescriptor,
-} from '~/modules/graphics/renderModel';
+import type { GraphicItemRenderDescriptor } from '~/modules/graphics/renderModel';
 import { addIcon, getIcon } from '@iconify/vue';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -13,7 +11,10 @@ import Item from '~/components/Graphics/Compositor/Item.vue';
 enableAutoUnmount(afterEach);
 initClientIconBundle(addIcon);
 
-function lifeDescriptor(text: string, animation: PlayerLifeAnimation = 'glow'): GraphicItemRenderDescriptor {
+function lifeDescriptor(
+	text: string,
+	animation: PlayerLifeAnimation = 'glow',
+): GraphicItemRenderDescriptor {
 	return {
 		id: 'life',
 		label: 'Life',
@@ -21,9 +22,7 @@ function lifeDescriptor(text: string, animation: PlayerLifeAnimation = 'glow'): 
 		style: { position: 'absolute' },
 		textStyle: { fontSize: '64px' },
 		text,
-		textSegments: [
-			{ text },
-		],
+		textSegments: [{ text }],
 		lifeChange: { animation, durationMs: 420, accentColor: '#ffffff' },
 	};
 }
@@ -36,7 +35,9 @@ async function mountItem(render: GraphicItemRenderDescriptor) {
 
 describe('graphicsCompositorItem MTG mana colours', () => {
 	function textDescriptor(
-		manaColors: NonNullable<NonNullable<GraphicItemRenderDescriptor['textSegments']>[number]['manaColors']>,
+		manaColors: NonNullable<
+			NonNullable<GraphicItemRenderDescriptor['textSegments']>[number]['manaColors']
+		>,
 	): GraphicItemRenderDescriptor {
 		return {
 			id: 'deck',
@@ -45,18 +46,18 @@ describe('graphicsCompositorItem MTG mana colours', () => {
 			style: { position: 'absolute' },
 			textStyle: { fontSize: '28px' },
 			text: manaColors.colors,
-			textSegments: [
-				{ text: manaColors.colors, inputKey: 'player1DeckColors', manaColors },
-			],
+			textSegments: [{ text: manaColors.colors, inputKey: 'player1DeckColors', manaColors }],
 		};
 	}
 
 	it('renders colour identity through the Mana icon component', async () => {
-		const wrapper = await mountItem(textDescriptor({
-			colors: 'WU',
-			symbolCount: 2,
-			monochrome: false,
-		}));
+		const wrapper = await mountItem(
+			textDescriptor({
+				colors: 'WU',
+				symbolCount: 2,
+				monochrome: false,
+			}),
+		);
 
 		const colors = wrapper.get('[data-mana-colors]');
 		expect(colors.findAll('.mana-symbol')).toHaveLength(2);
@@ -66,11 +67,13 @@ describe('graphicsCompositorItem MTG mana colours', () => {
 	});
 
 	it('renders the Key Output as one white coverage circle per pip', async () => {
-		const wrapper = await mountItem(textDescriptor({
-			colors: 'WUG',
-			symbolCount: 3,
-			monochrome: true,
-		}));
+		const wrapper = await mountItem(
+			textDescriptor({
+				colors: 'WUG',
+				symbolCount: 3,
+				monochrome: true,
+			}),
+		);
 
 		expect(wrapper.find('[data-mana-colors]').exists()).toBe(false);
 		expect(wrapper.get('[data-mana-colors-key]').findAll('span')).toHaveLength(3);
@@ -86,57 +89,70 @@ describe('graphicsCompositorItem One Piece Leader', () => {
 			kind: 'text',
 			style: { position: 'absolute' },
 			textStyle: { fontSize: '28px' },
-			text: segments.map(segment => segment.text).join(''),
+			text: segments.map((segment) => segment.text).join(''),
 			textSegments: segments,
 		};
 	}
 	const url = 'https://cards-img.keepr.digital/OP01-003.png';
 
-	it('paints a dual-colour Leader\'s colours and its card in place of their text', async () => {
-		const wrapper = await mountItem(textDescriptor([
-			{
-				text: url,
-				inputKey: 'player1LeaderImage',
-				cardImage: { url, monochrome: false, alt: 'Leader' },
-			},
-			{
-				text: 'Red/Green',
-				inputKey: 'player1DeckColors',
-				opColors: {
-					colors: ['Red', 'Green'],
-					monochrome: false,
+	it("paints a dual-colour Leader's colours and its card in place of their text", async () => {
+		const wrapper = await mountItem(
+			textDescriptor([
+				{
+					text: url,
+					inputKey: 'player1LeaderImage',
+					cardImage: { url, monochrome: false, alt: 'Leader' },
 				},
-			},
-		]));
+				{
+					text: 'Red/Green',
+					inputKey: 'player1DeckColors',
+					opColors: {
+						colors: ['Red', 'Green'],
+						monochrome: false,
+					},
+				},
+			]),
+		);
 
-		expect(wrapper.get('[data-card-image]').attributes()).toMatchObject({ src: url, alt: 'Leader' });
+		expect(wrapper.get('[data-card-image]').attributes()).toMatchObject({
+			src: url,
+			alt: 'Leader',
+		});
 		expect(wrapper.get('[data-op-colors="fill"]').attributes('aria-label')).toBe('Red/Green');
-		expect(wrapper.findAll('[data-op-color]').map(pip => pip.attributes('data-op-color'))).toEqual(['Red', 'Green']);
+		expect(
+			wrapper.findAll('[data-op-color]').map((pip) => pip.attributes('data-op-color')),
+		).toEqual(['Red', 'Green']);
 		expect(wrapper.text()).not.toContain('Red/Green');
 		expect(wrapper.text()).not.toContain(url);
 	});
 
 	it('paints the Key Output as white coverage: a card-shaped block and one circle per colour', async () => {
-		const wrapper = await mountItem(textDescriptor([
-			{
-				text: url,
-				inputKey: 'player1LeaderImage',
-				cardImage: { url, monochrome: true, alt: 'Leader' },
-			},
-			{
-				text: 'Red/Green',
-				inputKey: 'player1DeckColors',
-				opColors: {
-					colors: ['Red', 'Green'],
-					monochrome: true,
+		const wrapper = await mountItem(
+			textDescriptor([
+				{
+					text: url,
+					inputKey: 'player1LeaderImage',
+					cardImage: { url, monochrome: true, alt: 'Leader' },
 				},
-			},
-		]));
+				{
+					text: 'Red/Green',
+					inputKey: 'player1DeckColors',
+					opColors: {
+						colors: ['Red', 'Green'],
+						monochrome: true,
+					},
+				},
+			]),
+		);
 
 		expect(wrapper.find('[data-card-image]').exists()).toBe(false);
 		expect(wrapper.find('[data-card-image-key]').exists()).toBe(true);
 		expect(wrapper.find('[data-op-colors="fill"]').exists()).toBe(false);
-		expect(wrapper.findAll('[data-op-colors="key"] [data-op-color]').map(pip => pip.attributes('data-op-color'))).toEqual(['Red', 'Green']);
+		expect(
+			wrapper
+				.findAll('[data-op-colors="key"] [data-op-color]')
+				.map((pip) => pip.attributes('data-op-color')),
+		).toEqual(['Red', 'Green']);
 	});
 });
 
@@ -280,7 +296,10 @@ describe('graphicsCompositorItem deck list grid', () => {
 		const wrapper = await mountItem(deckListDescriptor([placeholderCard, artCard]));
 
 		const cells = wrapper.findAll('[data-deck-card]');
-		expect(cells.map(cell => cell.attributes('data-deck-card'))).toEqual(['Rest in Peace', 'Pithing Needle']);
+		expect(cells.map((cell) => cell.attributes('data-deck-card'))).toEqual([
+			'Rest in Peace',
+			'Pithing Needle',
+		]);
 
 		// The placeholder is a painted surface plus the card's own name, so an
 		// art-less sideboard still reads as the right count of the right cards.
@@ -297,7 +316,10 @@ describe('graphicsCompositorItem deck list grid', () => {
 
 	it('badges quantities only while the model offers a badge', async () => {
 		const badged = await mountItem(deckListDescriptor([placeholderCard, artCard]));
-		expect(badged.findAll('[data-deck-card-quantity]').map(badge => badge.text())).toEqual(['2x', '1x']);
+		expect(badged.findAll('[data-deck-card-quantity]').map((badge) => badge.text())).toEqual([
+			'2x',
+			'1x',
+		]);
 
 		const { badge: _first, ...quietPlaceholder } = placeholderCard;
 		const { badge: _second, ...quietArt } = artCard;
@@ -359,7 +381,8 @@ describe('graphicsCompositorItem silent video', () => {
 			},
 		});
 
-		expect(wrapper.get('video').attributes('src'))
-			.toBe('/api/screen-output/screens/9/assets/asset-1/revisions/revision-7/content');
+		expect(wrapper.get('video').attributes('src')).toBe(
+			'/api/screen-output/screens/9/assets/asset-1/revisions/revision-7/content',
+		);
 	});
 });

@@ -11,29 +11,27 @@ const PAYLOAD_METHODS = new Set<string>(MUTATION_BODY_METHODS);
  * bodies remain bounded as their bytes arrive.
  */
 export default defineEventHandler((event) => {
-	if (!PAYLOAD_METHODS.has(event.method))
-		return;
+	if (!PAYLOAD_METHODS.has(event.method)) return;
 
 	const routePolicy = boundedRawMutationPolicy(getRouteRules(event), event.method);
 	const maxBytes = routePolicy?.maxBytes ?? MAX_API_REQUEST_BODY_BYTES;
 	const label = routePolicy?.label ?? 'Request body';
 	const contentLength = getRequestHeader(event, 'content-length');
 	if (contentLength && /^\d+$/.test(contentLength.trim())) {
-		if (Number(contentLength) > maxBytes)
-			payloadTooLarge(maxBytes, label);
+		if (Number(contentLength) > maxBytes) payloadTooLarge(maxBytes, label);
 	}
 
 	const source = getRequestWebStream(event);
-	if (!source)
-		return;
+	if (!source) return;
 
 	let totalBytes = 0;
-	event._requestBody = source.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
-		transform(chunk, controller) {
-			totalBytes += chunk.byteLength;
-			if (totalBytes > maxBytes)
-				payloadTooLarge(maxBytes, label);
-			controller.enqueue(chunk);
-		},
-	}));
+	event._requestBody = source.pipeThrough(
+		new TransformStream<Uint8Array, Uint8Array>({
+			transform(chunk, controller) {
+				totalBytes += chunk.byteLength;
+				if (totalBytes > maxBytes) payloadTooLarge(maxBytes, label);
+				controller.enqueue(chunk);
+			},
+		}),
+	);
 });

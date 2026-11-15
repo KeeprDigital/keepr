@@ -39,12 +39,9 @@ const bothShown = computed(() => shown.value.mainboard && shown.value.sideboard)
 
 function setShown(key: BoardKey, show: boolean) {
 	const next = { ...shown.value, [key]: show };
-	if (!next.mainboard && !next.sideboard)
-		return;
+	if (!next.mainboard && !next.sideboard) return;
 	emit('update', {
-		board: next.mainboard && next.sideboard
-			? 'full'
-			: next.mainboard ? 'mainboard' : 'sideboard',
+		board: next.mainboard && next.sideboard ? 'full' : next.mainboard ? 'mainboard' : 'sideboard',
 	});
 }
 
@@ -56,38 +53,38 @@ function description(key: BoardKey, title: string): string {
 
 const sideboardEmpty = ref(false);
 const sideboardLookup = createGuardedSequence();
-const selectedPlayerId = computed(() => deck.value.deckSource?.type === 'player'
-	? deck.value.deckSource.playerId
-	: null);
+const selectedPlayerId = computed(() =>
+	deck.value.deckSource?.type === 'player' ? deck.value.deckSource.playerId : null,
+);
 
-watch([
-	selectedPlayerId,
-	() => playerStore.players,
-], async ([playerId]) => {
-	const flight = sideboardLookup.begin();
-	sideboardEmpty.value = false;
-	const player = playerId
-		? playerStore.players.find(candidate => candidate.id === playerId)
-		: undefined;
-	if (!player)
-		return;
-	try {
-		const fetched = await deckCache.fetchDeck(player.id, props.eventId, player.updatedAt);
-		if (flight.stale)
-			return;
-		sideboardEmpty.value = !!fetched && !fetched.cards.some(card => card.compartment === 'sideboard');
-	}
-	catch {
-		// The hint is a convenience; a failed deck fetch just leaves it off.
-	}
-}, { immediate: true });
+watch(
+	[selectedPlayerId, () => playerStore.players],
+	async ([playerId]) => {
+		const flight = sideboardLookup.begin();
+		sideboardEmpty.value = false;
+		const player = playerId
+			? playerStore.players.find((candidate) => candidate.id === playerId)
+			: undefined;
+		if (!player) return;
+		try {
+			const fetched = await deckCache.fetchDeck(player.id, props.eventId, player.updatedAt);
+			if (flight.stale) return;
+			sideboardEmpty.value =
+				!!fetched && !fetched.cards.some((card) => card.compartment === 'sideboard');
+		} catch {
+			// The hint is a convenience; a failed deck fetch just leaves it off.
+		}
+	},
+	{ immediate: true },
+);
 
 const emptyBoardHint = computed(() => {
 	const deckSource = deck.value.deckSource;
 	if (deckSource?.type === 'broadcast') {
-		const summary = broadcastDeckListStore.summaries.find(list => list.id === deckSource.broadcastDeckListId);
-		if (!summary)
-			return null;
+		const summary = broadcastDeckListStore.summaries.find(
+			(list) => list.id === deckSource.broadcastDeckListId,
+		);
+		if (!summary) return null;
 		if (bothShown.value && summary.mainboardQuantity === 0 && summary.sideboardQuantity === 0)
 			return 'This Broadcast Deck List has no cards, so the output shows only its header.';
 		if (shown.value.mainboard && summary.mainboardQuantity === 0)
@@ -97,7 +94,7 @@ const emptyBoardHint = computed(() => {
 		return null;
 	}
 	return shown.value.sideboard && sideboardEmpty.value
-		? 'This player\'s deck has no sideboard cards, so the output shows nothing for the sideboard.'
+		? "This player's deck has no sideboard cards, so the output shows nothing for the sideboard."
 		: null;
 });
 </script>

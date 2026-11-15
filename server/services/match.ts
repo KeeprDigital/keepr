@@ -34,18 +34,27 @@ export interface FeaturedByMatches {
  * The Slots showing these Matches and the Assignments of them. Read before the
  * Matches are deleted, so the delete's caller can announce what it changed.
  */
-export async function findFeaturedByMatches(eventId: number, matchIds: readonly number[]): Promise<FeaturedByMatches> {
-	if (matchIds.length === 0)
-		return { slots: [], assignments: [] };
+export async function findFeaturedByMatches(
+	eventId: number,
+	matchIds: readonly number[],
+): Promise<FeaturedByMatches> {
+	if (matchIds.length === 0) return { slots: [], assignments: [] };
 	const [slots, assignments] = await Promise.all([
 		db
 			.select({ id: featureMatches.id, matchId: featureMatches.matchId })
 			.from(featureMatches)
-			.where(and(eq(featureMatches.eventId, eventId), inJsonArray(featureMatches.matchId, matchIds))),
+			.where(
+				and(eq(featureMatches.eventId, eventId), inJsonArray(featureMatches.matchId, matchIds)),
+			),
 		db
 			.select({ id: featureMatchAssignments.id, matchId: featureMatchAssignments.matchId })
 			.from(featureMatchAssignments)
-			.where(and(eq(featureMatchAssignments.eventId, eventId), inJsonArray(featureMatchAssignments.matchId, matchIds))),
+			.where(
+				and(
+					eq(featureMatchAssignments.eventId, eventId),
+					inJsonArray(featureMatchAssignments.matchId, matchIds),
+				),
+			),
 	]);
 	return { slots, assignments };
 }
@@ -93,25 +102,25 @@ export function buildDeleteStaleMatchesByRoundQuery(
 	roundId: number,
 	keepExternalIds: string[],
 ) {
-	const keepExternalIdPayloads = chunkJsonRows([
-		...new Set(keepExternalIds),
-	]);
-	const keptExists = keepExternalIdPayloads.map(payload => sql`exists (
+	const keepExternalIdPayloads = chunkJsonRows([...new Set(keepExternalIds)]);
+	const keptExists = keepExternalIdPayloads.map(
+		(payload) => sql`exists (
 		select 1
 		from json_each(${payload}) as kept
 		where kept.value = ${matches.externalId}
-	)`);
+	)`,
+	);
 
 	return db
 		.delete(matches)
-		.where(and(
-			eq(matches.eventId, eventId),
-			eq(matches.roundId, roundId),
-			eq(matches.externalSource, 'melee'),
-			...(keptExists.length === 0
-				? []
-				: [sql`not (${sql.join(keptExists, sql` or `)})`]),
-		))
+		.where(
+			and(
+				eq(matches.eventId, eventId),
+				eq(matches.roundId, roundId),
+				eq(matches.externalSource, 'melee'),
+				...(keptExists.length === 0 ? [] : [sql`not (${sql.join(keptExists, sql` or `)})`]),
+			),
+		)
 		.returning({ id: matches.id });
 }
 
@@ -134,7 +143,8 @@ function buildPromotionPlanFenceQuery(
 	unobservedHolderWhere: SQL | undefined,
 ): BatchItem<'sqlite'> {
 	const now = Date.now();
-	const staleObservedSlots = observedSlots.map(slot => sql`not exists (
+	const staleObservedSlots = observedSlots.map(
+		(slot) => sql`not exists (
 		select 1
 		from ${featureMatches}
 		where ${and(
@@ -143,43 +153,48 @@ function buildPromotionPlanFenceQuery(
 			observedSlotPairing(slot),
 			eq(featureMatches.updatedAt, slot.updatedAt),
 		)}
-	)`);
+	)`,
+	);
 	const unobservedHolder = sql`exists (
 		select 1
 		from ${featureMatches}
 		where ${unobservedHolderWhere}
 	)`;
 
-	return db.insert(featureMatches).select(selectForInsert(featureMatches, {
-		id: sql`null`,
-		// The null event_id is the mechanism: it trips the NOT NULL constraint
-		// isMatchPromotionPlanStaleViolation() recognises, aborting the batch.
-		eventId: sql`null`,
-		matchId: sql`null`,
-		externalId: sql`null`,
-		externalSource: sql`null`,
-		tableNumber: sql`null`,
-		roundName: sql`null`,
-		formatName: sql`null`,
-		player1Id: sql`null`,
-		player2Id: sql`null`,
-		player1Data: sql`null`,
-		player2Data: sql`null`,
-		player3Data: sql`null`,
-		player4Data: sql`null`,
-		bestOf: sql`0`,
-		sortOrder: sql`0`,
-		playerDisplayMode: sql`'score'`,
-		activeSessionId: sql`null`,
-		createdAt: sql`${now}`,
-		updatedAt: sql`${now}`,
-	}, sql`where ${sql.join([...staleObservedSlots, unobservedHolder], sql` or `)}`));
+	return db.insert(featureMatches).select(
+		selectForInsert(
+			featureMatches,
+			{
+				id: sql`null`,
+				// The null event_id is the mechanism: it trips the NOT NULL constraint
+				// isMatchPromotionPlanStaleViolation() recognises, aborting the batch.
+				eventId: sql`null`,
+				matchId: sql`null`,
+				externalId: sql`null`,
+				externalSource: sql`null`,
+				tableNumber: sql`null`,
+				roundName: sql`null`,
+				formatName: sql`null`,
+				player1Id: sql`null`,
+				player2Id: sql`null`,
+				player1Data: sql`null`,
+				player2Data: sql`null`,
+				player3Data: sql`null`,
+				player4Data: sql`null`,
+				bestOf: sql`0`,
+				sortOrder: sql`0`,
+				playerDisplayMode: sql`'score'`,
+				activeSessionId: sql`null`,
+				createdAt: sql`${now}`,
+				updatedAt: sql`${now}`,
+			},
+			sql`where ${sql.join([...staleObservedSlots, unobservedHolder], sql` or `)}`,
+		),
+	);
 }
 
 export function isMatchPromotionPlanStaleViolation(error: unknown): boolean {
-	const message = error instanceof Error
-		? error.message
-		: '';
+	const message = error instanceof Error ? error.message : '';
 	return message.includes('NOT NULL constraint failed: feature_match_slots.event_id');
 }
 
@@ -219,14 +234,14 @@ export async function buildMatchPromotionPlan(
 	});
 	const now = new Date();
 
-	const duplicateConditions = [
-		eq(featureMatches.matchId, match.id),
-	];
+	const duplicateConditions = [eq(featureMatches.matchId, match.id)];
 	if (match.externalId && match.externalSource) {
-		duplicateConditions.push(and(
-			eq(featureMatches.externalId, match.externalId),
-			eq(featureMatches.externalSource, match.externalSource),
-		)!);
+		duplicateConditions.push(
+			and(
+				eq(featureMatches.externalId, match.externalId),
+				eq(featureMatches.externalSource, match.externalSource),
+			)!,
+		);
 	}
 
 	const duplicateWhere = and(
@@ -235,14 +250,12 @@ export async function buildMatchPromotionPlan(
 		or(...duplicateConditions),
 	);
 
-	const duplicateSlots = await db
-		.select()
-		.from(featureMatches)
-		.where(duplicateWhere);
-	const clearedSlotIds = duplicateSlots.map(slot => slot.id);
-	const unobservedHolderWhere = clearedSlotIds.length > 0
-		? and(duplicateWhere, notInArray(featureMatches.id, clearedSlotIds))
-		: duplicateWhere;
+	const duplicateSlots = await db.select().from(featureMatches).where(duplicateWhere);
+	const clearedSlotIds = duplicateSlots.map((slot) => slot.id);
+	const unobservedHolderWhere =
+		clearedSlotIds.length > 0
+			? and(duplicateWhere, notInArray(featureMatches.id, clearedSlotIds))
+			: duplicateWhere;
 
 	const clearedValues = {
 		matchId: null,
@@ -269,7 +282,7 @@ export async function buildMatchPromotionPlan(
 		player2Data: match.player2Data,
 	} as const;
 
-	const clearedSlots: DbFeatureMatch[] = duplicateSlots.map(slot => ({
+	const clearedSlots: DbFeatureMatch[] = duplicateSlots.map((slot) => ({
 		...slot,
 		...clearedValues,
 		updatedAt: now,
@@ -284,21 +297,21 @@ export async function buildMatchPromotionPlan(
 		buildPromotionPlanFenceQuery(eventId, [targetSlot, ...duplicateSlots], unobservedHolderWhere),
 	];
 	if (clearedSlotIds.length > 0) {
-		queries.push(db
-			.update(featureMatches)
-			.set({ ...clearedValues, updatedAt: now })
-			.where(and(
-				eq(featureMatches.eventId, eventId),
-				inArray(featureMatches.id, clearedSlotIds),
-			)));
+		queries.push(
+			db
+				.update(featureMatches)
+				.set({ ...clearedValues, updatedAt: now })
+				.where(
+					and(eq(featureMatches.eventId, eventId), inArray(featureMatches.id, clearedSlotIds)),
+				),
+		);
 	}
-	queries.push(db
-		.update(featureMatches)
-		.set({ ...promotedValues, updatedAt: now })
-		.where(and(
-			eq(featureMatches.id, featureMatchId),
-			eq(featureMatches.eventId, eventId),
-		)));
+	queries.push(
+		db
+			.update(featureMatches)
+			.set({ ...promotedValues, updatedAt: now })
+			.where(and(eq(featureMatches.id, featureMatchId), eq(featureMatches.eventId, eventId))),
+	);
 
 	return { clearedSlots, promotedSlot, queries };
 }
@@ -306,10 +319,7 @@ export async function buildMatchPromotionPlan(
 export function matchService() {
 	const findById = async (id: number, eventId: number) => {
 		return await db.query.matches.findFirst({
-			where: and(
-				eq(matches.id, id),
-				eq(matches.eventId, eventId),
-			),
+			where: and(eq(matches.id, id), eq(matches.eventId, eventId)),
 		});
 	};
 
@@ -325,12 +335,7 @@ export function matchService() {
 		return await db
 			.select()
 			.from(matches)
-			.where(
-				and(
-					eq(matches.eventId, eventId),
-					eq(matches.roundId, roundId),
-				),
-			)
+			.where(and(eq(matches.eventId, eventId), eq(matches.roundId, roundId)))
 			.orderBy(matches.sortOrder, matches.id);
 	};
 
@@ -338,19 +343,11 @@ export function matchService() {
 		const [result] = await db
 			.select({ max: sql<number>`coalesce(max(${matches.sortOrder}), -1)` })
 			.from(matches)
-			.where(
-				and(
-					eq(matches.eventId, eventId),
-					eq(matches.roundId, roundId),
-				),
-			);
+			.where(and(eq(matches.eventId, eventId), eq(matches.roundId, roundId)));
 		return result?.max ?? -1;
 	};
 
-	const create = async (
-		eventId: number,
-		data: CreateMatchInput,
-	): Promise<DbMatch> => {
+	const create = async (eventId: number, data: CreateMatchInput): Promise<DbMatch> => {
 		const maxSort = await getMaxSortOrder(eventId, data.roundId);
 
 		const [newMatch] = await db
@@ -379,12 +376,7 @@ export function matchService() {
 		const [updatedMatch] = await db
 			.update(matches)
 			.set(pickManualWritable('matches', data))
-			.where(
-				and(
-					eq(matches.id, id),
-					eq(matches.eventId, eventId),
-				),
-			)
+			.where(and(eq(matches.id, id), eq(matches.eventId, eventId)))
 			.returning();
 
 		return updatedMatch;
@@ -393,12 +385,7 @@ export function matchService() {
 	const remove = async (id: number, eventId: number): Promise<boolean> => {
 		const result = await db
 			.delete(matches)
-			.where(
-				and(
-					eq(matches.id, id),
-					eq(matches.eventId, eventId),
-				),
-			)
+			.where(and(eq(matches.id, id), eq(matches.eventId, eventId)))
 			.returning();
 
 		return result.length > 0;
@@ -406,10 +393,7 @@ export function matchService() {
 
 	const exists = async (id: number, eventId: number): Promise<boolean> => {
 		const match = await db.query.matches.findFirst({
-			where: and(
-				eq(matches.id, id),
-				eq(matches.eventId, eventId),
-			),
+			where: and(eq(matches.id, id), eq(matches.eventId, eventId)),
 			columns: { id: true },
 		});
 

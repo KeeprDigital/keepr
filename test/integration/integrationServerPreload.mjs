@@ -6,8 +6,8 @@ import { installEarlyAnswerDrain } from './earlyAnswerDrain.mjs';
 import { installServerConnectionDiagnostics } from './serverConnectionDiagnostics.mjs';
 
 const INSTALLED = Symbol.for('stream-keepr.integrationServerPreload');
-if (!(/** @type {any} */ (globalThis))[INSTALLED]) {
-	(/** @type {any} */ (globalThis))[INSTALLED] = process.pid;
+if (!(/** @type {any} */ (globalThis)[INSTALLED])) {
+	/** @type {any} */ (globalThis)[INSTALLED] = process.pid;
 	installServerConnectionDiagnostics({ announce: true });
 	installEarlyAnswerDrain();
 }

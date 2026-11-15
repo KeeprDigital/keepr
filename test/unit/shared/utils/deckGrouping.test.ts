@@ -30,13 +30,6 @@ describe('deckGrouping', () => {
 			},
 		]);
 
-		expect([
-			...grouped.keys(),
-		]).toEqual([
-			'Creature',
-			'Planeswalker',
-			'Instant',
-			'Land',
-		]);
+		expect([...grouped.keys()]).toEqual(['Creature', 'Planeswalker', 'Instant', 'Land']);
 	});
 });

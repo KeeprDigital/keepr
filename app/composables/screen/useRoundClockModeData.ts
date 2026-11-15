@@ -19,9 +19,10 @@ export function useRoundClockModeData(context: ScreenContext) {
 
 	const freshness = useScreenModeFreshness<ScreenOutputRoundClockResponse>({
 		hearing: useScreenModeHearing(context, 'round-clock', () => config.value),
-		source: () => outputReads.scopeKey.value
-			? `${outputReads.scopeKey.value}:${config.value.roundId ?? 'current'}`
-			: null,
+		source: () =>
+			outputReads.scopeKey.value
+				? `${outputReads.scopeKey.value}:${config.value.roundId ?? 'current'}`
+				: null,
 		read: () => outputReads.roundClock(),
 		initialData: NO_ROUND,
 		errorMessage: 'Failed to load the Round',
@@ -29,22 +30,28 @@ export function useRoundClockModeData(context: ScreenContext) {
 	const round = computed(() => freshness.data.value.round);
 
 	/** An output yet to sync counts on its own time rather than showing nothing. */
-	const clock = useClockProjection((serverTime) => {
-		const held = round.value;
-		return selfTimed(projectRoundClock({
-			startedAt: held?.startedAt
-				? Date.parse(held.startedAt)
-				: null,
-			durationMs: held?.durationMinutes == null
-				? null
-				: minutesToMs(held.durationMinutes),
-		}, serverTime, {
-			enabled: config.value.countUpAfterEnd,
-			limitMs: config.value.countUpLimitMinutes == null
-				? null
-				: minutesToMs(config.value.countUpLimitMinutes),
-		}));
-	}, { whileServerTimeUnknown: 'device-time' });
+	const clock = useClockProjection(
+		(serverTime) => {
+			const held = round.value;
+			return selfTimed(
+				projectRoundClock(
+					{
+						startedAt: held?.startedAt ? Date.parse(held.startedAt) : null,
+						durationMs: held?.durationMinutes == null ? null : minutesToMs(held.durationMinutes),
+					},
+					serverTime,
+					{
+						enabled: config.value.countUpAfterEnd,
+						limitMs:
+							config.value.countUpLimitMinutes == null
+								? null
+								: minutesToMs(config.value.countUpLimitMinutes),
+					},
+				),
+			);
+		},
+		{ whileServerTimeUnknown: 'device-time' },
+	);
 
 	const isEmpty = computed(() => freshness.answered.value && !round.value);
 

@@ -27,7 +27,16 @@
 
 import type { Client, InStatement, ResultSet } from '@libsql/client';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import {
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
@@ -42,13 +51,11 @@ import { createClient } from '@libsql/client';
 function resolveMigrationsDirectory(): string {
 	try {
 		return fileURLToPath(new URL('../../server/db/migrations/sqlite', import.meta.url));
-	}
-	catch (failure) {
+	} catch (failure) {
 		// Only the one condition this fallback exists for. Anything else here is a
 		// real breakage, and swallowing it into a path guess would turn a broken
 		// harness into a confusing "no migrations found" much further along.
-		if ((failure as NodeJS.ErrnoException)?.code !== 'ERR_INVALID_URL_SCHEME')
-			throw failure;
+		if ((failure as NodeJS.ErrnoException)?.code !== 'ERR_INVALID_URL_SCHEME') throw failure;
 		return resolve(process.cwd(), 'server/db/migrations/sqlite');
 	}
 }
@@ -72,8 +79,7 @@ function toStatement(prepared: PreparedStatement): InStatement {
 function plainRows<T>(result: ResultSet): T[] {
 	return result.rows.map((row) => {
 		const plain: Record<string, unknown> = {};
-		for (const column of result.columns)
-			plain[column] = row[column] ?? null;
+		for (const column of result.columns) plain[column] = row[column] ?? null;
 		return plain as T;
 	});
 }
@@ -99,7 +105,12 @@ interface RoundTripCounter {
 	count: number;
 }
 
-function createPreparedStatement(source: Client, counter: RoundTripCounter, sql: string, args: unknown[]) {
+function createPreparedStatement(
+	source: Client,
+	counter: RoundTripCounter,
+	sql: string,
+	args: unknown[],
+) {
 	const client = {
 		execute(statement: InStatement) {
 			counter.count++;
@@ -115,11 +126,8 @@ function createPreparedStatement(source: Client, counter: RoundTripCounter, sql:
 		async first<T>(column?: string) {
 			const result = await client.execute(toStatement({ sql, args }));
 			const [row] = plainRows<Record<string, unknown>>(result);
-			if (!row)
-				return null;
-			return (column === undefined
-				? row
-				: row[column]) as T;
+			if (!row) return null;
+			return (column === undefined ? row : row[column]) as T;
 		},
 		async run<T>() {
 			return d1Result<T>(await client.execute(toStatement({ sql, args })));
@@ -136,8 +144,8 @@ function createPreparedStatement(source: Client, counter: RoundTripCounter, sql:
 			// column bearing it. Rebuilding by name therefore collapses `a.id, b.id` to
 			// the left table's value on both — silently, and on most joins in this
 			// schema, since `id`, `created_at` and `updated_at` are near-universal.
-			return result.rows.map(
-				row => Array.from({ length: result.columns.length }, (_, index) => row[index] ?? null),
+			return result.rows.map((row) =>
+				Array.from({ length: result.columns.length }, (_, index) => row[index] ?? null),
 			) as T[];
 		},
 	};
@@ -175,20 +183,22 @@ export async function createSqliteD1Harness(
 	options: SqliteD1HarnessOptions = {},
 ): Promise<SqliteD1Harness> {
 	const migrations = readdirSync(migrationsDirectory)
-		.filter(entry => entry.endsWith('.sql'))
+		.filter((entry) => entry.endsWith('.sql'))
 		.toSorted();
-	const heldBackFrom = options.throughMigration === undefined
-		? migrations.length
-		: migrations.findIndex(migration => migration.startsWith(options.throughMigration!)) + 1;
-	if (heldBackFrom === 0)
-		throw new Error(`No migration matches ${options.throughMigration}`);
+	const heldBackFrom =
+		options.throughMigration === undefined
+			? migrations.length
+			: migrations.findIndex((migration) => migration.startsWith(options.throughMigration!)) + 1;
+	if (heldBackFrom === 0) throw new Error(`No migration matches ${options.throughMigration}`);
 
 	const directory = mkdtempSync(join(tmpdir(), 'stream-keepr-d1-'));
 	const file = join(directory, 'catalogue.sqlite');
 	copyFileSync(await migratedTemplate(migrations.slice(0, heldBackFrom)), file);
 	const client = await openWithForeignKeys(file);
 
-	return harnessOver(client, directory, () => applyMigrations(client, migrations.slice(heldBackFrom)));
+	return harnessOver(client, directory, () =>
+		applyMigrations(client, migrations.slice(heldBackFrom)),
+	);
 }
 
 async function openWithForeignKeys(file: string): Promise<Client> {
@@ -207,8 +217,7 @@ async function applyMigrations(client: Client, entries: readonly string[]) {
 		const contents = readFileSync(join(migrationsDirectory, migration), 'utf8');
 		for (const statement of contents.split('--> statement-breakpoint')) {
 			const trimmed = statement.trim().replace(/;$/, '');
-			if (trimmed)
-				await client.execute(trimmed);
+			if (trimmed) await client.execute(trimmed);
 		}
 	}
 }
@@ -229,14 +238,16 @@ const templates = new Map<string, Promise<string>>();
 function migratedTemplate(entries: readonly string[]): Promise<string> {
 	const hash = createHash('sha256').update(`build ${TEMPLATE_BUILD}\n`);
 	for (const migration of entries)
-		hash.update(migration).update('\0').update(readFileSync(join(migrationsDirectory, migration))).update('\0');
+		hash
+			.update(migration)
+			.update('\0')
+			.update(readFileSync(join(migrationsDirectory, migration)))
+			.update('\0');
 	const template = join(templateDirectory, `${hash.digest('hex').slice(0, 32)}.sqlite`);
 
 	let ready = templates.get(template);
 	if (!ready) {
-		ready = existsSync(template)
-			? Promise.resolve(template)
-			: buildTemplate(template, entries);
+		ready = existsSync(template) ? Promise.resolve(template) : buildTemplate(template, entries);
 		templates.set(template, ready);
 	}
 	return ready;
@@ -251,14 +262,17 @@ async function buildTemplate(template: string, entries: readonly string[]): Prom
 		await applyMigrations(client, entries);
 		client.close();
 		renameSync(file, template);
-	}
-	finally {
+	} finally {
 		rmSync(building, { recursive: true, force: true });
 	}
 	return template;
 }
 
-function harnessOver(client: Client, directory: string, applyRemainingMigrations: () => Promise<void>): SqliteD1Harness {
+function harnessOver(
+	client: Client,
+	directory: string,
+	applyRemainingMigrations: () => Promise<void>,
+): SqliteD1Harness {
 	const counter: RoundTripCounter = { count: 0 };
 	const database = {
 		prepare(sql: string) {
@@ -267,12 +281,14 @@ function harnessOver(client: Client, directory: string, applyRemainingMigrations
 		async batch<T>(statements: ReturnType<typeof createPreparedStatement>[]) {
 			counter.count++;
 			const results = await client.batch(statements.map(toStatement), 'write');
-			return results.map(result => d1Result<T>(result));
+			return results.map((result) => d1Result<T>(result));
 		},
 		async exec(sql: string) {
-			const statements = sql.split(';').map(entry => entry.trim()).filter(Boolean);
-			for (const statement of statements)
-				await client.execute(statement);
+			const statements = sql
+				.split(';')
+				.map((entry) => entry.trim())
+				.filter(Boolean);
+			for (const statement of statements) await client.execute(statement);
 			return { count: statements.length, duration: 0 };
 		},
 	} as unknown as D1Database;

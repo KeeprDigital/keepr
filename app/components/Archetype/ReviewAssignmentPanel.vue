@@ -35,20 +35,24 @@ const emit = defineEmits<{
 const archetypeSearch = ref('');
 
 // Reset search when navigating to a new entry
-watch(() => props.entryId, () => {
-	archetypeSearch.value = '';
-});
+watch(
+	() => props.entryId,
+	() => {
+		archetypeSearch.value = '';
+	},
+);
 
 const filteredArchetypes = computed(() => {
 	const q = archetypeSearch.value.trim().toLowerCase();
-	if (!q)
-		return props.sortedArchetypes;
-	return props.sortedArchetypes.filter(a => a.name.toLowerCase().includes(q));
+	if (!q) return props.sortedArchetypes;
+	return props.sortedArchetypes.filter((a) => a.name.toLowerCase().includes(q));
 });
 </script>
 
 <template>
-	<div class="flex w-full shrink-0 flex-col overflow-hidden border-t border-default xl:w-96 xl:border-l xl:border-t-0">
+	<div
+		class="flex w-full shrink-0 flex-col overflow-hidden border-t border-default xl:w-96 xl:border-l xl:border-t-0"
+	>
 		<!-- Assignment card -->
 		<div class="shrink-0 p-6">
 			<UCard :ui="{ root: 'bg-elevated' }">
@@ -117,7 +121,10 @@ const filteredArchetypes = computed(() => {
 		</div>
 
 		<!-- Existing archetypes picker -->
-		<div v-if="sortedArchetypes.length > 0" class="flex flex-col overflow-hidden flex-1 min-h-0 px-6 pb-6">
+		<div
+			v-if="sortedArchetypes.length > 0"
+			class="flex flex-col overflow-hidden flex-1 min-h-0 px-6 pb-6"
+		>
 			<div class="flex items-center gap-2 mb-3 shrink-0">
 				<div class="h-px flex-1 bg-default" />
 				<span class="text-xs text-muted">or pick existing</span>
@@ -139,7 +146,11 @@ const filteredArchetypes = computed(() => {
 					:key="archetype.id"
 					type="button"
 					class="relative w-full px-2 py-2.5 rounded-md text-left transition-colors hover:bg-elevated overflow-hidden"
-					:class="archetype.id === matchingArchetypeId ? 'before:absolute before:left-0 before:inset-y-0 before:w-0.5 before:bg-primary before:rounded-full' : ''"
+					:class="
+						archetype.id === matchingArchetypeId
+							? 'before:absolute before:left-0 before:inset-y-0 before:w-0.5 before:bg-primary before:rounded-full'
+							: ''
+					"
 					@click="emit('chipClick', archetype)"
 				>
 					<!-- Line 1: name + mana symbols + deck count -->
@@ -161,17 +172,24 @@ const filteredArchetypes = computed(() => {
 						</span>
 					</div>
 					<!-- Line 2: key cards with match highlighting (only when present) -->
-					<div
-						v-if="archetype.keyCards?.length"
-						class="text-xs mt-0.5 truncate"
-					>
+					<div v-if="archetype.keyCards?.length" class="text-xs mt-0.5 truncate">
 						<template v-for="(kc, i) in archetype.keyCards" :key="kc.id ?? kc.name">
-							<span :class="archetypeKeyCardMatches.get(archetype.id)?.has(kc.name) ? 'text-primary/60' : 'text-muted'">{{ kc.name }}</span><span v-if="i < archetype.keyCards.length - 1" class="text-muted">, </span>
+							<span
+								:class="
+									archetypeKeyCardMatches.get(archetype.id)?.has(kc.name)
+										? 'text-primary/60'
+										: 'text-muted'
+								"
+								>{{ kc.name }}</span
+							><span v-if="i < archetype.keyCards.length - 1" class="text-muted">, </span>
 						</template>
 					</div>
 				</button>
 
-				<p v-if="archetypeSearch && filteredArchetypes.length === 0" class="text-xs text-muted py-2">
+				<p
+					v-if="archetypeSearch && filteredArchetypes.length === 0"
+					class="text-xs text-muted py-2"
+				>
 					No archetypes matching "{{ archetypeSearch }}".
 				</p>
 			</div>

@@ -17,9 +17,9 @@ export default defineEventHandler(async (event) => {
 		const players = await playerService().findAll({ eventId: id });
 		return {
 			standings: (players ?? [])
-				.filter(p => p.wins !== null || p.losses !== null || p.position !== null)
+				.filter((p) => p.wins !== null || p.losses !== null || p.position !== null)
 				.sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity))
-				.map(p => ({
+				.map((p) => ({
 					playerId: p.id,
 					name: p.name,
 					wins: p.wins,
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
 
 	// Enrich with player names
 	const players = await playerService().findAll({ eventId: id, includeInactive: true });
-	const playerMap = new Map((players ?? []).map(p => [p.id, p]));
+	const playerMap = new Map((players ?? []).map((p) => [p.id, p]));
 
 	return {
 		standings: snapshots.map((s) => {

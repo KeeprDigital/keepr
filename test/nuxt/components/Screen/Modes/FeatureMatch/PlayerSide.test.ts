@@ -121,9 +121,7 @@ describe('screenFeatureMatchPlayerSide', () => {
 	it('shows each control live while the operator may use it', async () => {
 		showCounters = true;
 		allowCounterControls = true;
-		mockPlayer.counters = [
-			{ type: 'poison', value: 1 },
-		];
+		mockPlayer.counters = [{ type: 'poison', value: 1 }];
 
 		const wrapper = await mountComponent();
 
@@ -137,9 +135,7 @@ describe('screenFeatureMatchPlayerSide', () => {
 		allowGameWinControls = false;
 		allowCounterControls = false;
 		showCounters = true;
-		mockPlayer.counters = [
-			{ type: 'poison', value: 1 },
-		];
+		mockPlayer.counters = [{ type: 'poison', value: 1 }];
 
 		const wrapper = await mountComponent();
 

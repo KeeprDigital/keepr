@@ -151,8 +151,9 @@ const LOCAL_CONFIGURATION_FILES = ['.env', RESOLVED_PREVIEW_ENV];
  * @param {{ localAuthBypassActive?: boolean }} [options]
  */
 export function missingLocalAcceptanceNames(env, options = {}) {
-	return missingLocalNuxtNames(env, options)
-		.filter(name => LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.includes(name));
+	return missingLocalNuxtNames(env, options).filter((name) =>
+		LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.includes(name),
+	);
 }
 
 /**
@@ -171,14 +172,10 @@ export function suppliedNames(sources) {
 	/** @type {Record<string, string>} */
 	const supplied = {};
 	for (const source of sources) {
-		if (source === null || source === undefined)
-			continue;
-		const entries = typeof source === 'string'
-			? parseDotenv(source)
-			: Object.entries(source);
+		if (source === null || source === undefined) continue;
+		const entries = typeof source === 'string' ? parseDotenv(source) : Object.entries(source);
 		for (const [name, value] of entries) {
-			if (typeof value === 'string' && value.trim().length > 0)
-				supplied[name] ??= value;
+			if (typeof value === 'string' && value.trim().length > 0) supplied[name] ??= value;
 		}
 	}
 	return supplied;
@@ -201,14 +198,10 @@ export function suppliedNames(sources) {
  * }} options
  */
 export function localAcceptanceConfiguration({ deployed, env = {}, readSources }) {
-	if (deployed)
-		return { checked: false, missing: [] };
+	if (deployed) return { checked: false, missing: [] };
 	return {
 		checked: true,
-		missing: missingLocalAcceptanceNames(suppliedNames([
-			env,
-			...readSources(),
-		])),
+		missing: missingLocalAcceptanceNames(suppliedNames([env, ...readSources()])),
 	};
 }
 
@@ -228,7 +221,7 @@ export function localAcceptanceConfiguration({ deployed, env = {}, readSources }
  */
 export function localConfigurationNotice(missing) {
 	const names = sentenceList(missing, 'or');
-	const surfaces = missing.map(name => LOCAL_NUXT_NAME_SURFACES[name]);
+	const surfaces = missing.map((name) => LOCAL_NUXT_NAME_SURFACES[name]);
 	const consequence = `${sentenceList(surfaces, 'and')} answer 503`;
 
 	// Why the other required names are absent from this sentence, said rather
@@ -242,22 +235,25 @@ export function localConfigurationNotice(missing) {
 	// token as a cause and then, one sentence later, said the admin token was
 	// not checked. Unreachable today, and the prose probe that reads the plural
 	// case is exactly the reachable state where a reader would have met it.
-	const unnamed = LOCAL_ACCEPTANCE_UNREACHED_NUXT_NAMES.filter(name => !missing.includes(name));
-	const unreached = unnamed.length === 0
-		? ''
-		: `${sentenceList(unnamed, 'and')} ${unnamed.length === 1
-			? 'is'
-			: 'are'} not checked here and a blank one `
-			+ 'is not what stopped this: no route an acceptance run calls reads it. ';
+	const unnamed = LOCAL_ACCEPTANCE_UNREACHED_NUXT_NAMES.filter((name) => !missing.includes(name));
+	const unreached =
+		unnamed.length === 0
+			? ''
+			: `${sentenceList(unnamed, 'and')} ${
+					unnamed.length === 1 ? 'is' : 'are'
+				} not checked here and a blank one ` +
+				'is not what stopped this: no route an acceptance run calls reads it. ';
 
-	return `Nothing this checkout can give a local installation sets ${names}, so ${consequence} `
-		+ `and this run would never reach anything to assert. Nothing was proved and nothing was disproved. ${
+	return (
+		`Nothing this checkout can give a local installation sets ${names}, so ${consequence} ` +
+		`and this run would never reach anything to assert. Nothing was proved and nothing was disproved. ${
 			unreached
-		}A fresh git worktree is the usual way to arrive here — .env is gitignored, so a new checkout does not `
-		+ `inherit it from the one it was branched from, and a copied .env.example carries the names with empty `
-		+ `values. Fix: copy .env in from the checkout you branched from, or fill in .env.example — `
-		+ `\`pnpm preview\` stages .env into .output/server/, which is where wrangler resolves it from the config. `
-		+ `A --deployed run reads no local file and is unaffected. See README.md → Local configuration.`;
+		}A fresh git worktree is the usual way to arrive here — .env is gitignored, so a new checkout does not ` +
+		`inherit it from the one it was branched from, and a copied .env.example carries the names with empty ` +
+		`values. Fix: copy .env in from the checkout you branched from, or fill in .env.example — ` +
+		`\`pnpm preview\` stages .env into .output/server/, which is where wrangler resolves it from the config. ` +
+		`A --deployed run reads no local file and is unaffected. See README.md → Local configuration.`
+	);
 }
 
 /**
@@ -311,10 +307,10 @@ export function previewStagingPlan({ source, existing, stale, bypassActive = fal
 
 	if (stale) {
 		lines.push(
-			`Removed ${STALE_PREVIEW_DEV_VARS}, left over from before .env became the one local `
-			+ 'configuration file. Wrangler reads one of the two and prefers that one, so it would have '
-			+ 'shadowed the .env staged beside it and the previewed Worker would have read neither what this '
-			+ 'checkout holds nor anything anybody is still editing (#412).',
+			`Removed ${STALE_PREVIEW_DEV_VARS}, left over from before .env became the one local ` +
+				'configuration file. Wrangler reads one of the two and prefers that one, so it would have ' +
+				'shadowed the .env staged beside it and the previewed Worker would have read neither what this ' +
+				'checkout holds nor anything anybody is still editing (#412).',
 		);
 	}
 
@@ -329,29 +325,29 @@ export function previewStagingPlan({ source, existing, stale, bypassActive = fal
 
 	const base = source ?? '';
 	const body = bypassActive
-		? `${base.endsWith('\n') || base.length === 0
-			? base
-			: `${base}\n`}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`
+		? `${
+				base.endsWith('\n') || base.length === 0 ? base : `${base}\n`
+			}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`
 		: base;
 
 	if (existing !== null && existing !== body) {
 		lines.push(
-			`Replacing the existing ${RESOLVED_PREVIEW_ENV}, which differs from the .env it is `
-			+ 'staged from. The repository root copy is the source of truth; anything only in the staged '
-			+ 'one is about to be lost.',
+			`Replacing the existing ${RESOLVED_PREVIEW_ENV}, which differs from the .env it is ` +
+				'staged from. The repository root copy is the source of truth; anything only in the staged ' +
+				'one is about to be lost.',
 		);
 	}
 
 	lines.push(
-		`Staged .env into ${RESOLVED_PREVIEW_ENV}, `
-		+ 'where wrangler resolves it from the config (#274, #412).',
+		`Staged .env into ${RESOLVED_PREVIEW_ENV}, ` +
+			'where wrangler resolves it from the config (#274, #412).',
 	);
 
 	if (bypassActive) {
 		lines.push(
-			`Added ${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE} to ${RESOLVED_PREVIEW_ENV}: this `
-			+ 'preview was launched bypassed, so every request acts as the Local Developer User. Keep it on '
-			+ 'loopback.',
+			`Added ${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE} to ${RESOLVED_PREVIEW_ENV}: this ` +
+				'preview was launched bypassed, so every request acts as the Local Developer User. Keep it on ' +
+				'loopback.',
 		);
 	}
 
@@ -377,8 +373,7 @@ export function readLocalConfigurationFiles() {
 	return LOCAL_CONFIGURATION_FILES.map((name) => {
 		try {
 			return readFileSync(new URL(`../../${name}`, import.meta.url), 'utf8');
-		}
-		catch {
+		} catch {
 			return null;
 		}
 	});
@@ -411,11 +406,13 @@ export function requireLocalAcceptanceConfiguration({
 	readSources = readLocalConfigurationFiles,
 } = {}) {
 	const decision = localAcceptanceConfiguration({ deployed, env, readSources });
-	if (decision.missing.length === 0)
-		return decision;
+	if (decision.missing.length === 0) return decision;
 
 	process.stderr.write(`${localConfigurationNotice(decision.missing)}\n`);
 	throw new AcceptanceFailure('harness-local-configuration-missing', {
-		surface: sentenceList(decision.missing.map(name => LOCAL_NUXT_NAME_SURFACES[name]), 'and'),
+		surface: sentenceList(
+			decision.missing.map((name) => LOCAL_NUXT_NAME_SURFACES[name]),
+			'and',
+		),
 	});
 }

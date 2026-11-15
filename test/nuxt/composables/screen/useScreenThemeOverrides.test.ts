@@ -10,7 +10,13 @@ import { defineComponent, h, ref } from 'vue';
 import { FOUNDATION_TOKENS } from '~~/shared/modules/theme';
 import { deferred } from '~~/test/helpers/deferred';
 import { createWireMockScreen } from '~~/test/helpers/fixtures';
-import { fakeScreenThemeNetwork, overrideWrites, screenSettingsPage, seedThemedScreen, themeReads } from '~~/test/nuxt/helpers/screenThemeOverrides';
+import {
+	fakeScreenThemeNetwork,
+	overrideWrites,
+	screenSettingsPage,
+	seedThemedScreen,
+	themeReads,
+} from '~~/test/nuxt/helpers/screenThemeOverrides';
 
 // A Screen's settings page holds one instance for all its cards: what each
 // token inherits from the Event's Theme, read once for the page, and one
@@ -37,13 +43,7 @@ function mountPage(screen: () => Screen | null) {
 		handed.push(useScreenThemeOverrides());
 		return () => null;
 	});
-	mount(screenSettingsPage(screen, () => [
-		h(Card),
-		h(Card),
-		showLater.value
-			? h(Card)
-			: null,
-	]));
+	mount(screenSettingsPage(screen, () => [h(Card), h(Card), showLater.value ? h(Card) : null]));
 	return { handed, showLater };
 }
 
@@ -60,13 +60,7 @@ describe('useScreenThemeOverrides', () => {
 			FOUNDATION_TOKENS.inset.default,
 			FOUNDATION_TOKENS.inset.default,
 		],
-		[
-			'a Foundation Token the Theme sets',
-			{ inset: 30 },
-			'inset',
-			30,
-			30,
-		],
+		['a Foundation Token the Theme sets', { inset: 30 }, 'inset', 30, 30],
 		[
 			'a Mode Token following its default',
 			{ positive: '#123456' },
@@ -82,7 +76,7 @@ describe('useScreenThemeOverrides', () => {
 			{ token: 'positive' },
 			FOUNDATION_TOKENS.positive.default,
 		],
-	])('reads %s from the Event\'s Theme', async (_case, tokens, name, inherited, resolved) => {
+	])("reads %s from the Event's Theme", async (_case, tokens, name, inherited, resolved) => {
 		network.themeTokens = tokens;
 		const overrides = setUp();
 		await flushPromises();
@@ -120,7 +114,7 @@ describe('useScreenThemeOverrides', () => {
 	});
 
 	// A group's Look may mount long after the page, as a card opens or a layer is selected.
-	it('reads the Event\'s Theme once for every card of the page, one mounting later included', async () => {
+	it("reads the Event's Theme once for every card of the page, one mounting later included", async () => {
 		const { handed, showLater } = mountPage(seedThemedScreen('standings'));
 		await flushPromises();
 
@@ -128,7 +122,11 @@ describe('useScreenThemeOverrides', () => {
 		await flushPromises();
 
 		expect(handed).toHaveLength(3);
-		expect(handed.map(overrides => overrides.themeName.value)).toEqual(['Brand', 'Brand', 'Brand']);
+		expect(handed.map((overrides) => overrides.themeName.value)).toEqual([
+			'Brand',
+			'Brand',
+			'Brand',
+		]);
 		expect(themeReads(mockApiFetch)).toBe(1);
 	});
 
@@ -142,12 +140,14 @@ describe('useScreenThemeOverrides', () => {
 		await flushPromises();
 		expect(handed[1]!.writing.value.has('inset')).toBe(true);
 
-		answer.resolve(createWireMockScreen({
-			id: 1,
-			currentMode: 'standings',
-			themeOverrides: { inset: 24 },
-			stateVersion: 1,
-		}) as unknown as Screen);
+		answer.resolve(
+			createWireMockScreen({
+				id: 1,
+				currentMode: 'standings',
+				themeOverrides: { inset: 24 },
+				stateVersion: 1,
+			}) as unknown as Screen,
+		);
 		await flushPromises();
 		expect(handed[1]!.writing.value.has('inset')).toBe(false);
 	});
@@ -159,11 +159,14 @@ describe('useScreenThemeOverrides', () => {
 
 		await overrides.set('inset', 24);
 
-		expect(overrides.entry('inset')).toMatchObject({ stored: undefined, resolved: FOUNDATION_TOKENS.inset.default });
+		expect(overrides.entry('inset')).toMatchObject({
+			stored: undefined,
+			resolved: FOUNDATION_TOKENS.inset.default,
+		});
 		expect(overrideWrites(mockApiFetch)).toEqual([]);
 	});
 
-	it('says when the Event\'s Theme could not be loaded, and reads the Default Theme', async () => {
+	it("says when the Event's Theme could not be loaded, and reads the Default Theme", async () => {
 		mockApiFetch.mockImplementation(async () => {
 			throw new Error('offline');
 		});
@@ -176,39 +179,33 @@ describe('useScreenThemeOverrides', () => {
 
 	it.each([
 		['sets', {}, 24, 24],
-		[
-			'clears',
-			{ inset: 24 },
-			null,
-			undefined,
-		],
-	])('%s an override as one write, shown while the write is out', async (_case, stored, value, shown) => {
-		const answer = deferred<Screen>();
-		network.answerWrite = () => answer.promise;
-		const overrides = setUp(stored);
-		await flushPromises();
+		['clears', { inset: 24 }, null, undefined],
+	])(
+		'%s an override as one write, shown while the write is out',
+		async (_case, stored, value, shown) => {
+			const answer = deferred<Screen>();
+			network.answerWrite = () => answer.promise;
+			const overrides = setUp(stored);
+			await flushPromises();
 
-		void (value === null
-			? overrides.clear('inset')
-			: overrides.set('inset', value));
-		await flushPromises();
+			void (value === null ? overrides.clear('inset') : overrides.set('inset', value));
+			await flushPromises();
 
-		expect(overrideWrites(mockApiFetch)).toEqual([
-			{ inset: value },
-		]);
-		expect(overrides.entry('inset').stored).toBe(shown);
-		expect(overrides.writing.value.has('inset')).toBe(true);
+			expect(overrideWrites(mockApiFetch)).toEqual([{ inset: value }]);
+			expect(overrides.entry('inset').stored).toBe(shown);
+			expect(overrides.writing.value.has('inset')).toBe(true);
 
-		answer.resolve(createWireMockScreen({
-			id: 1,
-			currentMode: 'standings',
-			themeOverrides: value === null
-				? {}
-				: { inset: value },
-			stateVersion: 1,
-		}) as unknown as Screen);
-		await flushPromises();
-		expect(overrides.entry('inset').stored).toBe(shown);
-		expect(overrides.writing.value.has('inset')).toBe(false);
-	});
+			answer.resolve(
+				createWireMockScreen({
+					id: 1,
+					currentMode: 'standings',
+					themeOverrides: value === null ? {} : { inset: value },
+					stateVersion: 1,
+				}) as unknown as Screen,
+			);
+			await flushPromises();
+			expect(overrides.entry('inset').stored).toBe(shown);
+			expect(overrides.writing.value.has('inset')).toBe(false);
+		},
+	);
 });

@@ -4,7 +4,7 @@
  * video Background Layers, and the Feature Match Overlay Frame's image and video.
  */
 export const MEDIA_FIT_VALUES = ['cover', 'contain', 'fill'] as const;
-export type MediaFit = typeof MEDIA_FIT_VALUES[number];
+export type MediaFit = (typeof MEDIA_FIT_VALUES)[number];
 
 export interface GraphicFocalPosition {
 	horizontal: number;

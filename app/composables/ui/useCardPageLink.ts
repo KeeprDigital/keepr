@@ -9,31 +9,18 @@ interface CardPageView {
 	playerId: Ref<number | null>;
 }
 
-const LINK_KEYS = [
-	'mode',
-	'roundId',
-	'matchId',
-	'slotId',
-	'playerId',
-] as const;
+const LINK_KEYS = ['mode', 'roundId', 'matchId', 'slotId', 'playerId'] as const;
 
 function queryId(value: unknown): number | null {
-	const raw = Array.isArray(value)
-		? value[0]
-		: value;
-	return typeof raw === 'string' && /^\d+$/.test(raw)
-		? Number(raw)
-		: null;
+	const raw = Array.isArray(value) ? value[0] : value;
+	return typeof raw === 'string' && /^\d+$/.test(raw) ? Number(raw) : null;
 }
 
 function queryMatchup(query: Record<string, unknown>): CardMatchup | null {
 	const matchId = queryId(query.matchId);
-	if (matchId !== null)
-		return { kind: 'match', id: matchId };
+	if (matchId !== null) return { kind: 'match', id: matchId };
 	const slotId = queryId(query.slotId);
-	return slotId === null
-		? null
-		: { kind: 'slot', id: slotId };
+	return slotId === null ? null : { kind: 'slot', id: slotId };
 }
 
 /**
@@ -52,16 +39,13 @@ export function useCardPageLink(view: CardPageView) {
 		view.mode.value = linkedMode;
 		view.roundId.value = queryId(route.query.roundId);
 		view.matchup.value = queryMatchup(route.query);
-	}
-	else if (linkedMode === 'player-decklist') {
+	} else if (linkedMode === 'player-decklist') {
 		view.mode.value = linkedMode;
 		view.playerId.value = queryId(route.query.playerId);
 	}
 
 	const linkQuery = computed<Record<string, string | undefined>>(() => {
-		const id = (value: number | null) => value === null
-			? undefined
-			: String(value);
+		const id = (value: number | null) => (value === null ? undefined : String(value));
 		switch (view.mode.value) {
 			case 'match-decklist':
 				return {
@@ -80,20 +64,22 @@ export function useCardPageLink(view: CardPageView) {
 		}
 	});
 
-	watch(linkQuery, (link) => {
-		const unchanged = LINK_KEYS.every(key => route.query[key] === link[key]);
-		if (unchanged)
-			return;
-		const query = { ...route.query };
-		for (const key of LINK_KEYS)
-			delete query[key];
-		void router.replace({
-			query: {
-				...query,
-				...link,
-			},
-		});
-	}, { immediate: true });
+	watch(
+		linkQuery,
+		(link) => {
+			const unchanged = LINK_KEYS.every((key) => route.query[key] === link[key]);
+			if (unchanged) return;
+			const query = { ...route.query };
+			for (const key of LINK_KEYS) delete query[key];
+			void router.replace({
+				query: {
+					...query,
+					...link,
+				},
+			});
+		},
+		{ immediate: true },
+	);
 
 	return { linked };
 }

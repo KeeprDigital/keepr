@@ -1,4 +1,7 @@
-import type { GraphicAssetReference, InstalledGraphicsTemplateKind } from '~~/shared/types/graphicsAsset';
+import type {
+	GraphicAssetReference,
+	InstalledGraphicsTemplateKind,
+} from '~~/shared/types/graphicsAsset';
 import type { PackageLibrary } from '~~/test/helpers/templatePackageLibrary';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
@@ -35,9 +38,7 @@ async function installedTemplate() {
 	const library = await newLibrary();
 	const { library: sender } = await createPackageLibrary(`sender-${libraries}`);
 	const archive = await exportPackage(sender, {
-		assets: [
-			{ slot: 'backdrop', reference: await ingestPackageImage(sender, 'Backdrop') },
-		],
+		assets: [{ slot: 'backdrop', reference: await ingestPackageImage(sender, 'Backdrop') }],
 	});
 	const operation = await installPackage(library, archive);
 	const installation = installationOf(operation);
@@ -52,7 +53,11 @@ async function installedTemplate() {
 	};
 }
 
-function removeFrom(library: PackageLibrary, templateId: string, kind: InstalledGraphicsTemplateKind = 'broadcast-graphic') {
+function removeFrom(
+	library: PackageLibrary,
+	templateId: string,
+	kind: InstalledGraphicsTemplateKind = 'broadcast-graphic',
+) {
 	return library.removeInstalledGraphicsTemplate({ templateId, kind, removedBy: 'remover' });
 }
 
@@ -64,7 +69,9 @@ describe('removing an Installed Graphics Template', () => {
 		const removed = await remove();
 
 		expect(removed.outcome).toBe('removed');
-		expect(await library.findInstalledGraphicsTemplate({ templateId: installation.templateId })).toBeUndefined();
+		expect(
+			await library.findInstalledGraphicsTemplate({ templateId: installation.templateId }),
+		).toBeUndefined();
 		expect(await library.listInstalledGraphicsTemplates({ kind: 'broadcast-graphic' })).toEqual([]);
 		expect(await library.listGraphicAssetUsage({ assetId: asset.assetId })).toEqual([]);
 		expect((await library.trashGraphicAsset({ assetId: asset.assetId })).outcome).toBe('trashed');
@@ -73,8 +80,9 @@ describe('removing an Installed Graphics Template', () => {
 	it('holds its asset back from Retire until it is removed', async () => {
 		const { library, installation, asset, remove } = await installedTemplate();
 		const refused = await library.retireGraphicAsset({ assetId: asset.assetId });
-		expect(refused.outcome === 'in-use' && refused.usage.map(usage => usage.owner.id))
-			.toEqual([installation.templateId]);
+		expect(refused.outcome === 'in-use' && refused.usage.map((usage) => usage.owner.id)).toEqual([
+			installation.templateId,
+		]);
 
 		await remove();
 
@@ -90,8 +98,9 @@ describe('removing an Installed Graphics Template', () => {
 
 		const trash = await library.trashGraphicAsset({ assetId: asset.assetId });
 		expect(trash.outcome).toBe('in-use');
-		expect(trash.outcome === 'in-use' && trash.usage.map(usage => usage.owner.id))
-			.toEqual([second.templateId]);
+		expect(trash.outcome === 'in-use' && trash.usage.map((usage) => usage.owner.id)).toEqual([
+			second.templateId,
+		]);
 	});
 
 	it.each([
@@ -115,17 +124,22 @@ describe('removing an Installed Graphics Template', () => {
 		},
 	] as const)('answers not-found for $case', async ({ removedFirst, unknown, kind }) => {
 		const { library, installation, remove } = await installedTemplate();
-		if (removedFirst)
-			await remove();
+		if (removedFirst) await remove();
 
-		const removed = await removeFrom(library, unknown ? 'no-such-template' : installation.templateId, kind);
+		const removed = await removeFrom(
+			library,
+			unknown ? 'no-such-template' : installation.templateId,
+			kind,
+		);
 
 		expect(removed.outcome).toBe('not-found');
 	});
 
 	it('reinstalls the template when its installation is retried', async () => {
 		const { library, operation, installation, asset, remove } = await installedTemplate();
-		const before = await library.inspectInstalledGraphicsTemplate({ templateId: installation.templateId });
+		const before = await library.inspectInstalledGraphicsTemplate({
+			templateId: installation.templateId,
+		});
 		await remove();
 
 		const retried = await library.installTemplatePackage({
@@ -135,8 +149,9 @@ describe('removing an Installed Graphics Template', () => {
 
 		expect(retried.stage).toBe('completed');
 		expect(installationOf(retried)).toEqual(installation);
-		expect(await library.inspectInstalledGraphicsTemplate({ templateId: installation.templateId }))
-			.toEqual(before);
+		expect(
+			await library.inspectInstalledGraphicsTemplate({ templateId: installation.templateId }),
+		).toEqual(before);
 		expect((await library.trashGraphicAsset({ assetId: asset.assetId })).outcome).toBe('in-use');
 	});
 
@@ -144,17 +159,22 @@ describe('removing an Installed Graphics Template', () => {
 		const { library, operation, installation, asset, remove } = await installedTemplate();
 		await remove();
 		await library.trashGraphicAsset({ assetId: asset.assetId });
-		const retry = () => library.installTemplatePackage({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-		});
+		const retry = () =>
+			library.installTemplatePackage({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+			});
 
 		await expect(retry()).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
-		expect(await library.findInstalledGraphicsTemplate({ templateId: installation.templateId })).toBeUndefined();
+		expect(
+			await library.findInstalledGraphicsTemplate({ templateId: installation.templateId }),
+		).toBeUndefined();
 
 		await library.restoreGraphicAsset({ assetId: asset.assetId });
 		expect((await retry()).stage).toBe('completed');
-		expect(await library.findInstalledGraphicsTemplate({ templateId: installation.templateId })).toBeDefined();
+		expect(
+			await library.findInstalledGraphicsTemplate({ templateId: installation.templateId }),
+		).toBeDefined();
 	});
 });
 
@@ -163,13 +183,14 @@ describe('a superseded revision only a removed template pinned', () => {
 		const library = await newLibrary();
 		const first = await ingestPackageImage(library, 'Backdrop');
 		const archive = await exportPackage(library, {
-			assets: [
-				{ slot: 'backdrop', reference: first },
-			],
+			assets: [{ slot: 'backdrop', reference: first }],
 		});
 		await replacePackageImage(library, first, sixteenPixelPng);
 		const installation = installationOf(await installPackage(library, archive));
-		expect(installation.assets[0]).toMatchObject({ outcome: 'reused', revisionId: first.revisionId });
+		expect(installation.assets[0]).toMatchObject({
+			outcome: 'reused',
+			revisionId: first.revisionId,
+		});
 		expect((await library.runGraphicsRetention()).revisions.pruningScheduled).toBe(0);
 
 		await removeFrom(library, installation.templateId);

@@ -19,7 +19,11 @@ describe('screenModeThemeApplicationFonts', () => {
 			},
 			faces: [
 				{ fontId: 'poppins', weight: 600, style: 'normal' },
-				{ fontId: FOUNDATION_TOKENS.body.default.font.fontId, weight: FOUNDATION_TOKENS.body.default.weight, style: 'normal' },
+				{
+					fontId: FOUNDATION_TOKENS.body.default.font.fontId,
+					weight: FOUNDATION_TOKENS.body.default.weight,
+					style: 'normal',
+				},
 			],
 		},
 		{
@@ -31,7 +35,11 @@ describe('screenModeThemeApplicationFonts', () => {
 				},
 			},
 			faces: [
-				{ fontId: FOUNDATION_TOKENS.heading.default.font.fontId, weight: FOUNDATION_TOKENS.heading.default.weight, style: 'normal' },
+				{
+					fontId: FOUNDATION_TOKENS.heading.default.font.fontId,
+					weight: FOUNDATION_TOKENS.heading.default.weight,
+					style: 'normal',
+				},
 			],
 		},
 	])('$row', ({ theme, faces }) => {

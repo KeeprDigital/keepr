@@ -7,16 +7,19 @@ import { useConsumedEventData } from '~/modules/event-data/resync';
  * (#752). It loads the Phases it lacks, re-reads them on Reconnect Resync
  * (#610), and emits the Phase's id, or `null` for none.
  */
-const props = withDefaults(defineProps<{
-	modelValue?: number | null;
-	eventId: number;
-	label?: string;
-	description?: string;
-	nullLabel?: string;
-}>(), {
-	label: 'Phase',
-	nullLabel: 'Select a phase…',
-});
+const props = withDefaults(
+	defineProps<{
+		modelValue?: number | null;
+		eventId: number;
+		label?: string;
+		description?: string;
+		nullLabel?: string;
+	}>(),
+	{
+		label: 'Phase',
+		nullLabel: 'Select a phase…',
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [phaseId: number | null];
@@ -24,15 +27,16 @@ const emit = defineEmits<{
 
 const phaseStore = usePhaseStore();
 
-const items = computed(() => [...phaseStore.phases]
-	.sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
-	.map(phase => ({ label: phase.name, value: phase.id })));
+const items = computed(() =>
+	[...phaseStore.phases]
+		.sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+		.map((phase) => ({ label: phase.name, value: phase.id })),
+);
 
 useConsumedEventData(['phases']);
 
 onMounted(async () => {
-	if (props.eventId && !phaseStore.isLoaded)
-		await phaseStore.loadPhasesByEventId(props.eventId);
+	if (props.eventId && !phaseStore.isLoaded) await phaseStore.loadPhasesByEventId(props.eventId);
 });
 </script>
 

@@ -37,8 +37,7 @@ export function refuseBuiltInFeatureMatchLayoutTemplate(
 	action: 'revised' | 'removed' | 'exported',
 ): void {
 	const builtIn = findBuiltInFeatureMatchLayoutTemplate(templateId);
-	if (!builtIn)
-		return;
+	if (!builtIn) return;
 	throw createError({
 		statusCode: 409,
 		statusMessage: 'Conflict',
@@ -64,8 +63,7 @@ export async function refuseInstalledFeatureMatchLayoutTemplateWrite(
 	templateId: string,
 ): Promise<void> {
 	const entry = await findFeatureMatchLayoutTemplateLibraryEntry(event, templateId);
-	if (!entry || entry.authored)
-		return;
+	if (!entry || entry.authored) return;
 	throw createError({
 		statusCode: 409,
 		statusMessage: 'Conflict',

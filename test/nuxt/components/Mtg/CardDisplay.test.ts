@@ -75,20 +75,25 @@ describe('mtgCardDisplay', () => {
 	});
 
 	// The host scales the Event Canvas to its window (#821); a card scaling it again would scale twice.
-	it.each([1080, 720, 0])('sizes the card by its width alone in a %i px overlay', async (height) => {
-		containerHeight.value = height;
-		const wrapper = mountComponent();
+	it.each([1080, 720, 0])(
+		'sizes the card by its width alone in a %i px overlay',
+		async (height) => {
+			containerHeight.value = height;
+			const wrapper = mountComponent();
 
-		await wrapper.setProps({
-			card: card('card-1', 'Brainstorm'),
-		});
-		await vi.advanceTimersByTimeAsync(50);
-		await nextTick();
+			await wrapper.setProps({
+				card: card('card-1', 'Brainstorm'),
+			});
+			await vi.advanceTimersByTimeAsync(50);
+			await nextTick();
 
-		const container = wrapper.get('.card-container').element as HTMLElement;
-		expect(container.style.zoom).toBe('');
-		expect((wrapper.get('[data-testid="spotlight-card"]').element as HTMLElement).style.width).toBe('400px');
-	});
+			const container = wrapper.get('.card-container').element as HTMLElement;
+			expect(container.style.zoom).toBe('');
+			expect(
+				(wrapper.get('[data-testid="spotlight-card"]').element as HTMLElement).style.width,
+			).toBe('400px');
+		},
+	);
 
 	it('shows a Card it is given at mount once its image loads', async () => {
 		const wrapper = mountComponent(card('held', 'Held Card'));
@@ -117,7 +122,7 @@ describe('mtgCardDisplay', () => {
 		expect(wrapper.get('[data-testid="card-image"]').text()).toBe('New Card');
 	});
 
-	it('shows a One Piece card as its Printing\'s image, once that has loaded', async () => {
+	it("shows a One Piece card as its Printing's image, once that has loaded", async () => {
 		const imageUrl = 'https://cards-img.keepr.digital/OP01-001_p1.png';
 		images.hold(imageUrl);
 		const wrapper = mountComponent({
@@ -138,7 +143,7 @@ describe('mtgCardDisplay', () => {
 		expect(wrapper.find('[data-testid="card-image"]').exists()).toBe(false);
 	});
 
-	it('keeps the card on program until its replacement\'s image has loaded', async () => {
+	it("keeps the card on program until its replacement's image has loaded", async () => {
 		const wrapper = mountComponent(card('old-card', 'Old Card'));
 		await vi.advanceTimersByTimeAsync(50);
 		images.hold('https://example.com/new-card.jpg');

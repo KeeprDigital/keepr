@@ -1,4 +1,9 @@
-import { LOGIN_PATH, loginPathFor, pageRequiresSession, postSignInPath } from '~/modules/auth/pageGate';
+import {
+	LOGIN_PATH,
+	loginPathFor,
+	pageRequiresSession,
+	postSignInPath,
+} from '~/modules/auth/pageGate';
 import { useAuthSession } from '~/modules/auth/session';
 
 /**
@@ -32,12 +37,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
 		// depends on the session: an operator who already has one has no
 		// business looking at a password field, and the `?redirect=` they
 		// arrived with lands them where they were going.
-		if (to.path === LOGIN_PATH && await useAuthSession().ensure() === 'signed-in')
+		if (to.path === LOGIN_PATH && (await useAuthSession().ensure()) === 'signed-in')
 			return navigateTo(postSignInPath(to.query));
 
 		return;
 	}
 
-	if (await useAuthSession().ensure() === 'signed-out')
+	if ((await useAuthSession().ensure()) === 'signed-out')
 		return navigateTo(loginPathFor(to.fullPath));
 });

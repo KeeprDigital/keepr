@@ -30,7 +30,9 @@ describe('graphicsGeometry', () => {
 	it('holds the Graphic Anchor Point fixed while the item is resized', () => {
 		const resized = resizeGraphicRectFromAnchor(rect, { width: 200, height: 50 }, 'center');
 
-		expect(anchoredGraphicPosition(resized, 'center')).toEqual(anchoredGraphicPosition(rect, 'center'));
+		expect(anchoredGraphicPosition(resized, 'center')).toEqual(
+			anchoredGraphicPosition(rect, 'center'),
+		);
 		expect(resized).toEqual({
 			x: 200,
 			y: 225,
@@ -105,7 +107,7 @@ describe('graphicsGeometry', () => {
 		});
 	});
 
-	it('aligns a rectangle\'s edge or centre with its container\'s, whatever its anchor', () => {
+	it("aligns a rectangle's edge or centre with its container's, whatever its anchor", () => {
 		// A 401×201 item on a 1920×1080 canvas.
 		const item = {
 			x: 100,
@@ -122,6 +124,8 @@ describe('graphicsGeometry', () => {
 		expect(alignGraphicRect(item, 'y', 'center', canvas)).toEqual({ y: 439.5 });
 		expect(alignGraphicRect(item, 'y', 'end', canvas)).toEqual({ y: 879 });
 		// Rounded to the geometry precision used everywhere else.
-		expect(alignGraphicRect({ ...item, width: 400.333 }, 'x', 'center', canvas)).toEqual({ x: 759.83 });
+		expect(alignGraphicRect({ ...item, width: 400.333 }, 'x', 'center', canvas)).toEqual({
+			x: 759.83,
+		});
 	});
 });

@@ -11,7 +11,10 @@ import {
 	graphicAssetRevisions,
 	graphicAssets,
 } from '~~/server/db/schema/graphicsAsset';
-import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES, DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/builtInFeatureMatchLayoutTemplates';
+import {
+	BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES,
+	DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG,
+} from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
@@ -31,7 +34,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -54,7 +58,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 const { screenService } = await import('~~/server/services/screen');
 const { screenWriteModule } = await import('~~/server/modules/screen-write');
 const { graphicsAuthoringLeaseModule } = await import('~~/server/modules/graphics-authoring-lease');
-const { screenEditWorkspaceLeaseRef } = await import('~~/server/modules/graphics-authoring-lease/screenEditWorkspace');
+const { screenEditWorkspaceLeaseRef } =
+	await import('~~/server/modules/graphics-authoring-lease/screenEditWorkspace');
 
 const HOLDER = 'session-holder';
 const OTHER = 'session-other';
@@ -74,7 +79,7 @@ async function screenRow() {
 
 async function authoredStack(): Promise<string[]> {
 	const graphics = (await screenRow())?.modeConfigs?.['broadcast-graphics']?.graphics ?? [];
-	return graphics.map(entry => entry.id);
+	return graphics.map((entry) => entry.id);
 }
 
 async function lease(sessionId: string, takeover = false) {
@@ -98,7 +103,9 @@ beforeAll(async () => {
 		byteLength: 70,
 		canonicalMime: 'image/png',
 	} as never);
-	await db.insert(graphicAssets).values({ id: 'asset-plate', name: 'Plate', kind: 'image' } as never);
+	await db
+		.insert(graphicAssets)
+		.values({ id: 'asset-plate', name: 'Plate', kind: 'image' } as never);
 	await db.insert(graphicAssetRevisions).values({
 		id: 'revision-one',
 		assetId: 'asset-plate',
@@ -112,9 +119,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	const seeded = await seedBroadcastGraphicsScreen(db, {
 		stack: {
-			graphics: [
-				graphic('authored'),
-			],
+			graphics: [graphic('authored')],
 		},
 	});
 	eventId = seeded.eventId;
@@ -127,24 +132,24 @@ describe('the commit-time lease fence', () => {
 	it('refuses a Broadcast Graphics stack write by a Session that does not hold the lease', async () => {
 		await lease(HOLDER);
 
-		await expect(screenService().updateModeConfig(
-			screenId,
-			eventId,
-			'broadcast-graphics',
-			{
-				graphics: [
-					graphic('intruder'),
-				],
-			},
-			0,
-			fenceFor(OTHER),
-		)).rejects.toMatchObject({ statusCode: 409 });
+		await expect(
+			screenService().updateModeConfig(
+				screenId,
+				eventId,
+				'broadcast-graphics',
+				{
+					graphics: [graphic('intruder')],
+				},
+				0,
+				fenceFor(OTHER),
+			),
+		).rejects.toMatchObject({ statusCode: 409 });
 
 		expect(await authoredStack()).toEqual(['authored']);
 		expect((await screenRow())?.stateVersion).toBe(0);
 	});
 
-	it('commits the holder\'s own fenced write', async () => {
+	it("commits the holder's own fenced write", async () => {
 		// The control: a fence that refused everyone would satisfy every refusal here.
 		await lease(HOLDER);
 
@@ -153,9 +158,7 @@ describe('the commit-time lease fence', () => {
 			eventId,
 			'broadcast-graphics',
 			{
-				graphics: [
-					graphic('holder'),
-				],
+				graphics: [graphic('holder')],
 			},
 			0,
 			fenceFor(HOLDER),
@@ -183,23 +186,23 @@ describe('a generic Screen write while the Edit workspace is leased', () => {
 		});
 	}
 
-	it('refuses another Session\'s change to the Broadcast Graphics stack', async () => {
+	it("refuses another Session's change to the Broadcast Graphics stack", async () => {
 		await lease(HOLDER);
 
-		await expect(genericWrite(OTHER, {
-			modeConfigs: {
-				'broadcast-graphics': {
-					graphics: [
-						graphic('intruder'),
-					],
+		await expect(
+			genericWrite(OTHER, {
+				modeConfigs: {
+					'broadcast-graphics': {
+						graphics: [graphic('intruder')],
+					},
 				},
-			},
-		})).rejects.toMatchObject({ statusCode: 409 });
+			}),
+		).rejects.toMatchObject({ statusCode: 409 });
 
 		expect(await authoredStack()).toEqual(['authored']);
 	});
 
-	it('admits another Session\'s change to the Screen\'s own fields', async () => {
+	it("admits another Session's change to the Screen's own fields", async () => {
 		await lease(HOLDER);
 
 		await genericWrite(OTHER, {
@@ -210,7 +213,7 @@ describe('a generic Screen write while the Edit workspace is leased', () => {
 		expect(await authoredStack()).toEqual(['authored']);
 	});
 
-	it('admits another Session\'s rename that carries the protected fields back unchanged', async () => {
+	it("admits another Session's rename that carries the protected fields back unchanged", async () => {
 		await lease(HOLDER);
 		const current = await screenRow();
 
@@ -223,15 +226,13 @@ describe('a generic Screen write while the Edit workspace is leased', () => {
 		expect(await authoredStack()).toEqual(['authored']);
 	});
 
-	it('admits the holder\'s change to the Broadcast Graphics stack', async () => {
+	it("admits the holder's change to the Broadcast Graphics stack", async () => {
 		await lease(HOLDER);
 
 		await genericWrite(HOLDER, {
 			modeConfigs: {
 				'broadcast-graphics': {
-					graphics: [
-						graphic('holder'),
-					],
+					graphics: [graphic('holder')],
 				},
 			},
 		});
@@ -251,7 +252,7 @@ describe('a generic Screen write while the Edit workspace is leased', () => {
  * new holder was about to do.
  */
 describe('a takeover between admission and commit', () => {
-	it('refuses the displaced author\'s save', async () => {
+	it("refuses the displaced author's save", async () => {
 		await lease(HOLDER);
 		const plated: BroadcastGraphicConfig = {
 			...graphic('plated'),
@@ -273,23 +274,23 @@ describe('a takeover between admission and commit', () => {
 			async inspectGraphicAssetRevisions(): Promise<GraphicAssetReferenceStatus[]> {
 				await lease(OTHER, true);
 				tookOver = true;
-				return [
-					{ outcome: 'available', lifecycleState: 'active', kind: 'image' },
-				];
+				return [{ outcome: 'available', lifecycleState: 'active', kind: 'image' }];
 			},
 		};
 
-		await expect(screenWriteModule().updateModeConfig({
-			eventId,
-			screenId,
-			mode: 'broadcast-graphics',
-			config: {
-				graphics: [plated],
-			},
-			stateVersion: 0,
-			graphicsAssets: () => graphicsAssets,
-			authoringSessionId: HOLDER,
-		})).rejects.toMatchObject({ statusCode: 409 });
+		await expect(
+			screenWriteModule().updateModeConfig({
+				eventId,
+				screenId,
+				mode: 'broadcast-graphics',
+				config: {
+					graphics: [plated],
+				},
+				stateVersion: 0,
+				graphicsAssets: () => graphicsAssets,
+				authoringSessionId: HOLDER,
+			}),
+		).rejects.toMatchObject({ statusCode: 409 });
 
 		expect(tookOver).toBe(true);
 		expect(await authoredStack()).toEqual(['authored']);
@@ -300,22 +301,30 @@ describe('a takeover between admission and commit', () => {
  * The Feature Match Layout is part of the same Edit workspace (#738): one lease
  * covers it, and a Feature Match Slot change stays live operation, open to all.
  */
-describe('a Feature Match Overlay Screen\'s Feature Match Layout while leased', () => {
+describe("a Feature Match Overlay Screen's Feature Match Layout while leased", () => {
 	let storedLayout: FeatureMatchOverlayModeConfig['layout'];
-	const otherBuiltIn = structuredClone(BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(builtIn => builtIn.id === 'full-table')!.config);
+	const otherBuiltIn = structuredClone(
+		BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find((builtIn) => builtIn.id === 'full-table')!.config,
+	);
 
 	beforeEach(async () => {
-		const [slot] = await db.insert(schema.featureMatches).values({ eventId } as never).returning();
+		const [slot] = await db
+			.insert(schema.featureMatches)
+			.values({ eventId } as never)
+			.returning();
 		const config = {
 			...structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG),
 			featureMatchId: slot!.id,
 		};
 		storedLayout = config.layout;
 		const current = await screenRow();
-		await db.update(schema.screens).set({
-			currentMode: 'feature-match-overlay',
-			modeConfigs: { ...current!.modeConfigs, 'feature-match-overlay': config },
-		} as never).where(eq(schema.screens.id, screenId));
+		await db
+			.update(schema.screens)
+			.set({
+				currentMode: 'feature-match-overlay',
+				modeConfigs: { ...current!.modeConfigs, 'feature-match-overlay': config },
+			} as never)
+			.where(eq(schema.screens.id, screenId));
 	});
 
 	async function overlay() {
@@ -335,20 +344,18 @@ describe('a Feature Match Overlay Screen\'s Feature Match Layout while leased', 
 		});
 	}
 
-	it.each([
-		[
-			'its layout',
-			{ layout: otherBuiltIn.layout },
-		],
-	])('refuses another Session\'s mode configuration write of %s', async (_, config) => {
-		await lease(HOLDER);
+	it.each([['its layout', { layout: otherBuiltIn.layout }]])(
+		"refuses another Session's mode configuration write of %s",
+		async (_, config) => {
+			await lease(HOLDER);
 
-		await expect(modeConfigWrite(OTHER, config)).rejects.toMatchObject({ statusCode: 409 });
+			await expect(modeConfigWrite(OTHER, config)).rejects.toMatchObject({ statusCode: 409 });
 
-		expect((await overlay())?.layout).toEqual(storedLayout);
-	});
+			expect((await overlay())?.layout).toEqual(storedLayout);
+		},
+	);
 
-	it('admits the holder\'s layout write', async () => {
+	it("admits the holder's layout write", async () => {
 		await lease(HOLDER);
 
 		await modeConfigWrite(HOLDER, { layout: otherBuiltIn.layout });
@@ -356,7 +363,7 @@ describe('a Feature Match Overlay Screen\'s Feature Match Layout while leased', 
 		expect((await overlay())?.layout).toEqual(otherBuiltIn.layout);
 	});
 
-	it('admits another Session\'s Feature Match Slot change', async () => {
+	it("admits another Session's Feature Match Slot change", async () => {
 		await lease(HOLDER);
 
 		await modeConfigWrite(OTHER, { featureMatchId: null });
@@ -366,25 +373,10 @@ describe('a Feature Match Overlay Screen\'s Feature Match Layout while leased', 
 	});
 
 	it.each([
-		[
-			'refuses',
-			'a changed layout',
-			{ layout: otherBuiltIn.layout },
-			true,
-		],
-		[
-			'admits',
-			'the layout back unchanged',
-			{},
-			false,
-		],
-		[
-			'admits',
-			'a Feature Match Slot change',
-			{ featureMatchId: null },
-			false,
-		],
-	])('%s another Session\'s generic Screen write carrying %s', async (_, __, change, refused) => {
+		['refuses', 'a changed layout', { layout: otherBuiltIn.layout }, true],
+		['admits', 'the layout back unchanged', {}, false],
+		['admits', 'a Feature Match Slot change', { featureMatchId: null }, false],
+	])("%s another Session's generic Screen write carrying %s", async (_, __, change, refused) => {
 		await lease(HOLDER);
 		const current = await screenRow();
 		const write = screenWriteModule().updateScreen({
@@ -404,10 +396,8 @@ describe('a Feature Match Overlay Screen\'s Feature Match Layout while leased', 
 			authoringSessionId: OTHER,
 		});
 
-		if (refused)
-			await expect(write).rejects.toMatchObject({ statusCode: 409 });
-		else
-			await write;
+		if (refused) await expect(write).rejects.toMatchObject({ statusCode: 409 });
+		else await write;
 
 		expect((await screenRow())?.name).toBe(refused ? 'Program' : 'Renamed');
 		expect((await overlay())?.layout).toEqual(storedLayout);

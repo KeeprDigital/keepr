@@ -54,25 +54,26 @@ function graphic(inputs: MediaGraphicInputDeclaration[]): BroadcastGraphicsModeC
 
 describe('media Graphic Input default references', () => {
 	it('publishes an authored default, named by the Graphic Input that pins it', () => {
-		expect(broadcastGraphicsGraphicAssetReferences(graphic([
-			mediaInput('logo', { default: sponsor }),
-		])))
-			.toEqual([
-				{
-					reference: sponsor,
-					ownerSlot: 'graphics.lower-third.inputs.logo.default',
-					kind: 'image',
-				},
-			]);
+		expect(
+			broadcastGraphicsGraphicAssetReferences(graphic([mediaInput('logo', { default: sponsor })])),
+		).toEqual([
+			{
+				reference: sponsor,
+				ownerSlot: 'graphics.lower-third.inputs.logo.default',
+				kind: 'image',
+			},
+		]);
 	});
 
 	it('publishes a silent-video default as its exact revision, as an item’s content is', () => {
-		const references = broadcastGraphicsGraphicAssetReferences(graphic([
-			mediaInput('sting', {
-				mediaKind: 'silent-video',
-				default: sting,
-			}),
-		]));
+		const references = broadcastGraphicsGraphicAssetReferences(
+			graphic([
+				mediaInput('sting', {
+					mediaKind: 'silent-video',
+					default: sting,
+				}),
+			]),
+		);
 
 		expect(references).toEqual([
 			{
@@ -84,16 +85,17 @@ describe('media Graphic Input default references', () => {
 	});
 
 	it('publishes nothing for a media Graphic Input with no default', () => {
-		expect(broadcastGraphicsGraphicAssetReferences(graphic([
-			mediaInput('logo'),
-		]))).toEqual([]);
+		expect(broadcastGraphicsGraphicAssetReferences(graphic([mediaInput('logo')]))).toEqual([]);
 	});
 
 	it('resolves a Broadcast Graphics Screen Output through both of its owner-slot namespaces', () => {
 		// Authored configuration and the Live Session publish into separate namespaces
 		// so neither write can clear the other's rows — but a Screen Output has to
 		// resolve both, because both are on air.
-		expect(screenOutputResolvableSlotPrefixes('broadcast-graphics')).toEqual(['graphics.', 'liveSession.']);
+		expect(screenOutputResolvableSlotPrefixes('broadcast-graphics')).toEqual([
+			'graphics.',
+			'liveSession.',
+		]);
 		expect(screenOutputResolvableSlotPrefixes('feature-match-overlay')).toEqual(['layout.']);
 	});
 });

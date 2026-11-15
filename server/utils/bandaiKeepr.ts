@@ -1,8 +1,15 @@
 import type { z } from 'zod';
 import type { OpCardSearchQuery } from '~~/server/schemas/api/opCard';
-import type { BandaiKeeprCard, BandaiKeeprCardDetail } from '~~/server/schemas/external/bandaiKeepr';
+import type {
+	BandaiKeeprCard,
+	BandaiKeeprCardDetail,
+} from '~~/server/schemas/external/bandaiKeepr';
 import type { OpCardDetail, OpCardSummary } from '~~/shared/types/card/op';
-import { bandaiKeeprCardDetailSchema, bandaiKeeprCardPageSchema, bandaiKeeprCollectionSchema } from '~~/server/schemas/external/bandaiKeepr';
+import {
+	bandaiKeeprCardDetailSchema,
+	bandaiKeeprCardPageSchema,
+	bandaiKeeprCollectionSchema,
+} from '~~/server/schemas/external/bandaiKeepr';
 import { opPrintingImageUrl } from '~~/shared/utils/card/op';
 import { readConfiguredSecret } from './configuredSecret';
 
@@ -24,9 +31,7 @@ export class BandaiKeeprRequestError extends Error {
 	readonly status: number | null;
 
 	constructor(message: string, options: { status?: number | null; cause?: unknown } = {}) {
-		super(message, options.cause === undefined
-			? undefined
-			: { cause: options.cause });
+		super(message, options.cause === undefined ? undefined : { cause: options.cause });
 		this.name = 'BandaiKeeprRequestError';
 		this.status = options.status ?? null;
 	}
@@ -41,14 +46,18 @@ export interface BandaiKeeprConfig {
 export function bandaiKeeprConfig(): BandaiKeeprConfig | null {
 	const config = useRuntimeConfig();
 	const apiKey = readConfiguredSecret(config.bandaiKeeprApiKey, 'NUXT_BANDAI_KEEPR_API_KEY');
-	const apiUrl = readConfiguredSecret(config.bandaiKeeprApiUrl, 'NUXT_BANDAI_KEEPR_API_URL').replace(/\/+$/, '');
-	return apiKey && apiUrl
-		? { apiKey, apiUrl }
-		: null;
+	const apiUrl = readConfiguredSecret(
+		config.bandaiKeeprApiUrl,
+		'NUXT_BANDAI_KEEPR_API_URL',
+	).replace(/\/+$/, '');
+	return apiKey && apiUrl ? { apiKey, apiUrl } : null;
 }
 
 /** Cards matching a search. A card-number search is the number lookup, narrowed by colour and category. */
-export async function searchOpCards(config: BandaiKeeprConfig, query: OpCardSearchQuery): Promise<{ items: OpCardSummary[]; total: number }> {
+export async function searchOpCards(
+	config: BandaiKeeprConfig,
+	query: OpCardSearchQuery,
+): Promise<{ items: OpCardSummary[]; total: number }> {
 	if (query.number) {
 		const card = await lookupOpCard(config, query.number);
 		const items: OpCardSummary[] = [];
@@ -60,14 +69,10 @@ export async function searchOpCards(config: BandaiKeeprConfig, query: OpCardSear
 	}
 
 	const url = new URL(`${config.apiUrl}/cards`);
-	if (query.q)
-		url.searchParams.set('q', query.q);
-	if (query.name)
-		url.searchParams.set('name', query.name);
-	for (const color of query.color ?? [])
-		url.searchParams.append('color', color);
-	if (query.category)
-		url.searchParams.set('category', query.category);
+	if (query.q) url.searchParams.set('q', query.q);
+	if (query.name) url.searchParams.set('name', query.name);
+	for (const color of query.color ?? []) url.searchParams.append('color', color);
+	if (query.category) url.searchParams.set('category', query.category);
 	url.searchParams.set('limit', String(query.limit));
 	url.searchParams.set('offset', String(query.offset));
 
@@ -78,8 +83,7 @@ export async function searchOpCards(config: BandaiKeeprConfig, query: OpCardSear
 		await response.body?.cancel().catch(() => undefined);
 		return { items: [], total: 0 };
 	}
-	if (!response.ok)
-		throw await upstreamFailure(response, 'search');
+	if (!response.ok) throw await upstreamFailure(response, 'search');
 	const page = await parse(response, bandaiKeeprCardPageSchema, 'search');
 	return {
 		items: page.items.map(toSummary),
@@ -88,26 +92,32 @@ export async function searchOpCards(config: BandaiKeeprConfig, query: OpCardSear
 }
 
 /** The Card a number names, with every Printing; `null` when bandai-keepr does not know it. */
-export async function lookupOpCard(config: BandaiKeeprConfig, number: string): Promise<OpCardDetail | null> {
+export async function lookupOpCard(
+	config: BandaiKeeprConfig,
+	number: string,
+): Promise<OpCardDetail | null> {
 	const url = new URL(`${config.apiUrl}/cards/${encodeURIComponent(number)}`);
 	const cache = await openCardCache();
 	// The key is the URL alone: the credential travels in a header, never in the key.
 	const cacheKey = url.href;
 	const hit = await cache?.match(cacheKey).catch(() => undefined);
-	if (hit)
-		return toDetail(await parse(hit, bandaiKeeprCardDetailSchema, 'cached lookup'));
+	if (hit) return toDetail(await parse(hit, bandaiKeeprCardDetailSchema, 'cached lookup'));
 
 	const response = await request(config, url);
 	if (response.status === 404) {
 		await response.body?.cancel().catch(() => undefined);
 		return null;
 	}
-	if (!response.ok)
-		throw await upstreamFailure(response, 'lookup');
+	if (!response.ok) throw await upstreamFailure(response, 'lookup');
 	const card = await parse(response, bandaiKeeprCardDetailSchema, 'lookup');
-	await cache?.put(cacheKey, Response.json(card, {
-		headers: { 'Cache-Control': `max-age=${CARD_CACHE_SECONDS}` },
-	})).catch(() => undefined);
+	await cache
+		?.put(
+			cacheKey,
+			Response.json(card, {
+				headers: { 'Cache-Control': `max-age=${CARD_CACHE_SECONDS}` },
+			}),
+		)
+		.catch(() => undefined);
 	return toDetail(card);
 }
 
@@ -122,7 +132,10 @@ export interface OpCardBulkLookupAnswer {
  * `POST /cards/collection`, asked by number only and at most 1,000 a request.
  * A number bandai-keepr does not know is `notFound`; any other failure throws.
  */
-export async function lookUpOpCards(config: BandaiKeeprConfig, numbers: readonly string[]): Promise<OpCardBulkLookupAnswer> {
+export async function lookUpOpCards(
+	config: BandaiKeeprConfig,
+	numbers: readonly string[],
+): Promise<OpCardBulkLookupAnswer> {
 	const answer: OpCardBulkLookupAnswer = { cards: [], notFound: [] };
 	for (let start = 0; start < numbers.length; start += COLLECTION_CHUNK_SIZE) {
 		const chunk = numbers.slice(start, start + COLLECTION_CHUNK_SIZE);
@@ -130,21 +143,20 @@ export async function lookUpOpCards(config: BandaiKeeprConfig, numbers: readonly
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				identifiers: chunk.map(number => ({ number })),
+				identifiers: chunk.map((number) => ({ number })),
 			}),
 		});
-		if (!response.ok)
-			throw await upstreamFailure(response, 'bulk lookup');
+		if (!response.ok) throw await upstreamFailure(response, 'bulk lookup');
 		const { results } = await parse(response, bandaiKeeprCollectionSchema, 'bulk lookup');
-		const byIndex = new Map(results.map(result => [result.index, result]));
+		const byIndex = new Map(results.map((result) => [result.index, result]));
 		chunk.forEach((number, index) => {
 			const result = byIndex.get(index);
-			if (result?.card)
-				answer.cards.push(toSummary(result.card));
-			else if (result?.error?.code === 'not_found')
-				answer.notFound.push(number);
+			if (result?.card) answer.cards.push(toSummary(result.card));
+			else if (result?.error?.code === 'not_found') answer.notFound.push(number);
 			else
-				throw new BandaiKeeprRequestError(`bandai-keepr bulk lookup: unexpected answer for ${number}`);
+				throw new BandaiKeeprRequestError(
+					`bandai-keepr bulk lookup: unexpected answer for ${number}`,
+				);
 		});
 	}
 	return answer;
@@ -152,17 +164,19 @@ export async function lookUpOpCards(config: BandaiKeeprConfig, numbers: readonly
 
 /** The Workers Cache this server keeps number lookups in; absent outside workerd. */
 async function openCardCache(): Promise<Cache | null> {
-	if (typeof caches === 'undefined')
-		return null;
+	if (typeof caches === 'undefined') return null;
 	try {
 		return await caches.open(CARD_CACHE_NAME);
-	}
-	catch {
+	} catch {
 		return null;
 	}
 }
 
-async function request(config: BandaiKeeprConfig, url: URL, init: { method?: string; headers?: Record<string, string>; body?: string } = {}): Promise<Response> {
+async function request(
+	config: BandaiKeeprConfig,
+	url: URL,
+	init: { method?: string; headers?: Record<string, string>; body?: string } = {},
+): Promise<Response> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 	try {
@@ -176,41 +190,47 @@ async function request(config: BandaiKeeprConfig, url: URL, init: { method?: str
 			},
 			signal: controller.signal,
 		});
-	}
-	catch (error) {
-		throw new BandaiKeeprRequestError(controller.signal.aborted
-			? 'bandai-keepr request timed out'
-			: 'bandai-keepr request failed', { cause: error });
-	}
-	finally {
+	} catch (error) {
+		throw new BandaiKeeprRequestError(
+			controller.signal.aborted ? 'bandai-keepr request timed out' : 'bandai-keepr request failed',
+			{ cause: error },
+		);
+	} finally {
 		clearTimeout(timeout);
 	}
 }
 
-async function upstreamFailure(response: Response, operation: string): Promise<BandaiKeeprRequestError> {
+async function upstreamFailure(
+	response: Response,
+	operation: string,
+): Promise<BandaiKeeprRequestError> {
 	await response.body?.cancel().catch(() => undefined);
-	return new BandaiKeeprRequestError(`bandai-keepr ${operation}: HTTP ${response.status}`, { status: response.status });
+	return new BandaiKeeprRequestError(`bandai-keepr ${operation}: HTTP ${response.status}`, {
+		status: response.status,
+	});
 }
 
 async function parse<T>(response: Response, schema: z.ZodType<T>, operation: string): Promise<T> {
 	let body: unknown;
 	try {
 		body = await response.json();
-	}
-	catch (error) {
+	} catch (error) {
 		throw new BandaiKeeprRequestError(`bandai-keepr ${operation}: invalid JSON`, { cause: error });
 	}
 	const parsed = schema.safeParse(body);
 	if (!parsed.success)
-		throw new BandaiKeeprRequestError(`bandai-keepr ${operation}: unexpected answer`, { cause: parsed.error });
+		throw new BandaiKeeprRequestError(`bandai-keepr ${operation}: unexpected answer`, {
+			cause: parsed.error,
+		});
 	return parsed.data;
 }
 
 /** bandai-keepr's colour filter: a Card of any colour asked for. */
 function matchesFilters(card: OpCardSummary, query: OpCardSearchQuery): boolean {
-	if (query.category && card.category !== query.category)
-		return false;
-	return !query.color?.length || card.colors.some(color => (query.color as string[]).includes(color));
+	if (query.category && card.category !== query.category) return false;
+	return (
+		!query.color?.length || card.colors.some((color) => (query.color as string[]).includes(color))
+	);
 }
 
 function toSummary(card: BandaiKeeprCard): OpCardSummary {
@@ -235,7 +255,7 @@ function toSummary(card: BandaiKeeprCard): OpCardSummary {
 function toDetail(card: BandaiKeeprCardDetail): OpCardDetail {
 	return {
 		...toSummary(card),
-		printings: card.printings.map(printing => ({
+		printings: card.printings.map((printing) => ({
 			id: printing.id,
 			setId: printing.setId,
 			kind: printing.kind,

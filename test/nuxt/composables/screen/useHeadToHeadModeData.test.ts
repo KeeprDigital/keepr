@@ -1,5 +1,9 @@
 import type { EffectScope } from 'vue';
-import type { ScreenOutputHeadToHeadEarlierMatch, ScreenOutputHeadToHeadPlayer, ScreenOutputHeadToHeadResponse } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputHeadToHeadEarlierMatch,
+	ScreenOutputHeadToHeadPlayer,
+	ScreenOutputHeadToHeadResponse,
+} from '~~/shared/types/screenOutputReads';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -50,7 +54,9 @@ function side(id: number, name: string): ScreenOutputHeadToHeadPlayer {
 	};
 }
 
-function earlierMatch(overrides: Partial<ScreenOutputHeadToHeadEarlierMatch> = {}): ScreenOutputHeadToHeadEarlierMatch {
+function earlierMatch(
+	overrides: Partial<ScreenOutputHeadToHeadEarlierMatch> = {},
+): ScreenOutputHeadToHeadEarlierMatch {
 	return {
 		matchId: 20,
 		roundId: 31,
@@ -63,13 +69,13 @@ function earlierMatch(overrides: Partial<ScreenOutputHeadToHeadEarlierMatch> = {
 	};
 }
 
-function answer(overrides: Partial<ScreenOutputHeadToHeadResponse> = {}): ScreenOutputHeadToHeadResponse {
+function answer(
+	overrides: Partial<ScreenOutputHeadToHeadResponse> = {},
+): ScreenOutputHeadToHeadResponse {
 	return {
 		player1: side(ALICE, 'Alice'),
 		player2: side(BOB, 'Bob'),
-		earlierMatches: [
-			earlierMatch(),
-		],
+		earlierMatches: [earlierMatch()],
 		...overrides,
 	};
 }
@@ -94,7 +100,7 @@ describe('useHeadToHeadModeData', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
 	it('reads the two Players and their earlierMatches through the Screen', async () => {
@@ -104,7 +110,10 @@ describe('useHeadToHeadModeData', () => {
 		const { player1, player2, earlierMatches, firstMeeting, error } = makeHeadToHeadModeData();
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/head-to-head', expect.anything());
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/head-to-head',
+			expect.anything(),
+		);
 		expect(player1.value?.name).toBe('Alice');
 		expect(player2.value?.name).toBe('Bob');
 		expect(earlierMatches.value).toHaveLength(1);
@@ -176,13 +185,15 @@ describe('useHeadToHeadModeData', () => {
 	});
 
 	describe('formatRecord', () => {
-		it('follows the Event\'s record display settings', () => {
+		it("follows the Event's record display settings", () => {
 			displayEvent.value = { displayRecordSeparator: '/', displayHideZeroDraws: false };
 			expect(makeHeadToHeadModeData().formatRecord({ wins: 2, losses: 0, draws: 0 })).toBe('2/0/0');
 		});
 
 		it('writes nothing for a Player with no record yet', () => {
-			expect(makeHeadToHeadModeData().formatRecord({ wins: null, losses: null, draws: null })).toBeNull();
+			expect(
+				makeHeadToHeadModeData().formatRecord({ wins: null, losses: null, draws: null }),
+			).toBeNull();
 		});
 	});
 
@@ -209,10 +220,12 @@ describe('useHeadToHeadModeData', () => {
 
 		it('follows its Slot to the Players of its next Feature Match Assignment', async () => {
 			const { player1 } = await showingSlot();
-			mockFetch.mockResolvedValue(answer({
-				player1: side(9, 'Carol'),
-				earlierMatches: [],
-			}));
+			mockFetch.mockResolvedValue(
+				answer({
+					player1: side(9, 'Carol'),
+					earlierMatches: [],
+				}),
+			);
 
 			deliver('featureMatch:updated', {
 				featureMatch: {

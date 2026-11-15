@@ -28,8 +28,7 @@ async function anonymous(path: string, init: RequestInit = {}) {
 		message: (() => {
 			try {
 				return (JSON.parse(text) as { message?: string }).message;
-			}
-			catch {
+			} catch {
 				return undefined;
 			}
 		})(),
@@ -65,7 +64,11 @@ describe('the API boundary', () => {
 		// Its own Event, because no fixed id names one that exists (#630).
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'API Boundary Existence Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'API Boundary Existence Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		try {
 			const missing = await anonymous('/api/events/999999999/players');
@@ -73,8 +76,7 @@ describe('the API boundary', () => {
 
 			expect(missing).toEqual(present);
 			expect(missing.status).toBe(401);
-		}
-		finally {
+		} finally {
 			await $fetch(`/api/events/${event.id}`, { method: 'DELETE' });
 		}
 	});
@@ -116,16 +118,8 @@ describe('the API boundary', () => {
 	 */
 	it.each([
 		// Read when the case runs: the server's address exists only then.
-		[
-			'its own origin is named',
-			400,
-			() => ({ origin: new URL(url('/')).origin }),
-		],
-		[
-			'another origin is named',
-			403,
-			() => ({ origin: 'https://not-this-installation.example' }),
-		],
+		['its own origin is named', 400, () => ({ origin: new URL(url('/')).origin })],
+		['another origin is named', 403, () => ({ origin: 'https://not-this-installation.example' })],
 	])('answers a signed-in POST when %s: %i', async (_case, status, headers) => {
 		// An empty body, so an admitted request stops at the route's own
 		// validation and creates nothing.
@@ -137,7 +131,7 @@ describe('the API boundary', () => {
 			},
 			body: '{}',
 		});
-		const body = await response.json() as { message?: string };
+		const body = (await response.json()) as { message?: string };
 
 		expect(response.status).toBe(status);
 		expect(body.message === 'Cross-site request refused').toBe(status === 403);
@@ -145,7 +139,7 @@ describe('the API boundary', () => {
 
 	it('still answers a cross-site read, which changes nothing and cannot be read back', async () => {
 		const response = await fetch('/api/events', {
-			headers: { 'sec-fetch-site': 'cross-site', 'origin': 'https://not-this-installation.example' },
+			headers: { 'sec-fetch-site': 'cross-site', origin: 'https://not-this-installation.example' },
 		});
 
 		expect(response.status).toBe(200);
@@ -156,7 +150,9 @@ describe('the API boundary', () => {
 		// runs before the router, so an unauthenticated caller cannot use "Cannot
 		// find any route matching" to map the API. `realtimeDiagnosis.ts` reads
 		// that message for its own purposes and does so from authenticated runs.
-		const { message } = await anonymous('/api/events/1/screens/1/not-a-real-action', { method: 'POST' });
+		const { message } = await anonymous('/api/events/1/screens/1/not-a-real-action', {
+			method: 'POST',
+		});
 
 		expect(message).toBe(REFUSAL);
 		expect(message).not.toContain('Cannot find any route matching');
@@ -185,7 +181,7 @@ describe('the surfaces the boundary exempts', () => {
 			method: 'POST',
 			headers: {
 				'content-type': 'application/json',
-				'origin': url('/'),
+				origin: url('/'),
 			},
 			body: JSON.stringify({ email: 'nobody@keepr.digital', password: 'not-a-password' }),
 		});
@@ -207,7 +203,9 @@ describe('the surfaces the boundary exempts', () => {
 		// One 404 for every way of not being allowed to ask, so it cannot be used to
 		// find out which Screens exist. `screens.test.ts` covers the session arm and
 		// the unit suite covers the bearer arm.
-		const { status, message } = await anonymous('/api/screen-output/events/1/screens/slug/anything');
+		const { status, message } = await anonymous(
+			'/api/screen-output/events/1/screens/slug/anything',
+		);
 
 		expect(status).toBe(404);
 		expect(message).toBe('Screen not found');
@@ -246,7 +244,7 @@ describe('the surfaces the boundary exempts', () => {
 		expect(status).toBe(200);
 	});
 
-	it('still refuses an admin route that presents no token, on the route\'s own terms', async () => {
+	it("still refuses an admin route that presents no token, on the route's own terms", async () => {
 		// The exemption is from the *session* requirement, not from authorisation:
 		// each admin route calls `requireGraphicsAdministrator` itself, and its 403
 		// is what a caller with neither credential meets.
@@ -263,7 +261,10 @@ describe('the surfaces the boundary exempts', () => {
 		const { status, message } = await anonymous('/api/bootstrap/ensure-admin', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json', 'x-admin-bootstrap-token': 'not-the-token' },
-			body: JSON.stringify({ email: 'nobody@keepr.digital', password: 'not-a-password-that-is-used' }),
+			body: JSON.stringify({
+				email: 'nobody@keepr.digital',
+				password: 'not-a-password-that-is-used',
+			}),
 		});
 
 		expect(status).toBe(403);

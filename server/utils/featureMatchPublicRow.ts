@@ -27,20 +27,17 @@ export interface FeatureMatchPublicRowInput extends FeatureMatchTokenValuesInput
  * for no. Eight hex digits read the same as ARGB or RGBA.
  */
 function flagColour(flag: boolean): string {
-	return flag
-		? '#FFFFFFFF'
-		: '#00000000';
+	return flag ? '#FFFFFFFF' : '#00000000';
 }
 
 function lifeOf(lifeTotal: number | null | undefined): string {
-	return lifeTotal == null
-		? ''
-		: String(lifeTotal);
+	return lifeTotal == null ? '' : String(lifeTotal);
 }
 
 /** The pair's life and game wins, and each one's first and second game win as a colour. */
 function pairLiveValues(state: FeatureMatchState | null): Record<string, string> {
-	const winColour = (gameWins: number | undefined, game: number) => flagColour((gameWins ?? 0) >= game);
+	const winColour = (gameWins: number | undefined, game: number) =>
+		flagColour((gameWins ?? 0) >= game);
 
 	return {
 		player1Life: lifeOf(state?.player1.lifeTotal),
@@ -60,26 +57,33 @@ function pairLiveValues(state: FeatureMatchState | null): Record<string, string>
  * game, so it reads as no life and not Eliminated whatever state the Session
  * holds for it (ADR-0087).
  */
-function commanderLiveValues(featureMatch: FeatureMatchResponse, state: FeatureMatchState | null): Record<string, string> {
+function commanderLiveValues(
+	featureMatch: FeatureMatchResponse,
+	state: FeatureMatchState | null,
+): Record<string, string> {
 	const values: Record<string, string> = {};
 	for (const seat of eventSeats('mtg-commander')) {
-		const seatState = featureMatchSidePlayer(featureMatch, seat).data == null
-			? undefined
-			: state?.[seat];
+		const seatState =
+			featureMatchSidePlayer(featureMatch, seat).data == null ? undefined : state?.[seat];
 		values[`${seat}Life`] = lifeOf(seatState?.lifeTotal);
 		values[`${seat}Eliminated`] = flagColour(seatState?.eliminated ?? false);
 	}
 	return values;
 }
 
-export function featureMatchPublicRow(input: FeatureMatchPublicRowInput, now: number): Record<string, string> {
+export function featureMatchPublicRow(
+	input: FeatureMatchPublicRowInput,
+	now: number,
+): Record<string, string> {
 	const state = input.featureMatch.activeSession?.currentState ?? null;
 
 	return {
 		...featureMatchTokenValues(input),
-		clock: projectFeatureMatchClock(state
-			? readStoredClock(state.clock)
-			: null, now, toFeatureMatchDefaults(input.event).untimedLabel).display,
+		clock: projectFeatureMatchClock(
+			state ? readStoredClock(state.clock) : null,
+			now,
+			toFeatureMatchDefaults(input.event).untimedLabel,
+		).display,
 		...(eventKind(input.event) === 'mtg-commander'
 			? commanderLiveValues(input.featureMatch, state)
 			: pairLiveValues(state)),

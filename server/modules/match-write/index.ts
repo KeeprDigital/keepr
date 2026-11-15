@@ -26,7 +26,11 @@ export function matchWriteModule() {
 	const publication = eventDataPublicationModule();
 	const matches = matchService();
 
-	async function create({ eventId, input, originConnectionId }: CreateMatchParams): Promise<MatchResponse> {
+	async function create({
+		eventId,
+		input,
+		originConnectionId,
+	}: CreateMatchParams): Promise<MatchResponse> {
 		await requireRoundInEvent(eventId, input.roundId);
 		await requirePlayersInEvent(eventId, [input.player1Id, input.player2Id]);
 
@@ -39,7 +43,12 @@ export function matchWriteModule() {
 		});
 	}
 
-	async function update({ eventId, matchId, input, originConnectionId }: UpdateMatchParams): Promise<MatchResponse> {
+	async function update({
+		eventId,
+		matchId,
+		input,
+		originConnectionId,
+	}: UpdateMatchParams): Promise<MatchResponse> {
 		await requireRoundInEvent(eventId, input.roundId);
 		await requirePlayersInEvent(eventId, [input.player1Id, input.player2Id]);
 
@@ -55,7 +64,11 @@ export function matchWriteModule() {
 		});
 	}
 
-	async function remove({ eventId, matchId, originConnectionId }: RemoveMatchParams): Promise<void> {
+	async function remove({
+		eventId,
+		matchId,
+		originConnectionId,
+	}: RemoveMatchParams): Promise<void> {
 		// Read before the delete, whose foreign keys unlink each Slot showing the
 		// Match and drop its Assignments.
 		const featured = await matches.findFeatured(eventId, [matchId]);
@@ -73,7 +86,7 @@ export function matchWriteModule() {
 		if (featured.slots.length > 0) {
 			await publication.featureMatchSlotsUpdated({
 				eventId,
-				slotIds: featured.slots.map(slot => slot.id),
+				slotIds: featured.slots.map((slot) => slot.id),
 			});
 		}
 		for (const assignment of featured.assignments)

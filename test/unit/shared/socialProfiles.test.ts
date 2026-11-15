@@ -12,21 +12,27 @@ import {
 
 describe('supported Social Network catalog', () => {
 	it('owns the stable ordered catalog, labels, icons and canonical URL rules', () => {
-		expect(SUPPORTED_SOCIAL_NETWORKS.map(({ key, label, icon }) => ({ key, label, icon }))).toEqual([
-			{ key: 'twitch', label: 'Twitch', icon: 'i-simple-icons-twitch' },
-			{ key: 'youtube', label: 'YouTube', icon: 'i-simple-icons-youtube' },
-			{ key: 'x', label: 'X', icon: 'i-simple-icons-x' },
-			{ key: 'instagram', label: 'Instagram', icon: 'i-simple-icons-instagram' },
-			{ key: 'tiktok', label: 'TikTok', icon: 'i-simple-icons-tiktok' },
-			{ key: 'bluesky', label: 'Bluesky', icon: 'i-simple-icons-bluesky' },
-		]);
+		expect(SUPPORTED_SOCIAL_NETWORKS.map(({ key, label, icon }) => ({ key, label, icon }))).toEqual(
+			[
+				{ key: 'twitch', label: 'Twitch', icon: 'i-simple-icons-twitch' },
+				{ key: 'youtube', label: 'YouTube', icon: 'i-simple-icons-youtube' },
+				{ key: 'x', label: 'X', icon: 'i-simple-icons-x' },
+				{ key: 'instagram', label: 'Instagram', icon: 'i-simple-icons-instagram' },
+				{ key: 'tiktok', label: 'TikTok', icon: 'i-simple-icons-tiktok' },
+				{ key: 'bluesky', label: 'Bluesky', icon: 'i-simple-icons-bluesky' },
+			],
+		);
 
 		expect(canonicalSocialProfileUrl('twitch', 'Caster')).toBe('https://www.twitch.tv/Caster');
 		expect(canonicalSocialProfileUrl('youtube', 'Caster')).toBe('https://www.youtube.com/@Caster');
 		expect(canonicalSocialProfileUrl('x', 'Caster')).toBe('https://x.com/Caster');
-		expect(canonicalSocialProfileUrl('instagram', 'Caster')).toBe('https://www.instagram.com/Caster');
+		expect(canonicalSocialProfileUrl('instagram', 'Caster')).toBe(
+			'https://www.instagram.com/Caster',
+		);
 		expect(canonicalSocialProfileUrl('tiktok', 'Caster')).toBe('https://www.tiktok.com/@Caster');
-		expect(canonicalSocialProfileUrl('bluesky', 'caster.bsky.social')).toBe('https://bsky.app/profile/caster.bsky.social');
+		expect(canonicalSocialProfileUrl('bluesky', 'caster.bsky.social')).toBe(
+			'https://bsky.app/profile/caster.bsky.social',
+		);
 	});
 });
 
@@ -71,52 +77,58 @@ describe('normalizeSocialProfileInput', () => {
 	});
 
 	it('bounds a handle without encoding any remote network username limit', () => {
-		expect(normalizeSocialProfileInput('twitch', 'a'.repeat(MAX_SOCIAL_PROFILE_HANDLE_LENGTH)))
-			.toHaveLength(MAX_SOCIAL_PROFILE_HANDLE_LENGTH);
-		expect(() => normalizeSocialProfileInput('twitch', 'a'.repeat(MAX_SOCIAL_PROFILE_HANDLE_LENGTH + 1)))
-			.toThrow('valid');
+		expect(
+			normalizeSocialProfileInput('twitch', 'a'.repeat(MAX_SOCIAL_PROFILE_HANDLE_LENGTH)),
+		).toHaveLength(MAX_SOCIAL_PROFILE_HANDLE_LENGTH);
+		expect(() =>
+			normalizeSocialProfileInput('twitch', 'a'.repeat(MAX_SOCIAL_PROFILE_HANDLE_LENGTH + 1)),
+		).toThrow('valid');
 	});
 });
 
 describe('social Profile Projection acceptance', () => {
 	function acceptance(handle: string) {
-		return resolveSocialProfileProjectionAcceptances({
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' },
-			],
-			socialProfileProjections: [
-				{
-					key: 'profile',
-					label: 'Social Profile',
-					sourceKey: 'talent',
-					presentationGroupId: 'group',
-					dwellMs: 8_000,
-					transition: 'crossfade',
-					transitionDurationMs: 250,
-				},
-			],
-		}, { talent: 7 }, {
-			event: null,
-			players: {},
-			talents: {
-				7: {
-					name: 'Legacy Talent',
-					socialProfiles: { twitch: handle },
-				},
+		return resolveSocialProfileProjectionAcceptances(
+			{
+				sources: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
+				socialProfileProjections: [
+					{
+						key: 'profile',
+						label: 'Social Profile',
+						sourceKey: 'talent',
+						presentationGroupId: 'group',
+						dwellMs: 8_000,
+						transition: 'crossfade',
+						transitionDurationMs: 250,
+					},
+				],
 			},
-			phases: {},
-			rounds: {},
-			matches: {},
-			featureMatchSlots: {},
-			archetypes: {},
-		});
+			{ talent: 7 },
+			{
+				event: null,
+				players: {},
+				talents: {
+					7: {
+						name: 'Legacy Talent',
+						socialProfiles: { twitch: handle },
+					},
+				},
+				phases: {},
+				rounds: {},
+				matches: {},
+				featureMatchSlots: {},
+				archetypes: {},
+			},
+		);
 	}
 
 	it('accepts the document ceiling and preserves its Talent identity', () => {
 		const resolved = acceptance('a'.repeat(MAX_SOCIAL_PROFILE_HANDLE_LENGTH));
 
 		expect(resolved.profile?.talent).toEqual({ id: 7, name: 'Legacy Talent' });
-		expect(resolved.profile?.acceptedProfiles[0]?.handle).toHaveLength(MAX_SOCIAL_PROFILE_HANDLE_LENGTH);
+		expect(resolved.profile?.acceptedProfiles[0]?.handle).toHaveLength(
+			MAX_SOCIAL_PROFILE_HANDLE_LENGTH,
+		);
 	});
 
 	it('omits a legacy over-bound profile instead of persisting state recovery would reject', () => {

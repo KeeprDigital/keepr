@@ -13,22 +13,26 @@ import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
 import { expectOperationResult, expectResponseStatus } from './responseStatus';
 
-const transparentPixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const transparentPixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 /**
  * Integration suites share one database and identical bytes deduplicate by
  * design, so this suite pads its fixtures with chunk counts no other suite uses.
  */
 function pngWithTextChunks(count: number) {
-	return Uint8Array.from(Buffer.concat([
-		transparentPixelPng.slice(0, -12),
-		...Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[],
-		transparentPixelPng.slice(-12),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			transparentPixelPng.slice(0, -12),
+			...(Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[]),
+			transparentPixelPng.slice(-12),
+		]),
+	);
 }
 
 const queuesRetiredPng = pngWithTextChunks(60);
@@ -72,14 +76,11 @@ describe('the Graphics Asset Library operational queues API', () => {
 				}),
 			},
 		);
-		return await fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
-			{
-				method: 'PUT',
-				headers: { ...authorHeaders, 'content-type': 'image/png' },
-				body: bytes,
-			},
-		).then(expectOperationResult);
+		return await fetch(`/api/graphics-assets/ingestion-operations/${initiated.id}/content`, {
+			method: 'PUT',
+			headers: { ...authorHeaders, 'content-type': 'image/png' },
+			body: bytes,
+		}).then(expectOperationResult);
 	}
 
 	/** The queue's own action: restoration, reported in the outcome vocabulary. */
@@ -102,7 +103,7 @@ describe('the Graphics Asset Library operational queues API', () => {
 			body: JSON.stringify({ action }),
 		}).then(async (response) => {
 			await expectResponseStatus(response, 200);
-			return await response.json() as { outcome: string };
+			return (await response.json()) as { outcome: string };
 		});
 	}
 
@@ -119,13 +120,10 @@ describe('the Graphics Asset Library operational queues API', () => {
 			body: JSON.stringify({ action: 'restore' }),
 		});
 		expect(lifecycle.status).toBe(403);
-		const retry = await fetch(
-			'/api/admin/graphics-assets/ingestion-operations/x/retry',
-			{
-				method: 'POST',
-				headers: { 'content-type': 'application/json' },
-			},
-		);
+		const retry = await fetch('/api/admin/graphics-assets/ingestion-operations/x/retry', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+		});
 		expect(retry.status).toBe(403);
 	});
 
@@ -147,8 +145,7 @@ describe('the Graphics Asset Library operational queues API', () => {
 			{ headers: administratorHeaders },
 		);
 
-		expect(overview.queues.map(queue => queue.id))
-			.toEqual([...GRAPHICS_OPERATIONAL_QUEUES]);
+		expect(overview.queues.map((queue) => queue.id)).toEqual([...GRAPHICS_OPERATIONAL_QUEUES]);
 	});
 
 	it('inspects a Retired asset and reports restoration exactly once', async () => {

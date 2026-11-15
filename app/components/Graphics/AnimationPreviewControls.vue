@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { GraphicAnimationPhase } from '~~/shared/types/graphics';
-import type { GraphicsPreviewAnimationPlan, GraphicsPreviewAnimationScope } from '~/modules/graphics/previewMessages';
+import type {
+	GraphicsPreviewAnimationPlan,
+	GraphicsPreviewAnimationScope,
+} from '~/modules/graphics/previewMessages';
 import { GRAPHIC_ANIMATION_PHASE_LABELS } from '~~/shared/modules/graphics';
 import { GRAPHIC_ANIMATION_PHASE_VALUES } from '~~/shared/types/graphics';
 
@@ -30,10 +33,12 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'update:plan': [plan: GraphicsPreviewAnimationPlan | null] }>();
 
-const animationPhaseOptions = computed(() => (props.phases ?? GRAPHIC_ANIMATION_PHASE_VALUES).map(phase => ({
-	label: GRAPHIC_ANIMATION_PHASE_LABELS[phase],
-	value: phase,
-})));
+const animationPhaseOptions = computed(() =>
+	(props.phases ?? GRAPHIC_ANIMATION_PHASE_VALUES).map((phase) => ({
+		label: GRAPHIC_ANIMATION_PHASE_LABELS[phase],
+		value: phase,
+	})),
+);
 
 const ANIMATION_SPEED_OPTIONS = [
 	{ label: '0.25x', value: 0.25 },
@@ -51,14 +56,11 @@ const animationRun = ref(0);
 
 const plan = computed<GraphicsPreviewAnimationPlan | null>(() => {
 	const target = props.target;
-	if (animationRun.value === 0 || !target)
-		return null;
+	if (animationRun.value === 0 || !target) return null;
 
 	return {
 		graphicId: target.graphicId,
-		...(target.itemId === undefined
-			? {}
-			: { itemId: target.itemId }),
+		...(target.itemId === undefined ? {} : { itemId: target.itemId }),
 		scope: animationScope.value,
 		phase: animationPhase.value,
 		run: animationRun.value,
@@ -67,7 +69,7 @@ const plan = computed<GraphicsPreviewAnimationPlan | null>(() => {
 	};
 });
 
-watch(plan, next => emit('update:plan', next), { deep: true });
+watch(plan, (next) => emit('update:plan', next), { deep: true });
 
 function playAnimation() {
 	animationRun.value += 1;
@@ -81,8 +83,7 @@ function stopAnimation() {
 watch(
 	() => props.target && `${props.target.graphicId}:${props.target.itemId ?? ''}`,
 	(key, previous) => {
-		if (key !== previous)
-			stopAnimation();
+		if (key !== previous) stopAnimation();
 	},
 );
 </script>
@@ -102,7 +103,11 @@ watch(
 			class="w-32"
 			aria-label="Preview lifecycle phase"
 			data-testid="animation-preview-phase"
-			@update:model-value="value => { animationPhase = value }"
+			@update:model-value="
+				(value) => {
+					animationPhase = value;
+				}
+			"
 		/>
 		<UFieldGroup size="xs">
 			<UButton
@@ -110,7 +115,11 @@ watch(
 				:variant="animationScope === 'phase' ? 'subtle' : 'outline'"
 				:aria-pressed="animationScope === 'phase'"
 				data-testid="animation-preview-scope-phase"
-				@click="() => { animationScope = 'phase' }"
+				@click="
+					() => {
+						animationScope = 'phase';
+					}
+				"
 			>
 				Phase
 			</UButton>
@@ -119,7 +128,11 @@ watch(
 				:variant="animationScope === 'lifecycle' ? 'subtle' : 'outline'"
 				:aria-pressed="animationScope === 'lifecycle'"
 				data-testid="animation-preview-scope-lifecycle"
-				@click="() => { animationScope = 'lifecycle' }"
+				@click="
+					() => {
+						animationScope = 'lifecycle';
+					}
+				"
 			>
 				Lifecycle
 			</UButton>
@@ -133,7 +146,11 @@ watch(
 				:aria-pressed="animationSpeed === speed.value"
 				:aria-label="`${speed.label} preview speed`"
 				:data-testid="`animation-preview-speed-${speed.value}`"
-				@click="() => { animationSpeed = speed.value }"
+				@click="
+					() => {
+						animationSpeed = speed.value;
+					}
+				"
 			>
 				{{ speed.label }}
 			</UButton>

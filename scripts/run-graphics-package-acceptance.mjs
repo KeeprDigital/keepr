@@ -85,7 +85,7 @@ export async function main(argv = process.argv) {
 
 			async function listAssetIds() {
 				const assets = await session.json(acceptanceRoutes.graphicsAssets(), {});
-				return new Set(assets.map(asset => asset.id));
+				return new Set(assets.map((asset) => asset.id));
 			}
 
 			async function receivePackage(archive, marker) {
@@ -102,22 +102,20 @@ export async function main(argv = process.argv) {
 					method: 'PUT',
 					body: archive,
 				});
-				if (received.stage !== 'awaiting-confirmation')
-					return received;
+				if (received.stage !== 'awaiting-confirmation') return received;
 				return await session.json(acceptanceRoutes.templatePackageConfirmation(received.id), {
 					method: 'POST',
 					body: { fingerprint: received.templatePackagePreflight.fingerprint },
 				});
 			}
 
-			const installRoute = operationId =>
+			const installRoute = (operationId) =>
 				deliveryRouteLabel(acceptanceRoutes.templatePackageInstallation(operationId));
 
 			async function installPackage(operationId) {
-				return await session.json(
-					acceptanceRoutes.templatePackageInstallation(operationId),
-					{ method: 'POST' },
-				);
+				return await session.json(acceptanceRoutes.templatePackageInstallation(operationId), {
+					method: 'POST',
+				});
 			}
 
 			/**
@@ -155,36 +153,31 @@ export async function main(argv = process.argv) {
 						try {
 							await response.arrayBuffer();
 							return 'answered';
-						}
-						catch {
+						} catch {
 							return 'cut-mid-body';
 						}
-					}
-					catch (error) {
-						return error?.name === 'AbortError'
-							? 'abandoned'
-							: 'failed';
+					} catch (error) {
+						return error?.name === 'AbortError' ? 'abandoned' : 'failed';
 					}
 				}
 
 				const inflight = abandon();
-				await new Promise(resolve => setTimeout(resolve, 15));
+				await new Promise((resolve) => setTimeout(resolve, 15));
 				abort.abort();
 				const clientOutcome = await inflight;
 
-				const observed = await session.json(acceptanceRoutes.ingestionOperation(operationId), {
-				});
+				const observed = await session.json(acceptanceRoutes.ingestionOperation(operationId), {});
 				return {
 					stage: observed.stage,
 					// `committed` means the installation ran to completion while the
 					// client was already gone, which is the interruption worth having.
-					outcome: observed.stage === 'completed'
-						? `${clientOutcome}-committed`
-						: clientOutcome,
+					outcome: observed.stage === 'completed' ? `${clientOutcome}-committed` : clientOutcome,
 				};
 			}
 
-			const scenario = await provisionScreenOutputScenario(session, { label: 'Package Publication' });
+			const scenario = await provisionScreenOutputScenario(session, {
+				label: 'Package Publication',
+			});
 			evidence.addSecret(scenario.capability);
 			// What this run adds to the installation-wide library, so the way out
 			// can trash whatever is trashable (#375). The successfully installed
@@ -227,39 +220,45 @@ export async function main(argv = process.argv) {
 				// Confirmation is not publication. Nothing the package would create may
 				// be discoverable until installation commits.
 				const during = await listAssetIds();
-				record(during.size === before.size
-					? []
-					: [
-							{
-								code: 'package-partial-assets-visible',
-								detail: { stage: 'awaiting-installation' },
-							},
-						]);
+				record(
+					during.size === before.size
+						? []
+						: [
+								{
+									code: 'package-partial-assets-visible',
+									detail: { stage: 'awaiting-installation' },
+								},
+							],
+				);
 
 				interruption = await interruptInstallation(received.id);
 				// Whatever the abandoned attempt reached, the operation must be in one
 				// of its two settled stages — never something in between.
-				record(['awaiting-installation', 'completed'].includes(interruption.stage)
-					? []
-					: [
-							{
-								code: 'package-interrupted-result-exposed',
-								detail: {
-									route: installRoute(received.id),
-									stage: interruption.stage,
+				record(
+					['awaiting-installation', 'completed'].includes(interruption.stage)
+						? []
+						: [
+								{
+									code: 'package-interrupted-result-exposed',
+									detail: {
+										route: installRoute(received.id),
+										stage: interruption.stage,
+									},
 								},
-							},
-						]);
+							],
+				);
 				// And it must not have published a partial result on the way out.
 				const afterInterruption = await listAssetIds();
-				record([...afterInterruption].filter(id => !before.has(id)).length > 1
-					? [
-							{
-								code: 'package-duplicate-commit',
-								detail: { stage: 'interrupted' },
-							},
-						]
-					: []);
+				record(
+					[...afterInterruption].filter((id) => !before.has(id)).length > 1
+						? [
+								{
+									code: 'package-duplicate-commit',
+									detail: { stage: 'interrupted' },
+								},
+							]
+						: [],
+				);
 
 				const completed = await installPackage(received.id);
 				if (completed.stage !== 'completed') {
@@ -272,19 +271,20 @@ export async function main(argv = process.argv) {
 							},
 						},
 					]);
-				}
-				else {
+				} else {
 					const installation = completed.templatePackageInstallation;
 					const after = await listAssetIds();
-					const created = [...after].filter(id => !before.has(id));
-					record(created.length === 1
-						? []
-						: [
-								{
-									code: 'package-duplicate-commit',
-									detail: { expected: 1, actual: created.length },
-								},
-							]);
+					const created = [...after].filter((id) => !before.has(id));
+					record(
+						created.length === 1
+							? []
+							: [
+									{
+										code: 'package-duplicate-commit',
+										detail: { expected: 1, actual: created.length },
+									},
+								],
+					);
 
 					// The Template and the asset it needs became visible together, and
 					// the asset it names is really there.
@@ -292,28 +292,32 @@ export async function main(argv = process.argv) {
 						acceptanceRoutes.installedTemplate(installation.templateId),
 						{},
 					);
-					record(template.status === 200
-						? []
-						: [
-								{
-									code: 'package-partial-assets-visible',
-									detail: { stage: 'installed-template', actual: template.status },
-								},
-							]);
+					record(
+						template.status === 200
+							? []
+							: [
+									{
+										code: 'package-partial-assets-visible',
+										detail: { stage: 'installed-template', actual: template.status },
+									},
+								],
+					);
 
 					const installed = installation.assets[0];
 					const content = await session.request(
 						acceptanceRoutes.editorContent(installed.assetId, installed.revisionId),
 						{},
 					);
-					record(content.status === 200
-						? []
-						: [
-								{
-									code: 'package-partial-assets-visible',
-									detail: { stage: 'installed-content', actual: content.status },
-								},
-							]);
+					record(
+						content.status === 200
+							? []
+							: [
+									{
+										code: 'package-partial-assets-visible',
+										detail: { stage: 'installed-content', actual: content.status },
+									},
+								],
+					);
 
 					// Installing again answers with what already committed.
 					const repeated = await installPackage(received.id);
@@ -327,14 +331,16 @@ export async function main(argv = process.argv) {
 									},
 								],
 					);
-					record((await listAssetIds()).size === after.size
-						? []
-						: [
-								{
-									code: 'package-duplicate-commit',
-									detail: { stage: 'reinstall' },
-								},
-							]);
+					record(
+						(await listAssetIds()).size === after.size
+							? []
+							: [
+									{
+										code: 'package-duplicate-commit',
+										detail: { stage: 'reinstall' },
+									},
+								],
+					);
 				}
 
 				// A package cancelled before installation publishes nothing, and asking
@@ -349,27 +355,30 @@ export async function main(argv = process.argv) {
 					method: 'DELETE',
 				});
 				const attempted = await installPackage(cancellable.id);
-				record(attempted.stage === 'cancelled' && attempted.templatePackageInstallation === undefined
-					? []
-					: [
-							{
-								code: 'package-interrupted-result-exposed',
-								detail: {
-									route: installRoute(cancellable.id),
-									stage: attempted.stage,
+				record(
+					attempted.stage === 'cancelled' && attempted.templatePackageInstallation === undefined
+						? []
+						: [
+								{
+									code: 'package-interrupted-result-exposed',
+									detail: {
+										route: installRoute(cancellable.id),
+										stage: attempted.stage,
+									},
 								},
-							},
-						]);
-				record((await listAssetIds()).size === settled.size
-					? []
-					: [
-							{
-								code: 'package-partial-assets-visible',
-								detail: { stage: 'cancelled' },
-							},
-						]);
-			}
-			finally {
+							],
+				);
+				record(
+					(await listAssetIds()).size === settled.size
+						? []
+						: [
+								{
+									code: 'package-partial-assets-visible',
+									detail: { stage: 'cancelled' },
+								},
+							],
+				);
+			} finally {
 				// Best-effort, pass or fail: every asset this run added over the
 				// baseline. The installed package's own asset answers in-use and
 				// stays, per the comment above; what this catches is everything
@@ -377,11 +386,9 @@ export async function main(argv = process.argv) {
 				try {
 					const remaining = await listAssetIds();
 					for (const assetId of remaining) {
-						if (!baselineAssets.has(assetId))
-							await trashGraphicAssetBestEffort(session, assetId);
+						if (!baselineAssets.has(assetId)) await trashGraphicAssetBestEffort(session, assetId);
 					}
-				}
-				catch {
+				} catch {
 					// A left-behind acceptance asset is noise, never a gate failure.
 				}
 				await scenario.dispose();
@@ -398,5 +405,4 @@ export async function main(argv = process.argv) {
 	});
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

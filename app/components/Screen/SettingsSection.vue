@@ -15,27 +15,30 @@ import { useRememberedOpenState } from '~/composables/ui/useRememberedOpenState'
  * card's id is scoped `mode:card`; a row's names the section rather than the
  * item, so a section an author works in stays open on every item that follows.
  */
-const props = withDefaults(defineProps<{
-	title: string;
-	density?: 'card' | 'row';
-	/** A card's second line, under its title. */
-	subtitle?: string;
-	/** A row's leading icon. */
-	icon?: string;
-	/** `false` draws a card that is always open, with no toggle. */
-	collapsible?: boolean;
-	/** Absent, a card starts open and a row closed. */
-	defaultOpen?: boolean;
-	/** Remembers the open state per browser. */
-	id?: string;
-	/** One line shown in the header while closed. */
-	summary?: string;
-}>(), {
-	density: 'card',
-	collapsible: true,
-	// Absent is the density's own default, not a boolean prop's `false`.
-	defaultOpen: undefined,
-});
+const props = withDefaults(
+	defineProps<{
+		title: string;
+		density?: 'card' | 'row';
+		/** A card's second line, under its title. */
+		subtitle?: string;
+		/** A row's leading icon. */
+		icon?: string;
+		/** `false` draws a card that is always open, with no toggle. */
+		collapsible?: boolean;
+		/** Absent, a card starts open and a row closed. */
+		defaultOpen?: boolean;
+		/** Remembers the open state per browser. */
+		id?: string;
+		/** One line shown in the header while closed. */
+		summary?: string;
+	}>(),
+	{
+		density: 'card',
+		collapsible: true,
+		// Absent is the density's own default, not a boolean prop's `false`.
+		defaultOpen: undefined,
+	},
+);
 
 defineSlots<{
 	default?: () => unknown;
@@ -58,21 +61,18 @@ const startsOpen = computed(() => props.defaultOpen ?? props.density === 'card')
 const localOpen = ref(startsOpen.value);
 
 const open = computed({
-	get: () => !props.collapsible || (props.id
-		? remembered.isOpen(props.id, startsOpen.value)
-		: localOpen.value),
+	get: () =>
+		!props.collapsible ||
+		(props.id ? remembered.isOpen(props.id, startsOpen.value) : localOpen.value),
 	set: (value: boolean) => {
-		if (props.id)
-			remembered.setOpen(props.id, value);
-		else
-			localOpen.value = value;
+		if (props.id) remembered.setOpen(props.id, value);
+		else localOpen.value = value;
 	},
 });
 const bodyId = useId();
 
 function toggleOpen() {
-	if (props.collapsible)
-		open.value = !open.value;
+	if (props.collapsible) open.value = !open.value;
 }
 </script>
 
@@ -92,10 +92,7 @@ function toggleOpen() {
 			<UIcon v-if="icon" :name="icon" class="size-4 shrink-0 text-muted" />
 			<span class="min-w-0 flex-1">
 				<span class="block text-sm font-medium">{{ title }}</span>
-				<span
-					v-if="!open && (summary || $slots.summary)"
-					class="block truncate text-xs text-muted"
-				>
+				<span v-if="!open && (summary || $slots.summary)" class="block truncate text-xs text-muted">
 					<slot name="summary">{{ summary }}</slot>
 				</span>
 			</span>
@@ -107,7 +104,11 @@ function toggleOpen() {
 				:class="{ 'rotate-180': open }"
 			/>
 		</button>
-		<div v-show="open" class="space-y-3 pb-4" :data-testid="id ? `inspector-section-${id}` : undefined">
+		<div
+			v-show="open"
+			class="space-y-3 pb-4"
+			:data-testid="id ? `inspector-section-${id}` : undefined"
+		>
 			<slot />
 		</div>
 	</section>

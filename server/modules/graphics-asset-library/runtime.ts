@@ -38,8 +38,7 @@ export function graphicsCatalogueClient(): D1Database {
 	function resolve(): D1Database {
 		try {
 			return db.$client as unknown as D1Database;
-		}
-		catch (error) {
+		} catch (error) {
 			throw new GraphicsAssetLibraryError(
 				'Graphics Asset Library catalogue is unavailable',
 				'graphics-asset-library-unavailable',
@@ -56,9 +55,7 @@ export function graphicsCatalogueClient(): D1Database {
 		get(_target, property) {
 			const client = resolve();
 			const value = Reflect.get(client as object, property);
-			return typeof value === 'function'
-				? value.bind(client)
-				: value;
+			return typeof value === 'function' ? value.bind(client) : value;
 		},
 		has: (_target, property) => Reflect.has(resolve() as object, property),
 		ownKeys: () => Reflect.ownKeys(resolve() as object),
@@ -84,15 +81,11 @@ const unavailableObjectStore: GraphicsObjectStoreHealth = {
 };
 
 function stagingObjectStore(binding: R2Bucket | undefined): GraphicsObjectStoreHealth {
-	return binding
-		? createR2StagingGraphicsObjectStore(binding)
-		: unavailableObjectStore;
+	return binding ? createR2StagingGraphicsObjectStore(binding) : unavailableObjectStore;
 }
 
 function canonicalObjectStore(binding: R2Bucket | undefined): GraphicsObjectStoreHealth {
-	return binding
-		? createR2CanonicalGraphicsObjectStore(binding)
-		: unavailableObjectStore;
+	return binding ? createR2CanonicalGraphicsObjectStore(binding) : unavailableObjectStore;
 }
 
 type GraphicsBindings = Partial<Env> & {

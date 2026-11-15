@@ -26,15 +26,17 @@ export function isConvertedPlayer(
 	row: { position: number | null; points: number | null },
 	target: ArchetypeConversionTarget,
 ): boolean {
-	if (target.metric === 'topN')
-		return row.position != null && row.position <= target.threshold;
+	if (target.metric === 'topN') return row.position != null && row.position <= target.threshold;
 
 	return row.points != null && row.points >= target.threshold;
 }
 
-function computeConversionRate(convertedCount: number, count: number, target: ArchetypeConversionTarget | undefined): number | null {
-	if (!target || count === 0)
-		return null;
+function computeConversionRate(
+	convertedCount: number,
+	count: number,
+	target: ArchetypeConversionTarget | undefined,
+): number | null {
+	if (!target || count === 0) return null;
 
 	return Math.round((convertedCount / count) * 10000) / 100;
 }
@@ -62,8 +64,7 @@ export function groupClassifiedPlayersByArchetype(
 	const groups = new Map<number, ArchetypeAccumulator>();
 
 	for (const row of rows) {
-		if (!row.archetypeId)
-			continue;
+		if (!row.archetypeId) continue;
 
 		if (!groups.has(row.archetypeId)) {
 			groups.set(row.archetypeId, {
@@ -86,8 +87,7 @@ export function groupClassifiedPlayersByArchetype(
 			group.playersWithPosition++;
 		}
 
-		if (conversionTarget && isConvertedPlayer(row, conversionTarget))
-			group.convertedCount++;
+		if (conversionTarget && isConvertedPlayer(row, conversionTarget)) group.convertedCount++;
 	}
 
 	return groups;
@@ -100,13 +100,12 @@ export function buildArchetypeBreakdownEntries(
 	keyCardsByArchetypeId: Map<number, CardResponse[]>,
 	conversionTarget?: ArchetypeConversionTarget,
 ): ArchetypeBreakdownEntry[] {
-	const archetypeMap = new Map(archetypes.map(archetype => [archetype.id, archetype]));
+	const archetypeMap = new Map(archetypes.map((archetype) => [archetype.id, archetype]));
 	const entries: ArchetypeBreakdownEntry[] = [];
 
 	for (const [archetypeId, group] of groups) {
 		const archetype = archetypeMap.get(archetypeId);
-		if (!archetype)
-			continue;
+		if (!archetype) continue;
 
 		entries.push({
 			id: archetypeId,
@@ -114,13 +113,13 @@ export function buildArchetypeBreakdownEntries(
 			colors: archetype.colors,
 			chartSeries: archetype.chartSeries,
 			count: group.count,
-			metaShare: classifiedPlayers > 0
-				? Math.round((group.count / classifiedPlayers) * 10000) / 100
-				: 0,
+			metaShare:
+				classifiedPlayers > 0 ? Math.round((group.count / classifiedPlayers) * 10000) / 100 : 0,
 			winRate: computeMetagameWinRate(group.wins, group.losses),
-			avgPosition: group.playersWithPosition > 0
-				? Math.round((group.totalPosition / group.playersWithPosition) * 10) / 10
-				: null,
+			avgPosition:
+				group.playersWithPosition > 0
+					? Math.round((group.totalPosition / group.playersWithPosition) * 10) / 10
+					: null,
 			conversionRate: computeConversionRate(group.convertedCount, group.count, conversionTarget),
 			keyCards: keyCardsByArchetypeId.get(archetypeId) ?? [],
 		});
@@ -136,15 +135,18 @@ export function compareArchetypeBreakdownEntries(
 ): number {
 	const primaryDifference = (() => {
 		switch (sortBy) {
-			case 'count': return b.count - a.count;
-			case 'winRate': return (b.winRate ?? -1) - (a.winRate ?? -1);
-			case 'conversionRate': return (b.conversionRate ?? -1) - (a.conversionRate ?? -1);
-			default: return b.metaShare - a.metaShare;
+			case 'count':
+				return b.count - a.count;
+			case 'winRate':
+				return (b.winRate ?? -1) - (a.winRate ?? -1);
+			case 'conversionRate':
+				return (b.conversionRate ?? -1) - (a.conversionRate ?? -1);
+			default:
+				return b.metaShare - a.metaShare;
 		}
 	})();
 
-	if (primaryDifference !== 0)
-		return primaryDifference;
+	if (primaryDifference !== 0) return primaryDifference;
 
 	return a.name.localeCompare(b.name);
 }
@@ -162,27 +164,30 @@ export function limitArchetypeBreakdownEntries(
 
 	const visibleEntries = entries.slice(0, limit);
 	const hiddenEntries = entries.slice(limit);
-	const hiddenTotals = hiddenEntries.reduce<ArchetypeAccumulator>((totals, entry) => {
-		const group = groups.get(entry.id);
-		if (!group) {
-			return totals;
-		}
+	const hiddenTotals = hiddenEntries.reduce<ArchetypeAccumulator>(
+		(totals, entry) => {
+			const group = groups.get(entry.id);
+			if (!group) {
+				return totals;
+			}
 
-		totals.wins += group.wins;
-		totals.losses += group.losses;
-		totals.totalPosition += group.totalPosition;
-		totals.playersWithPosition += group.playersWithPosition;
-		totals.convertedCount += group.convertedCount;
-		totals.count += group.count;
-		return totals;
-	}, {
-		wins: 0,
-		losses: 0,
-		totalPosition: 0,
-		playersWithPosition: 0,
-		convertedCount: 0,
-		count: 0,
-	});
+			totals.wins += group.wins;
+			totals.losses += group.losses;
+			totals.totalPosition += group.totalPosition;
+			totals.playersWithPosition += group.playersWithPosition;
+			totals.convertedCount += group.convertedCount;
+			totals.count += group.count;
+			return totals;
+		},
+		{
+			wins: 0,
+			losses: 0,
+			totalPosition: 0,
+			playersWithPosition: 0,
+			convertedCount: 0,
+			count: 0,
+		},
+	);
 
 	return [
 		...visibleEntries,
@@ -192,14 +197,20 @@ export function limitArchetypeBreakdownEntries(
 			colors: null,
 			chartSeries: null,
 			count: hiddenTotals.count,
-			metaShare: classifiedPlayers > 0
-				? Math.round((hiddenTotals.count / classifiedPlayers) * 10000) / 100
-				: 0,
+			metaShare:
+				classifiedPlayers > 0
+					? Math.round((hiddenTotals.count / classifiedPlayers) * 10000) / 100
+					: 0,
 			winRate: computeMetagameWinRate(hiddenTotals.wins, hiddenTotals.losses),
-			avgPosition: hiddenTotals.playersWithPosition > 0
-				? Math.round((hiddenTotals.totalPosition / hiddenTotals.playersWithPosition) * 10) / 10
-				: null,
-			conversionRate: computeConversionRate(hiddenTotals.convertedCount, hiddenTotals.count, conversionTarget),
+			avgPosition:
+				hiddenTotals.playersWithPosition > 0
+					? Math.round((hiddenTotals.totalPosition / hiddenTotals.playersWithPosition) * 10) / 10
+					: null,
+			conversionRate: computeConversionRate(
+				hiddenTotals.convertedCount,
+				hiddenTotals.count,
+				conversionTarget,
+			),
 			keyCards: [],
 		},
 	];

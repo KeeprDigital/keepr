@@ -11,11 +11,17 @@ import {
 	MAX_SILENT_VIDEO_INGESTION_BYTES,
 	MAX_STILL_IMAGE_INGESTION_BYTES,
 } from './shared/utils/graphicsAssetCompatibility';
-import { MUTATION_BODY_METHODS, TCGPLUS_IMPORT_MAX_BODY_BYTES } from './shared/utils/requestBodyLimits';
+import {
+	MUTATION_BODY_METHODS,
+	TCGPLUS_IMPORT_MAX_BODY_BYTES,
+} from './shared/utils/requestBodyLimits';
 
 const isIntegration = process.env.STREAM_KEEPR_INTEGRATION === 'true';
-const integrationWranglerPersistDir = process.env.STREAM_KEEPR_INTEGRATION_WRANGLER_PERSIST_DIR ?? '.wrangler/state/integration';
-const integrationMutationDrainHandler = fileURLToPath(new URL('./test/integration/fixtures/drain-request-body.ts', import.meta.url));
+const integrationWranglerPersistDir =
+	process.env.STREAM_KEEPR_INTEGRATION_WRANGLER_PERSIST_DIR ?? '.wrangler/state/integration';
+const integrationMutationDrainHandler = fileURLToPath(
+	new URL('./test/integration/fixtures/drain-request-body.ts', import.meta.url),
+);
 const compatibilityDate = '2026-07-16';
 
 /**
@@ -23,7 +29,7 @@ const compatibilityDate = '2026-07-16';
  * with the application. Their names are dynamic at the component site, so the
  * icon scanner cannot discover them there; declare the catalogue explicitly.
  */
-const supportedSocialNetworkIcons = SUPPORTED_SOCIAL_NETWORKS.map(network =>
+const supportedSocialNetworkIcons = SUPPORTED_SOCIAL_NETWORKS.map((network) =>
 	network.icon.replace('i-simple-icons-', 'simple-icons:'),
 );
 
@@ -93,9 +99,7 @@ export default defineNuxtConfig({
 		fallback: 'dark',
 	},
 
-	css: [
-		'~/assets/css/main.css',
-	],
+	css: ['~/assets/css/main.css'],
 
 	// Application fonts come from their pinned Fontsource packages on disk, and
 	// only from there (`build/applicationFonts.ts`, ADR-0086).
@@ -111,9 +115,7 @@ export default defineNuxtConfig({
 		// Component tests have no Nuxt icon endpoint. Requiring the client bundle
 		// there makes a missing local vector fail visibly instead of falling back to
 		// a network request the test environment cannot serve.
-		provider: process.env.NODE_ENV === 'test'
-			? 'none'
-			: undefined,
+		provider: process.env.NODE_ENV === 'test' ? 'none' : undefined,
 		clientBundle: {
 			icons: supportedSocialNetworkIcons,
 			// So the bundle holds every icon the app names: a component test that
@@ -159,7 +161,7 @@ export default defineNuxtConfig({
 						method: 'post',
 						handler: integrationMutationDrainHandler,
 					},
-					...MUTATION_BODY_METHODS.map(method => ({
+					...MUTATION_BODY_METHODS.map((method) => ({
 						route: '/api/_test/ordinary-mutation',
 						method: method.toLowerCase() as Lowercase<MutationBodyMethod>,
 						handler: integrationMutationDrainHandler,
@@ -240,9 +242,7 @@ export default defineNuxtConfig({
 			},
 			dev: {
 				configPath: 'wrangler.dev.jsonc',
-				...(isIntegration
-					? { persistDir: integrationWranglerPersistDir }
-					: {}),
+				...(isIntegration ? { persistDir: integrationWranglerPersistDir } : {}),
 			},
 		},
 	},
@@ -276,13 +276,7 @@ export default defineNuxtConfig({
 				}
 			: {}),
 		optimizeDeps: {
-			include: [
-				'ably',
-				'three',
-				'@tanstack/vue-table',
-				'vue-draggable-plus',
-				'vue-echarts',
-			],
+			include: ['ably', 'three', '@tanstack/vue-table', 'vue-draggable-plus', 'vue-echarts'],
 		},
 	},
 

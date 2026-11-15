@@ -8,7 +8,11 @@ import type { GraphicsSelectionTarget } from '~/modules/graphics/selection';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defineComponent, nextTick } from 'vue';
-import { createDefaultGraphicAnimationRecipe, DEFAULT_GRAPHIC_TYPOGRAPHY, squareShapeGeometry } from '~~/shared/modules/graphics';
+import {
+	createDefaultGraphicAnimationRecipe,
+	DEFAULT_GRAPHIC_TYPOGRAPHY,
+	squareShapeGeometry,
+} from '~~/shared/modules/graphics';
 import Animation from '~/components/Graphics/Compositor/Animation.vue';
 
 enableAutoUnmount(afterEach);
@@ -68,17 +72,14 @@ function group(id: string, childIds: string[]): GraphicGroupItemConfig {
 		justify: 'start',
 		clip: false,
 		geometry: squareShapeGeometry(),
-		children: childIds.map(childId => text(childId)),
+		children: childIds.map((childId) => text(childId)),
 	};
 }
 
-function stack(items: GraphicItemConfig[] = [
-	shape('bar'),
-	shape('name'),
-]): BroadcastGraphicConfig[] {
-	return [
-		{ id: 'lower-third', name: 'Lower Third', items },
-	];
+function stack(
+	items: GraphicItemConfig[] = [shape('bar'), shape('name')],
+): BroadcastGraphicConfig[] {
+	return [{ id: 'lower-third', name: 'Lower Third', items }];
 }
 
 const SlotOnlyStub = defineComponent({
@@ -159,22 +160,29 @@ function emittedGraphics(wrapper: Wrapper, index = 0) {
 }
 
 function switchField(wrapper: Wrapper, testId: string) {
-	return wrapper.findAllComponents({ name: 'USwitch' })
-		.find(entry => entry.attributes('data-testid') === testId);
+	return wrapper
+		.findAllComponents({ name: 'USwitch' })
+		.find((entry) => entry.attributes('data-testid') === testId);
 }
 
 function numberField(wrapper: Wrapper, testId: string) {
-	return wrapper.findAllComponents({ name: 'UInputNumber' })
-		.find(entry => entry.attributes('data-testid') === testId);
+	return wrapper
+		.findAllComponents({ name: 'UInputNumber' })
+		.find((entry) => entry.attributes('data-testid') === testId);
 }
 
 function selectField(wrapper: Wrapper, testId: string) {
-	return wrapper.findAllComponents({ name: 'USelect' })
-		.find(entry => entry.attributes('data-testid') === testId);
+	return wrapper
+		.findAllComponents({ name: 'USelect' })
+		.find((entry) => entry.attributes('data-testid') === testId);
 }
 
 const GRAPHIC_TARGET: GraphicsSelectionTarget = { type: 'graphic', graphicId: 'lower-third' };
-const ITEM_TARGET: GraphicsSelectionTarget = { type: 'item', graphicId: 'lower-third', itemId: 'bar' };
+const ITEM_TARGET: GraphicsSelectionTarget = {
+	type: 'item',
+	graphicId: 'lower-third',
+	itemId: 'bar',
+};
 
 describe('graphicAnimationEditor', () => {
 	it('offers no controls for the canvas, which owns no animation', async () => {
@@ -208,10 +216,9 @@ describe('graphicAnimationEditor', () => {
 		switchField(wrapper, 'animation-enter-enabled')!.vm.$emit('update:modelValue', true);
 		await nextTick();
 
-		expect(emittedGraphics(wrapper)[0]?.items[0]?.animation)
-			.toEqual({
-				enter: createDefaultGraphicAnimationRecipe('enter'),
-			});
+		expect(emittedGraphics(wrapper)[0]?.items[0]?.animation).toEqual({
+			enter: createDefaultGraphicAnimationRecipe('enter'),
+		});
 	});
 
 	it('disables one phase without disturbing another', async () => {
@@ -231,7 +238,11 @@ describe('graphicAnimationEditor', () => {
 	});
 
 	describe('a fixed slide distance in a Geometry Unit', () => {
-		function sliding<T extends { animation?: GraphicAnimation }>(owner: T, direction: 'east' | 'north', distance: number): T {
+		function sliding<T extends { animation?: GraphicAnimation }>(
+			owner: T,
+			direction: 'east' | 'north',
+			distance: number,
+		): T {
 			owner.animation = {
 				enter: {
 					duration: 400,
@@ -251,11 +262,9 @@ describe('graphicAnimationEditor', () => {
 			localStorage.clear();
 		});
 
-		it('measures a top-level Graphic Item\'s slide against the canvas', async () => {
+		it("measures a top-level Graphic Item's slide against the canvas", async () => {
 			const wrapper = await mountComponent({
-				graphics: stack([
-					sliding(shape('bar'), 'east', 192),
-				]),
+				graphics: stack([sliding(shape('bar'), 'east', 192)]),
 				selectedTarget: ITEM_TARGET,
 			});
 			await flushPromises();
@@ -263,7 +272,7 @@ describe('graphicAnimationEditor', () => {
 			expect(numberField(wrapper, 'animation-enter-slide-distance')!.props('modelValue')).toBe(10);
 		});
 
-		it('measures a Broadcast Graphic\'s own slide against the canvas', async () => {
+		it("measures a Broadcast Graphic's own slide against the canvas", async () => {
 			const graphics = stack();
 			sliding(graphics[0]!, 'north', 108);
 			const wrapper = await mountComponent({ graphics, selectedTarget: GRAPHIC_TARGET });
@@ -272,7 +281,7 @@ describe('graphicAnimationEditor', () => {
 			expect(numberField(wrapper, 'animation-enter-slide-distance')!.props('modelValue')).toBe(10);
 		});
 
-		it('measures a Graphic Group child\'s slide against its group, and stores pixels', async () => {
+		it("measures a Graphic Group child's slide against its group, and stores pixels", async () => {
 			const cluster = group('cluster', ['one']);
 			sliding(cluster.children[0]!, 'north', 100);
 			const wrapper = await mountComponent({
@@ -287,7 +296,9 @@ describe('graphicAnimationEditor', () => {
 			await flushPromises();
 
 			const child = emittedGraphics(wrapper)[0]?.items[0];
-			expect(child?.type === 'group' && child.children[0]?.animation?.enter?.slide?.distance).toBe(50);
+			expect(child?.type === 'group' && child.children[0]?.animation?.enter?.slide?.distance).toBe(
+				50,
+			);
 		});
 	});
 
@@ -317,13 +328,15 @@ describe('graphicAnimationEditor', () => {
 	it('offers on-screen repetition and pause only on the phase that cycles', async () => {
 		const graphics = stack();
 		graphics[0]!.items[0]!.animation = {
-			'enter': createDefaultGraphicAnimationRecipe('enter'),
+			enter: createDefaultGraphicAnimationRecipe('enter'),
 			'on-screen': createDefaultGraphicAnimationRecipe('on-screen'),
 		};
 		const wrapper = await mountComponent({ graphics, selectedTarget: ITEM_TARGET });
 
 		expect(numberField(wrapper, 'animation-on-screen-pause')).toBeDefined();
-		expect(switchField(wrapper, 'animation-on-screen-repeat-indefinite')?.props('modelValue')).toBe(true);
+		expect(switchField(wrapper, 'animation-on-screen-repeat-indefinite')?.props('modelValue')).toBe(
+			true,
+		);
 		// A repeat count is inert while a recipe repeats indefinitely.
 		expect(numberField(wrapper, 'animation-on-screen-repeat')?.props('disabled')).toBe(true);
 	});
@@ -338,10 +351,9 @@ describe('graphicAnimationEditor', () => {
 		selectField(wrapper, 'animation-enter-preset')!.vm.$emit('update:modelValue', 'pop-in');
 		await nextTick();
 
-		expect(emittedGraphics(wrapper)[0]?.items[0]?.animation?.enter)
-			.toMatchObject({
-				scale: { factor: 0.8, origin: 'center' },
-			});
+		expect(emittedGraphics(wrapper)[0]?.items[0]?.animation?.enter).toMatchObject({
+			scale: { factor: 0.8, origin: 'center' },
+		});
 	});
 
 	it('never changes the Graphic Resting State of what it animates', async () => {
@@ -365,8 +377,9 @@ describe('graphicAnimationEditor', () => {
 		switchField(wrapper, 'animation-exit-enabled')!.vm.$emit('update:modelValue', true);
 		await nextTick();
 
-		expect(emittedGraphics(wrapper)[0]?.animation?.exit)
-			.toEqual(createDefaultGraphicAnimationRecipe('exit'));
+		expect(emittedGraphics(wrapper)[0]?.animation?.exit).toEqual(
+			createDefaultGraphicAnimationRecipe('exit'),
+		);
 		// The items are untouched: whole-graphic motion composes with theirs.
 		expect(emittedGraphics(wrapper)[0]?.items).toEqual(stack()[0]?.items);
 	});
@@ -378,7 +391,9 @@ describe('graphicAnimationEditor', () => {
 			writable: false,
 		});
 
-		expect(wrapper.get('[data-testid="graphic-animation-editor"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="graphic-animation-editor"]').attributes('disabled'),
+		).toBeDefined();
 
 		switchField(wrapper, 'animation-enter-enabled')!.vm.$emit('update:modelValue', true);
 		await nextTick();
@@ -406,7 +421,9 @@ describe('graphicAnimationEditor', () => {
 			},
 		});
 
-		expect(wrapper.get('[data-testid="graphic-animation-editor"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="graphic-animation-editor"]').attributes('disabled'),
+		).toBeDefined();
 	});
 });
 
@@ -420,8 +437,11 @@ describe('stagger authoring in the editor', () => {
 		switchField(wrapper, 'animation-enter-stagger-enabled')!.vm.$emit('update:modelValue', true);
 		await nextTick();
 
-		expect(emittedGraphics(wrapper)[0]?.animation?.stagger?.enter)
-			.toEqual({ order: 'list', step: 100, itemIds: [] });
+		expect(emittedGraphics(wrapper)[0]?.animation?.stagger?.enter).toEqual({
+			order: 'list',
+			step: 100,
+			itemIds: [],
+		});
 	});
 
 	it('offers no stagger on a Graphic Item with no direct items of its own', async () => {
@@ -449,15 +469,21 @@ describe('stagger authoring in the editor', () => {
 			selectedTarget: { type: 'item', graphicId: 'lower-third', itemId: 'cluster' },
 		});
 
-		expect(switchField(wrapper, 'animation-enter-stagger-member-one')?.props('modelValue')).toBe(true);
-		expect(switchField(wrapper, 'animation-enter-stagger-member-two')?.props('modelValue')).toBe(false);
+		expect(switchField(wrapper, 'animation-enter-stagger-member-one')?.props('modelValue')).toBe(
+			true,
+		);
+		expect(switchField(wrapper, 'animation-enter-stagger-member-two')?.props('modelValue')).toBe(
+			false,
+		);
 
 		switchField(wrapper, 'animation-enter-stagger-member-two')!.vm.$emit('update:modelValue', true);
 		await nextTick();
 
 		const staggered = emittedGraphics(wrapper)[0]?.items[0];
-		expect(staggered?.type === 'group' && staggered.animation?.stagger?.enter?.itemIds)
-			.toEqual(['one', 'two']);
+		expect(staggered?.type === 'group' && staggered.animation?.stagger?.enter?.itemIds).toEqual([
+			'one',
+			'two',
+		]);
 	});
 
 	it('selects the subset a stagger orders', async () => {
@@ -469,7 +495,10 @@ describe('stagger authoring in the editor', () => {
 		};
 		const wrapper = await mountComponent({ graphics, selectedTarget: GRAPHIC_TARGET });
 
-		switchField(wrapper, 'animation-enter-stagger-member-name')!.vm.$emit('update:modelValue', true);
+		switchField(wrapper, 'animation-enter-stagger-member-name')!.vm.$emit(
+			'update:modelValue',
+			true,
+		);
 		await nextTick();
 
 		expect(emittedGraphics(wrapper)[0]?.animation?.stagger?.enter?.itemIds).toEqual(['name']);
@@ -493,7 +522,10 @@ describe('stagger authoring in the editor', () => {
 		};
 		const wrapper = await mountComponent({ graphics, selectedTarget: GRAPHIC_TARGET });
 
-		selectField(wrapper, 'animation-exit-stagger-order')!.vm.$emit('update:modelValue', 'reverse-list');
+		selectField(wrapper, 'animation-exit-stagger-order')!.vm.$emit(
+			'update:modelValue',
+			'reverse-list',
+		);
 		await nextTick();
 
 		const stagger = emittedGraphics(wrapper)[0]?.animation?.stagger;

@@ -1,4 +1,7 @@
-import type { FeatureMatchOverlayModeConfig, FeatureMatchSourceItemConfig } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchOverlayModeConfig,
+	FeatureMatchSourceItemConfig,
+} from '~~/shared/types/screenConfig';
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { useFeatureMatchOverlayConfigEditor } from '~~/app/composables/screen/useFeatureMatchOverlayConfigEditor';
@@ -9,7 +12,9 @@ import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConf
 // checks the binding: id-addressed verbs submit the whole updated layout
 // through updateConfig and no-ops submit nothing.
 
-function sourceItem(overrides: Partial<FeatureMatchSourceItemConfig> = {}): FeatureMatchSourceItemConfig {
+function sourceItem(
+	overrides: Partial<FeatureMatchSourceItemConfig> = {},
+): FeatureMatchSourceItemConfig {
 	return {
 		id: 's1',
 		label: 'Source',
@@ -45,9 +50,7 @@ function createEditor(sources: FeatureMatchSourceItemConfig[]) {
 
 describe('useFeatureMatchOverlayConfigEditor', () => {
 	it('submits the whole updated layout for an id-addressed Source Item patch', () => {
-		const { config, updateConfig, editor } = createEditor([
-			sourceItem(),
-		]);
+		const { config, updateConfig, editor } = createEditor([sourceItem()]);
 
 		editor.updateSource('s1', { label: 'Renamed' });
 
@@ -57,9 +60,7 @@ describe('useFeatureMatchOverlayConfigEditor', () => {
 	});
 
 	it('submits nothing when the mutation cannot apply', () => {
-		const { updateConfig, editor } = createEditor([
-			sourceItem(),
-		]);
+		const { updateConfig, editor } = createEditor([sourceItem()]);
 
 		editor.updateSource('missing', { label: 'x' });
 		editor.updateSourceFramingStyle('missing', { borderRadius: 2 });

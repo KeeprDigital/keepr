@@ -34,10 +34,7 @@ describe('useScreenOutputCardDataHealth', () => {
 	it('treats an output reporting nothing as silent, not as degraded', () => {
 		mockScreenPresence.value.set(7, {
 			count: 2,
-			members: [
-				{ data: {} },
-				{},
-			],
+			members: [{ data: {} }, {}],
 		});
 
 		expect(useScreenOutputCardDataHealth(7).value).toBe(0);

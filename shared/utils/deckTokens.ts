@@ -37,12 +37,12 @@ export function deriveDeckTokensFromScryfallCard(card: ScryfallCardLike): DeckTo
 		});
 	}
 
-	return [
-		...tokens.values(),
-	];
+	return [...tokens.values()];
 }
 
-export function uniqueDeckTokens(tokens: Iterable<DeckTokenRequirement | null | undefined>): DeckTokenRequirement[] {
+export function uniqueDeckTokens(
+	tokens: Iterable<DeckTokenRequirement | null | undefined>,
+): DeckTokenRequirement[] {
 	const byName = new Map<string, DeckTokenRequirement>();
 
 	for (const token of tokens) {
@@ -62,7 +62,5 @@ export function uniqueDeckTokens(tokens: Iterable<DeckTokenRequirement | null | 
 		}
 	}
 
-	return [
-		...byName.values(),
-	].sort((a, b) => a.name.localeCompare(b.name));
+	return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
 }

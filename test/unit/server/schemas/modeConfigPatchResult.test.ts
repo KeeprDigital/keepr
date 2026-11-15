@@ -191,8 +191,9 @@ describe('parseModeConfigPatchResult', () => {
 		expect(bytes({ layout })).toBeLessThan(MAX_MODE_CONFIGS_BYTES);
 		expect(bytes(stored) + bytes({ layout })).toBeGreaterThan(MAX_MODE_CONFIGS_BYTES);
 
-		expect(() => parseModeConfigPatchResult(stored, 'feature-match-overlay', { layout }))
-			.toThrow(/Mode configuration must not exceed/);
+		expect(() => parseModeConfigPatchResult(stored, 'feature-match-overlay', { layout })).toThrow(
+			/Mode configuration must not exceed/,
+		);
 	});
 
 	it('names the limit, so an operator reads what they reached', () => {
@@ -202,10 +203,11 @@ describe('parseModeConfigPatchResult', () => {
 			},
 		};
 
-		expect(() => parseModeConfigPatchResult(stored, 'feature-match-overlay', {
-			layout: fatOverlayLayout(),
-		}))
-			.toThrow(new RegExp(`must not exceed ${MAX_MODE_CONFIGS_BYTES} bytes`));
+		expect(() =>
+			parseModeConfigPatchResult(stored, 'feature-match-overlay', {
+				layout: fatOverlayLayout(),
+			}),
+		).toThrow(new RegExp(`must not exceed ${MAX_MODE_CONFIGS_BYTES} bytes`));
 	});
 
 	it('enforces the same rule the full-config write path enforces', () => {
@@ -222,11 +224,13 @@ describe('parseModeConfigPatchResult', () => {
 
 		expect(bytes(oversized)).toBeGreaterThan(MAX_MODE_CONFIGS_BYTES);
 		expect(modeConfigsMapSchema.safeParse(oversized).success).toBe(false);
-		expect(() => parseModeConfigPatchResult(
-			{ 'broadcast-graphics': oversized['broadcast-graphics'] },
-			'feature-match-overlay',
-			oversized['feature-match-overlay'],
-		)).toThrow(/Mode configuration must not exceed/);
+		expect(() =>
+			parseModeConfigPatchResult(
+				{ 'broadcast-graphics': oversized['broadcast-graphics'] },
+				'feature-match-overlay',
+				oversized['feature-match-overlay'],
+			),
+		).toThrow(/Mode configuration must not exceed/);
 	});
 
 	it('accepts a realistic configuration, which is nowhere near the limit', () => {
@@ -310,7 +314,7 @@ describe('per-mode background layers', () => {
 		opacity: 1,
 	});
 
-	it('accepts a background layer stack on every capable mode\'s patch path', () => {
+	it("accepts a background layer stack on every capable mode's patch path", () => {
 		for (const mode of [
 			'card',
 			'deck',
@@ -324,30 +328,28 @@ describe('per-mode background layers', () => {
 			'round-clock',
 			'talent',
 		] as const) {
-			expect(modeConfigPatchSchemaMap[mode].safeParse({
-				backgroundLayers: [
-					colorLayer('base'),
-					animationLayer('fx'),
-				],
-			}).success).toBe(true);
+			expect(
+				modeConfigPatchSchemaMap[mode].safeParse({
+					backgroundLayers: [colorLayer('base'), animationLayer('fx')],
+				}).success,
+			).toBe(true);
 		}
 	});
 
-	it('holds the one-animation-layer rule on the patch path, like the Background Screen\'s own stack', () => {
-		expect(modeConfigPatchSchemaMap.metagame.safeParse({
-			backgroundLayers: [
-				animationLayer('one'),
-				animationLayer('two'),
-			],
-		}).success).toBe(false);
+	it("holds the one-animation-layer rule on the patch path, like the Background Screen's own stack", () => {
+		expect(
+			modeConfigPatchSchemaMap.metagame.safeParse({
+				backgroundLayers: [animationLayer('one'), animationLayer('two')],
+			}).success,
+		).toBe(false);
 	});
 
 	it('refuses a background layer stack on a graphics host, which owns its background', () => {
-		expect(modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
-			backgroundLayers: [
-				colorLayer('base'),
-			],
-		}).success).toBe(false);
+		expect(
+			modeConfigPatchSchemaMap['broadcast-graphics'].safeParse({
+				backgroundLayers: [colorLayer('base')],
+			}).success,
+		).toBe(false);
 	});
 });
 
@@ -356,16 +358,16 @@ describe('object-level rules cannot be silently unenforced', () => {
 		// Field rules live here; whole-object rules in `parseModeConfigPatchResult`.
 		const patch = modeConfigPatchSchemaMap['broadcast-graphics'];
 
-		expect(patch.safeParse({
-			graphics: [
-				{ id: 'a', name: 'A', items: [] },
-			],
-		}).success).toBe(true);
-		expect(patch.safeParse({
-			graphics: [
-				{ id: '', name: 'A', items: [] },
-			],
-		}).success).toBe(false);
+		expect(
+			patch.safeParse({
+				graphics: [{ id: 'a', name: 'A', items: [] }],
+			}).success,
+		).toBe(true);
+		expect(
+			patch.safeParse({
+				graphics: [{ id: '', name: 'A', items: [] }],
+			}).success,
+		).toBe(false);
 		expect(patch.safeParse({ graphics: null }).success).toBe(false);
 		expect(patch.safeParse({ unknownKey: 1 }).success).toBe(false);
 	});
@@ -373,9 +375,11 @@ describe('object-level rules cannot be silently unenforced', () => {
 
 describe('the object-level check detector', () => {
 	// Runs #85's own reproduction against the detector.
-	const plain = z.object({
-		topN: z.number(),
-	}).strict();
+	const plain = z
+		.object({
+			topN: z.number(),
+		})
+		.strict();
 
 	it('finds an object-level refinement, which is what the shape rebuild loses', () => {
 		const refined = plain.refine(() => false, 'never valid');
@@ -384,26 +388,34 @@ describe('the object-level check detector', () => {
 	});
 
 	it('finds a superRefine and a whole-object check too, not just refine', () => {
-		expect(modeConfigSchemasWithObjectLevelChecks({
-			card: plain.superRefine(() => {}),
-		})).toEqual(['card']);
+		expect(
+			modeConfigSchemasWithObjectLevelChecks({
+				card: plain.superRefine(() => {}),
+			}),
+		).toEqual(['card']);
 	});
 
 	it('names every offender, so one boot failure reports them all', () => {
-		expect(modeConfigSchemasWithObjectLevelChecks({
-			card: plain.refine(() => false),
-			deck: plain,
-			metagame: plain.refine(() => false),
-		})).toEqual(['card', 'metagame']);
+		expect(
+			modeConfigSchemasWithObjectLevelChecks({
+				card: plain.refine(() => false),
+				deck: plain,
+				metagame: plain.refine(() => false),
+			}),
+		).toEqual(['card', 'metagame']);
 	});
 
 	it('passes a schema whose constraints live on its fields', () => {
 		// An array-level check survives the rebuild with its field.
-		const fieldLevel = z.object({
-			graphics: z.array(z.string()).refine(value => value.length < 3, 'too many'),
-		}).strict();
+		const fieldLevel = z
+			.object({
+				graphics: z.array(z.string()).refine((value) => value.length < 3, 'too many'),
+			})
+			.strict();
 
-		expect(modeConfigSchemasWithObjectLevelChecks({ 'broadcast-graphics': fieldLevel })).toEqual([]);
+		expect(modeConfigSchemasWithObjectLevelChecks({ 'broadcast-graphics': fieldLevel })).toEqual(
+			[],
+		);
 	});
 
 	it('holds for every shipped mode config schema', () => {

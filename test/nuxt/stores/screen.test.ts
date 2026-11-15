@@ -11,7 +11,9 @@ import { transportFailure } from '~~/test/helpers/transportFailure';
  * entry for both the comparison and a refusal's answer when it does (#251).
  */
 function seedDuplicateCacheEntries(store: ReturnType<typeof useScreenStore>, versions: number[]) {
-	store.screens = versions.map(stateVersion => createMockScreen({ id: 10, name: `v${stateVersion}`, stateVersion }));
+	store.screens = versions.map((stateVersion) =>
+		createMockScreen({ id: 10, name: `v${stateVersion}`, stateVersion }),
+	);
 }
 
 // ── Mock Dependencies ──
@@ -64,9 +66,7 @@ describe('useScreenStore', () => {
 		});
 
 		it('keeps a cached Screen the fetched list serves at an older revision', async () => {
-			store.screens = [
-				createMockScreen({ id: 1, name: 'Saved', stateVersion: 4 }),
-			];
+			store.screens = [createMockScreen({ id: 1, name: 'Saved', stateVersion: 4 })];
 			mockRepo.list.mockResolvedValue([
 				createMockScreen({ id: 1, name: 'Stale', stateVersion: 3 }),
 			]);
@@ -81,9 +81,7 @@ describe('useScreenStore', () => {
 			// Equal is not older: the server bumps `stateVersion` once per write, so a
 			// list serving the same revision carries the same Screen, and refusing it
 			// would leave a reload unable to correct anything.
-			store.screens = [
-				createMockScreen({ id: 1, name: 'Old', stateVersion: 4 }),
-			];
+			store.screens = [createMockScreen({ id: 1, name: 'Old', stateVersion: 4 })];
 			mockRepo.list.mockResolvedValue([
 				createMockScreen({ id: 1, name: 'Fresh', stateVersion: 4 }),
 			]);
@@ -105,13 +103,11 @@ describe('useScreenStore', () => {
 
 			await store.loadScreensByEventId(1);
 
-			expect(store.screens.map(s => s.id)).toEqual([2]);
+			expect(store.screens.map((s) => s.id)).toEqual([2]);
 		});
 
 		it('adds a Screen the fetched list brings that the cache lacks, in the order the list gives', async () => {
-			store.screens = [
-				createMockScreen({ id: 1, stateVersion: 4 }),
-			];
+			store.screens = [createMockScreen({ id: 1, stateVersion: 4 })];
 			mockRepo.list.mockResolvedValue([
 				createMockScreen({ id: 2, stateVersion: 1 }),
 				createMockScreen({ id: 1, stateVersion: 4 }),
@@ -119,57 +115,41 @@ describe('useScreenStore', () => {
 
 			await store.loadScreensByEventId(1);
 
-			expect(store.screens.map(s => s.id)).toEqual([2, 1]);
+			expect(store.screens.map((s) => s.id)).toEqual([2, 1]);
 		});
 
 		it('keeps the newest held revision when the cache holds the Screen more than once', async () => {
 			seedDuplicateCacheEntries(store, [1, 5, 2]);
-			mockRepo.list.mockResolvedValue([
-				createMockScreen({ id: 10, name: 'v3', stateVersion: 3 }),
-			]);
+			mockRepo.list.mockResolvedValue([createMockScreen({ id: 10, name: 'v3', stateVersion: 3 })]);
 
 			await store.loadScreensByEventId(1);
 
-			expect(store.screens.map(s => s.stateVersion)).toEqual([5]);
+			expect(store.screens.map((s) => s.stateVersion)).toEqual([5]);
 		});
 
 		// A page whose layout loads Screens after it must not read its own superseded load as a failure.
 		it.each([
-			[
-				'first',
-				[0, 1],
-			],
-			[
-				'last',
-				[1, 0],
-			],
-		])('answers a load superseded for the same Event with the newer load\'s Screens, served %s', async (_, order) => {
-			const answers = [
-				deferred<unknown>(),
-				deferred<unknown>(),
-			];
-			mockRepo.list
-				.mockReturnValueOnce(answers[0]!.promise)
-				.mockReturnValueOnce(answers[1]!.promise);
-			const older = store.loadScreensByEventId(1);
-			const newer = store.loadScreensByEventId(1);
-			const fresh = [
-				createMockScreen({ id: 2, name: 'Fresh' }),
-			];
-			const served = [
-				[
-					createMockScreen({ id: 1, name: 'Stale' }),
-				],
-				fresh,
-			];
+			['first', [0, 1]],
+			['last', [1, 0]],
+		])(
+			"answers a load superseded for the same Event with the newer load's Screens, served %s",
+			async (_, order) => {
+				const answers = [deferred<unknown>(), deferred<unknown>()];
+				mockRepo.list
+					.mockReturnValueOnce(answers[0]!.promise)
+					.mockReturnValueOnce(answers[1]!.promise);
+				const older = store.loadScreensByEventId(1);
+				const newer = store.loadScreensByEventId(1);
+				const fresh = [createMockScreen({ id: 2, name: 'Fresh' })];
+				const served = [[createMockScreen({ id: 1, name: 'Stale' })], fresh];
 
-			for (const index of order)
-				answers[index]!.resolve(served[index]);
+				for (const index of order) answers[index]!.resolve(served[index]);
 
-			expect(await older).toEqual(fresh);
-			expect(await newer).toEqual(fresh);
-			expect(store.screens).toEqual(fresh);
-		});
+				expect(await older).toEqual(fresh);
+				expect(await newer).toEqual(fresh);
+				expect(store.screens).toEqual(fresh);
+			},
+		);
 
 		// A caller that reports a failed load itself asks for it raised, as it asks an
 		// Event Data load. The store still shows it. Not asked, the load answers null.
@@ -187,7 +167,10 @@ describe('useScreenStore', () => {
 		])('a failed load $asked, and shows it either way', async ({ load, raised }) => {
 			mockRepo.list.mockRejectedValue(new Error('Network unavailable'));
 
-			const answer = store.loadScreensByEventId(1, load).then(() => 'answered', () => 'raised');
+			const answer = store.loadScreensByEventId(1, load).then(
+				() => 'answered',
+				() => 'raised',
+			);
 
 			expect(await answer).toBe(raised ? 'raised' : 'answered');
 			expect(store.error).toBe('Network unavailable');
@@ -209,19 +192,14 @@ describe('useScreenStore', () => {
 		});
 
 		it('answers null for a load superseded by one that failed, and raises that failure only to the newer caller', async () => {
-			const answers = [
-				deferred<unknown>(),
-				deferred<unknown>(),
-			];
+			const answers = [deferred<unknown>(), deferred<unknown>()];
 			mockRepo.list
 				.mockReturnValueOnce(answers[0]!.promise)
 				.mockReturnValueOnce(answers[1]!.promise);
 
 			const older = store.loadScreensByEventId(1);
 			const newer = store.loadScreensByEventId(1, { failure: 'raise' });
-			answers[0]!.resolve([
-				createMockScreen({ id: 1, name: 'Stale' }),
-			]);
+			answers[0]!.resolve([createMockScreen({ id: 1, name: 'Stale' })]);
 			answers[1]!.reject(new Error('Network unavailable'));
 
 			await expect(newer).rejects.toThrow('Network unavailable');
@@ -234,9 +212,7 @@ describe('useScreenStore', () => {
 			const load = store.loadScreensByEventId(1);
 
 			store.$reset();
-			answer.resolve([
-				createMockScreen({ id: 1 }),
-			]);
+			answer.resolve([createMockScreen({ id: 1 })]);
 
 			expect(await load).toBeNull();
 			expect(store.screens).toEqual([]);
@@ -256,9 +232,11 @@ describe('useScreenStore', () => {
 			];
 
 			let serveRefresh: (screens: unknown) => void = () => {};
-			mockRepo.list.mockReturnValueOnce(new Promise((resolve) => {
-				serveRefresh = resolve;
-			}));
+			mockRepo.list.mockReturnValueOnce(
+				new Promise((resolve) => {
+					serveRefresh = resolve;
+				}),
+			);
 			const refresh = store.loadScreensByEventId(1);
 
 			const saved = createMockScreen({
@@ -319,8 +297,16 @@ describe('useScreenStore', () => {
 			let resolveOld!: (value: ReturnType<typeof createMockScreen>) => void;
 			let resolveNew!: (value: ReturnType<typeof createMockScreen>) => void;
 			mockRepo.getBySlug
-				.mockReturnValueOnce(new Promise((resolve) => { resolveOld = resolve; }))
-				.mockReturnValueOnce(new Promise((resolve) => { resolveNew = resolve; }));
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveOld = resolve;
+					}),
+				)
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveNew = resolve;
+					}),
+				);
 
 			const oldLoad = store.loadScreenBySlug(1, 'old');
 			const newLoad = store.loadScreenBySlug(1, 'new');
@@ -342,12 +328,14 @@ describe('useScreenStore', () => {
 					stateVersion: 4,
 				}),
 			];
-			mockRepo.getBySlug.mockResolvedValue(createMockScreen({
-				id: 7,
-				slug: 'main',
-				name: 'Stale',
-				stateVersion: 3,
-			}));
+			mockRepo.getBySlug.mockResolvedValue(
+				createMockScreen({
+					id: 7,
+					slug: 'main',
+					name: 'Stale',
+					stateVersion: 3,
+				}),
+			);
 
 			const loaded = await store.loadScreenBySlug(1, 'main');
 
@@ -371,9 +359,11 @@ describe('useScreenStore', () => {
 			];
 
 			let serveLoad: (screen: unknown) => void = () => {};
-			mockRepo.getBySlug.mockReturnValueOnce(new Promise((resolve) => {
-				serveLoad = resolve;
-			}));
+			mockRepo.getBySlug.mockReturnValueOnce(
+				new Promise((resolve) => {
+					serveLoad = resolve;
+				}),
+			);
 			const load = store.loadScreenBySlug(1, 'main');
 
 			const saved = createMockScreen({
@@ -389,14 +379,16 @@ describe('useScreenStore', () => {
 			await vi.advanceTimersByTimeAsync(300);
 			await save;
 
-			serveLoad(createMockScreen({
-				id: 5,
-				slug: 'main',
-				modeConfigs: {
-					deck: { showDeckName: true },
-				},
-				stateVersion: 3,
-			}));
+			serveLoad(
+				createMockScreen({
+					id: 5,
+					slug: 'main',
+					modeConfigs: {
+						deck: { showDeckName: true },
+					},
+					stateVersion: 3,
+				}),
+			);
 			const loaded = await load;
 
 			expect(store.activeScreen!.modeConfigs).toEqual({
@@ -415,9 +407,11 @@ describe('useScreenStore', () => {
 	describe('refreshActiveScreen', () => {
 		function deferGetScreenOutputById() {
 			let serve!: (screen: unknown) => void;
-			mockRepo.getScreenOutputById.mockReturnValueOnce(new Promise((resolve) => {
-				serve = resolve;
-			}));
+			mockRepo.getScreenOutputById.mockReturnValueOnce(
+				new Promise((resolve) => {
+					serve = resolve;
+				}),
+			);
 			return (screen: unknown) => serve(screen);
 		}
 
@@ -473,12 +467,14 @@ describe('useScreenStore', () => {
 				name: 'Saved',
 				stateVersion: 4,
 			});
-			mockRepo.getScreenOutputById.mockResolvedValue(createMockScreen({
-				id: 7,
-				slug: 'main',
-				name: 'Stale',
-				stateVersion: 3,
-			}));
+			mockRepo.getScreenOutputById.mockResolvedValue(
+				createMockScreen({
+					id: 7,
+					slug: 'main',
+					name: 'Stale',
+					stateVersion: 3,
+				}),
+			);
 
 			const refreshed = await store.refreshActiveScreen(1, 7);
 
@@ -546,10 +542,10 @@ describe('useScreenStore', () => {
 		});
 
 		it('refuses an answer older than the cached revision, and answers with the cached one', async () => {
-			store.screens = [
-				createMockScreen({ id: 5, name: 'Saved', stateVersion: 4 }),
-			];
-			mockRepo.getById.mockResolvedValue(createMockScreen({ id: 5, name: 'Stale', stateVersion: 3 }));
+			store.screens = [createMockScreen({ id: 5, name: 'Saved', stateVersion: 4 })];
+			mockRepo.getById.mockResolvedValue(
+				createMockScreen({ id: 5, name: 'Stale', stateVersion: 3 }),
+			);
 
 			const loaded = await store.getScreenById(1, 5);
 
@@ -563,10 +559,10 @@ describe('useScreenStore', () => {
 		});
 
 		it('caches an answer at the revision the cache already holds', async () => {
-			store.screens = [
-				createMockScreen({ id: 5, name: 'Old', stateVersion: 4 }),
-			];
-			mockRepo.getById.mockResolvedValue(createMockScreen({ id: 5, name: 'Fresh', stateVersion: 4 }));
+			store.screens = [createMockScreen({ id: 5, name: 'Old', stateVersion: 4 })];
+			mockRepo.getById.mockResolvedValue(
+				createMockScreen({ id: 5, name: 'Fresh', stateVersion: 4 }),
+			);
 
 			await store.getScreenById(1, 5);
 
@@ -588,9 +584,11 @@ describe('useScreenStore', () => {
 			];
 
 			let serveLoad: (screen: unknown) => void = () => {};
-			mockRepo.getById.mockReturnValueOnce(new Promise((resolve) => {
-				serveLoad = resolve;
-			}));
+			mockRepo.getById.mockReturnValueOnce(
+				new Promise((resolve) => {
+					serveLoad = resolve;
+				}),
+			);
 			const load = store.getScreenById(1, 5);
 
 			const saved = createMockScreen({
@@ -608,13 +606,15 @@ describe('useScreenStore', () => {
 				deck: { showDeckName: false },
 			});
 
-			serveLoad(createMockScreen({
-				id: 5,
-				modeConfigs: {
-					deck: { showDeckName: true },
-				},
-				stateVersion: 3,
-			}));
+			serveLoad(
+				createMockScreen({
+					id: 5,
+					modeConfigs: {
+						deck: { showDeckName: true },
+					},
+					stateVersion: 3,
+				}),
+			);
 			const loaded = await load;
 
 			expect(store.screens[0]!.modeConfigs).toEqual({
@@ -631,7 +631,11 @@ describe('useScreenStore', () => {
 			const created = createMockScreen({ id: 3, name: 'New Screen' });
 			mockRepo.create.mockResolvedValue(created);
 
-			const result = await store.createScreen(1, { name: 'New Screen', slug: 'new-screen', currentMode: 'background' });
+			const result = await store.createScreen(1, {
+				name: 'New Screen',
+				slug: 'new-screen',
+				currentMode: 'background',
+			});
 
 			expect(result).toEqual(created);
 			expect(store.screens).toContainEqual(created);
@@ -645,27 +649,31 @@ describe('useScreenStore', () => {
 			await store.createScreen(1, { name: 'Screen', slug: 'screen', currentMode: 'background' });
 			await store.createScreen(1, { name: 'Screen', slug: 'screen', currentMode: 'background' });
 
-			expect(store.screens.map(s => s.id)).toEqual([10]);
+			expect(store.screens.map((s) => s.id)).toEqual([10]);
 			expect(store.screens[0]!.name).toBe('second');
 		});
 
 		it('keeps the newer held revision when a create answers with an older one', async () => {
 			// Newest wins, as through every other door into `screens`.
-			store.screens = [
-				createMockScreen({ id: 10, name: 'Saved', stateVersion: 4 }),
-			];
-			mockRepo.create.mockResolvedValue(createMockScreen({ id: 10, name: 'Created', stateVersion: 3 }));
+			store.screens = [createMockScreen({ id: 10, name: 'Saved', stateVersion: 4 })];
+			mockRepo.create.mockResolvedValue(
+				createMockScreen({ id: 10, name: 'Created', stateVersion: 3 }),
+			);
 
-			const created = await store.createScreen(1, { name: 'Screen', slug: 'screen', currentMode: 'background' });
+			const created = await store.createScreen(1, {
+				name: 'Screen',
+				slug: 'screen',
+				currentMode: 'background',
+			});
 
-			expect(store.screens.map(s => s.name)).toEqual(['Saved']);
+			expect(store.screens.map((s) => s.name)).toEqual(['Saved']);
 			// Nothing mirrors a create's answer into the cache, so it is what the server made.
 			expect(created!.name).toBe('Created');
 		});
 	});
 
 	describe('updateScreen', () => {
-		it('holds the server\'s Screen, in the collection and as the active Screen', async () => {
+		it("holds the server's Screen, in the collection and as the active Screen", async () => {
 			const screen = createMockScreen({ id: 1, name: 'Old' });
 			store.screens = [screen];
 			store.activeScreen = screen;
@@ -684,7 +692,11 @@ describe('useScreenStore', () => {
 
 			await store.updateScreen(1, 1, { name: 'Updated' });
 
-			expect(mockRepo.update).toHaveBeenCalledWith(1, 1, expect.objectContaining({ stateVersion: 5 }));
+			expect(mockRepo.update).toHaveBeenCalledWith(
+				1,
+				1,
+				expect.objectContaining({ stateVersion: 5 }),
+			);
 		});
 
 		it('answers null, rolls the optimistic edit back, and reports what the authority said', async () => {
@@ -692,10 +704,16 @@ describe('useScreenStore', () => {
 			store.screens = [screen];
 			// Deliberately not a 409: that status is the conflict-refresh-and-retry
 			// path, and this row is about what a plain refusal produces.
-			mockRepo.update.mockRejectedValue(transportFailure({
-				status: 403,
-				body: { statusCode: 403, statusMessage: 'Forbidden', message: 'This Screen belongs to another Event' },
-			}));
+			mockRepo.update.mockRejectedValue(
+				transportFailure({
+					status: 403,
+					body: {
+						statusCode: 403,
+						statusMessage: 'Forbidden',
+						message: 'This Screen belongs to another Event',
+					},
+				}),
+			);
 
 			const answer = await store.updateScreen(1, 1, { name: 'Updated' });
 
@@ -737,7 +755,11 @@ describe('useScreenStore', () => {
 			const create = deferred<ReturnType<typeof createMockScreen>>();
 			mockRepo.create.mockReturnValueOnce(create.promise);
 
-			const creating = store.createScreen(1, { name: 'New Screen', slug: 'new-screen', currentMode: 'background' });
+			const creating = store.createScreen(1, {
+				name: 'New Screen',
+				slug: 'new-screen',
+				currentMode: 'background',
+			});
 			const shown = await switchAway();
 			create.resolve(createMockScreen({ id: 3, name: 'New Screen', stateVersion: 2 }));
 			await creating;
@@ -752,9 +774,7 @@ describe('useScreenStore', () => {
 			];
 			const succeeded = deferred<ReturnType<typeof createMockScreen>>();
 			const failed = deferred<never>();
-			mockRepo.update
-				.mockReturnValueOnce(succeeded.promise)
-				.mockReturnValueOnce(failed.promise);
+			mockRepo.update.mockReturnValueOnce(succeeded.promise).mockReturnValueOnce(failed.promise);
 
 			const renaming = store.updateScreen(1, 1, { name: 'One renamed' });
 			const renamingOther = store.updateScreen(1, 2, { name: 'Two renamed' });
@@ -768,9 +788,7 @@ describe('useScreenStore', () => {
 		});
 
 		it('a late failed delete puts back no Screen', async () => {
-			store.screens = [
-				createMockScreen({ id: 3, name: 'Three', stateVersion: 1 }),
-			];
+			store.screens = [createMockScreen({ id: 3, name: 'Three', stateVersion: 1 })];
 			const remove = deferred<never>();
 			mockRepo.remove.mockReturnValueOnce(remove.promise);
 

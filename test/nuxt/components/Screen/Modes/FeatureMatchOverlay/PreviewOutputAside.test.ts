@@ -20,13 +20,15 @@ mockNuxtImport('useCopyToClipboard', () => () => ({ copyToClipboard }));
 mockNuxtImport('useToast', () => () => ({ add: toastAdd }));
 mockNuxtImport('$fetch', () => apiFetch);
 
-function mountAside(props: {
-	publicationBlocked?: boolean;
-	publicationBlockReason?: string;
-	compositorTarget?: GraphicsSelectionTarget;
-	canvasWidth?: number;
-	canvasHeight?: number;
-} = {}) {
+function mountAside(
+	props: {
+		publicationBlocked?: boolean;
+		publicationBlockReason?: string;
+		compositorTarget?: GraphicsSelectionTarget;
+		canvasWidth?: number;
+		canvasHeight?: number;
+	} = {},
+) {
 	return mount(PreviewOutputAside, {
 		props: {
 			eventId: 1,
@@ -78,7 +80,10 @@ afterEach(() => {
 /** Copies the Screen's output URL through the hand-out, and answers what reached the clipboard. */
 async function copiedOutputUrl(wrapper: Wrapper): Promise<string> {
 	await wrapper.get('[data-hand-out="copy"]').trigger('click');
-	await wrapper.findAll('[role="menuitem"]').find(entry => entry.text() === 'Copy output URL')!.trigger('click');
+	await wrapper
+		.findAll('[role="menuitem"]')
+		.find((entry) => entry.text() === 'Copy output URL')!
+		.trigger('click');
 	await flushPromises();
 	return copyToClipboard.mock.lastCall![0];
 }
@@ -86,9 +91,10 @@ async function copiedOutputUrl(wrapper: Wrapper): Promise<string> {
 /** Opens the PNG menu and chooses the capture of `output`. */
 async function downloadPng(wrapper: Wrapper, output: string) {
 	await wrapper.get('[data-testid="download-output"]').trigger('click');
-	const item = wrapper.findAll('[role="menuitem"]').find(entry => entry.text() === `${output} PNG`);
-	if (!item)
-		throw new Error(`No "${output} PNG" item`);
+	const item = wrapper
+		.findAll('[role="menuitem"]')
+		.find((entry) => entry.text() === `${output} PNG`);
+	if (!item) throw new Error(`No "${output} PNG" item`);
 	await item.trigger('click');
 	await flushPromises();
 }
@@ -96,11 +102,14 @@ async function downloadPng(wrapper: Wrapper, output: string) {
 // The URL hand-out is the shared component's test; here it is wired once, beside the
 // PNG capture this editor keeps, with this surface's own words for a refused capture.
 describe('feature Match Overlay preview aside — output hand-outs', () => {
-	it('hands out this Screen\'s fill and key outputs through the shared hand-out', async () => {
+	it("hands out this Screen's fill and key outputs through the shared hand-out", async () => {
 		const wrapper = mountAside();
 
 		await wrapper.get('[data-hand-out="copy"]').trigger('click');
-		await wrapper.findAll('[role="menuitem"]').find(entry => entry.text() === 'Copy key output URL')!.trigger('click');
+		await wrapper
+			.findAll('[role="menuitem"]')
+			.find((entry) => entry.text() === 'Copy key output URL')!
+			.trigger('click');
 		await flushPromises();
 
 		expect(copyToClipboard).toHaveBeenCalledExactlyOnceWith(
@@ -115,13 +124,20 @@ describe('feature Match Overlay preview aside — output hand-outs', () => {
 			location: { href: '' },
 			close: vi.fn(),
 		};
-		vi.stubGlobal('open', vi.fn(() => captureWindow));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => captureWindow),
+		);
 		const wrapper = mountAside();
 
 		await downloadPng(wrapper, 'Fill');
 
-		expect(captureWindow.location.href).toBe(`${window.location.origin}/event/1/screen/main?output=fill&download=1#asset-capability=${capability}`);
-		expect(toastAdd).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ title: 'Preparing download' }));
+		expect(captureWindow.location.href).toBe(
+			`${window.location.origin}/event/1/screen/main?output=fill&download=1#asset-capability=${capability}`,
+		);
+		expect(toastAdd).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ title: 'Preparing download' }),
+		);
 	});
 
 	// Two reports: the announcement, then exactly one refusal naming the right cause (#258).
@@ -130,17 +146,24 @@ describe('feature Match Overlay preview aside — output hand-outs', () => {
 			'asset access is refused',
 			() => {
 				apiFetch.mockRejectedValue(new Error('unavailable'));
-				vi.stubGlobal('open', vi.fn(() => ({
-					opener: {},
-					location: { href: '' },
-					close: vi.fn(),
-				})));
+				vi.stubGlobal(
+					'open',
+					vi.fn(() => ({
+						opener: {},
+						location: { href: '' },
+						close: vi.fn(),
+					})),
+				);
 			},
 			'Asset access',
 		],
 		[
 			'the browser blocks the capture tab',
-			() => vi.stubGlobal('open', vi.fn(() => null)),
+			() =>
+				vi.stubGlobal(
+					'open',
+					vi.fn(() => null),
+				),
 			'pop-up',
 		],
 	])('refuses the capture, and says why, when %s', async (_, arrange, reason) => {
@@ -157,15 +180,19 @@ describe('feature Match Overlay preview aside — output hand-outs', () => {
 	});
 
 	it('disables every hand-out, explaining why, while Graphic Asset publication is blocked', async () => {
-		const wrapper = mountAside({ publicationBlocked: true, publicationBlockReason: 'A pinned revision is missing.' });
-		const controls = ['[data-hand-out="open"]', '[data-hand-out="copy"]', '[data-testid="download-output"]']
-			.map(selector => wrapper.get(selector));
+		const wrapper = mountAside({
+			publicationBlocked: true,
+			publicationBlockReason: 'A pinned revision is missing.',
+		});
+		const controls = [
+			'[data-hand-out="open"]',
+			'[data-hand-out="copy"]',
+			'[data-testid="download-output"]',
+		].map((selector) => wrapper.get(selector));
 
-		expect(controls.map(control => [
-			control.attributes('disabled'),
-			control.attributes('title'),
-		]))
-			.toEqual(Array.from({ length: 3 }, () => ['', 'A pinned revision is missing.']));
+		expect(
+			controls.map((control) => [control.attributes('disabled'), control.attributes('title')]),
+		).toEqual(Array.from({ length: 3 }, () => ['', 'A pinned revision is missing.']));
 	});
 });
 
@@ -244,10 +271,13 @@ describe('feature Match Overlay preview aside — its preview frame', () => {
 		await wrapper.setProps({
 			compositorTarget: { type: 'item', graphicId: 'feature-match-layout', itemId: 'wins' },
 		});
-		expect(postMessage).toHaveBeenCalledWith({
-			type: 'graphics-compositor:selected-target',
-			target: { type: 'item', graphicId: 'feature-match-layout', itemId: 'wins' },
-		}, window.location.origin);
+		expect(postMessage).toHaveBeenCalledWith(
+			{
+				type: 'graphics-compositor:selected-target',
+				target: { type: 'item', graphicId: 'feature-match-layout', itemId: 'wins' },
+			},
+			window.location.origin,
+		);
 	});
 
 	// The frame may mount its listeners after `load` fires, so it announces readiness (#235).
@@ -260,7 +290,9 @@ describe('feature Match Overlay preview aside — its preview frame', () => {
 		} as unknown as MessageEventSource;
 
 		message(window.location.origin, stranger, { type: GRAPHICS_PREVIEW_READY_MESSAGE });
-		message('https://example.invalid', frame.contentWindow, { type: GRAPHICS_PREVIEW_READY_MESSAGE });
+		message('https://example.invalid', frame.contentWindow, {
+			type: GRAPHICS_PREVIEW_READY_MESSAGE,
+		});
 		await nextTick();
 		expect(postMessage).not.toHaveBeenCalled();
 
@@ -308,25 +340,32 @@ describe('feature Match Overlay preview aside — its preview frame', () => {
 	it('fits the preview to the canvas aspect ratio', () => {
 		const wrapper = mountAside({ canvasWidth: 1080, canvasHeight: 1920 });
 
-		expect(wrapper.get('[data-testid="preview-stage"]').attributes('style')).toContain('aspect-ratio: 1080 / 1920');
+		expect(wrapper.get('[data-testid="preview-stage"]').attributes('style')).toContain(
+			'aspect-ratio: 1080 / 1920',
+		);
 	});
 });
 
 // The editor describes a run and the frame plays it; nothing here writes.
 describe('feature Match Overlay preview aside — graphic animation preview', () => {
-	const item = (itemId: string): GraphicsSelectionTarget => ({ type: 'item', graphicId: 'feature-match-layout', itemId });
+	const item = (itemId: string): GraphicsSelectionTarget => ({
+		type: 'item',
+		graphicId: 'feature-match-layout',
+		itemId,
+	});
 
 	/** The run last pushed to the frame: a plan, null for a stop, undefined if none was pushed. */
 	function lastRun(postMessage: ReturnType<typeof vi.fn>) {
 		const runs = postMessage.mock.calls
 			.map(([sent]) => sent)
-			.filter(sent => sent.type === 'graphics-compositor:preview-animation');
-		return runs.length === 0
-			? undefined
-			: runs[runs.length - 1].plan;
+			.filter((sent) => sent.type === 'graphics-compositor:preview-animation');
+		return runs.length === 0 ? undefined : runs[runs.length - 1].plan;
 	}
 
-	async function mountPlaying(compositorTarget: GraphicsSelectionTarget, subject: 'composition' | 'item') {
+	async function mountPlaying(
+		compositorTarget: GraphicsSelectionTarget,
+		subject: 'composition' | 'item',
+	) {
 		const wrapper = mountAside({ compositorTarget });
 		const postMessage = vi.fn();
 		previewFrame(wrapper, { postMessage });
@@ -337,26 +376,14 @@ describe('feature Match Overlay preview aside — graphic animation preview', ()
 	}
 
 	it.each([
-		[
-			'the whole composition, whatever is selected',
-			item('wins'),
-			'composition',
-			undefined,
-		],
-		[
-			'the selected Graphic Item alone',
-			item('wins'),
-			'item',
-			'wins',
-		],
+		['the whole composition, whatever is selected', item('wins'), 'composition', undefined],
+		['the selected Graphic Item alone', item('wins'), 'item', 'wins'],
 	] as const)('plays %s', async (_case, target, subject, itemId) => {
 		const { postMessage } = await mountPlaying(target, subject);
 
 		expect(lastRun(postMessage)).toEqual({
 			graphicId: 'feature-match-layout',
-			...(itemId
-				? { itemId }
-				: {}),
+			...(itemId ? { itemId } : {}),
 			scope: 'phase',
 			phase: 'enter',
 			run: 1,
@@ -377,9 +404,12 @@ describe('feature Match Overlay preview aside — graphic animation preview', ()
 		const toggle = wrapper.get('[data-testid="preview-animation-toggle"]');
 
 		expect(toggle.attributes('aria-expanded')).toBe('false');
-		expect(wrapper.get(`[id="${toggle.attributes('aria-controls')}"]`)
-			.find('[data-testid="animation-preview-controls"]')
-			.exists()).toBe(true);
+		expect(
+			wrapper
+				.get(`[id="${toggle.attributes('aria-controls')}"]`)
+				.find('[data-testid="animation-preview-controls"]')
+				.exists(),
+		).toBe(true);
 		expect(toggle.attributes('data-playing')).toBe('false');
 
 		await wrapper.get('[data-testid="animation-preview-play"]').trigger('click');
@@ -391,18 +421,17 @@ describe('feature Match Overlay preview aside — graphic animation preview', ()
 	it('offers no item run until a Graphic Item is selected', async () => {
 		const { wrapper, postMessage } = await mountPlaying({ type: 'canvas' }, 'item');
 
-		expect(wrapper.get('[data-testid="animation-preview-play"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="animation-preview-hint"]').text()).toContain('Select a Graphic Item');
+		expect(
+			wrapper.get('[data-testid="animation-preview-play"]').attributes('disabled'),
+		).toBeDefined();
+		expect(wrapper.get('[data-testid="animation-preview-hint"]').text()).toContain(
+			'Select a Graphic Item',
+		);
 		expect(lastRun(postMessage)).toBeUndefined();
 	});
 
 	it.each([
-		[
-			'stops an item run when another item is selected',
-			'item',
-			item('clock'),
-			null,
-		],
+		['stops an item run when another item is selected', 'item', item('clock'), null],
 		[
 			'keeps a composition run through a selection change',
 			'composition',
@@ -419,18 +448,27 @@ describe('feature Match Overlay preview aside — graphic animation preview', ()
 	});
 
 	// A layout declares no Graphic Inputs, so it has no update phase to play.
-	it('offers the layout\'s own phases only', () => {
+	it("offers the layout's own phases only", () => {
 		const wrapper = mountAside();
 
-		expect(wrapper.findAll('[data-testid="animation-preview-phase"] option').map(option => option.text()))
-			.toEqual(['Enter', 'On screen', 'Exit']);
+		expect(
+			wrapper
+				.findAll('[data-testid="animation-preview-phase"] option')
+				.map((option) => option.text()),
+		).toEqual(['Enter', 'On screen', 'Exit']);
 	});
 
 	it('marks which subject a run plays', async () => {
 		const { wrapper } = await mountPlaying(item('wins'), 'item');
 
-		expect(wrapper.get('[data-testid="animation-preview-subject-item"]').attributes('aria-pressed')).toBe('true');
-		expect(wrapper.get('[data-testid="animation-preview-subject-composition"]').attributes('aria-pressed')).toBe('false');
+		expect(
+			wrapper.get('[data-testid="animation-preview-subject-item"]').attributes('aria-pressed'),
+		).toBe('true');
+		expect(
+			wrapper
+				.get('[data-testid="animation-preview-subject-composition"]')
+				.attributes('aria-pressed'),
+		).toBe('false');
 	});
 
 	it('hands a reloaded frame the run in play', async () => {
@@ -439,6 +477,8 @@ describe('feature Match Overlay preview aside — graphic animation preview', ()
 
 		await wrapper.get('iframe').trigger('load');
 
-		expect(lastRun(postMessage)).toEqual(expect.objectContaining({ graphicId: 'feature-match-layout', run: 1 }));
+		expect(lastRun(postMessage)).toEqual(
+			expect.objectContaining({ graphicId: 'feature-match-layout', run: 1 }),
+		);
 	});
 });

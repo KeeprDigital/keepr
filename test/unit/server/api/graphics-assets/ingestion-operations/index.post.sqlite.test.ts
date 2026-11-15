@@ -29,16 +29,20 @@ interface StubEvent {
 	response: { status?: number };
 }
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 vi.stubGlobal('setResponseStatus', (event: StubEvent, status: number) => {
 	event.response.status = status;
 });
 vi.stubGlobal('setResponseHeader', () => {});
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 type Handler = (event: H3Event) => Promise<unknown>;
-const initiate = (await import('~~/server/api/graphics-assets/ingestion-operations/index.post')).default as unknown as Handler;
+const initiate = (await import('~~/server/api/graphics-assets/ingestion-operations/index.post'))
+	.default as unknown as Handler;
 
 function initiation(idempotencyKey: string, declaredByteLength: number): StubEvent {
 	return {
@@ -69,7 +73,7 @@ describe('initiating a Graphics Ingestion Operation', () => {
 		await leaveStagingRoomFor(68);
 		const request = initiation('admitted', 68);
 
-		const operation = await initiate(stubH3Event({ ...request })) as GraphicsIngestionOperation;
+		const operation = (await initiate(stubH3Event({ ...request }))) as GraphicsIngestionOperation;
 
 		expect(request.response.status).toBe(201);
 		expect(operation).toMatchObject({

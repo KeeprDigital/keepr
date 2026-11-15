@@ -21,14 +21,16 @@ const CardDeckListSectionStub = defineComponent({
 		filter: { type: String, required: true },
 		defaultOpen: { type: Boolean, required: true },
 	},
-	template: '<section data-testid="deck-section" :data-title="title" :data-card-count="cards.length" :data-filter="filter" :data-default-open="String(defaultOpen)" />',
+	template:
+		'<section data-testid="deck-section" :data-title="title" :data-card-count="cards.length" :data-filter="filter" :data-default-open="String(defaultOpen)" />',
 });
 
 const UCollapsibleStub = defineComponent({
 	props: {
 		defaultOpen: { type: Boolean, default: false },
 	},
-	template: '<section data-testid="collapsible" :data-default-open="String(defaultOpen)"><slot :open="defaultOpen" /><div v-if="defaultOpen"><slot name="content" /></div></section>',
+	template:
+		'<section data-testid="collapsible" :data-default-open="String(defaultOpen)"><slot :open="defaultOpen" /><div v-if="defaultOpen"><slot name="content" /></div></section>',
 });
 
 const UBadgeStub = defineComponent({
@@ -44,7 +46,11 @@ const CardListStub = defineComponent({
 	template: '<div data-testid="card-list" />',
 });
 
-function createCard(name: string, compartment: 'mainboard' | 'sideboard', quantity = 1): DeckListCardWithData {
+function createCard(
+	name: string,
+	compartment: 'mainboard' | 'sideboard',
+	quantity = 1,
+): DeckListCardWithData {
 	return {
 		name,
 		quantity,
@@ -70,12 +76,8 @@ function createPlayerData(): MatchPlayerDeckData {
 			cards: [],
 		},
 		deckTokens: [],
-		mainboard: [
-			createCard('Consider', 'mainboard', 4),
-		],
-		sideboard: [
-			createCard('Negate', 'sideboard', 2),
-		],
+		mainboard: [createCard('Consider', 'mainboard', 4)],
+		sideboard: [createCard('Negate', 'sideboard', 2)],
 		companion: null,
 		tokens: [
 			{
@@ -116,10 +118,7 @@ async function mountSection(filter = '') {
 	return mount(CardDeckListSection, {
 		props: {
 			title: 'Mainboard',
-			cards: [
-				resolvedCard,
-				createCard('Opt', 'mainboard'),
-			],
+			cards: [resolvedCard, createCard('Opt', 'mainboard')],
 			filter,
 		},
 		global: {
@@ -142,13 +141,21 @@ describe('mtgCardDeckListColumn', () => {
 		const wrapper = await mountColumn();
 		const sections = wrapper.findAll('[data-testid="deck-section"]');
 
-		expect(sections.map(section => section.attributes('data-title'))).toEqual([
+		expect(sections.map((section) => section.attributes('data-title'))).toEqual([
 			'Mainboard',
 			'Sideboard',
 			'Tokens',
 		]);
-		expect(sections.map(section => section.attributes('data-card-count'))).toEqual(['1', '1', '1']);
-		expect(sections.map(section => section.attributes('data-default-open'))).toEqual(['true', 'true', 'false']);
+		expect(sections.map((section) => section.attributes('data-card-count'))).toEqual([
+			'1',
+			'1',
+			'1',
+		]);
+		expect(sections.map((section) => section.attributes('data-default-open'))).toEqual([
+			'true',
+			'true',
+			'false',
+		]);
 	});
 
 	it('renders the companion as its own section after the sideboard', async () => {
@@ -157,7 +164,7 @@ describe('mtgCardDeckListColumn', () => {
 		const wrapper = await mountColumn(playerData);
 		const sections = wrapper.findAll('[data-testid="deck-section"]');
 
-		expect(sections.map(section => section.attributes('data-title'))).toEqual([
+		expect(sections.map((section) => section.attributes('data-title'))).toEqual([
 			'Mainboard',
 			'Sideboard',
 			'Companion',

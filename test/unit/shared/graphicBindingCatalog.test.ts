@@ -52,9 +52,9 @@ describe('graphic Input Binding field catalog', () => {
 		}
 	});
 
-	it('separates stable common fields from ones specific to the Event\'s game', () => {
-		const mtg = graphicBindingFields('player', 'mtg').map(field => field.id);
-		const op = graphicBindingFields('player', 'op').map(field => field.id);
+	it("separates stable common fields from ones specific to the Event's game", () => {
+		const mtg = graphicBindingFields('player', 'mtg').map((field) => field.id);
+		const op = graphicBindingFields('player', 'op').map((field) => field.id);
 
 		// A Player's name is a common field: every game's Event has one.
 		expect(mtg).toContain('player.name');
@@ -68,23 +68,31 @@ describe('graphic Input Binding field catalog', () => {
 	});
 
 	it('exposes atomic typed fields and explicitly named broadcast-formatted ones', () => {
-		expect(graphicBindingField('player', 'player.wins')).toMatchObject({ type: 'number', shape: 'atomic' });
-		expect(graphicBindingField('player', 'player.record')).toMatchObject({ type: 'text', shape: 'formatted' });
+		expect(graphicBindingField('player', 'player.wins')).toMatchObject({
+			type: 'number',
+			shape: 'atomic',
+		});
+		expect(graphicBindingField('player', 'player.record')).toMatchObject({
+			type: 'text',
+			shape: 'formatted',
+		});
 	});
 
-	it('accepts a binding only for a Graphic Input of the field\'s own type', () => {
+	it("accepts a binding only for a Graphic Input of the field's own type", () => {
 		expect(isGraphicBindingFieldCompatible('player', 'player.name', 'text')).toBe(true);
 		expect(isGraphicBindingFieldCompatible('player', 'player.name', 'number')).toBe(false);
 		expect(isGraphicBindingFieldCompatible('player', 'player.wins', 'number')).toBe(true);
 	});
 
 	it('offers each fixed Talent Social Profile as a compatible handle and canonical URL text field', () => {
-		expect(graphicBindingFields('talent', 'mtg').map(field => ({
-			id: field.id,
-			label: field.label,
-			type: field.type,
-			shape: field.shape,
-		}))).toEqual([
+		expect(
+			graphicBindingFields('talent', 'mtg').map((field) => ({
+				id: field.id,
+				label: field.label,
+				type: field.type,
+				shape: field.shape,
+			})),
+		).toEqual([
 			{
 				id: 'talent.name',
 				label: 'Name',
@@ -166,7 +174,10 @@ describe('graphic Input Binding field catalog', () => {
 		]);
 
 		expect(bindableGraphicBindingFields('talent', 'text', 'mtg').common).toHaveLength(13);
-		expect(bindableGraphicBindingFields('talent', 'number', 'mtg')).toEqual({ common: [], gameSpecific: [] });
+		expect(bindableGraphicBindingFields('talent', 'number', 'mtg')).toEqual({
+			common: [],
+			gameSpecific: [],
+		});
 	});
 
 	it('resolves fixed Talent Social Profile handles and canonical URLs without substituting missing profiles', () => {
@@ -175,25 +186,31 @@ describe('graphic Input Binding field catalog', () => {
 			socialProfiles: { twitch: 'JulesLive', bluesky: 'jules.bsky.social' },
 		};
 
-		expect(resolveGraphicBindingField('talent', 'talent.twitchHandle', talent, dataSet())).toBe('JulesLive');
-		expect(resolveGraphicBindingField('talent', 'talent.twitchProfileUrl', talent, dataSet()))
-			.toBe('https://www.twitch.tv/JulesLive');
-		expect(resolveGraphicBindingField('talent', 'talent.blueskyProfileUrl', talent, dataSet()))
-			.toBe('https://bsky.app/profile/jules.bsky.social');
-		expect(resolveGraphicBindingField('talent', 'talent.youtubeHandle', talent, dataSet()))
-			.toBeUndefined();
-		expect(resolveGraphicBindingField('talent', 'talent.youtubeProfileUrl', talent, dataSet()))
-			.toBeUndefined();
+		expect(resolveGraphicBindingField('talent', 'talent.twitchHandle', talent, dataSet())).toBe(
+			'JulesLive',
+		);
+		expect(resolveGraphicBindingField('talent', 'talent.twitchProfileUrl', talent, dataSet())).toBe(
+			'https://www.twitch.tv/JulesLive',
+		);
+		expect(
+			resolveGraphicBindingField('talent', 'talent.blueskyProfileUrl', talent, dataSet()),
+		).toBe('https://bsky.app/profile/jules.bsky.social');
+		expect(
+			resolveGraphicBindingField('talent', 'talent.youtubeHandle', talent, dataSet()),
+		).toBeUndefined();
+		expect(
+			resolveGraphicBindingField('talent', 'talent.youtubeProfileUrl', talent, dataSet()),
+		).toBeUndefined();
 	});
 
 	it('offers no field for a ticking clock or collection-shaped state', () => {
-		const slot = graphicBindingFields('feature-match-slot', 'mtg').map(field => field.id);
+		const slot = graphicBindingFields('feature-match-slot', 'mtg').map((field) => field.id);
 
-		expect(slot.some(id => /clock/i.test(id))).toBe(false);
-		expect(slot.some(id => /counters/i.test(id))).toBe(false);
+		expect(slot.some((id) => /clock/i.test(id))).toBe(false);
+		expect(slot.some((id) => /counters/i.test(id))).toBe(false);
 	});
 
-	it('formats a Player record with the Event\'s own broadcast separator', () => {
+	it("formats a Player record with the Event's own broadcast separator", () => {
 		const player = {
 			name: 'Ava Reed',
 			wins: 4,
@@ -202,32 +219,56 @@ describe('graphic Input Binding field catalog', () => {
 		};
 
 		expect(resolveGraphicBindingField('player', 'player.record', player, dataSet())).toBe('4-1');
-		expect(resolveGraphicBindingField('player', 'player.record', player, dataSet({
-			event: { ...MTG_EVENT, displayRecordSeparator: ' | ', displayHideZeroDraws: false },
-		}))).toBe('4 | 1 | 0');
+		expect(
+			resolveGraphicBindingField(
+				'player',
+				'player.record',
+				player,
+				dataSet({
+					event: { ...MTG_EVENT, displayRecordSeparator: ' | ', displayHideZeroDraws: false },
+				}),
+			),
+		).toBe('4 | 1 | 0');
 	});
 
 	it('formats a Player position the way the Event displays positions', () => {
 		const player = { name: 'Ava Reed', position: 3 };
 
 		expect(resolveGraphicBindingField('player', 'player.position', player, dataSet())).toBe(3);
-		expect(resolveGraphicBindingField('player', 'player.positionDisplay', player, dataSet())).toBe('3rd');
-		expect(resolveGraphicBindingField('player', 'player.positionDisplay', player, dataSet({
-			event: { ...MTG_EVENT, displayPositionFormat: 'number' },
-		}))).toBe('3');
+		expect(resolveGraphicBindingField('player', 'player.positionDisplay', player, dataSet())).toBe(
+			'3rd',
+		);
+		expect(
+			resolveGraphicBindingField(
+				'player',
+				'player.positionDisplay',
+				player,
+				dataSet({
+					event: { ...MTG_EVENT, displayPositionFormat: 'number' },
+				}),
+			),
+		).toBe('3');
 	});
 
 	// Shown by the shared name-or-Nickname rule (ADR-0074).
 	it('names a One Piece Player with no name by their Nickname', () => {
-		expect(resolveGraphicBindingField('player', 'player.name', { name: '', nickname: 'linlin_88' }, dataSet()))
-			.toBe('linlin_88');
+		expect(
+			resolveGraphicBindingField(
+				'player',
+				'player.name',
+				{ name: '', nickname: 'linlin_88' },
+				dataSet(),
+			),
+		).toBe('linlin_88');
 	});
 
 	it('resolves nothing for a field the entity has no value for', () => {
-		expect(resolveGraphicBindingField('player', 'player.pronouns', { name: 'Ava Reed' }, dataSet()))
-			.toBeUndefined();
-		expect(resolveGraphicBindingField('player', 'player.record', { name: 'Ava Reed' }, dataSet()))
-			.toBeUndefined();
+		expect(
+			resolveGraphicBindingField('player', 'player.pronouns', { name: 'Ava Reed' }, dataSet()),
+		).toBeUndefined();
+		expect(
+			resolveGraphicBindingField('player', 'player.record', { name: 'Ava Reed' }, dataSet()),
+		).toBeUndefined();
 	});
 
 	// `player.leader` predates the Leader picker; a stored binding id is never renamed.
@@ -235,7 +276,7 @@ describe('graphic Input Binding field catalog', () => {
 		{ fieldId: 'player.leader', value: 'Monkey.D.Luffy' },
 		{ fieldId: 'player.leaderColors', value: 'Red/Green' },
 		{ fieldId: 'player.leaderImage', value: 'https://cards-img.keepr.digital/OP01-003.png' },
-	])('resolves a side\'s Leader through $fieldId', ({ fieldId, value }) => {
+	])("resolves a side's Leader through $fieldId", ({ fieldId, value }) => {
 		const player = {
 			name: 'Ava',
 			gameData: {
@@ -244,11 +285,17 @@ describe('graphic Input Binding field catalog', () => {
 			},
 		};
 		expect(resolveGraphicBindingField('player', fieldId, player, dataSet())).toBe(value);
-		expect(resolveGraphicBindingField('player', fieldId, {
-			name: 'Ava',
-			gameData: { type: 'op', leader: null },
-		}, dataSet()))
-			.toBeUndefined();
+		expect(
+			resolveGraphicBindingField(
+				'player',
+				fieldId,
+				{
+					name: 'Ava',
+					gameData: { type: 'op', leader: null },
+				},
+				dataSet(),
+			),
+		).toBeUndefined();
 	});
 
 	// Each Commander a Seat holds is a card: the first, and a pair's second (ADR-0087).
@@ -264,24 +311,50 @@ describe('graphic Input Binding field catalog', () => {
 			single: undefined,
 		},
 	])('resolves a Commander Seat through $fieldId', ({ fieldId, pair, single }) => {
-		expect(resolveGraphicBindingField('player', fieldId, seatedPlayer('Cleo', [TYMNA, KRAUM]), dataSet())).toBe(pair);
-		expect(resolveGraphicBindingField('player', fieldId, seatedPlayer('Dara', [ATRAXA]), dataSet())).toBe(single);
+		expect(
+			resolveGraphicBindingField(
+				'player',
+				fieldId,
+				seatedPlayer('Cleo', [TYMNA, KRAUM]),
+				dataSet(),
+			),
+		).toBe(pair);
+		expect(
+			resolveGraphicBindingField('player', fieldId, seatedPlayer('Dara', [ATRAXA]), dataSet()),
+		).toBe(single);
 	});
 
-	it.each(['player3', 'player4'] as const)('resolves %s\'s life from a Commander Session', (seat) => {
-		const slot = {
-			activeSession: {
-				currentState: {
-					player1: { lifeTotal: 40 },
-					player2: { lifeTotal: 40 },
-					[seat]: { lifeTotal: 17 },
+	it.each(['player3', 'player4'] as const)(
+		"resolves %s's life from a Commander Session",
+		(seat) => {
+			const slot = {
+				activeSession: {
+					currentState: {
+						player1: { lifeTotal: 40 },
+						player2: { lifeTotal: 40 },
+						[seat]: { lifeTotal: 17 },
+					},
 				},
-			},
-		} as never;
+			} as never;
 
-		expect(resolveGraphicBindingField('feature-match-slot', `featureMatchSlot.${seat}Life`, slot, dataSet())).toBe(17);
-		expect(resolveGraphicBindingField('feature-match-slot', `featureMatchSlot.${seat}Life`, {}, dataSet())).toBeUndefined();
-	});
+			expect(
+				resolveGraphicBindingField(
+					'feature-match-slot',
+					`featureMatchSlot.${seat}Life`,
+					slot,
+					dataSet(),
+				),
+			).toBe(17);
+			expect(
+				resolveGraphicBindingField(
+					'feature-match-slot',
+					`featureMatchSlot.${seat}Life`,
+					{},
+					dataSet(),
+				),
+			).toBeUndefined();
+		},
+	);
 
 	// A linked side, and a Player, show the Player's Deck List (ADR-0074); an unlinked side its Feature Match Deck List.
 	it.each([
@@ -293,36 +366,63 @@ describe('graphic Input Binding field catalog', () => {
 			},
 		},
 		{
-			held: 'a Player\'s Deck List',
+			held: "a Player's Deck List",
 			gameData: {
 				type: 'op' as const,
 				deckList: { id: 7, mainboardCount: 50, leaderNumber: 'OP01-003' },
 			},
 		},
-	])('resolves the Mainboard count of $held through player.deckCardCount, on One Piece Events only', ({ gameData }) => {
-		const withDeckList = { name: 'Ava', gameData };
+	])(
+		'resolves the Mainboard count of $held through player.deckCardCount, on One Piece Events only',
+		({ gameData }) => {
+			const withDeckList = { name: 'Ava', gameData };
 
-		expect(resolveGraphicBindingField('player', 'player.deckCardCount', withDeckList, dataSet())).toBe(50);
-		expect(resolveGraphicBindingField('player', 'player.deckCardCount', {
-			name: 'Ava',
-			gameData: { type: 'op' },
-		}, dataSet()))
-			.toBeUndefined();
-		expect(bindableGraphicBindingFields('player', 'number', 'op').gameSpecific.map(field => field.id)).toEqual(['player.deckCardCount']);
-		expect(bindableGraphicBindingFields('player', 'number', 'mtg').gameSpecific).toEqual([]);
-	});
+			expect(
+				resolveGraphicBindingField('player', 'player.deckCardCount', withDeckList, dataSet()),
+			).toBe(50);
+			expect(
+				resolveGraphicBindingField(
+					'player',
+					'player.deckCardCount',
+					{
+						name: 'Ava',
+						gameData: { type: 'op' },
+					},
+					dataSet(),
+				),
+			).toBeUndefined();
+			expect(
+				bindableGraphicBindingFields('player', 'number', 'op').gameSpecific.map(
+					(field) => field.id,
+				),
+			).toEqual(['player.deckCardCount']);
+			expect(bindableGraphicBindingFields('player', 'number', 'mtg').gameSpecific).toEqual([]);
+		},
+	);
 
-	it('reads a Player\'s Archetype name through the Event\'s Archetypes', () => {
+	it("reads a Player's Archetype name through the Event's Archetypes", () => {
 		const data = dataSet({
 			archetypes: {
 				12: { name: 'Azorius Control', colors: 'WU' },
 			},
 		});
 
-		expect(resolveGraphicBindingField('player', 'player.archetypeName', { name: 'Ava', archetypeId: 12 }, data))
-			.toBe('Azorius Control');
-		expect(resolveGraphicBindingField('player', 'player.archetypeName', { name: 'Ava', archetypeId: 99 }, data))
-			.toBeUndefined();
+		expect(
+			resolveGraphicBindingField(
+				'player',
+				'player.archetypeName',
+				{ name: 'Ava', archetypeId: 12 },
+				data,
+			),
+		).toBe('Azorius Control');
+		expect(
+			resolveGraphicBindingField(
+				'player',
+				'player.archetypeName',
+				{ name: 'Ava', archetypeId: 99 },
+				data,
+			),
+		).toBeUndefined();
 	});
 });
 
@@ -331,24 +431,28 @@ describe('graphic Input Binding field catalog', () => {
  * rules asked as one question: the type this input can hold, and this Event's game.
  */
 describe('the fields one Graphic Input may bind to', () => {
-	it('offers only fields of the Graphic Input\'s own type', () => {
+	it("offers only fields of the Graphic Input's own type", () => {
 		const text = bindableGraphicBindingFields('player', 'text', 'mtg');
 		const number = bindableGraphicBindingFields('player', 'number', 'mtg');
 
-		expect(text.common.map(field => field.id)).toContain('player.record');
-		expect(text.common.map(field => field.id)).not.toContain('player.wins');
-		expect(number.common.map(field => field.id)).toContain('player.wins');
-		expect(number.common.map(field => field.id)).not.toContain('player.record');
+		expect(text.common.map((field) => field.id)).toContain('player.record');
+		expect(text.common.map((field) => field.id)).not.toContain('player.wins');
+		expect(number.common.map((field) => field.id)).toContain('player.wins');
+		expect(number.common.map((field) => field.id)).not.toContain('player.record');
 	});
 
-	it('presents this Event\'s game-specific fields apart from the common ones', () => {
+	it("presents this Event's game-specific fields apart from the common ones", () => {
 		const mtg = bindableGraphicBindingFields('player', 'text', 'mtg');
 
-		expect(mtg.common.map(field => field.id)).toContain('player.name');
-		expect(mtg.common.every(field => field.game === undefined)).toBe(true);
-		expect(mtg.gameSpecific.map(field => field.id)).toEqual(['player.deckName', 'player.deckColors']);
-		expect(bindableGraphicBindingFields('player', 'text', 'op').gameSpecific.map(field => field.id))
-			.toEqual(['player.leader', 'player.leaderColors', 'player.leaderImage']);
+		expect(mtg.common.map((field) => field.id)).toContain('player.name');
+		expect(mtg.common.every((field) => field.game === undefined)).toBe(true);
+		expect(mtg.gameSpecific.map((field) => field.id)).toEqual([
+			'player.deckName',
+			'player.deckColors',
+		]);
+		expect(
+			bindableGraphicBindingFields('player', 'text', 'op').gameSpecific.map((field) => field.id),
+		).toEqual(['player.leader', 'player.leaderColors', 'player.leaderImage']);
 	});
 
 	// A Commander's fields and a third Seat are a Commander Event's alone (ADR-0087).
@@ -371,19 +475,36 @@ describe('the fields one Graphic Input may bind to', () => {
 			variant: null,
 			offered: false,
 		},
-	])('offers $name a Commander\'s fields and a third Seat\'s life: $offered', ({ game, variant, offered }) => {
-		const player = bindableGraphicBindingFields('player', 'text', game, variant).gameSpecific.map(field => field.id);
-		const slot = graphicBindingFields('feature-match-slot', game, variant).map(field => field.id);
+	])(
+		"offers $name a Commander's fields and a third Seat's life: $offered",
+		({ game, variant, offered }) => {
+			const player = bindableGraphicBindingFields('player', 'text', game, variant).gameSpecific.map(
+				(field) => field.id,
+			);
+			const slot = graphicBindingFields('feature-match-slot', game, variant).map(
+				(field) => field.id,
+			);
 
-		expect(player.includes('player.commander1Image') && player.includes('player.commander2Image')).toBe(offered);
-		expect(slot.includes('featureMatchSlot.player3Life') && slot.includes('featureMatchSlot.player4Life')).toBe(offered);
-		expect(isGraphicBindingFieldCompatible('player', 'player.commander1Image', 'text', game, variant)).toBe(offered);
-	});
+			expect(
+				player.includes('player.commander1Image') && player.includes('player.commander2Image'),
+			).toBe(offered);
+			expect(
+				slot.includes('featureMatchSlot.player3Life') &&
+					slot.includes('featureMatchSlot.player4Life'),
+			).toBe(offered);
+			expect(
+				isGraphicBindingFieldCompatible('player', 'player.commander1Image', 'text', game, variant),
+			).toBe(offered);
+		},
+	);
 
 	it('offers nothing at all where the kind has no field of that type', () => {
 		// Every current Talent binding field is text, so a number Graphic Input has
 		// nothing to bind to and the surface can state why instead of showing an empty picker.
-		expect(bindableGraphicBindingFields('talent', 'number', 'mtg')).toEqual({ common: [], gameSpecific: [] });
+		expect(bindableGraphicBindingFields('talent', 'number', 'mtg')).toEqual({
+			common: [],
+			gameSpecific: [],
+		});
 	});
 });
 

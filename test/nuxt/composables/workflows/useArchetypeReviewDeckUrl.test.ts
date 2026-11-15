@@ -17,7 +17,9 @@ mockNuxtImport('usePlayerDeckCache', () => () => ({
 const route = reactive({ query: {} as Record<string, string> });
 const replace = vi.fn(async (to: { query?: Record<string, string | undefined> }) => {
 	route.query = Object.fromEntries(
-		Object.entries(to.query ?? {}).filter((entry): entry is [string, string] => entry[1] !== undefined),
+		Object.entries(to.query ?? {}).filter(
+			(entry): entry is [string, string] => entry[1] !== undefined,
+		),
 	);
 });
 mockNuxtImport('useRoute', () => () => route);
@@ -38,9 +40,7 @@ function deck(id: number, name: string, reviewed = false) {
 		name,
 		colors: 'R',
 		archetypeId: reviewed ? 50 : null,
-		reviewedAt: reviewed
-			? new Date()
-			: null,
+		reviewedAt: reviewed ? new Date() : null,
 		isPrimary: true,
 	};
 }
@@ -59,7 +59,9 @@ describe('the deck Archetype Review shows, and its URL', () => {
 			deck(3, 'Control'),
 			deck(4, 'Dredge', true),
 		];
-		mockPlayerStore.players = mockPlayerDeckStore.decks.map(({ id }) => createMockPlayer({ id, name: `Player ${id}` }));
+		mockPlayerStore.players = mockPlayerDeckStore.decks.map(({ id }) =>
+			createMockPlayer({ id, name: `Player ${id}` }),
+		);
 	});
 
 	afterEach(() => {
@@ -81,7 +83,8 @@ describe('the deck Archetype Review shows, and its URL', () => {
 		return queue;
 	}
 
-	const shownDeckId = (queue: Awaited<ReturnType<typeof arrive>>) => queue.currentEntry.value?.deck.id;
+	const shownDeckId = (queue: Awaited<ReturnType<typeof arrive>>) =>
+		queue.currentEntry.value?.deck.id;
 
 	it.each([
 		['an unreviewed deck', '2'],
@@ -99,12 +102,12 @@ describe('the deck Archetype Review shows, and its URL', () => {
 	});
 
 	// The queue rebuilds its entries on every Player or deck message: none of them is a request for the URL's deck.
-	it('stays on the deck stepped to when the Event\'s data changes', async () => {
+	it("stays on the deck stepped to when the Event's data changes", async () => {
 		const queue = await arrive({ deckId: '1' });
 
 		queue.advance();
 		await nextTick();
-		mockPlayerStore.players = mockPlayerStore.players.map(player => ({
+		mockPlayerStore.players = mockPlayerStore.players.map((player) => ({
 			...player,
 			updatedAt: new Date(),
 		}));
@@ -114,16 +117,8 @@ describe('the deck Archetype Review shows, and its URL', () => {
 	});
 
 	it.each([
-		[
-			'stepping',
-			(queue: Awaited<ReturnType<typeof arrive>>) => queue.advance(),
-			'2',
-		],
-		[
-			'jumping',
-			(queue: Awaited<ReturnType<typeof arrive>>) => queue.jumpToDeck(4),
-			'4',
-		],
+		['stepping', (queue: Awaited<ReturnType<typeof arrive>>) => queue.advance(), '2'],
+		['jumping', (queue: Awaited<ReturnType<typeof arrive>>) => queue.jumpToDeck(4), '4'],
 	])('names the deck shown after %s', async (_, move, deckId) => {
 		const queue = await arrive();
 
@@ -139,7 +134,7 @@ describe('the deck Archetype Review shows, and its URL', () => {
 		expect(route.query.deckId).toBe('1');
 	});
 
-	it('shows the queue\'s first deck, in its filter, for a URL naming no deck of the Event', async () => {
+	it("shows the queue's first deck, in its filter, for a URL naming no deck of the Event", async () => {
 		const queue = await arrive({ deckId: '999' });
 
 		expect(shownDeckId(queue)).toBe(1);

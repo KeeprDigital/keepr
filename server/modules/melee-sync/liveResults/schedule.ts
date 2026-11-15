@@ -49,11 +49,8 @@ export function nextLiveResultsSchedule(input: LiveResultsScheduleInput): LiveRe
 	}
 
 	const quietFor = now.getTime() - lastChangeAt.getTime();
-	const stop: MeleeLiveResultsStopReason | null = outcome === 'auth-failed'
-		? 'auth'
-		: quietFor > LIVE_RESULTS_IDLE_STOP_MS
-			? 'idle'
-			: null;
+	const stop: MeleeLiveResultsStopReason | null =
+		outcome === 'auth-failed' ? 'auth' : quietFor > LIVE_RESULTS_IDLE_STOP_MS ? 'idle' : null;
 	if (stop) {
 		return {
 			nextCheckAt: now,
@@ -64,9 +61,10 @@ export function nextLiveResultsSchedule(input: LiveResultsScheduleInput): LiveRe
 	}
 
 	if (outcome === 'unchanged' && target === 'results') {
-		const interval = quietFor > LIVE_RESULTS_QUIET_AFTER_MS
-			? LIVE_RESULTS_QUIET_INTERVAL_MS
-			: LIVE_RESULTS_INTERVAL_MS;
+		const interval =
+			quietFor > LIVE_RESULTS_QUIET_AFTER_MS
+				? LIVE_RESULTS_QUIET_INTERVAL_MS
+				: LIVE_RESULTS_INTERVAL_MS;
 		return {
 			nextCheckAt: after(interval),
 			backoffStep: 0,
@@ -75,7 +73,10 @@ export function nextLiveResultsSchedule(input: LiveResultsScheduleInput): LiveRe
 		};
 	}
 
-	const backoff = Math.min(LIVE_RESULTS_BACKOFF_BASE_MS * 2 ** backoffStep, LIVE_RESULTS_BACKOFF_CAP_MS);
+	const backoff = Math.min(
+		LIVE_RESULTS_BACKOFF_BASE_MS * 2 ** backoffStep,
+		LIVE_RESULTS_BACKOFF_CAP_MS,
+	);
 	return {
 		nextCheckAt: after(backoff),
 		backoffStep: backoffStep + 1,

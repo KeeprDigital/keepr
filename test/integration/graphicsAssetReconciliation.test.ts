@@ -12,22 +12,26 @@ import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
 import { expectOperationResult } from './responseStatus';
 
-const transparentPixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const transparentPixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 /**
  * Integration suites share one database and identical bytes deduplicate by
  * design, so this suite pads its fixture with a chunk count no other suite uses
  * and keeps its content digests to itself.
  */
-const reconciliationPixelPng = Uint8Array.from(Buffer.concat([
-	transparentPixelPng.slice(0, -12),
-	...Array.from({ length: 40 }).fill(emptyTextChunk) as Uint8Array[],
-	transparentPixelPng.slice(-12),
-]));
+const reconciliationPixelPng = Uint8Array.from(
+	Buffer.concat([
+		transparentPixelPng.slice(0, -12),
+		...(Array.from({ length: 40 }).fill(emptyTextChunk) as Uint8Array[]),
+		transparentPixelPng.slice(-12),
+	]),
+);
 
 describe('the Graphics Asset Library reconciliation API', () => {
 	const administratorHeaders = {
@@ -60,30 +64,36 @@ describe('the Graphics Asset Library reconciliation API', () => {
 				}),
 			},
 		);
-		return await fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
-			{
-				method: 'PUT',
-				headers: { ...authorHeaders, 'content-type': 'image/png' },
-				body: reconciliationPixelPng,
-			},
-		).then(expectOperationResult);
+		return await fetch(`/api/graphics-assets/ingestion-operations/${initiated.id}/content`, {
+			method: 'PUT',
+			headers: { ...authorHeaders, 'content-type': 'image/png' },
+			body: reconciliationPixelPng,
+		}).then(expectOperationResult);
 	}
 
 	it('keeps every reconciliation surface behind administrator authorization', async () => {
 		expect((await fetch('/api/admin/graphics-assets/reconciliation')).status).toBe(403);
-		expect((await fetch('/api/admin/graphics-assets/reconciliation', { method: 'POST' })).status)
-			.toBe(403);
+		expect(
+			(await fetch('/api/admin/graphics-assets/reconciliation', { method: 'POST' })).status,
+		).toBe(403);
 		expect((await fetch('/api/admin/graphics-assets/discrepancies/anything')).status).toBe(403);
-		expect((await fetch('/api/admin/graphics-assets/discrepancies/anything/actions', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ action: 'recheck' }),
-		})).status).toBe(403);
-		expect((await fetch('/api/admin/graphics-assets/discrepancies/anything/repair', {
-			method: 'PUT',
-			body: reconciliationPixelPng,
-		})).status).toBe(403);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/discrepancies/anything/actions', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ action: 'recheck' }),
+				})
+			).status,
+		).toBe(403);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/discrepancies/anything/repair', {
+					method: 'PUT',
+					body: reconciliationPixelPng,
+				})
+			).status,
+		).toBe(403);
 	});
 
 	/**
@@ -144,9 +154,11 @@ describe('the Graphics Asset Library reconciliation API', () => {
 			'/api/admin/graphics-assets/reconciliation',
 			{ headers: administratorHeaders },
 		);
-		expect(overview.discrepancies.filter(
-			discrepancy => discrepancy.affectedUsage.some(usage => usage.assetId === assetId),
-		)).toEqual([]);
+		expect(
+			overview.discrepancies.filter((discrepancy) =>
+				discrepancy.affectedUsage.some((usage) => usage.assetId === assetId),
+			),
+		).toEqual([]);
 		expect(overview.lastSweep?.correlationId).toBe(sweep.correlationId);
 
 		// The asset it just checked is still exactly as it was published. This route
@@ -163,19 +175,31 @@ describe('the Graphics Asset Library reconciliation API', () => {
 	});
 
 	it('reports an unknown discrepancy identity as not found on every action', async () => {
-		expect((await fetch('/api/admin/graphics-assets/discrepancies/unknown', {
-			headers: administratorHeaders,
-		})).status).toBe(404);
-		expect((await fetch('/api/admin/graphics-assets/discrepancies/unknown/actions', {
-			method: 'POST',
-			headers: { ...administratorHeaders, 'content-type': 'application/json' },
-			body: JSON.stringify({ action: 'recheck' }),
-		})).status).toBe(404);
-		expect((await fetch('/api/admin/graphics-assets/discrepancies/unknown/repair', {
-			method: 'PUT',
-			headers: { ...administratorHeaders, 'content-type': 'image/png' },
-			body: reconciliationPixelPng,
-		})).status).toBe(404);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/discrepancies/unknown', {
+					headers: administratorHeaders,
+				})
+			).status,
+		).toBe(404);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/discrepancies/unknown/actions', {
+					method: 'POST',
+					headers: { ...administratorHeaders, 'content-type': 'application/json' },
+					body: JSON.stringify({ action: 'recheck' }),
+				})
+			).status,
+		).toBe(404);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/discrepancies/unknown/repair', {
+					method: 'PUT',
+					headers: { ...administratorHeaders, 'content-type': 'image/png' },
+					body: reconciliationPixelPng,
+				})
+			).status,
+		).toBe(404);
 	});
 
 	it('rejects an action the domain does not offer', async () => {

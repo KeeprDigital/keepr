@@ -15,7 +15,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -30,8 +31,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 vi.doMock('~~/server/services/meleeCredentials', () => ({
 	protectMeleeClientSecret: async (secret: string) => `encrypted:${secret}`,
 }));
-vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	refreshBroadcastGraphicsBindings: async () => {},
 }));
 
@@ -47,12 +48,17 @@ afterAll(async () => {
 });
 
 async function stageEvent() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Keeps its Session', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning();
 	const eventId = event!.id;
-	const [phase] = await db.insert(schema.phases).values({ eventId, name: 'Swiss', sortOrder: 0 }).returning();
-	const [round] = await db.insert(schema.rounds)
+	const [phase] = await db
+		.insert(schema.phases)
+		.values({ eventId, name: 'Swiss', sortOrder: 0 })
+		.returning();
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: phase!.id,
@@ -60,13 +66,15 @@ async function stageEvent() {
 			roundNumber: 1,
 		})
 		.returning();
-	const [player1, player2] = await db.insert(schema.players)
+	const [player1, player2] = await db
+		.insert(schema.players)
 		.values([
 			{ eventId, name: 'Mia' },
 			{ eventId, name: 'Rei' },
 		])
 		.returning();
-	const [match] = await db.insert(schema.matches)
+	const [match] = await db
+		.insert(schema.matches)
 		.values({
 			eventId,
 			roundId: round!.id,
@@ -99,7 +107,10 @@ async function expectEverySlotHoldsASession(eventId: number) {
 				eq(schema.featureMatchSessions.status, 'active'),
 			),
 		});
-		expect(active.map(session => session.id), `Slot ${slot.id}'s active Sessions`).toEqual([slot.activeSessionId]);
+		expect(
+			active.map((session) => session.id),
+			`Slot ${slot.id}'s active Sessions`,
+		).toEqual([slot.activeSessionId]);
 		expect(slot.activeSessionId, `Slot ${slot.id}'s Session`).not.toBeNull();
 		held.set(slot.id, slot.activeSessionId!);
 	}
@@ -108,7 +119,11 @@ async function expectEverySlotHoldsASession(eventId: number) {
 
 describe('a Feature Match Slot that has held a Session still holds one', () => {
 	it('after a Slot Promotion, in the promoted Slot and the Slot it clears', async () => {
-		const { eventId, matchId, slotIds: [first, second] } = await stageEvent();
+		const {
+			eventId,
+			matchId,
+			slotIds: [first, second],
+		} = await stageEvent();
 		await featureMatchPromotionModule().promoteMatchToSlot({ eventId, slotId: first!, matchId });
 		const before = await expectEverySlotHoldsASession(eventId);
 
@@ -121,27 +136,47 @@ describe('a Feature Match Slot that has held a Session still holds one', () => {
 	});
 
 	it('after a Melee reset clears an imported Slot', async () => {
-		const { eventId, slotIds: [imported] } = await stageEvent();
-		await db.update(schema.featureMatches)
+		const {
+			eventId,
+			slotIds: [imported],
+		} = await stageEvent();
+		await db
+			.update(schema.featureMatches)
 			.set({ externalSource: 'melee', externalId: 'melee-1' })
 			.where(eq(schema.featureMatches.id, imported!));
-		await db.update(schema.events).set({ meleeEnabled: true, meleeEventId: 'old' }).where(eq(schema.events.id, eventId));
+		await db
+			.update(schema.events)
+			.set({ meleeEnabled: true, meleeEventId: 'old' })
+			.where(eq(schema.events.id, eventId));
 		const before = await expectEverySlotHoldsASession(eventId);
 
-		await eventService().updateMeleeConfig(eventId, { meleeEnabled: false, meleeEventId: null, meleeClientId: null });
+		await eventService().updateMeleeConfig(eventId, {
+			meleeEnabled: false,
+			meleeEventId: null,
+			meleeClientId: null,
+		});
 
 		const after = await expectEverySlotHoldsASession(eventId);
 		expect(after.get(imported!)).not.toBe(before.get(imported!));
 	});
 
 	it('after Slot settings change the pairing, then unset the Match', async () => {
-		const { eventId, matchId, player1Id, slotIds: [slot] } = await stageEvent();
+		const {
+			eventId,
+			matchId,
+			player1Id,
+			slotIds: [slot],
+		} = await stageEvent();
 		const opened = await expectEverySlotHoldsASession(eventId);
 
 		await featureMatchService().update(slot!, eventId, { player1Id });
 		const changed = await expectEverySlotHoldsASession(eventId);
 		await featureMatchService().update(slot!, eventId, { matchId });
-		await featureMatchService().update(slot!, eventId, { matchId: null, player1Id: null, player2Id: null });
+		await featureMatchService().update(slot!, eventId, {
+			matchId: null,
+			player1Id: null,
+			player2Id: null,
+		});
 
 		const unset = await expectEverySlotHoldsASession(eventId);
 		expect(changed.get(slot!)).not.toBe(opened.get(slot!));
@@ -149,7 +184,10 @@ describe('a Feature Match Slot that has held a Session still holds one', () => {
 	});
 
 	it('after the sessions route starts the Slot over', async () => {
-		const { eventId, slotIds: [slot] } = await stageEvent();
+		const {
+			eventId,
+			slotIds: [slot],
+		} = await stageEvent();
 		const before = await expectEverySlotHoldsASession(eventId);
 
 		await featureMatchSessionModule().createSessionForSlot(slot!, eventId);
@@ -159,7 +197,11 @@ describe('a Feature Match Slot that has held a Session still holds one', () => {
 	});
 
 	it('after the Match it shows is deleted, keeping its Session', async () => {
-		const { eventId, matchId, slotIds: [slot] } = await stageEvent();
+		const {
+			eventId,
+			matchId,
+			slotIds: [slot],
+		} = await stageEvent();
 		await featureMatchPromotionModule().promoteMatchToSlot({ eventId, slotId: slot!, matchId });
 		const before = await expectEverySlotHoldsASession(eventId);
 
@@ -170,7 +212,11 @@ describe('a Feature Match Slot that has held a Session still holds one', () => {
 	});
 
 	it('after a Player it shows is deleted, keeping its Session', async () => {
-		const { eventId, player1Id, slotIds: [slot] } = await stageEvent();
+		const {
+			eventId,
+			player1Id,
+			slotIds: [slot],
+		} = await stageEvent();
 		await featureMatchService().update(slot!, eventId, { player1Id });
 		const before = await expectEverySlotHoldsASession(eventId);
 

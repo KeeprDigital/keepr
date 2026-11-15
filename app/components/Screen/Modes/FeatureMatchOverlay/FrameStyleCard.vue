@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import type { FeatureMatchOverlayFrameAnimationConfig } from '~~/shared/animationEffects';
 import type { MediaFit } from '~~/shared/types/graphicItem';
-import type { FeatureMatchLayoutFrameConfig, FeatureMatchOverlayModeConfig, ScreenMediaBackgroundConfig } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchLayoutFrameConfig,
+	FeatureMatchOverlayModeConfig,
+	ScreenMediaBackgroundConfig,
+} from '~~/shared/types/screenConfig';
 import type { Screen } from '~/types';
 import { parseFrameAnimationConfig } from '~~/shared/animationEffects';
-import { DEFAULT_FRAME_ANIMATION, DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG } from '~~/shared/types/screenConfig';
+import {
+	DEFAULT_FRAME_ANIMATION,
+	DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG,
+} from '~~/shared/types/screenConfig';
 import { MEDIA_FIT_OPTIONS } from '~/utils/mediaFields';
 import FeatureMatchOverlayBorderSidesControl from './BorderSidesControl.vue';
 
@@ -23,8 +30,8 @@ const props = defineProps<{
 }>();
 
 /** A pre-rebuild config starts the editor over from the defaults. */
-const animation = computed<FeatureMatchOverlayFrameAnimationConfig>(() =>
-	parseFrameAnimationConfig(props.config.layout.frame.animation) ?? DEFAULT_FRAME_ANIMATION,
+const animation = computed<FeatureMatchOverlayFrameAnimationConfig>(
+	() => parseFrameAnimationConfig(props.config.layout.frame.animation) ?? DEFAULT_FRAME_ANIMATION,
 );
 
 const mediaBackground = computed<ScreenMediaBackgroundConfig>(() => ({
@@ -58,8 +65,7 @@ function updateMediaBackground(updates: Partial<ScreenMediaBackgroundConfig>) {
 const backgroundSummary = computed(() => {
 	const frame = props.config.layout.frame;
 	const parts = [`opacity ${frame.opacity}`];
-	if (frame.backgroundImage)
-		parts.push('image');
+	if (frame.backgroundImage) parts.push('image');
 	return parts.join(' • ');
 });
 </script>

@@ -18,10 +18,10 @@ import { readStoredZipArchive } from './storedZipArchive';
  * undeclared trailing bytes a hostile or corrupted sender would produce.
  */
 
-const LOCAL_HEADER_SIGNATURE = 0x04034B50;
-const CENTRAL_HEADER_SIGNATURE = 0x02014B50;
-const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054B50;
-const DATA_DESCRIPTOR_SIGNATURE = 0x08074B50;
+const LOCAL_HEADER_SIGNATURE = 0x04034b50;
+const CENTRAL_HEADER_SIGNATURE = 0x02014b50;
+const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
+const DATA_DESCRIPTOR_SIGNATURE = 0x08074b50;
 
 const LOCAL_HEADER_BYTES = 30;
 const CENTRAL_HEADER_BYTES = 46;
@@ -151,9 +151,7 @@ export function writeTestArchive(
 		...body,
 		centralDirectory,
 		endRecord,
-		...(options.trailingBytes
-			? [options.trailingBytes]
-			: []),
+		...(options.trailingBytes ? [options.trailingBytes] : []),
 	]);
 }
 
@@ -171,10 +169,12 @@ export function readTemplatePackageParts(archive: Uint8Array): TemplatePackagePa
 		manifest: read.json<TemplatePackageManifest>(TEMPLATE_PACKAGE_MANIFEST_ENTRY),
 		template: read.json(TEMPLATE_PACKAGE_TEMPLATE_ENTRY),
 		contents: read.entries
-			.filter(entry =>
-				entry.name !== TEMPLATE_PACKAGE_MANIFEST_ENTRY
-				&& entry.name !== TEMPLATE_PACKAGE_TEMPLATE_ENTRY)
-			.map(entry => ({ name: entry.name, bytes: entry.bytes })),
+			.filter(
+				(entry) =>
+					entry.name !== TEMPLATE_PACKAGE_MANIFEST_ENTRY &&
+					entry.name !== TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
+			)
+			.map((entry) => ({ name: entry.name, bytes: entry.bytes })),
 	};
 }
 
@@ -192,22 +192,26 @@ export function writeTemplatePackage(
 	options: TestArchiveOptions & { extraEntries?: TestArchiveEntry[] } = {},
 ): Uint8Array<ArrayBuffer> {
 	const templateBytes = encodeJson(parts.template);
-	const contentByteLength = parts.contents
-		.reduce((total, content) => total + content.bytes.byteLength, 0);
+	const contentByteLength = parts.contents.reduce(
+		(total, content) => total + content.bytes.byteLength,
+		0,
+	);
 	const manifest = structuredClone(parts.manifest) as TemplatePackageManifest;
 	let manifestBytes = encodeJson(manifest);
 	for (let attempt = 0; attempt < 8; attempt += 1) {
 		const expanded = manifestBytes.byteLength + templateBytes.byteLength + contentByteLength;
-		if (manifest.totals.expandedByteLength === expanded)
-			break;
+		if (manifest.totals.expandedByteLength === expanded) break;
 		(manifest.totals as { expandedByteLength: number }).expandedByteLength = expanded;
 		manifestBytes = encodeJson(manifest);
 	}
 	const { extraEntries = [], ...archiveOptions } = options;
-	return writeTestArchive([
-		{ name: TEMPLATE_PACKAGE_MANIFEST_ENTRY, bytes: manifestBytes },
-		{ name: TEMPLATE_PACKAGE_TEMPLATE_ENTRY, bytes: templateBytes },
-		...parts.contents.map(content => ({ name: content.name, bytes: content.bytes })),
-		...extraEntries,
-	], archiveOptions);
+	return writeTestArchive(
+		[
+			{ name: TEMPLATE_PACKAGE_MANIFEST_ENTRY, bytes: manifestBytes },
+			{ name: TEMPLATE_PACKAGE_TEMPLATE_ENTRY, bytes: templateBytes },
+			...parts.contents.map((content) => ({ name: content.name, bytes: content.bytes })),
+			...extraEntries,
+		],
+		archiveOptions,
+	);
 }

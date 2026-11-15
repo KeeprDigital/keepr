@@ -7,7 +7,14 @@ import { defineComponent, reactive, ref } from 'vue';
 import { deferred } from '~~/test/helpers/deferred';
 
 interface StandingsAnswer {
-	standings: Array<{ playerId: number; wins: number; losses: number; draws: number; position: number; points: number }>;
+	standings: Array<{
+		playerId: number;
+		wins: number;
+		losses: number;
+		draws: number;
+		position: number;
+		points: number;
+	}>;
 }
 
 const { mockFetch } = vi.hoisted(() => ({
@@ -15,8 +22,8 @@ const { mockFetch } = vi.hoisted(() => ({
 }));
 mockNuxtImport('$fetch', () => mockFetch);
 
-vi.mock('~/modules/event-data/resync', async importOriginal => ({
-	...await importOriginal<typeof import('~/modules/event-data/resync')>(),
+vi.mock('~/modules/event-data/resync', async (importOriginal) => ({
+	...(await importOriginal<typeof import('~/modules/event-data/resync')>()),
 	useConsumedEventData: () => {},
 }));
 
@@ -56,7 +63,7 @@ const rounds = [
 const roundStore = reactive({
 	isLoaded: true,
 	rounds,
-	getRoundById: (id: number) => rounds.find(round => round.id === id),
+	getRoundById: (id: number) => rounds.find((round) => round.id === id),
 	loadRoundsByEventId: vi.fn(),
 });
 
@@ -145,7 +152,8 @@ const PlayerListStub = defineComponent({
 		},
 	},
 	setup: () => ({ selectedPlayerIds: [] }),
-	template: '<ul><li v-for="player in players" :key="player.id" :data-player-record="player.id">{{ player.wins }}-{{ player.losses }}</li></ul>',
+	template:
+		'<ul><li v-for="player in players" :key="player.id" :data-player-record="player.id">{{ player.wins }}-{{ player.losses }}</li></ul>',
 });
 
 async function mountPage(stubs: Record<string, unknown> = {}) {
@@ -274,7 +282,10 @@ describe('players page — Round sync', () => {
 		await wrapper.get('[data-round="3"]').trigger('click');
 		await flushPromises();
 
-		await wrapper.findAll('button').find(button => button.text() === 'Sync Round')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Sync Round')!
+			.trigger('click');
 		await flushPromises();
 
 		expect(meleeStore.syncSpecificRound).toHaveBeenCalledWith(3);

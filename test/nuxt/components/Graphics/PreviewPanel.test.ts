@@ -8,8 +8,8 @@ import PreviewPanel from '~/components/Graphics/PreviewPanel.vue';
 // selection, zoom and pan, the canvas-aspect viewport, and the item and safe-area guide switches.
 
 // The fitted preview is drawn 960 pixels wide: a 1920-wide canvas fits at 50%.
-vi.mock('@vueuse/core', async importOriginal => ({
-	...await importOriginal<typeof import('@vueuse/core')>(),
+vi.mock('@vueuse/core', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@vueuse/core')>()),
 	useElementSize: () => ({
 		width: ref(960),
 		height: ref(540),
@@ -47,7 +47,7 @@ function mountPanel(props: Record<string, unknown> = {}) {
 			default: () => h('p', { 'data-testid': 'host-content' }),
 			viewport: () => [
 				h('iframe', { title: 'host frame', srcdoc: '<p>frame</p>' }),
-				h('button', { 'type': 'button', 'data-testid': 'host-handle' }),
+				h('button', { type: 'button', 'data-testid': 'host-handle' }),
 			],
 		},
 		global,
@@ -66,16 +66,21 @@ function zoomLevel(wrapper: Wrapper) {
 }
 
 function pressed(wrapper: Wrapper) {
-	return wrapper.findAll('[aria-label$="preview zoom"]')
-		.filter(button => button.attributes('aria-pressed') === 'true')
-		.map(button => button.text());
+	return wrapper
+		.findAll('[aria-label$="preview zoom"]')
+		.filter((button) => button.attributes('aria-pressed') === 'true')
+		.map((button) => button.text());
 }
 
 function scroller(wrapper: Wrapper) {
 	return wrapper.get('[data-testid="preview-scroller"]').element as HTMLElement;
 }
 
-async function key(type: 'keydown' | 'keyup', init: KeyboardEventInit, target: EventTarget = document.body) {
+async function key(
+	type: 'keydown' | 'keyup',
+	init: KeyboardEventInit,
+	target: EventTarget = document.body,
+) {
 	const event = new KeyboardEvent(type, { bubbles: true, cancelable: true, ...init });
 	target.dispatchEvent(event);
 	await nextTick();
@@ -85,15 +90,10 @@ async function key(type: 'keydown' | 'keyup', init: KeyboardEventInit, target: E
 async function wheel(wrapper: Wrapper, init: WheelEventInit) {
 	const event = new WheelEvent('wheel', { bubbles: true, cancelable: true, ...init });
 	// happy-dom's WheelEvent is not a MouseEvent: it carries no modifiers or position.
-	for (const field of [
-		'ctrlKey',
-		'metaKey',
-		'clientX',
-		'clientY',
-	] as const) {
-		Object.defineProperty(event, field, { value: init[field] ?? (field.endsWith('Key')
-			? false
-			: 0) });
+	for (const field of ['ctrlKey', 'metaKey', 'clientX', 'clientY'] as const) {
+		Object.defineProperty(event, field, {
+			value: init[field] ?? (field.endsWith('Key') ? false : 0),
+		});
 	}
 	viewport(wrapper).dispatchEvent(event);
 	await nextTick();
@@ -101,12 +101,14 @@ async function wheel(wrapper: Wrapper, init: WheelEventInit) {
 }
 
 async function pointer(target: EventTarget, type: string, init: PointerEventInit) {
-	target.dispatchEvent(new PointerEvent(type, {
-		bubbles: true,
-		cancelable: true,
-		pointerId: 1,
-		...init,
-	}));
+	target.dispatchEvent(
+		new PointerEvent(type, {
+			bubbles: true,
+			cancelable: true,
+			pointerId: 1,
+			...init,
+		}),
+	);
 	await nextTick();
 }
 
@@ -116,9 +118,7 @@ describe('graphicsPreviewPanel', () => {
 
 		await wrapper.get('[aria-label="Key preview output"]').trigger('click');
 
-		expect(wrapper.emitted('update:output')).toEqual([
-			['key'],
-		]);
+		expect(wrapper.emitted('update:output')).toEqual([['key']]);
 	});
 
 	it('turns item guides off and safe-area guides on', async () => {
@@ -127,12 +127,8 @@ describe('graphicsPreviewPanel', () => {
 		await wrapper.get('[data-testid="preview-item-guides"]').trigger('click');
 		await wrapper.get('[data-testid="preview-safe-area-guides"]').trigger('click');
 
-		expect(wrapper.emitted('update:itemGuides')).toEqual([
-			[false],
-		]);
-		expect(wrapper.emitted('update:safeAreaGuides')).toEqual([
-			[true],
-		]);
+		expect(wrapper.emitted('update:itemGuides')).toEqual([[false]]);
+		expect(wrapper.emitted('update:safeAreaGuides')).toEqual([[true]]);
 	});
 
 	it('fits the viewport to the canvas aspect ratio over a transparency backdrop', () => {
@@ -201,9 +197,7 @@ describe('graphicsPreviewPanel', () => {
 
 		expect(Math.sign(Number.parseInt(zoomLevel(wrapper)) - 50)).toBe(zoomed);
 		expect(event.defaultPrevented).toBe(taken);
-		expect(pressed(wrapper)).toEqual(taken
-			? []
-			: ['Fit']);
+		expect(pressed(wrapper)).toEqual(taken ? [] : ['Fit']);
 	});
 
 	it('holds the zoom still while a press in the viewport drags, and zooms again once it ends', async () => {
@@ -238,15 +232,14 @@ describe('graphicsPreviewPanel', () => {
 			level: '100%',
 		},
 		{
-			case: '⌘1 is the browser\'s elsewhere',
+			case: "⌘1 is the browser's elsewhere",
 			shortcut: { key: '1', metaKey: true },
 			where: 'elsewhere',
 			level: '50%',
 		},
 	])('$case', async ({ shortcut, where, level }) => {
 		const wrapper = mountPanel();
-		if (where === 'pointer')
-			await pointer(scroller(wrapper), 'pointerenter', {});
+		if (where === 'pointer') await pointer(scroller(wrapper), 'pointerenter', {});
 		if (where === 'focus')
 			(wrapper.get('[data-testid="host-handle"]').element as HTMLElement).focus();
 
@@ -256,7 +249,7 @@ describe('graphicsPreviewPanel', () => {
 		expect(event.defaultPrevented).toBe(where !== 'elsewhere');
 	});
 
-	it('hears ⌘1 pressed in the preview frame\'s own document, and again once it reloads', async () => {
+	it("hears ⌘1 pressed in the preview frame's own document, and again once it reloads", async () => {
 		const wrapper = mountPanel();
 		const frame = wrapper.get('iframe').element as HTMLIFrameElement;
 
@@ -339,7 +332,7 @@ describe('graphicsPreviewPanel', () => {
 		expect(viewport(wrapper).getAttribute('style')).toContain('background-color: #00b140');
 	});
 
-	it('leaves room for the host\'s own controls, content and preview iframe', () => {
+	it("leaves room for the host's own controls, content and preview iframe", () => {
 		const wrapper = mountPanel();
 
 		expect(wrapper.find('[data-testid="host-control"]').exists()).toBe(true);
@@ -373,7 +366,11 @@ describe('graphicsPreviewPanel', () => {
 			await wrapper.get(toggle).trigger('click');
 			expect(wrapper.get(toggle).attributes('aria-expanded')).toBe('true');
 			expect(controls.isVisible()).toBe(true);
-			expect(wrapper.get(`[id="${wrapper.get(toggle).attributes('aria-controls')}"]`).element.contains(controls.element)).toBe(true);
+			expect(
+				wrapper
+					.get(`[id="${wrapper.get(toggle).attributes('aria-controls')}"]`)
+					.element.contains(controls.element),
+			).toBe(true);
 
 			await wrapper.get(toggle).trigger('click');
 			expect(wrapper.get(toggle).attributes('aria-expanded')).toBe('false');
@@ -383,12 +380,15 @@ describe('graphicsPreviewPanel', () => {
 		it.each([
 			{ animationPlaying: true, playing: 'true', label: 'Animation, playing' },
 			{ animationPlaying: false, playing: 'false', label: 'Animation' },
-		])('marks the closed control when a run is playing: $animationPlaying', ({ animationPlaying, playing, label }) => {
-			const wrapper = mountWithAnimation({ animationPlaying });
+		])(
+			'marks the closed control when a run is playing: $animationPlaying',
+			({ animationPlaying, playing, label }) => {
+				const wrapper = mountWithAnimation({ animationPlaying });
 
-			expect(wrapper.get(toggle).attributes('data-playing')).toBe(playing);
-			expect(wrapper.get(toggle).attributes('aria-label')).toBe(label);
-		});
+				expect(wrapper.get(toggle).attributes('data-playing')).toBe(playing);
+				expect(wrapper.get(toggle).attributes('aria-label')).toBe(label);
+			},
+		);
 
 		it('offers no control to a host with no animation controls', () => {
 			expect(mountPanel().find(toggle).exists()).toBe(false);
@@ -397,6 +397,10 @@ describe('graphicsPreviewPanel', () => {
 
 	it('collapses by default, and stays open when the host says it cannot', () => {
 		expect(mountPanel().findComponent(ScreenSettingsSectionStub).props('collapsible')).toBe(true);
-		expect(mountPanel({ collapsible: false }).findComponent(ScreenSettingsSectionStub).props('collapsible')).toBe(false);
+		expect(
+			mountPanel({ collapsible: false })
+				.findComponent(ScreenSettingsSectionStub)
+				.props('collapsible'),
+		).toBe(false);
 	});
 });

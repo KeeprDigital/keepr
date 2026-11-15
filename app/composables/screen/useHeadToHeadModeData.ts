@@ -1,5 +1,8 @@
 import type { HeadToHeadModeConfig } from '~~/shared/types/screenConfig';
-import type { ScreenOutputHeadToHeadPlayer, ScreenOutputHeadToHeadResponse } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputHeadToHeadPlayer,
+	ScreenOutputHeadToHeadResponse,
+} from '~~/shared/types/screenOutputReads';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
 import { useScreenModeFreshness } from '~/modules/screen-mode/freshness';
 import { useScreenModeHearing } from '~/modules/screen-mode/hearing';
@@ -13,9 +16,7 @@ function selection(config: HeadToHeadModeConfig): string | null {
 			? `players:${config.player1Id ?? ''}:${config.player2Id ?? ''}`
 			: null;
 	}
-	return config.featureMatchId
-		? `slot:${config.featureMatchId}`
-		: null;
+	return config.featureMatchId ? `slot:${config.featureMatchId}` : null;
 }
 
 /**
@@ -50,15 +51,18 @@ export function useHeadToHeadModeData(context: ScreenContext) {
 	/** Neither side holds a Player: nothing is selected, or the Slot seats no one. */
 	const isEmpty = computed(() => freshness.answered.value && !player1.value && !player2.value);
 	/** Both Players are known and have not met at this Event before. */
-	const firstMeeting = computed(() => !!player1.value && !!player2.value && earlierMatches.value.length === 0);
+	const firstMeeting = computed(
+		() => !!player1.value && !!player2.value && earlierMatches.value.length === 0,
+	);
 
 	/**
 	 * A record as the Event displays records, as Standings writes them; `null`
 	 * for a Player with none yet.
 	 */
-	function formatRecord(record: Pick<ScreenOutputHeadToHeadPlayer, 'wins' | 'losses' | 'draws'>): string | null {
-		if (record.wins == null && record.losses == null && record.draws == null)
-			return null;
+	function formatRecord(
+		record: Pick<ScreenOutputHeadToHeadPlayer, 'wins' | 'losses' | 'draws'>,
+	): string | null {
+		if (record.wins == null && record.losses == null && record.draws == null) return null;
 		return formatPlayerRecord(record, eventStore.displayEvent);
 	}
 

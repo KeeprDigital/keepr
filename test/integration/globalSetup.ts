@@ -3,7 +3,11 @@ import process from 'node:process';
 import { main as reapStrandedWorkerd } from '../../scripts/reap-workerd.mjs';
 import { acquireRunSlots, RUN_SLOT_COSTS } from '../../scripts/slots.mjs';
 import { signInAsOperator } from './client';
-import { INTEGRATION_REALTIME_SKIP_NOTICE, integrationServerEnv, keylessIntegrationServerEnv } from './helpers';
+import {
+	INTEGRATION_REALTIME_SKIP_NOTICE,
+	integrationServerEnv,
+	keylessIntegrationServerEnv,
+} from './helpers';
 import { prepareIntegrationD1 } from './integrationD1';
 import { integrationRealtimeConfigured } from './realtimeKey';
 import { freePorts, INTEGRATION_SERVER_LIST_ENV, startIntegrationServer } from './servers';
@@ -53,8 +57,7 @@ async function startReadyServer(
 	const server = await startIntegrationServer({ persistDir, env, port });
 	try {
 		await assertIntegrationServerReady(server);
-	}
-	catch (error) {
+	} catch (error) {
 		await server.stop();
 		throw error;
 	}
@@ -72,7 +75,10 @@ async function startReadyServer(
  * the answer (`./state.ts` § realtime server). A run with no key starts none:
  * the realtime files then take the first server, which is idle while they run.
  */
-async function startIntegrationServers(): Promise<{ servers: IntegrationServer[]; realtime: IntegrationServer }> {
+async function startIntegrationServers(): Promise<{
+	servers: IntegrationServer[];
+	realtime: IntegrationServer;
+}> {
 	const specs = Array.from(
 		{
 			length: integrationServerCount(),
@@ -86,21 +92,22 @@ async function startIntegrationServers(): Promise<{ servers: IntegrationServer[]
 		specs.push({ persistDir: INTEGRATION_REALTIME_SERVER_PERSIST_DIR, env: integrationServerEnv });
 	const ports = await freePorts(specs.length);
 	const firstEventIds = integrationEventIdBlocks(specs.length);
-	const started = await Promise.allSettled(specs.map(({ persistDir, env }, index) =>
-		startReadyServer(persistDir, ports[index]!, firstEventIds[index]!, env)));
-	const servers = started.flatMap(result => result.status === 'fulfilled'
-		? [result.value]
-		: []);
-	const failed = started.find(result => result.status === 'rejected');
+	const started = await Promise.allSettled(
+		specs.map(({ persistDir, env }, index) =>
+			startReadyServer(persistDir, ports[index]!, firstEventIds[index]!, env),
+		),
+	);
+	const servers = started.flatMap((result) =>
+		result.status === 'fulfilled' ? [result.value] : [],
+	);
+	const failed = started.find((result) => result.status === 'rejected');
 	if (failed) {
-		await Promise.all(servers.map(server => server.stop()));
+		await Promise.all(servers.map((server) => server.stop()));
 		throw failed.reason;
 	}
 	return {
 		servers,
-		realtime: integrationRealtimeConfigured
-			? servers.at(-1)!
-			: servers[0]!,
+		realtime: integrationRealtimeConfigured ? servers.at(-1)! : servers[0]!,
 	};
 }
 
@@ -111,13 +118,15 @@ export async function setup() {
 
 	// Say this once, before anything runs, so a reader meets the reason for the
 	// skipped tests rather than having to work back to it from a bare skip mark.
-	if (!integrationRealtimeConfigured)
-		console.warn(INTEGRATION_REALTIME_SKIP_NOTICE);
+	if (!integrationRealtimeConfigured) console.warn(INTEGRATION_REALTIME_SKIP_NOTICE);
 
 	// The whole machine's run slots, before anything starts: these tests time
 	// real requests against several servers, and another suite beside them, in
 	// this worktree or any other, makes every result meaningless.
-	const slots = await acquireRunSlots({ want: RUN_SLOT_COSTS.integration, label: 'integration suite' });
+	const slots = await acquireRunSlots({
+		want: RUN_SLOT_COSTS.integration,
+		label: 'integration suite',
+	});
 
 	// A workerd stranded by a killed session still holds sqlite locks on the
 	// persist directories; sweep them before touching that state.
@@ -127,14 +136,17 @@ export async function setup() {
 		slots.release();
 		throw error;
 	});
-	const address = ({ url, persistDir }: IntegrationServer): IntegrationServerAddress => ({ url, persistDir });
+	const address = ({ url, persistDir }: IntegrationServer): IntegrationServerAddress => ({
+		url,
+		persistDir,
+	});
 	// The pool list may include the realtime server: no pool id reaches past the keyless ones.
 	process.env[INTEGRATION_SERVER_LIST_ENV] = JSON.stringify(servers.map(address));
 	process.env[INTEGRATION_REALTIME_SERVER_ENV] = JSON.stringify(address(realtime));
 
 	return async () => {
-		await Promise.all(servers.map(server => server.stop()));
-		await Promise.all(servers.map(server => resetIntegrationWranglerState(server.persistDir)));
+		await Promise.all(servers.map((server) => server.stop()));
+		await Promise.all(servers.map((server) => resetIntegrationWranglerState(server.persistDir)));
 		slots.release();
 	};
 }

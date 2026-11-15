@@ -15,7 +15,7 @@ import type { MaybeRefOrGetter } from 'vue';
  */
 export function useScreenPlacementVersion(screenId: MaybeRefOrGetter<number>) {
 	const screenStore = useScreenStore();
-	return computed(() =>
-		screenStore.screens.find(screen => screen.id === toValue(screenId))?.stateVersion ?? 0,
+	return computed(
+		() => screenStore.screens.find((screen) => screen.id === toValue(screenId))?.stateVersion ?? 0,
 	);
 }

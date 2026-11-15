@@ -8,10 +8,18 @@ import { ROUND_DURATION_MINUTES_MAX, ROUND_DURATION_MINUTES_MIN } from '~~/share
 const roundControlModeSchema = z.enum(ROUND_CONTROL_MODE_VALUES);
 
 /** A Round's start, sent as an ISO instant and stored as one; `null` clears it (ADR-0066). */
-const roundStartedAtSchema = z.iso.datetime({ offset: true }).transform(value => new Date(value)).nullable();
+const roundStartedAtSchema = z.iso
+	.datetime({ offset: true })
+	.transform((value) => new Date(value))
+	.nullable();
 
 /** A Round's duration in whole minutes; `null` clears it (ADR-0066). */
-const roundDurationMinutesSchema = z.number().int().min(ROUND_DURATION_MINUTES_MIN).max(ROUND_DURATION_MINUTES_MAX).nullable();
+const roundDurationMinutesSchema = z
+	.number()
+	.int()
+	.min(ROUND_DURATION_MINUTES_MIN)
+	.max(ROUND_DURATION_MINUTES_MAX)
+	.nullable();
 
 // CREATE
 export const createRoundSchema = createInsertSchema(rounds)

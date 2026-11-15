@@ -85,7 +85,10 @@ import {
 	ownsTextOverflowPolicy,
 } from './itemDefinitions';
 import { getShapeGeometryPreset, squareShapeGeometry } from './shapeGeometry';
-import { graphicTextTemplateProjectedValueReferences, readSocialProfileProjectedValueReference } from './textTemplate';
+import {
+	graphicTextTemplateProjectedValueReferences,
+	readSocialProfileProjectedValueReference,
+} from './textTemplate';
 import { bindNewGraphicItem } from './themeBindings';
 
 /**
@@ -132,16 +135,14 @@ export interface AddGraphicItemResult {
 function nextSequentialName(prefix: string, existing: readonly string[]): string {
 	const taken = new Set(existing);
 	let index = 1;
-	while (taken.has(`${prefix} ${index}`))
-		index += 1;
+	while (taken.has(`${prefix} ${index}`)) index += 1;
 	return `${prefix} ${index}`;
 }
 
 function moveWithin<T>(entries: readonly T[], index: number, delta: number): T[] {
 	const next = [...entries];
 	const target = index + delta;
-	if (index < 0 || target < 0 || target >= next.length)
-		return next;
+	if (index < 0 || target < 0 || target >= next.length) return next;
 	const [moved] = next.splice(index, 1);
 	next.splice(target, 0, moved!);
 	return next;
@@ -153,7 +154,12 @@ export function createBroadcastGraphic(
 ): CreateBroadcastGraphicResult {
 	const graphic: BroadcastGraphicConfig = {
 		id: options.id,
-		name: options.name ?? nextSequentialName('Graphic', graphics.map(entry => entry.name)),
+		name:
+			options.name ??
+			nextSequentialName(
+				'Graphic',
+				graphics.map((entry) => entry.name),
+			),
 		items: [],
 	};
 
@@ -168,14 +174,18 @@ export function moveBroadcastGraphic(
 	graphicId: string,
 	delta: number,
 ): BroadcastGraphicConfig[] {
-	return moveWithin(graphics, graphics.findIndex(entry => entry.id === graphicId), delta);
+	return moveWithin(
+		graphics,
+		graphics.findIndex((entry) => entry.id === graphicId),
+		delta,
+	);
 }
 
 export function deleteBroadcastGraphic(
 	graphics: readonly BroadcastGraphicConfig[],
 	graphicId: string,
 ): BroadcastGraphicConfig[] {
-	return graphics.filter(entry => entry.id !== graphicId);
+	return graphics.filter((entry) => entry.id !== graphicId);
 }
 
 export function patchBroadcastGraphic(
@@ -183,21 +193,21 @@ export function patchBroadcastGraphic(
 	graphicId: string,
 	patch: Partial<Omit<BroadcastGraphicConfig, 'id'>>,
 ): BroadcastGraphicConfig[] {
-	return graphics.map(entry => entry.id === graphicId
-		? {
-				...entry,
-				...patch,
-			}
-		: entry);
+	return graphics.map((entry) =>
+		entry.id === graphicId
+			? {
+					...entry,
+					...patch,
+				}
+			: entry,
+	);
 }
 
 export function replaceBroadcastGraphic(
 	graphics: readonly BroadcastGraphicConfig[],
 	graphic: BroadcastGraphicConfig,
 ): BroadcastGraphicConfig[] {
-	return graphics.map(entry => entry.id === graphic.id
-		? graphic
-		: entry);
+	return graphics.map((entry) => (entry.id === graphic.id ? graphic : entry));
 }
 
 /* ────────────────────────────────────────────────
@@ -219,16 +229,12 @@ export function graphicInputKeyFromLabel(label: string, taken: readonly string[]
 		.replace(/[^a-z0-9]+/g, '-')
 		.replace(/^-+|-+$/g, '')
 		.slice(0, MAX_GRAPHIC_INPUT_KEY_LENGTH);
-	const base = GRAPHIC_INPUT_KEY_PATTERN.test(slug)
-		? slug
-		: 'input';
+	const base = GRAPHIC_INPUT_KEY_PATTERN.test(slug) ? slug : 'input';
 	const used = new Set(taken);
-	if (!used.has(base))
-		return base;
+	if (!used.has(base)) return base;
 
 	let suffix = 2;
-	while (used.has(`${base}-${suffix}`))
-		suffix += 1;
+	while (used.has(`${base}-${suffix}`)) suffix += 1;
 	return `${base}-${suffix}`;
 }
 
@@ -243,13 +249,10 @@ export function graphicInputKeyFromLabel(label: string, taken: readonly string[]
  * after a rename, and one they must then reproduce exactly in a template (#234).
  */
 function nextGraphicInputLabel(inputs: readonly GraphicInputDeclaration[]): string {
-	const labels = new Set(inputs.map(input => input.label));
-	const keys = new Set(inputs.map(input => input.key));
+	const labels = new Set(inputs.map((input) => input.label));
+	const keys = new Set(inputs.map((input) => input.key));
 	let index = 1;
-	while (
-		labels.has(`Input ${index}`)
-		|| keys.has(graphicInputKeyFromLabel(`Input ${index}`, []))
-	) {
+	while (labels.has(`Input ${index}`) || keys.has(graphicInputKeyFromLabel(`Input ${index}`, []))) {
 		index += 1;
 	}
 	return `Input ${index}`;
@@ -261,13 +264,15 @@ export function addGraphicInput(
 	type: GraphicInputType,
 ): BroadcastGraphicConfig[] {
 	return graphics.map((graphic) => {
-		if (graphic.id !== graphicId)
-			return graphic;
+		if (graphic.id !== graphicId) return graphic;
 
 		const inputs = graphic.inputs ?? [];
 		const label = nextGraphicInputLabel(inputs);
 		const declaration = createDefaultGraphicInputDeclaration(type, {
-			key: graphicInputKeyFromLabel(label, inputs.map(input => input.key)),
+			key: graphicInputKeyFromLabel(
+				label,
+				inputs.map((input) => input.key),
+			),
 			label,
 		});
 
@@ -295,22 +300,23 @@ export function patchGraphicInput(
 	key: string,
 	patch: Partial<Omit<GraphicInputDeclaration, 'key' | 'type'>>,
 ): BroadcastGraphicConfig[] {
-	if (patch.label !== undefined && patch.label.trim() === '')
-		return [...graphics];
+	if (patch.label !== undefined && patch.label.trim() === '') return [...graphics];
 
-	return graphics.map(graphic => graphic.id === graphicId
-		? {
-				...graphic,
-				inputs: (graphic.inputs ?? []).map(input =>
-					input.key === key
-						? {
-								...input,
-								...patch,
-							} as GraphicInputDeclaration
-						: input,
-				),
-			}
-		: graphic);
+	return graphics.map((graphic) =>
+		graphic.id === graphicId
+			? {
+					...graphic,
+					inputs: (graphic.inputs ?? []).map((input) =>
+						input.key === key
+							? ({
+									...input,
+									...patch,
+								} as GraphicInputDeclaration)
+							: input,
+					),
+				}
+			: graphic,
+	);
 }
 
 /**
@@ -328,14 +334,13 @@ export function deleteGraphicInput(
 	key: string,
 ): BroadcastGraphicConfig[] {
 	return graphics.map((graphic) => {
-		if (graphic.id !== graphicId)
-			return graphic;
+		if (graphic.id !== graphicId) return graphic;
 
 		return {
 			...graphic,
-			inputs: (graphic.inputs ?? []).filter(input => input.key !== key),
-			bindings: graphic.bindings?.filter(binding => binding.inputKey !== key),
-			items: graphic.items.map(item => stripPlaceholderStyle(item, key)),
+			inputs: (graphic.inputs ?? []).filter((input) => input.key !== key),
+			bindings: graphic.bindings?.filter((binding) => binding.inputKey !== key),
+			items: graphic.items.map((item) => stripPlaceholderStyle(item, key)),
 		};
 	});
 }
@@ -344,7 +349,7 @@ function stripPlaceholderStyle<T extends GraphicItemConfig>(item: T, key: string
 	if (item.type === 'group') {
 		return {
 			...item,
-			children: item.children.map(child => stripPlaceholderStyle(child, key)),
+			children: item.children.map((child) => stripPlaceholderStyle(child, key)),
 		};
 	}
 	if (item.type !== 'text' || !item.placeholderStyles || !(key in item.placeholderStyles))
@@ -353,9 +358,7 @@ function stripPlaceholderStyle<T extends GraphicItemConfig>(item: T, key: string
 	const { [key]: _removed, ...kept } = item.placeholderStyles;
 	return {
 		...item,
-		placeholderStyles: Object.keys(kept).length > 0
-			? kept
-			: undefined,
+		placeholderStyles: Object.keys(kept).length > 0 ? kept : undefined,
 	};
 }
 
@@ -379,22 +382,24 @@ export function setGraphicInputChoiceOptions(
 	key: string,
 	options: GraphicInputChoiceOption[],
 ): BroadcastGraphicConfig[] {
-	return graphics.map(graphic => graphic.id === graphicId
-		? {
-				...graphic,
-				inputs: (graphic.inputs ?? []).map(input =>
-					input.key === key && input.type === 'choice'
-						? {
-								...input,
-								options,
-								default: options.some(option => option.value === input.default)
-									? input.default
-									: null,
-							}
-						: input,
-				),
-			}
-		: graphic);
+	return graphics.map((graphic) =>
+		graphic.id === graphicId
+			? {
+					...graphic,
+					inputs: (graphic.inputs ?? []).map((input) =>
+						input.key === key && input.type === 'choice'
+							? {
+									...input,
+									options,
+									default: options.some((option) => option.value === input.default)
+										? input.default
+										: null,
+								}
+							: input,
+					),
+				}
+			: graphic,
+	);
 }
 
 /**
@@ -417,16 +422,18 @@ export function setGraphicInputMediaKind(
 	key: string,
 	mediaKind: GraphicMediaKind,
 ): BroadcastGraphicConfig[] {
-	return graphics.map(graphic => graphic.id === graphicId
-		? {
-				...graphic,
-				inputs: (graphic.inputs ?? []).map(input =>
-					input.key === key && input.type === 'media' && input.mediaKind !== mediaKind
-						? { ...input, mediaKind, default: null }
-						: input,
-				),
-			}
-		: graphic);
+	return graphics.map((graphic) =>
+		graphic.id === graphicId
+			? {
+					...graphic,
+					inputs: (graphic.inputs ?? []).map((input) =>
+						input.key === key && input.type === 'media' && input.mediaKind !== mediaKind
+							? { ...input, mediaKind, default: null }
+							: input,
+					),
+				}
+			: graphic,
+	);
 }
 
 /**
@@ -447,19 +454,16 @@ export function patchGraphicPlaceholderStyle(
 	patch: Partial<GraphicPlaceholderStyle> | null,
 ): BroadcastGraphicConfig {
 	return patchGraphicItemGroup(graphic, itemId, ['text'], (item) => {
-		if (patch === null)
-			return stripPlaceholderStyle(item, inputKey);
+		if (patch === null) return stripPlaceholderStyle(item, inputKey);
 
 		const merged = {
 			...item.placeholderStyles?.[inputKey],
 			...patch,
 		} as Record<string, unknown>;
 		for (const key of Object.keys(merged)) {
-			if (merged[key] === undefined)
-				delete merged[key];
+			if (merged[key] === undefined) delete merged[key];
 		}
-		if (Object.keys(merged).length === 0)
-			return stripPlaceholderStyle(item, inputKey);
+		if (Object.keys(merged).length === 0) return stripPlaceholderStyle(item, inputKey);
 
 		return {
 			placeholderStyles: {
@@ -484,13 +488,14 @@ export function canAddGraphicSourceSelection(
 	graphics: readonly BroadcastGraphicConfig[],
 	graphicId: string,
 ): boolean {
-	const graphic = graphics.find(entry => entry.id === graphicId);
-	if (!graphic)
-		return false;
+	const graphic = graphics.find((entry) => entry.id === graphicId);
+	if (!graphic) return false;
 
 	const acrossScreen = graphics.reduce((count, entry) => count + (entry.sources?.length ?? 0), 0);
-	return (graphic.sources?.length ?? 0) < MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC
-		&& acrossScreen < MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN;
+	return (
+		(graphic.sources?.length ?? 0) < MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC &&
+		acrossScreen < MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN
+	);
 }
 
 /**
@@ -509,22 +514,26 @@ export function addGraphicSourceSelection(
 	graphicId: string,
 	kind: GraphicSourceSelectionKind,
 ): BroadcastGraphicConfig[] {
-	if (!canAddGraphicSourceSelection(graphics, graphicId))
-		return [...graphics];
+	if (!canAddGraphicSourceSelection(graphics, graphicId)) return [...graphics];
 
 	return graphics.map((graphic) => {
-		if (graphic.id !== graphicId)
-			return graphic;
+		if (graphic.id !== graphicId) return graphic;
 
 		const sources = graphic.sources ?? [];
-		const label = nextSequentialName('Source', sources.map(source => source.label));
+		const label = nextSequentialName(
+			'Source',
+			sources.map((source) => source.label),
+		);
 
 		return {
 			...graphic,
 			sources: [
 				...sources,
 				{
-					key: graphicInputKeyFromLabel(label, sources.map(source => source.key)),
+					key: graphicInputKeyFromLabel(
+						label,
+						sources.map((source) => source.key),
+					),
 					label,
 					kind,
 				},
@@ -550,22 +559,23 @@ export function patchGraphicSourceSelection(
 	key: string,
 	patch: Partial<Pick<GraphicSourceSelectionDeclaration, 'label'>>,
 ): BroadcastGraphicConfig[] {
-	if (patch.label !== undefined && patch.label.trim() === '')
-		return [...graphics];
+	if (patch.label !== undefined && patch.label.trim() === '') return [...graphics];
 
-	return graphics.map(graphic => graphic.id === graphicId
-		? {
-				...graphic,
-				sources: (graphic.sources ?? []).map(source =>
-					source.key === key
-						? {
-								...source,
-								...patch,
-							}
-						: source,
-				),
-			}
-		: graphic);
+	return graphics.map((graphic) =>
+		graphic.id === graphicId
+			? {
+					...graphic,
+					sources: (graphic.sources ?? []).map((source) =>
+						source.key === key
+							? {
+									...source,
+									...patch,
+								}
+							: source,
+					),
+				}
+			: graphic,
+	);
 }
 
 /**
@@ -583,18 +593,15 @@ export function setGraphicSourceDerivation(
 	variant?: Variant | null,
 ): BroadcastGraphicConfig[] {
 	return graphics.map((graphic) => {
-		if (graphic.id !== graphicId)
-			return graphic;
+		if (graphic.id !== graphicId) return graphic;
 
 		const sources = graphic.sources ?? [];
-		if (from !== undefined && !canDeriveGraphicSource(sources, key, from, variant))
-			return graphic;
+		if (from !== undefined && !canDeriveGraphicSource(sources, key, from, variant)) return graphic;
 
 		return {
 			...graphic,
 			sources: sources.map((source) => {
-				if (source.key !== key)
-					return source;
+				if (source.key !== key) return source;
 				if (from === undefined) {
 					const { from: _cleared, ...rest } = source;
 					return rest;
@@ -619,8 +626,7 @@ export function deleteGraphicSourceSelection(
 	key: string,
 ): BroadcastGraphicConfig[] {
 	return graphics.map((graphic) => {
-		if (graphic.id !== graphicId)
-			return graphic;
+		if (graphic.id !== graphicId) return graphic;
 
 		const sources = graphic.sources ?? [];
 		const removed = new Set<string>([key]);
@@ -634,13 +640,17 @@ export function deleteGraphicSourceSelection(
 				}
 			}
 		}
-		if ((graphic.socialProfileProjections ?? []).some(projection => removed.has(projection.sourceKey)))
+		if (
+			(graphic.socialProfileProjections ?? []).some((projection) =>
+				removed.has(projection.sourceKey),
+			)
+		)
 			return graphic;
 
 		return {
 			...graphic,
-			sources: sources.filter(source => !removed.has(source.key)),
-			bindings: graphic.bindings?.filter(binding => !removed.has(binding.sourceKey)),
+			sources: sources.filter((source) => !removed.has(source.key)),
+			bindings: graphic.bindings?.filter((binding) => !removed.has(binding.sourceKey)),
 		};
 	});
 }
@@ -662,21 +672,22 @@ export function setGraphicInputBinding(
 	variant?: Variant | null,
 ): BroadcastGraphicConfig[] {
 	return graphics.map((graphic) => {
-		if (graphic.id !== graphicId)
-			return graphic;
+		if (graphic.id !== graphicId) return graphic;
 
-		const input = (graphic.inputs ?? []).find(entry => entry.key === binding.inputKey);
-		const source = (graphic.sources ?? []).find(entry => entry.key === binding.sourceKey);
-		if (!input || !source || !isGraphicBindingFieldCompatible(source.kind, binding.fieldId, input.type, game, variant))
+		const input = (graphic.inputs ?? []).find((entry) => entry.key === binding.inputKey);
+		const source = (graphic.sources ?? []).find((entry) => entry.key === binding.sourceKey);
+		if (
+			!input ||
+			!source ||
+			!isGraphicBindingFieldCompatible(source.kind, binding.fieldId, input.type, game, variant)
+		)
 			return graphic;
 
 		const bindings = graphic.bindings ?? [];
 		return {
 			...graphic,
-			bindings: bindings.some(entry => entry.inputKey === binding.inputKey)
-				? bindings.map(entry => entry.inputKey === binding.inputKey
-						? binding
-						: entry)
+			bindings: bindings.some((entry) => entry.inputKey === binding.inputKey)
+				? bindings.map((entry) => (entry.inputKey === binding.inputKey ? binding : entry))
 				: [...bindings, binding],
 		};
 	});
@@ -688,12 +699,14 @@ export function deleteGraphicInputBinding(
 	graphicId: string,
 	inputKey: string,
 ): BroadcastGraphicConfig[] {
-	return graphics.map(graphic => graphic.id === graphicId
-		? {
-				...graphic,
-				bindings: (graphic.bindings ?? []).filter(binding => binding.inputKey !== inputKey),
-			}
-		: graphic);
+	return graphics.map((graphic) =>
+		graphic.id === graphicId
+			? {
+					...graphic,
+					bindings: (graphic.bindings ?? []).filter((binding) => binding.inputKey !== inputKey),
+				}
+			: graphic,
+	);
 }
 
 /* ────────────────────────────────────────────────
@@ -723,19 +736,22 @@ export function associateSocialProfileProjection(
 	graphic: BroadcastGraphicConfig,
 	options: AssociateSocialProfileProjectionOptions,
 ): BroadcastGraphicConfig {
-	const source = (graphic.sources ?? []).find(entry => entry.key === options.sourceKey);
-	const group = graphic.items.find(entry => entry.id === options.presentationGroupId);
+	const source = (graphic.sources ?? []).find((entry) => entry.key === options.sourceKey);
+	const group = graphic.items.find((entry) => entry.id === options.presentationGroupId);
 	if (
-		!source
-		|| source.kind !== 'talent'
-		|| group?.type !== 'group'
-		|| options.label.trim() === ''
-		|| options.label.trim().length > MAX_GRAPHIC_INPUT_LABEL_LENGTH
-		|| !GRAPHIC_INPUT_KEY_PATTERN.test(options.projectionKey)
-		|| options.projectionKey.length > MAX_GRAPHIC_INPUT_KEY_LENGTH
-		|| (graphic.socialProfileProjections?.length ?? 0) >= MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC
-		|| (graphic.socialProfileProjections ?? []).some(entry =>
-			entry.key === options.projectionKey || entry.presentationGroupId === options.presentationGroupId,
+		!source ||
+		source.kind !== 'talent' ||
+		group?.type !== 'group' ||
+		options.label.trim() === '' ||
+		options.label.trim().length > MAX_GRAPHIC_INPUT_LABEL_LENGTH ||
+		!GRAPHIC_INPUT_KEY_PATTERN.test(options.projectionKey) ||
+		options.projectionKey.length > MAX_GRAPHIC_INPUT_KEY_LENGTH ||
+		(graphic.socialProfileProjections?.length ?? 0) >=
+			MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC ||
+		(graphic.socialProfileProjections ?? []).some(
+			(entry) =>
+				entry.key === options.projectionKey ||
+				entry.presentationGroupId === options.presentationGroupId,
 		)
 	) {
 		return graphic;
@@ -753,10 +769,7 @@ export function associateSocialProfileProjection(
 	};
 	return {
 		...graphic,
-		socialProfileProjections: [
-			...(graphic.socialProfileProjections ?? []),
-			projection,
-		],
+		socialProfileProjections: [...(graphic.socialProfileProjections ?? []), projection],
 	};
 }
 
@@ -772,19 +785,20 @@ export function addSocialProfileProjection(
 	graphic: BroadcastGraphicConfig,
 	options: AddSocialProfileProjectionOptions,
 ): BroadcastGraphicConfig {
-	const source = (graphic.sources ?? []).find(entry => entry.key === options.sourceKey);
+	const source = (graphic.sources ?? []).find((entry) => entry.key === options.sourceKey);
 	if (
-		!source
-		|| source.kind !== 'talent'
-		|| options.label.trim() === ''
-		|| options.label.trim().length > MAX_GRAPHIC_INPUT_LABEL_LENGTH
-		|| !GRAPHIC_INPUT_KEY_PATTERN.test(options.projectionKey)
-		|| options.projectionKey.length > MAX_GRAPHIC_INPUT_KEY_LENGTH
-		|| (graphic.socialProfileProjections?.length ?? 0) >= MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC
-		|| (graphic.socialProfileProjections ?? []).some(entry => entry.key === options.projectionKey)
-		|| findGraphicItem(graphic, options.presentationGroupId)
-		|| findGraphicItem(graphic, options.iconItemId)
-		|| findGraphicItem(graphic, options.handleItemId)
+		!source ||
+		source.kind !== 'talent' ||
+		options.label.trim() === '' ||
+		options.label.trim().length > MAX_GRAPHIC_INPUT_LABEL_LENGTH ||
+		!GRAPHIC_INPUT_KEY_PATTERN.test(options.projectionKey) ||
+		options.projectionKey.length > MAX_GRAPHIC_INPUT_KEY_LENGTH ||
+		(graphic.socialProfileProjections?.length ?? 0) >=
+			MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC ||
+		(graphic.socialProfileProjections ?? []).some((entry) => entry.key === options.projectionKey) ||
+		findGraphicItem(graphic, options.presentationGroupId) ||
+		findGraphicItem(graphic, options.iconItemId) ||
+		findGraphicItem(graphic, options.handleItemId)
 	) {
 		return graphic;
 	}
@@ -797,20 +811,13 @@ export function addSocialProfileProjection(
 	}) as GraphicGroupItemConfig;
 	const icon = getGraphicItemDefinition('social-network-icon').createDefault({
 		id: options.iconItemId,
-		label: nextSequentialName('Social Network Icon', [
-			...usedLabels(graphic),
-			group.label,
-		]),
+		label: nextSequentialName('Social Network Icon', [...usedLabels(graphic), group.label]),
 		canvasWidth: group.width,
 		canvasHeight: group.height,
 	});
 	const handle = getGraphicItemDefinition('text').createDefault({
 		id: options.handleItemId,
-		label: nextSequentialName('Text', [
-			...usedLabels(graphic),
-			group.label,
-			icon.label,
-		]),
+		label: nextSequentialName('Text', [...usedLabels(graphic), group.label, icon.label]),
 		canvasWidth: group.width,
 		canvasHeight: group.height,
 	});
@@ -833,10 +840,12 @@ export function addSocialProfileProjection(
 	return associateSocialProfileProjection(withStarter, options);
 }
 
-export type SocialProfileProjectionPatch = Partial<Pick<
-	SocialProfileProjectionDeclaration,
-	'label' | 'sourceKey' | 'updatePolicy' | 'dwellMs' | 'transition' | 'transitionDurationMs'
->>;
+export type SocialProfileProjectionPatch = Partial<
+	Pick<
+		SocialProfileProjectionDeclaration,
+		'label' | 'sourceKey' | 'updatePolicy' | 'dwellMs' | 'transition' | 'transitionDurationMs'
+	>
+>;
 
 const SOCIAL_PROFILE_PROJECTION_PATCH_KEYS = new Set<keyof SocialProfileProjectionPatch>([
 	'label',
@@ -853,11 +862,12 @@ export function patchSocialProfileProjection(
 	key: string,
 	patch: SocialProfileProjectionPatch,
 ): BroadcastGraphicConfig {
-	const current = (graphic.socialProfileProjections ?? []).find(entry => entry.key === key);
+	const current = (graphic.socialProfileProjections ?? []).find((entry) => entry.key === key);
 	if (
-		!current
-		|| Object.keys(patch).some(
-			patchKey => !SOCIAL_PROFILE_PROJECTION_PATCH_KEYS.has(patchKey as keyof SocialProfileProjectionPatch),
+		!current ||
+		Object.keys(patch).some(
+			(patchKey) =>
+				!SOCIAL_PROFILE_PROJECTION_PATCH_KEYS.has(patchKey as keyof SocialProfileProjectionPatch),
 		)
 	) {
 		return graphic;
@@ -866,33 +876,34 @@ export function patchSocialProfileProjection(
 		...current,
 		...patch,
 	};
-	const source = (graphic.sources ?? []).find(entry => entry.key === candidate.sourceKey);
-	const group = graphic.items.find(entry => entry.id === candidate.presentationGroupId);
-	const groupAssignedElsewhere = (graphic.socialProfileProjections ?? []).some(entry =>
-		entry.key !== key && entry.presentationGroupId === candidate.presentationGroupId,
+	const source = (graphic.sources ?? []).find((entry) => entry.key === candidate.sourceKey);
+	const group = graphic.items.find((entry) => entry.id === candidate.presentationGroupId);
+	const groupAssignedElsewhere = (graphic.socialProfileProjections ?? []).some(
+		(entry) => entry.key !== key && entry.presentationGroupId === candidate.presentationGroupId,
 	);
 	if (
-		candidate.label.trim() === ''
-		|| candidate.label.trim().length > MAX_GRAPHIC_INPUT_LABEL_LENGTH
-		|| !source
-		|| source.kind !== 'talent'
-		|| group?.type !== 'group'
-		|| groupAssignedElsewhere
-		|| (candidate.updatePolicy !== undefined && !ON_AIR_UPDATE_POLICY_VALUES.includes(candidate.updatePolicy))
-		|| !Number.isInteger(candidate.dwellMs)
-		|| candidate.dwellMs < MIN_SOCIAL_PROFILE_DWELL_MS
-		|| candidate.dwellMs > MAX_SOCIAL_PROFILE_DWELL_MS
-		|| !SOCIAL_PROFILE_TRANSITION_VALUES.includes(candidate.transition)
-		|| !Number.isInteger(candidate.transitionDurationMs)
-		|| candidate.transitionDurationMs < MIN_SOCIAL_PROFILE_TRANSITION_DURATION_MS
-		|| candidate.transitionDurationMs > MAX_SOCIAL_PROFILE_TRANSITION_DURATION_MS
+		candidate.label.trim() === '' ||
+		candidate.label.trim().length > MAX_GRAPHIC_INPUT_LABEL_LENGTH ||
+		!source ||
+		source.kind !== 'talent' ||
+		group?.type !== 'group' ||
+		groupAssignedElsewhere ||
+		(candidate.updatePolicy !== undefined &&
+			!ON_AIR_UPDATE_POLICY_VALUES.includes(candidate.updatePolicy)) ||
+		!Number.isInteger(candidate.dwellMs) ||
+		candidate.dwellMs < MIN_SOCIAL_PROFILE_DWELL_MS ||
+		candidate.dwellMs > MAX_SOCIAL_PROFILE_DWELL_MS ||
+		!SOCIAL_PROFILE_TRANSITION_VALUES.includes(candidate.transition) ||
+		!Number.isInteger(candidate.transitionDurationMs) ||
+		candidate.transitionDurationMs < MIN_SOCIAL_PROFILE_TRANSITION_DURATION_MS ||
+		candidate.transitionDurationMs > MAX_SOCIAL_PROFILE_TRANSITION_DURATION_MS
 	) {
 		return graphic;
 	}
 
 	return {
 		...graphic,
-		socialProfileProjections: graphic.socialProfileProjections?.map(entry =>
+		socialProfileProjections: graphic.socialProfileProjections?.map((entry) =>
 			entry.key === key
 				? {
 						...candidate,
@@ -910,19 +921,20 @@ export function socialProfileProjectionConsumerIds(
 ): string[] {
 	return flattenGraphicItems(graphic).flatMap((item) => {
 		if (
-			item.type === 'social-network-icon'
-			&& typeof item.network === 'object'
-			&& item.network.projectionKey === key
+			item.type === 'social-network-icon' &&
+			typeof item.network === 'object' &&
+			item.network.projectionKey === key
 		) {
 			return [item.id];
 		}
 		if (item.type === 'text') {
-			const textReferencesProjection = graphicTextTemplateProjectedValueReferences(item.text)
-				.some(reference => reference.projectionKey === key);
-			const styleReferencesProjection = Object.keys(item.placeholderStyles ?? {})
-				.some(styleKey => readSocialProfileProjectedValueReference(styleKey)?.projectionKey === key);
-			if (textReferencesProjection || styleReferencesProjection)
-				return [item.id];
+			const textReferencesProjection = graphicTextTemplateProjectedValueReferences(item.text).some(
+				(reference) => reference.projectionKey === key,
+			);
+			const styleReferencesProjection = Object.keys(item.placeholderStyles ?? {}).some(
+				(styleKey) => readSocialProfileProjectedValueReference(styleKey)?.projectionKey === key,
+			);
+			if (textReferencesProjection || styleReferencesProjection) return [item.id];
 		}
 		return [];
 	});
@@ -945,15 +957,19 @@ export function deleteSocialProfileProjection(
 	key: string,
 	options: DeleteSocialProfileProjectionOptions,
 ): BroadcastGraphicConfig {
-	const projection = (graphic.socialProfileProjections ?? []).find(entry => entry.key === key);
-	if (!projection)
-		return graphic;
-	if (!options.deletePresentationGroup && socialProfileProjectionConsumerIds(graphic, key).length > 0)
+	const projection = (graphic.socialProfileProjections ?? []).find((entry) => entry.key === key);
+	if (!projection) return graphic;
+	if (
+		!options.deletePresentationGroup &&
+		socialProfileProjectionConsumerIds(graphic, key).length > 0
+	)
 		return graphic;
 
 	const withoutProjection: BroadcastGraphicConfig = {
 		...graphic,
-		socialProfileProjections: (graphic.socialProfileProjections ?? []).filter(entry => entry.key !== key),
+		socialProfileProjections: (graphic.socialProfileProjections ?? []).filter(
+			(entry) => entry.key !== key,
+		),
 	};
 	return options.deletePresentationGroup
 		? deleteGraphicItem(withoutProjection, projection.presentationGroupId)
@@ -971,29 +987,29 @@ export interface GraphicItemLocation {
 }
 
 /** One Graphic Item by id, wherever it sits in this Broadcast Graphic. */
-export function findGraphicItem(graphic: BroadcastGraphicConfig, itemId: string): GraphicItemLocation | null {
+export function findGraphicItem(
+	graphic: BroadcastGraphicConfig,
+	itemId: string,
+): GraphicItemLocation | null {
 	for (const item of graphic.items) {
-		if (item.id === itemId)
-			return { item };
-		if (item.type !== 'group')
-			continue;
-		const child = item.children.find(candidate => candidate.id === itemId);
-		if (child)
-			return { item: child, group: item };
+		if (item.id === itemId) return { item };
+		if (item.type !== 'group') continue;
+		const child = item.children.find((candidate) => candidate.id === itemId);
+		if (child) return { item: child, group: item };
 	}
 	return null;
 }
 
 /** Every Graphic Item of this Broadcast Graphic, groups before their children. */
 export function flattenGraphicItems(graphic: BroadcastGraphicConfig): GraphicItemConfig[] {
-	return graphic.items.flatMap(item => item.type === 'group'
-		? [item, ...item.children]
-		: [item]);
+	return graphic.items.flatMap((item) =>
+		item.type === 'group' ? [item, ...item.children] : [item],
+	);
 }
 
 /** Every label in use, so a new item's sequential name never collides. */
 function usedLabels(graphic: BroadcastGraphicConfig): string[] {
-	return flattenGraphicItems(graphic).map(item => item.label);
+	return flattenGraphicItems(graphic).map((item) => item.label);
 }
 
 /* ────────────────────────────────────────────────
@@ -1004,12 +1020,14 @@ export function addGraphicItem(
 	graphic: BroadcastGraphicConfig,
 	options: AddGraphicItemOptions,
 ): AddGraphicItemResult {
-	const item = bindNewGraphicItem(getGraphicItemDefinition(options.kind).createDefault({
-		id: options.id,
-		label: nextSequentialName(graphicItemKindLabel(options.kind), usedLabels(graphic)),
-		canvasWidth: options.canvasWidth,
-		canvasHeight: options.canvasHeight,
-	}));
+	const item = bindNewGraphicItem(
+		getGraphicItemDefinition(options.kind).createDefault({
+			id: options.id,
+			label: nextSequentialName(graphicItemKindLabel(options.kind), usedLabels(graphic)),
+			canvasWidth: options.canvasWidth,
+			canvasHeight: options.canvasHeight,
+		}),
+	);
 
 	return {
 		graphic: {
@@ -1037,16 +1055,17 @@ export function addGraphicGroupChild(
 	graphic: BroadcastGraphicConfig,
 	options: AddGraphicGroupChildOptions,
 ): AddGraphicItemResult {
-	const group = graphic.items.find(item => item.id === options.groupId);
-	if (!group || group.type !== 'group')
-		return { graphic, itemId: '' };
+	const group = graphic.items.find((item) => item.id === options.groupId);
+	if (!group || group.type !== 'group') return { graphic, itemId: '' };
 
-	const child = bindNewGraphicItem(getGraphicItemDefinition(options.kind).createDefault({
-		id: options.id,
-		label: nextSequentialName(graphicItemKindLabel(options.kind), usedLabels(graphic)),
-		canvasWidth: group.width,
-		canvasHeight: group.height,
-	}) as GraphicGroupChildConfig);
+	const child = bindNewGraphicItem(
+		getGraphicItemDefinition(options.kind).createDefault({
+			id: options.id,
+			label: nextSequentialName(graphicItemKindLabel(options.kind), usedLabels(graphic)),
+			canvasWidth: group.width,
+			canvasHeight: group.height,
+		}) as GraphicGroupChildConfig,
+	);
 
 	return {
 		graphic: replaceGraphicItem(graphic, {
@@ -1057,12 +1076,13 @@ export function addGraphicGroupChild(
 	};
 }
 
-function replaceGraphicItem(graphic: BroadcastGraphicConfig, item: GraphicItemConfig): BroadcastGraphicConfig {
+function replaceGraphicItem(
+	graphic: BroadcastGraphicConfig,
+	item: GraphicItemConfig,
+): BroadcastGraphicConfig {
 	return {
 		...graphic,
-		items: graphic.items.map(entry => entry.id === item.id
-			? item
-			: entry),
+		items: graphic.items.map((entry) => (entry.id === item.id ? item : entry)),
 	};
 }
 
@@ -1075,13 +1095,21 @@ export function moveGraphicItem(
 	const location = findGraphicItem(graphic, itemId);
 	if (location?.group) {
 		const group = location.group;
-		const children = moveWithin(group.children, group.children.findIndex(child => child.id === itemId), delta);
+		const children = moveWithin(
+			group.children,
+			group.children.findIndex((child) => child.id === itemId),
+			delta,
+		);
 		return replaceGraphicItem(graphic, { ...group, children });
 	}
 
 	return {
 		...graphic,
-		items: moveWithin(graphic.items, graphic.items.findIndex(item => item.id === itemId), delta),
+		items: moveWithin(
+			graphic.items,
+			graphic.items.findIndex((item) => item.id === itemId),
+			delta,
+		),
 	};
 }
 
@@ -1092,16 +1120,13 @@ export function moveGraphicItemToEdge(
 	edge: 'front' | 'back',
 ): BroadcastGraphicConfig {
 	const location = findGraphicItem(graphic, itemId);
-	const siblings: readonly { id: string }[] = location?.group ? location.group.children : graphic.items;
-	const index = siblings.findIndex(sibling => sibling.id === itemId);
-	if (index < 0)
-		return graphic;
-	const delta = edge === 'front'
-		? siblings.length - 1 - index
-		: -index;
-	return delta === 0
-		? graphic
-		: moveGraphicItem(graphic, itemId, delta);
+	const siblings: readonly { id: string }[] = location?.group
+		? location.group.children
+		: graphic.items;
+	const index = siblings.findIndex((sibling) => sibling.id === itemId);
+	if (index < 0) return graphic;
+	const delta = edge === 'front' ? siblings.length - 1 - index : -index;
+	return delta === 0 ? graphic : moveGraphicItem(graphic, itemId, delta);
 }
 
 /**
@@ -1114,12 +1139,12 @@ export interface GraphicItemPlacement {
 }
 
 /** Why a Graphic Item cannot join a Graphic Group. */
-export type GraphicItemPlacementRefusal
-	= | 'not-a-group'
-		/** Graphic Groups do not nest. */
-		| 'group-into-group'
-		/** A row or column child has no rotation, and a turned item's is never silently dropped (#741). */
-		| 'rotated-into-arranged-group';
+export type GraphicItemPlacementRefusal =
+	| 'not-a-group'
+	/** Graphic Groups do not nest. */
+	| 'group-into-group'
+	/** A row or column child has no rotation, and a turned item's is never silently dropped (#741). */
+	| 'rotated-into-arranged-group';
 
 /** Whether a Graphic Rotation turns what it rotates; a whole turn does not. */
 function isTurnedRotation(rotation: number | undefined): boolean {
@@ -1133,13 +1158,10 @@ export function graphicItemPlacementRefusal(
 	groupId: string | null,
 ): GraphicItemPlacementRefusal | null {
 	const location = findGraphicItem(graphic, itemId);
-	if (!location || groupId === null || location.group?.id === groupId)
-		return null;
-	const group = graphic.items.find(item => item.id === groupId);
-	if (group?.type !== 'group')
-		return 'not-a-group';
-	if (location.item.type === 'group')
-		return 'group-into-group';
+	if (!location || groupId === null || location.group?.id === groupId) return null;
+	const group = graphic.items.find((item) => item.id === groupId);
+	if (group?.type !== 'group') return 'not-a-group';
+	if (location.item.type === 'group') return 'group-into-group';
 	if (group.arrangement !== 'canvas' && isTurnedRotation(location.item.rotation))
 		return 'rotated-into-arranged-group';
 	return null;
@@ -1149,8 +1171,12 @@ function roundPlacement(value: number): number {
 	return Math.round(value * 100) / 100;
 }
 
-function turnPoint(point: { x: number; y: number }, pivot: { x: number; y: number }, degrees: number) {
-	const radians = degrees * Math.PI / 180;
+function turnPoint(
+	point: { x: number; y: number },
+	pivot: { x: number; y: number },
+	degrees: number,
+) {
+	const radians = (degrees * Math.PI) / 180;
 	const cos = Math.cos(radians);
 	const sin = Math.sin(radians);
 	const x = point.x - pivot.x;
@@ -1168,12 +1194,14 @@ function turnPoint(point: { x: number; y: number }, pivot: { x: number; y: numbe
  * Anchor Point, so a child is turned back against it. A row or column group places
  * its children itself, so only the corner is moved.
  */
-function rebaseGraphicItem<T extends GraphicItemConfig>(item: T, group: GraphicGroupItemConfig, direction: 'into' | 'out'): T {
+function rebaseGraphicItem<T extends GraphicItemConfig>(
+	item: T,
+	group: GraphicGroupItemConfig,
+	direction: 'into' | 'out',
+): T {
 	const padding = Math.max(0, group.padding);
 	const origin = { x: group.x + padding, y: group.y + padding };
-	const sign = direction === 'into'
-		? -1
-		: 1;
+	const sign = direction === 'into' ? -1 : 1;
 	if (group.arrangement !== 'canvas' || !isTurnedRotation(group.rotation)) {
 		return {
 			...item,
@@ -1183,27 +1211,24 @@ function rebaseGraphicItem<T extends GraphicItemConfig>(item: T, group: GraphicG
 	}
 	const groupRotation = group.rotation ?? 0;
 	const groupAnchor = resolveGraphicAnchorPoint(group.anchor);
-	const pivot = { x: group.x + group.width * groupAnchor.x, y: group.y + group.height * groupAnchor.y };
+	const pivot = {
+		x: group.x + group.width * groupAnchor.x,
+		y: group.y + group.height * groupAnchor.y,
+	};
 	const anchor = resolveGraphicAnchorPoint(item.anchor);
-	const offset = direction === 'into'
-		? { x: 0, y: 0 }
-		: origin;
+	const offset = direction === 'into' ? { x: 0, y: 0 } : origin;
 	const anchored = {
 		x: item.x + offset.x + item.width * anchor.x,
 		y: item.y + offset.y + item.height * anchor.y,
 	};
 	const turned = turnPoint(anchored, pivot, sign * groupRotation);
-	const landed = direction === 'into'
-		? { x: turned.x - origin.x, y: turned.y - origin.y }
-		: turned;
+	const landed = direction === 'into' ? { x: turned.x - origin.x, y: turned.y - origin.y } : turned;
 	// Within a whole turn either way, as a stored Graphic Rotation must be.
 	const rotation = roundPlacement(((item.rotation ?? 0) + sign * groupRotation) % 360);
 	const { rotation: _rotation, ...rest } = item;
 	return {
 		...rest,
-		...(rotation !== 0
-			? { rotation }
-			: {}),
+		...(rotation !== 0 ? { rotation } : {}),
 		x: roundPlacement(landed.x - item.width * anchor.x),
 		y: roundPlacement(landed.y - item.height * anchor.y),
 	} as T;
@@ -1230,15 +1255,12 @@ export function placeGraphicItem(
 	placement: GraphicItemPlacement,
 ): BroadcastGraphicConfig {
 	const location = findGraphicItem(graphic, itemId);
-	if (!location || graphicItemPlacementRefusal(graphic, itemId, placement.groupId))
-		return graphic;
+	if (!location || graphicItemPlacementRefusal(graphic, itemId, placement.groupId)) return graphic;
 	if ((location.group?.id ?? null) === placement.groupId) {
 		const siblings: readonly { id: string }[] = location.group?.children ?? graphic.items;
-		const index = siblings.findIndex(sibling => sibling.id === itemId);
+		const index = siblings.findIndex((sibling) => sibling.id === itemId);
 		const target = Math.max(0, Math.min(siblings.length - 1, Math.trunc(placement.index)));
-		return target === index
-			? graphic
-			: moveGraphicItem(graphic, itemId, target - index);
+		return target === index ? graphic : moveGraphicItem(graphic, itemId, target - index);
 	}
 
 	let moved: GraphicItemConfig = location.item;
@@ -1254,7 +1276,9 @@ export function placeGraphicItem(
 		};
 	}
 
-	const group = without.items.find(item => item.id === placement.groupId) as GraphicGroupItemConfig;
+	const group = without.items.find(
+		(item) => item.id === placement.groupId,
+	) as GraphicGroupItemConfig;
 	const child = rebaseGraphicItem(moved, group, 'into') as GraphicGroupChildConfig;
 	return replaceGraphicItem(without, {
 		...group,
@@ -1263,34 +1287,28 @@ export function placeGraphicItem(
 }
 
 /** Why these Graphic Items cannot be grouped together. */
-export type GraphicItemsGroupRefusal
-	= | 'too-few'
-		/** More than a Graphic Group may hold (`MAX_GRAPHIC_GROUP_CHILDREN`). */
-		| 'too-many'
-		/** Graphic Groups do not nest (E9). */
-		| 'group-into-group'
-		/** Only top-level Graphic Items are grouped; a child already has its group. */
-		| 'group-child';
+export type GraphicItemsGroupRefusal =
+	| 'too-few'
+	/** More than a Graphic Group may hold (`MAX_GRAPHIC_GROUP_CHILDREN`). */
+	| 'too-many'
+	/** Graphic Groups do not nest (E9). */
+	| 'group-into-group'
+	/** Only top-level Graphic Items are grouped; a child already has its group. */
+	| 'group-child';
 
 /** Why these Graphic Items cannot be wrapped in a new Graphic Group, or null when they can. Unknown ids are ignored. */
-export function graphicItemsGroupRefusal(graphic: BroadcastGraphicConfig, itemIds: readonly string[]): GraphicItemsGroupRefusal | null {
-	const locations = [
-		...new Set(itemIds),
-	].flatMap((itemId) => {
+export function graphicItemsGroupRefusal(
+	graphic: BroadcastGraphicConfig,
+	itemIds: readonly string[],
+): GraphicItemsGroupRefusal | null {
+	const locations = [...new Set(itemIds)].flatMap((itemId) => {
 		const location = findGraphicItem(graphic, itemId);
-		return location
-			? [location]
-			: [];
+		return location ? [location] : [];
 	});
-	if (locations.length < 2)
-		return 'too-few';
-	if (locations.length > MAX_GRAPHIC_GROUP_CHILDREN)
-		return 'too-many';
-	if (locations.some(location => location.group))
-		return 'group-child';
-	return locations.some(location => location.item.type === 'group')
-		? 'group-into-group'
-		: null;
+	if (locations.length < 2) return 'too-few';
+	if (locations.length > MAX_GRAPHIC_GROUP_CHILDREN) return 'too-many';
+	if (locations.some((location) => location.group)) return 'group-child';
+	return locations.some((location) => location.item.type === 'group') ? 'group-into-group' : null;
 }
 
 /** The axis-aligned box a Graphic Item draws on its container once turned about its Graphic Anchor Point. */
@@ -1310,24 +1328,28 @@ function drawnBounds(item: GraphicItemConfig): GraphicRect {
 		[1, 0],
 		[0, 1],
 		[1, 1],
-	].map(([x, y]) => turnPoint({ x: item.x + item.width * x!, y: item.y + item.height * y! }, pivot, item.rotation!));
-	return boundingBox(corners.map(corner => ({
-		x: corner.x,
-		y: corner.y,
-		width: 0,
-		height: 0,
-	})));
+	].map(([x, y]) =>
+		turnPoint({ x: item.x + item.width * x!, y: item.y + item.height * y! }, pivot, item.rotation!),
+	);
+	return boundingBox(
+		corners.map((corner) => ({
+			x: corner.x,
+			y: corner.y,
+			width: 0,
+			height: 0,
+		})),
+	);
 }
 
 /** The axis-aligned box covering every one of these rectangles, to two decimal places. */
 function boundingBox(rects: readonly GraphicRect[]): GraphicRect {
-	const left = roundPlacement(Math.min(...rects.map(rect => rect.x)));
-	const top = roundPlacement(Math.min(...rects.map(rect => rect.y)));
+	const left = roundPlacement(Math.min(...rects.map((rect) => rect.x)));
+	const top = roundPlacement(Math.min(...rects.map((rect) => rect.y)));
 	return {
 		x: left,
 		y: top,
-		width: roundPlacement(Math.max(...rects.map(rect => rect.x + rect.width)) - left),
-		height: roundPlacement(Math.max(...rects.map(rect => rect.y + rect.height)) - top),
+		width: roundPlacement(Math.max(...rects.map((rect) => rect.x + rect.width)) - left),
+		height: roundPlacement(Math.max(...rects.map((rect) => rect.y + rect.height)) - top),
 	};
 }
 
@@ -1351,33 +1373,38 @@ export function groupGraphicItems(
 	itemIds: readonly string[],
 	options: GroupGraphicItemsOptions,
 ): AddGraphicItemResult {
-	if (graphicItemsGroupRefusal(graphic, itemIds))
-		return { graphic, itemId: '' };
+	if (graphicItemsGroupRefusal(graphic, itemIds)) return { graphic, itemId: '' };
 
 	const ids = new Set(itemIds);
-	const members = graphic.items.filter(item => ids.has(item.id));
+	const members = graphic.items.filter((item) => ids.has(item.id));
 	const bounds = boundingBox(members.map(drawnBounds));
 	const group: GraphicGroupItemConfig = {
-		...bindNewGraphicItem(getGraphicItemDefinition('group').createDefault({
-			id: options.id,
-			label: nextSequentialName(graphicItemKindLabel('group'), usedLabels(graphic)),
-			canvasWidth: bounds.width,
-			canvasHeight: bounds.height,
-		}) as GraphicGroupItemConfig),
+		...bindNewGraphicItem(
+			getGraphicItemDefinition('group').createDefault({
+				id: options.id,
+				label: nextSequentialName(graphicItemKindLabel('group'), usedLabels(graphic)),
+				canvasWidth: bounds.width,
+				canvasHeight: bounds.height,
+			}) as GraphicGroupItemConfig,
+		),
 		...bounds,
 		arrangement: 'canvas',
 	};
 
-	const frontmost = graphic.items.findIndex(item => item.id === members.at(-1)!.id);
+	const frontmost = graphic.items.findIndex((item) => item.id === members.at(-1)!.id);
 	const withGroup = {
 		...graphic,
 		items: insertAt(graphic.items, frontmost + 1, group),
 	};
 	return {
-		graphic: members.reduce((next, member, index) => placeGraphicItem(next, member.id, {
-			groupId: group.id,
-			index,
-		}), withGroup),
+		graphic: members.reduce(
+			(next, member, index) =>
+				placeGraphicItem(next, member.id, {
+					groupId: group.id,
+					index,
+				}),
+			withGroup,
+		),
 		itemId: group.id,
 	};
 }
@@ -1388,14 +1415,18 @@ export function groupGraphicItems(
  * (bound to the group's Theme token when the default is), the group's hiding, and
  * its Layer Lock (ADR-0063).
  */
-function bakeInheritedStyle(group: GraphicGroupItemConfig, child: GraphicGroupChildConfig): GraphicGroupChildConfig {
-	let baked: GraphicItemConfig = group.visible
-		? child
-		: { ...child, visible: false };
-	if (group.locked)
-		baked = { ...baked, locked: true };
+function bakeInheritedStyle(
+	group: GraphicGroupItemConfig,
+	child: GraphicGroupChildConfig,
+): GraphicGroupChildConfig {
+	let baked: GraphicItemConfig = group.visible ? child : { ...child, visible: false };
+	if (group.locked) baked = { ...baked, locked: true };
 	const inherited = group.defaultChildSurfaceStyle;
-	if (inherited && ownsGraphicSurfaceStyle(baked, 'surfaceStyle') && baked.surfaceStyle === undefined) {
+	if (
+		inherited &&
+		ownsGraphicSurfaceStyle(baked, 'surfaceStyle') &&
+		baked.surfaceStyle === undefined
+	) {
 		const binding = group.themeBindings?.defaultChildSurfaceStyle;
 		baked = {
 			...baked,
@@ -1420,13 +1451,16 @@ function bakeInheritedStyle(group: GraphicGroupItemConfig, child: GraphicGroupCh
  * keeps a rotation, and a child laid out to nothing keeps a pixel, the least a
  * stored size may be.
  */
-function laidOutOnCanvas(group: GraphicGroupItemConfig, children: readonly GraphicGroupChildConfig[]): GraphicGroupChildConfig[] {
+function laidOutOnCanvas(
+	group: GraphicGroupItemConfig,
+	children: readonly GraphicGroupChildConfig[],
+): GraphicGroupChildConfig[] {
 	const isRow = group.arrangement === 'row';
 	const padding = Math.max(0, group.padding);
 	const gap = Math.max(0, group.gap);
 	const mainSpace = Math.max(0, (isRow ? group.width : group.height) - 2 * padding);
 	const crossSpace = Math.max(0, (isRow ? group.height : group.width) - 2 * padding);
-	const shown = children.filter(child => child.visible);
+	const shown = children.filter((child) => child.visible);
 	const flexes = shown.map((child) => {
 		const sizing = child.sizing ?? {
 			mode: 'fixed' as const,
@@ -1447,57 +1481,55 @@ function laidOutOnCanvas(group: GraphicGroupItemConfig, children: readonly Graph
 	const free = mainSpace - gaps - flexes.reduce((sum, flex) => sum + flex.basis, 0);
 	const growth = flexes.reduce((sum, flex) => sum + flex.grow, 0);
 	// Flex factors summing below one share only that fraction of the free space.
-	const extents = flexes.map(flex => flex.basis + (free > 0 && growth > 0
-		? free * flex.grow / Math.max(1, growth)
-		: 0));
+	const extents = flexes.map(
+		(flex) => flex.basis + (free > 0 && growth > 0 ? (free * flex.grow) / Math.max(1, growth) : 0),
+	);
 	const left = mainSpace - gaps - extents.reduce((sum, extent) => sum + extent, 0);
 	const spread = group.justify === 'space-between' && left > 0 && shown.length > 1;
-	let main = group.justify === 'end'
-		? left
-		: group.justify === 'center'
-			? left / 2
-			: 0;
-	const laidOut = new Map(shown.map((child, index) => {
-		const extent = extents[index]!;
-		const crossExtent = group.align === 'stretch'
-			? crossSpace
-			: isRow ? child.height : child.width;
-		const cross = group.align === 'end'
-			? crossSpace - crossExtent
-			: group.align === 'center'
-				? (crossSpace - crossExtent) / 2
-				: 0;
-		const box = isRow
-			? {
-					x: main,
-					y: cross,
-					width: extent,
-					height: crossExtent,
-				}
-			: {
-					x: cross,
-					y: main,
-					width: crossExtent,
-					height: extent,
-				};
-		main += extent + gap + (spread
-			? left / (shown.length - 1)
-			: 0);
-		return [child.id, box] as const;
-	}));
+	let main = group.justify === 'end' ? left : group.justify === 'center' ? left / 2 : 0;
+	const laidOut = new Map(
+		shown.map((child, index) => {
+			const extent = extents[index]!;
+			const crossExtent =
+				group.align === 'stretch' ? crossSpace : isRow ? child.height : child.width;
+			const cross =
+				group.align === 'end'
+					? crossSpace - crossExtent
+					: group.align === 'center'
+						? (crossSpace - crossExtent) / 2
+						: 0;
+			const box = isRow
+				? {
+						x: main,
+						y: cross,
+						width: extent,
+						height: crossExtent,
+					}
+				: {
+						x: cross,
+						y: main,
+						width: crossExtent,
+						height: extent,
+					};
+			main += extent + gap + (spread ? left / (shown.length - 1) : 0);
+			return [child.id, box] as const;
+		}),
+	);
 
 	return children.map((child) => {
 		const { rotation: _rotation, sizing: _sizing, ...upright } = child;
 		const box = laidOut.get(child.id);
-		return (box
-			? {
-					...upright,
-					x: roundPlacement(box.x),
-					y: roundPlacement(box.y),
-					width: Math.max(1, roundPlacement(box.width)),
-					height: Math.max(1, roundPlacement(box.height)),
-				}
-			: upright) as GraphicGroupChildConfig;
+		return (
+			box
+				? {
+						...upright,
+						x: roundPlacement(box.x),
+						y: roundPlacement(box.y),
+						width: Math.max(1, roundPlacement(box.width)),
+						height: Math.max(1, roundPlacement(box.height)),
+					}
+				: upright
+		) as GraphicGroupChildConfig;
 	});
 }
 
@@ -1518,28 +1550,37 @@ export interface UngroupGraphicGroupResult {
  * same graphic, and no ids, for anything but a Graphic Group, and for a Social
  * Profile Projection's Presentation Group, which cannot be deleted either.
  */
-export function ungroupGraphicGroup(graphic: BroadcastGraphicConfig, groupId: string): UngroupGraphicGroupResult {
-	const slot = graphic.items.findIndex(item => item.id === groupId);
+export function ungroupGraphicGroup(
+	graphic: BroadcastGraphicConfig,
+	groupId: string,
+): UngroupGraphicGroupResult {
+	const slot = graphic.items.findIndex((item) => item.id === groupId);
 	const group = graphic.items[slot];
 	if (
-		group?.type !== 'group'
-		|| (graphic.socialProfileProjections ?? []).some(projection => projection.presentationGroupId === groupId)
+		group?.type !== 'group' ||
+		(graphic.socialProfileProjections ?? []).some(
+			(projection) => projection.presentationGroupId === groupId,
+		)
 	) {
 		return { graphic, itemIds: [] };
 	}
 
 	// Laid out before baking: a hidden group hides its children, which would then take no space in it.
-	const children = (group.arrangement === 'canvas'
-		? group.children
-		: laidOutOnCanvas(group, group.children)).map(child => bakeInheritedStyle(group, child));
+	const children = (
+		group.arrangement === 'canvas' ? group.children : laidOutOnCanvas(group, group.children)
+	).map((child) => bakeInheritedStyle(group, child));
 	const opened = replaceGraphicItem(graphic, { ...group, arrangement: 'canvas', children });
-	const placed = children.reduce((next, child, index) => placeGraphicItem(next, child.id, {
-		groupId: null,
-		index: slot + index,
-	}), opened);
+	const placed = children.reduce(
+		(next, child, index) =>
+			placeGraphicItem(next, child.id, {
+				groupId: null,
+				index: slot + index,
+			}),
+		opened,
+	);
 	return {
 		graphic: deleteGraphicItem(placed, groupId),
-		itemIds: children.map(child => child.id),
+		itemIds: children.map((child) => child.id),
 	};
 }
 
@@ -1575,13 +1616,16 @@ export function withoutLayerLock<T extends { locked?: boolean }>(item: T): T {
  * included; nothing referencing the original, such as a stagger or a Social
  * Profile Projection, is extended to it.
  */
-export function cloneGraphicItem<T extends GraphicItemConfig>(item: T, options: CloneGraphicItemOptions): T {
+export function cloneGraphicItem<T extends GraphicItemConfig>(
+	item: T,
+	options: CloneGraphicItemOptions,
+): T {
 	// A JSON copy: the item is stored configuration, and may arrive as a reactive proxy.
 	const copy = withoutLayerLock(JSON.parse(JSON.stringify(item)) as T);
 	copy.id = options.nextId();
 	copy.label = options.label(copy.label);
 	if (copy.type === 'group') {
-		copy.children = copy.children.map(child => ({
+		copy.children = copy.children.map((child) => ({
 			...withoutLayerLock(child),
 			id: options.nextId(),
 			label: options.label(child.label),
@@ -1595,15 +1639,17 @@ export function cloneGraphicItem<T extends GraphicItemConfig>(item: T, options: 
  * carries stays; any other becomes "name copy", then "name copy 2" and on. Each
  * name it gives is taken from then on.
  */
-export function copyLabeller(taken: readonly string[], options: { keep?: boolean } = {}): (label: string) => string {
+export function copyLabeller(
+	taken: readonly string[],
+	options: { keep?: boolean } = {},
+): (label: string) => string {
 	const used = new Set(taken);
 	return (label) => {
 		let candidate = label;
 		if (!options.keep || used.has(candidate)) {
 			const base = `${label} copy`;
 			candidate = base;
-			for (let index = 2; used.has(candidate); index += 1)
-				candidate = `${base} ${index}`;
+			for (let index = 2; used.has(candidate); index += 1) candidate = `${base} ${index}`;
 		}
 		used.add(candidate);
 		return candidate;
@@ -1624,8 +1670,7 @@ export function duplicateGraphicItem(
 	options: DuplicateGraphicItemOptions,
 ): AddGraphicItemResult {
 	const location = findGraphicItem(graphic, itemId);
-	if (!location)
-		return { graphic, itemId: '' };
+	if (!location) return { graphic, itemId: '' };
 
 	const copy = cloneGraphicItem(location.item, {
 		nextId: options.nextId,
@@ -1636,7 +1681,7 @@ export function duplicateGraphicItem(
 
 	if (location.group) {
 		const group = location.group;
-		const index = group.children.findIndex(child => child.id === itemId);
+		const index = group.children.findIndex((child) => child.id === itemId);
 		const children = [...group.children];
 		children.splice(index + 1, 0, copy as GraphicGroupChildConfig);
 		return {
@@ -1645,7 +1690,7 @@ export function duplicateGraphicItem(
 		};
 	}
 
-	const index = graphic.items.findIndex(item => item.id === itemId);
+	const index = graphic.items.findIndex((item) => item.id === itemId);
 	const items = [...graphic.items];
 	items.splice(index + 1, 0, copy);
 	return {
@@ -1662,11 +1707,16 @@ export function duplicateGraphicItem(
  * but it would linger in the stored configuration and reappear the moment an
  * author created a new item that happened to reuse the id.
  */
-export function deleteGraphicItem(graphic: BroadcastGraphicConfig, itemId: string): BroadcastGraphicConfig {
+export function deleteGraphicItem(
+	graphic: BroadcastGraphicConfig,
+	itemId: string,
+): BroadcastGraphicConfig {
 	const location = findGraphicItem(graphic, itemId);
 	if (
-		location?.item.type === 'group'
-		&& (graphic.socialProfileProjections ?? []).some(projection => projection.presentationGroupId === itemId)
+		location?.item.type === 'group' &&
+		(graphic.socialProfileProjections ?? []).some(
+			(projection) => projection.presentationGroupId === itemId,
+		)
 	) {
 		return graphic;
 	}
@@ -1674,14 +1724,14 @@ export function deleteGraphicItem(graphic: BroadcastGraphicConfig, itemId: strin
 		const group = location.group;
 		return replaceGraphicItem(graphic, {
 			...group,
-			children: group.children.filter(child => child.id !== itemId),
+			children: group.children.filter((child) => child.id !== itemId),
 			animation: withoutStaggeredItem(group.animation, itemId),
 		});
 	}
 
 	return {
 		...graphic,
-		items: graphic.items.filter(item => item.id !== itemId),
+		items: graphic.items.filter((item) => item.id !== itemId),
 		animation: withoutStaggeredItem(graphic.animation, itemId),
 	};
 }
@@ -1699,16 +1749,12 @@ function updateGraphicItem(
 	return {
 		...graphic,
 		items: graphic.items.map((item) => {
-			if (item.id === itemId)
-				return update(item);
-			if (item.type !== 'group' || !item.children.some(child => child.id === itemId))
-				return item;
+			if (item.id === itemId) return update(item);
+			if (item.type !== 'group' || !item.children.some((child) => child.id === itemId)) return item;
 			return {
 				...item,
-				children: item.children.map(child =>
-					child.id === itemId
-						? update(child) as GraphicGroupChildConfig
-						: child,
+				children: item.children.map((child) =>
+					child.id === itemId ? (update(child) as GraphicGroupChildConfig) : child,
 				),
 			};
 		}),
@@ -1716,7 +1762,10 @@ function updateGraphicItem(
 }
 
 /** Put `item` whole in place of the Graphic Item with its id, wherever it sits. */
-export function replaceGraphicItemById(graphic: BroadcastGraphicConfig, item: GraphicItemConfig): BroadcastGraphicConfig {
+export function replaceGraphicItemById(
+	graphic: BroadcastGraphicConfig,
+	item: GraphicItemConfig,
+): BroadcastGraphicConfig {
 	return updateGraphicItem(graphic, item.id, () => item);
 }
 
@@ -1733,10 +1782,15 @@ export function patchGraphicItem(
 	itemId: string,
 	patch: Partial<GraphicItemConfig>,
 ): BroadcastGraphicConfig {
-	return updateGraphicItem(graphic, itemId, item => ({
-		...item,
-		...patch,
-	} as GraphicItemConfig));
+	return updateGraphicItem(
+		graphic,
+		itemId,
+		(item) =>
+			({
+				...item,
+				...patch,
+			}) as GraphicItemConfig,
+	);
 }
 
 /** Apply a nested merge to one item, and only when it is of an expected kind. */
@@ -1762,8 +1816,7 @@ function patchGraphicItemWhere<T extends GraphicItemConfig>(
 	merge: (item: T) => Partial<GraphicItemConfig>,
 ): BroadcastGraphicConfig {
 	const item = findGraphicItem(graphic, itemId)?.item;
-	if (!item || !owns(item))
-		return graphic;
+	if (!item || !owns(item)) return graphic;
 
 	return patchGraphicItem(graphic, itemId, merge(item));
 }
@@ -1796,8 +1849,7 @@ export function patchShapeCorner(
 ): BroadcastGraphicConfig {
 	return patchGraphicItemWhere(graphic, itemId, ownsShapeGeometry, (item) => {
 		const owned = graphicShapeGeometry(item);
-		if (!owned)
-			return {};
+		if (!owned) return {};
 		return {
 			[owned.slot]: {
 				...owned.geometry,
@@ -1822,8 +1874,7 @@ export function applyShapeGeometryPreset(
 ): BroadcastGraphicConfig {
 	return patchGraphicItemWhere(graphic, itemId, ownsShapeGeometry, (item) => {
 		const owned = graphicShapeGeometry(item);
-		if (!owned)
-			return {};
+		if (!owned) return {};
 		const result = getShapeGeometryPreset(presetId).apply(owned.bounds);
 		return result.height === undefined
 			? { [owned.slot]: result.geometry }
@@ -1843,10 +1894,8 @@ export function setMediaClipGeometry(
 	itemId: string,
 	clipping: boolean,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemGroup(graphic, itemId, ['media'], item => ({
-		clipGeometry: clipping
-			? (item.clipGeometry ?? squareShapeGeometry())
-			: undefined,
+	return patchGraphicItemGroup(graphic, itemId, ['media'], (item) => ({
+		clipGeometry: clipping ? (item.clipGeometry ?? squareShapeGeometry()) : undefined,
 	}));
 }
 
@@ -1865,7 +1914,7 @@ export function patchMediaFocalPosition(
 	itemId: string,
 	patch: Partial<GraphicFocalPosition>,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemGroup(graphic, itemId, ['media'], item => ({
+	return patchGraphicItemGroup(graphic, itemId, ['media'], (item) => ({
 		focalPosition: {
 			...item.focalPosition,
 			...patch,
@@ -1928,9 +1977,14 @@ function patchSurfaceStyleSlot(
 	slot: GraphicSurfaceStyleSlot,
 	merge: (style: GraphicSurfaceStyle) => GraphicSurfaceStyle,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemWhere(graphic, itemId, item => ownsGraphicSurfaceStyle(item, slot), item => ({
-		[slot]: merge(graphicSurfaceStyleAt(item, slot) ?? createDefaultGraphicSurfaceStyle()),
-	}));
+	return patchGraphicItemWhere(
+		graphic,
+		itemId,
+		(item) => ownsGraphicSurfaceStyle(item, slot),
+		(item) => ({
+			[slot]: merge(graphicSurfaceStyleAt(item, slot) ?? createDefaultGraphicSurfaceStyle()),
+		}),
+	);
 }
 
 /**
@@ -1944,7 +1998,7 @@ export function patchGraphicSurfaceStyle(
 	patch: Partial<GraphicSurfaceStyle>,
 	slot: GraphicSurfaceStyleSlot = 'surfaceStyle',
 ): BroadcastGraphicConfig {
-	return patchSurfaceStyleSlot(graphic, itemId, slot, style => ({
+	return patchSurfaceStyleSlot(graphic, itemId, slot, (style) => ({
 		...style,
 		...patch,
 	}));
@@ -1961,7 +2015,7 @@ export function clearGraphicSurfaceStyle(
 	return patchGraphicItemWhere(
 		graphic,
 		itemId,
-		item => ownsGraphicSurfaceStyle(item, 'surfaceStyle'),
+		(item) => ownsGraphicSurfaceStyle(item, 'surfaceStyle'),
 		() => ({ surfaceStyle: undefined }),
 	);
 }
@@ -1972,14 +2026,21 @@ export function patchGraphicGroupDefaultChildSurfaceStyle(
 	itemId: string,
 	patch: Partial<GraphicSurfaceStyle> | null,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemWhere(graphic, itemId, item => ownsGraphicSurfaceStyle(item, 'defaultChildSurfaceStyle'), item => ({
-		defaultChildSurfaceStyle: patch === null
-			? undefined
-			: {
-					...(graphicSurfaceStyleAt(item, 'defaultChildSurfaceStyle') ?? createDefaultGraphicSurfaceStyle()),
-					...patch,
-				},
-	}));
+	return patchGraphicItemWhere(
+		graphic,
+		itemId,
+		(item) => ownsGraphicSurfaceStyle(item, 'defaultChildSurfaceStyle'),
+		(item) => ({
+			defaultChildSurfaceStyle:
+				patch === null
+					? undefined
+					: {
+							...(graphicSurfaceStyleAt(item, 'defaultChildSurfaceStyle') ??
+								createDefaultGraphicSurfaceStyle()),
+							...patch,
+						},
+		}),
+	);
 }
 
 /**
@@ -1996,11 +2057,10 @@ function editGraphicFill(
 	slot: GraphicSurfaceStyleSlot,
 	edit: GraphicFillEdit,
 ): BroadcastGraphicConfig {
-	return patchSurfaceStyleSlot(graphic, itemId, slot, style =>
-		({
-			...style,
-			fill: applyGraphicFillEdit(style.fill, edit, ITEM_GRAPHIC_FILL_EDIT_OPTIONS),
-		}));
+	return patchSurfaceStyleSlot(graphic, itemId, slot, (style) => ({
+		...style,
+		fill: applyGraphicFillEdit(style.fill, edit, ITEM_GRAPHIC_FILL_EDIT_OPTIONS),
+	}));
 }
 
 /** Merge into a Graphic Surface Style's uniform outline, or remove it. */
@@ -2010,16 +2070,17 @@ export function patchGraphicOutline(
 	patch: Partial<GraphicOutline> | null,
 	slot: GraphicSurfaceStyleSlot = 'surfaceStyle',
 ): BroadcastGraphicConfig {
-	return patchSurfaceStyleSlot(graphic, itemId, slot, style => ({
+	return patchSurfaceStyleSlot(graphic, itemId, slot, (style) => ({
 		...style,
-		outline: patch === null
-			? undefined
-			: {
-					color: '#ffffff',
-					width: 2,
-					...style.outline,
-					...patch,
-				},
+		outline:
+			patch === null
+				? undefined
+				: {
+						color: '#ffffff',
+						width: 2,
+						...style.outline,
+						...patch,
+					},
 	}));
 }
 
@@ -2030,17 +2091,18 @@ export function patchGraphicGlow(
 	patch: Partial<GraphicGlow> | null,
 	slot: GraphicSurfaceStyleSlot = 'surfaceStyle',
 ): BroadcastGraphicConfig {
-	return patchSurfaceStyleSlot(graphic, itemId, slot, style => ({
+	return patchSurfaceStyleSlot(graphic, itemId, slot, (style) => ({
 		...style,
-		glow: patch === null
-			? undefined
-			: {
-					color: '#00d9ff',
-					size: 24,
-					opacity: 0.8,
-					...style.glow,
-					...patch,
-				},
+		glow:
+			patch === null
+				? undefined
+				: {
+						color: '#00d9ff',
+						size: 24,
+						opacity: 0.8,
+						...style.glow,
+						...patch,
+					},
 	}));
 }
 
@@ -2067,7 +2129,7 @@ export function patchGraphicTypography(
 	itemId: string,
 	patch: Partial<GraphicTypography>,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemWhere(graphic, itemId, ownsGraphicTypography, item => ({
+	return patchGraphicItemWhere(graphic, itemId, ownsGraphicTypography, (item) => ({
 		typography: {
 			...item.typography,
 			...patch,
@@ -2105,8 +2167,9 @@ export function patchGraphicPlayerSide(
 	return patchGraphicItemWhere(
 		graphic,
 		itemId,
-		(item): item is GraphicPlayerSideItem => ownsPlayerSide(item) && graphicItemKindSeats(item.type).includes(playerSide),
-		() => ({ playerSide } as Partial<GraphicPlayerSideItem>),
+		(item): item is GraphicPlayerSideItem =>
+			ownsPlayerSide(item) && graphicItemKindSeats(item.type).includes(playerSide),
+		() => ({ playerSide }) as Partial<GraphicPlayerSideItem>,
 	);
 }
 
@@ -2159,12 +2222,12 @@ export function patchGameWinsGraphicItem(
  * mutators is what lets one set of controls address any of them, and keeps the
  * slot the caller's decision rather than the control's.
  */
-export type GraphicSurfaceStyleEdit
-	= | { kind: 'present'; present: boolean }
-		| GraphicFillEdit
-		| { kind: 'fill-opacity'; fillOpacity: number }
-		| { kind: 'outline'; patch: Partial<GraphicOutline> | null }
-		| { kind: 'glow'; patch: Partial<GraphicGlow> | null };
+export type GraphicSurfaceStyleEdit =
+	| { kind: 'present'; present: boolean }
+	| GraphicFillEdit
+	| { kind: 'fill-opacity'; fillOpacity: number }
+	| { kind: 'outline'; patch: Partial<GraphicOutline> | null }
+	| { kind: 'glow'; patch: Partial<GraphicGlow> | null };
 
 /**
  * Apply one Graphic Surface Style edit to one slot of one Graphic Item.
@@ -2181,8 +2244,7 @@ export function applyGraphicSurfaceStyleEdit(
 ): BroadcastGraphicConfig {
 	switch (edit.kind) {
 		case 'present':
-			if (slot !== 'surfaceStyle')
-				return graphic;
+			if (slot !== 'surfaceStyle') return graphic;
 			return edit.present
 				? patchGraphicSurfaceStyle(graphic, itemId, {})
 				: clearGraphicSurfaceStyle(graphic, itemId);
@@ -2221,10 +2283,9 @@ export function patchGraphicGroupChildSizing(
 	itemId: string,
 	patch: Partial<GraphicGroupChildSizing>,
 ): BroadcastGraphicConfig {
-	if (!findGraphicItem(graphic, itemId)?.group)
-		return graphic;
+	if (!findGraphicItem(graphic, itemId)?.group) return graphic;
 
-	return patchGraphicItemGroup(graphic, itemId, GRAPHIC_GROUP_CHILD_KINDS, item => ({
+	return patchGraphicItemGroup(graphic, itemId, GRAPHIC_GROUP_CHILD_KINDS, (item) => ({
 		sizing: {
 			mode: 'fixed',
 			size: item.width,
@@ -2262,8 +2323,9 @@ export function patchGraphicGroupChildSizing(
  * iterating every phase still compiles, because the conditional stays deferred until
  * the phase is known.
  */
-export type GraphicAnimationRecipeFor<P extends GraphicAnimationPhase>
-	= P extends 'on-screen' ? GraphicOnScreenAnimationRecipe : GraphicAnimationRecipe;
+export type GraphicAnimationRecipeFor<P extends GraphicAnimationPhase> = P extends 'on-screen'
+	? GraphicOnScreenAnimationRecipe
+	: GraphicAnimationRecipe;
 
 /** The channels a Graphic Animation Recipe may hold, at most one of each. */
 export interface GraphicAnimationChannels {
@@ -2300,8 +2362,7 @@ export function mergeGraphicAnimationRecipeChannel<
 	const next = { ...recipe };
 	if (patch === null) {
 		delete next[channel];
-	}
-	else {
+	} else {
 		next[channel] = {
 			...GRAPHIC_ANIMATION_CHANNEL_DEFAULTS[channel],
 			...recipe[channel],
@@ -2318,17 +2379,18 @@ export function mergeGraphicAnimationRecipeChannel<
  * JSON, and an `undefined` value survives as a present key in every in-memory
  * comparison the editor and its tests make even though it vanishes on the wire.
  */
-export function pruneGraphicAnimation<T extends GraphicContainerAnimation>(animation: T): T | undefined {
+export function pruneGraphicAnimation<T extends GraphicContainerAnimation>(
+	animation: T,
+): T | undefined {
 	const next = { ...animation };
-	const hasRecipe = GRAPHIC_ANIMATION_PHASE_VALUES.some(phase => next[phase] !== undefined);
+	const hasRecipe = GRAPHIC_ANIMATION_PHASE_VALUES.some((phase) => next[phase] !== undefined);
 	const stagger = next.stagger;
-	const hasStagger = stagger !== undefined
-		&& GRAPHIC_ANIMATION_PHASE_VALUES.some(phase => stagger[phase] !== undefined);
+	const hasStagger =
+		stagger !== undefined &&
+		GRAPHIC_ANIMATION_PHASE_VALUES.some((phase) => stagger[phase] !== undefined);
 
-	if (!hasStagger)
-		delete next.stagger;
-	if (!hasRecipe && !hasStagger)
-		return undefined;
+	if (!hasStagger) delete next.stagger;
+	if (!hasRecipe && !hasStagger) return undefined;
 	return next;
 }
 
@@ -2342,10 +2404,8 @@ function setAnimationRecipe(
 	recipe: GraphicAnimationRecipe | GraphicOnScreenAnimationRecipe | null,
 ): GraphicContainerAnimation | undefined {
 	const next: GraphicContainerAnimation = { ...animation };
-	if (recipe === null)
-		delete next[phase];
-	else
-		next[phase] = recipe as never;
+	if (recipe === null) delete next[phase];
+	else next[phase] = recipe as never;
 
 	return pruneGraphicAnimation(next);
 }
@@ -2371,7 +2431,11 @@ function mergeAnimationChannel<K extends GraphicAnimationChannelKey>(
 	patch: Partial<GraphicAnimationChannels[K]> | null,
 ): GraphicContainerAnimation | undefined {
 	const current = animation?.[phase] ?? createDefaultGraphicAnimationRecipe(phase);
-	return setAnimationRecipe(animation, phase, mergeGraphicAnimationRecipeChannel(current, channel, patch));
+	return setAnimationRecipe(
+		animation,
+		phase,
+		mergeGraphicAnimationRecipeChannel(current, channel, patch),
+	);
 }
 
 /** Merge into one phase's stagger, or remove it. Only a container carries one. */
@@ -2383,8 +2447,7 @@ function mergeAnimationStagger(
 	const stagger = { ...animation?.stagger };
 	if (patch === null) {
 		delete stagger[phase];
-	}
-	else {
+	} else {
 		stagger[phase] = {
 			order: 'list',
 			step: 100,
@@ -2402,21 +2465,18 @@ function withoutStaggeredItem(
 	animation: GraphicContainerAnimation | undefined,
 	itemId: string,
 ): GraphicContainerAnimation | undefined {
-	if (!animation?.stagger)
-		return animation;
+	if (!animation?.stagger) return animation;
 
 	const stagger: NonNullable<GraphicContainerAnimation['stagger']> = {};
 	for (const phase of GRAPHIC_ANIMATION_PHASE_VALUES) {
 		const entry = animation.stagger[phase];
-		if (!entry)
-			continue;
-		const itemIds = entry.itemIds.filter(id => id !== itemId);
+		if (!entry) continue;
+		const itemIds = entry.itemIds.filter((id) => id !== itemId);
 		// A stagger emptied by a deletion is dropped rather than kept as an order
 		// over nothing: the author selected a subset, they did not ask for an empty
 		// one. An author who clears the subset by hand keeps their step and order,
 		// because that is a choice rather than a consequence.
-		if (itemIds.length === 0)
-			continue;
+		if (itemIds.length === 0) continue;
 		stagger[phase] = { ...entry, itemIds };
 	}
 
@@ -2424,12 +2484,7 @@ function withoutStaggeredItem(
 }
 
 /** The kinds that may own a Graphic Animation: every Graphic Item kind. */
-const ANIMATION_KINDS = [
-	'text',
-	'shape',
-	'group',
-	'social-network-icon',
-] as const;
+const ANIMATION_KINDS = ['text', 'shape', 'group', 'social-network-icon'] as const;
 
 /** Only a Graphic Group has direct Graphic Items of its own to stagger. */
 const STAGGER_KINDS = ['group'] as const;
@@ -2440,7 +2495,7 @@ export function setGraphicItemAnimationRecipe(
 	phase: GraphicAnimationPhase,
 	recipe: GraphicAnimationRecipe | GraphicOnScreenAnimationRecipe | null,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemGroup(graphic, itemId, ANIMATION_KINDS, item => ({
+	return patchGraphicItemGroup(graphic, itemId, ANIMATION_KINDS, (item) => ({
 		animation: setAnimationRecipe(item.animation, phase, recipe),
 	}));
 }
@@ -2451,7 +2506,12 @@ export function enableGraphicItemAnimationPhase(
 	itemId: string,
 	phase: GraphicAnimationPhase,
 ): BroadcastGraphicConfig {
-	return setGraphicItemAnimationRecipe(graphic, itemId, phase, createDefaultGraphicAnimationRecipe(phase));
+	return setGraphicItemAnimationRecipe(
+		graphic,
+		itemId,
+		phase,
+		createDefaultGraphicAnimationRecipe(phase),
+	);
 }
 
 /**
@@ -2468,7 +2528,7 @@ export function patchGraphicItemAnimationRecipe<P extends GraphicAnimationPhase>
 	phase: P,
 	patch: Partial<GraphicAnimationRecipeFor<P>>,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemGroup(graphic, itemId, ANIMATION_KINDS, item => ({
+	return patchGraphicItemGroup(graphic, itemId, ANIMATION_KINDS, (item) => ({
 		animation: mergeAnimationRecipe(item.animation, phase, patch),
 	}));
 }
@@ -2480,7 +2540,7 @@ export function patchGraphicItemAnimationChannel<K extends GraphicAnimationChann
 	channel: K,
 	patch: Partial<GraphicAnimationChannels[K]> | null,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemGroup(graphic, itemId, ANIMATION_KINDS, item => ({
+	return patchGraphicItemGroup(graphic, itemId, ANIMATION_KINDS, (item) => ({
 		animation: mergeAnimationChannel(item.animation, phase, channel, patch),
 	}));
 }
@@ -2496,8 +2556,7 @@ export function applyGraphicItemAnimationPreset(
 	presetId: string,
 ): BroadcastGraphicConfig {
 	const preset = getGraphicAnimationPreset(presetId);
-	if (!preset)
-		return graphic;
+	if (!preset) return graphic;
 	return setGraphicItemAnimationRecipe(graphic, itemId, phase, preset.create());
 }
 
@@ -2508,7 +2567,7 @@ export function patchGraphicItemAnimationStagger(
 	phase: GraphicAnimationPhase,
 	patch: Partial<GraphicAnimationStagger> | null,
 ): BroadcastGraphicConfig {
-	return patchGraphicItemGroup(graphic, itemId, STAGGER_KINDS, item => ({
+	return patchGraphicItemGroup(graphic, itemId, STAGGER_KINDS, (item) => ({
 		animation: mergeAnimationStagger(item.animation, phase, patch),
 	}));
 }
@@ -2524,10 +2583,10 @@ export function toggleGraphicItemStaggerMember(
 	return patchGraphicItemGroup(graphic, groupId, STAGGER_KINDS, (item) => {
 		const current = item.animation?.stagger?.[phase]?.itemIds ?? [];
 		const itemIds = selected
-			? (current.includes(memberId)
-					? current
-					: [...current, memberId])
-			: current.filter(id => id !== memberId);
+			? current.includes(memberId)
+				? current
+				: [...current, memberId]
+			: current.filter((id) => id !== memberId);
 		return {
 			animation: mergeAnimationStagger(item.animation, phase, { itemIds }),
 		};
@@ -2542,12 +2601,14 @@ export function setBroadcastGraphicAnimationRecipe(
 	phase: GraphicAnimationPhase,
 	recipe: GraphicAnimationRecipe | GraphicOnScreenAnimationRecipe | null,
 ): BroadcastGraphicConfig[] {
-	return graphics.map(entry => entry.id === graphicId
-		? {
-				...entry,
-				animation: setAnimationRecipe(entry.animation, phase, recipe),
-			}
-		: entry);
+	return graphics.map((entry) =>
+		entry.id === graphicId
+			? {
+					...entry,
+					animation: setAnimationRecipe(entry.animation, phase, recipe),
+				}
+			: entry,
+	);
 }
 
 export function enableBroadcastGraphicAnimationPhase(
@@ -2555,7 +2616,12 @@ export function enableBroadcastGraphicAnimationPhase(
 	graphicId: string,
 	phase: GraphicAnimationPhase,
 ): BroadcastGraphicConfig[] {
-	return setBroadcastGraphicAnimationRecipe(graphics, graphicId, phase, createDefaultGraphicAnimationRecipe(phase));
+	return setBroadcastGraphicAnimationRecipe(
+		graphics,
+		graphicId,
+		phase,
+		createDefaultGraphicAnimationRecipe(phase),
+	);
 }
 
 export function patchBroadcastGraphicAnimationRecipe<P extends GraphicAnimationPhase>(
@@ -2564,12 +2630,14 @@ export function patchBroadcastGraphicAnimationRecipe<P extends GraphicAnimationP
 	phase: P,
 	patch: Partial<GraphicAnimationRecipeFor<P>>,
 ): BroadcastGraphicConfig[] {
-	return graphics.map(entry => entry.id === graphicId
-		? {
-				...entry,
-				animation: mergeAnimationRecipe(entry.animation, phase, patch),
-			}
-		: entry);
+	return graphics.map((entry) =>
+		entry.id === graphicId
+			? {
+					...entry,
+					animation: mergeAnimationRecipe(entry.animation, phase, patch),
+				}
+			: entry,
+	);
 }
 
 export function patchBroadcastGraphicAnimationChannel<K extends GraphicAnimationChannelKey>(
@@ -2579,12 +2647,14 @@ export function patchBroadcastGraphicAnimationChannel<K extends GraphicAnimation
 	channel: K,
 	patch: Partial<GraphicAnimationChannels[K]> | null,
 ): BroadcastGraphicConfig[] {
-	return graphics.map(entry => entry.id === graphicId
-		? {
-				...entry,
-				animation: mergeAnimationChannel(entry.animation, phase, channel, patch),
-			}
-		: entry);
+	return graphics.map((entry) =>
+		entry.id === graphicId
+			? {
+					...entry,
+					animation: mergeAnimationChannel(entry.animation, phase, channel, patch),
+				}
+			: entry,
+	);
 }
 
 export function applyBroadcastGraphicAnimationPreset(
@@ -2594,8 +2664,7 @@ export function applyBroadcastGraphicAnimationPreset(
 	presetId: string,
 ): BroadcastGraphicConfig[] {
 	const preset = getGraphicAnimationPreset(presetId);
-	if (!preset)
-		return [...graphics];
+	if (!preset) return [...graphics];
 	return setBroadcastGraphicAnimationRecipe(graphics, graphicId, phase, preset.create());
 }
 
@@ -2605,12 +2674,14 @@ export function patchBroadcastGraphicAnimationStagger(
 	phase: GraphicAnimationPhase,
 	patch: Partial<GraphicAnimationStagger> | null,
 ): BroadcastGraphicConfig[] {
-	return graphics.map(entry => entry.id === graphicId
-		? {
-				...entry,
-				animation: mergeAnimationStagger(entry.animation, phase, patch),
-			}
-		: entry);
+	return graphics.map((entry) =>
+		entry.id === graphicId
+			? {
+					...entry,
+					animation: mergeAnimationStagger(entry.animation, phase, patch),
+				}
+			: entry,
+	);
 }
 
 export function toggleBroadcastGraphicStaggerMember(
@@ -2621,14 +2692,13 @@ export function toggleBroadcastGraphicStaggerMember(
 	selected: boolean,
 ): BroadcastGraphicConfig[] {
 	return graphics.map((entry) => {
-		if (entry.id !== graphicId)
-			return entry;
+		if (entry.id !== graphicId) return entry;
 		const current = entry.animation?.stagger?.[phase]?.itemIds ?? [];
 		const itemIds = selected
-			? (current.includes(memberId)
-					? current
-					: [...current, memberId])
-			: current.filter(id => id !== memberId);
+			? current.includes(memberId)
+				? current
+				: [...current, memberId]
+			: current.filter((id) => id !== memberId);
 		return {
 			...entry,
 			animation: mergeAnimationStagger(entry.animation, phase, { itemIds }),

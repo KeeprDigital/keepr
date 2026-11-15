@@ -9,8 +9,8 @@ import CanvasManipulationOverlay from '~/components/Graphics/CanvasManipulationO
 // The move and resize handles drawn over an editor preview: pointer movement on the drawn preview,
 // turned into canvas pixels and handed to the host.
 
-vi.mock('@vueuse/core', async importOriginal => ({
-	...await importOriginal<typeof import('@vueuse/core')>(),
+vi.mock('@vueuse/core', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@vueuse/core')>()),
 	useElementSize: () => ({
 		width: ref(960),
 		height: ref(540),
@@ -28,15 +28,17 @@ const RECT = {
 	height: 100,
 };
 
-function mountOverlay(props: Partial<{
-	rect: typeof RECT | null;
-	origin: { x: number; y: number };
-	snapLines: SnapLines;
-	rotation: number;
-	anchor: GraphicAnchorPoint;
-	members: (typeof RECT)[];
-	locked: (typeof RECT)[];
-}> = {}) {
+function mountOverlay(
+	props: Partial<{
+		rect: typeof RECT | null;
+		origin: { x: number; y: number };
+		snapLines: SnapLines;
+		rotation: number;
+		anchor: GraphicAnchorPoint;
+		members: (typeof RECT)[];
+		locked: (typeof RECT)[];
+	}> = {},
+) {
 	return mount(CanvasManipulationOverlay, {
 		props: {
 			rect: RECT,
@@ -50,7 +52,13 @@ function mountOverlay(props: Partial<{
 
 type Wrapper = ReturnType<typeof mountOverlay>;
 
-async function drag(wrapper: Wrapper, selector: string, to: { x: number; y: number }, init: PointerEventInit = {}, from = { x: 0, y: 0 }) {
+async function drag(
+	wrapper: Wrapper,
+	selector: string,
+	to: { x: number; y: number },
+	init: PointerEventInit = {},
+	from = { x: 0, y: 0 },
+) {
 	const target = wrapper.get(selector);
 	await target.trigger('pointerdown', {
 		button: 0,
@@ -73,11 +81,12 @@ function changes(wrapper: Wrapper) {
 }
 
 describe('graphicsCanvasManipulationOverlay', () => {
-	it('draws the selection box at the preview\'s scale', () => {
+	it("draws the selection box at the preview's scale", () => {
 		const wrapper = mountOverlay();
 
-		expect(wrapper.get('[data-testid="canvas-manipulation-box"]').attributes('style'))
-			.toContain('left: 50px; top: 50px; width: 100px; height: 50px;');
+		expect(wrapper.get('[data-testid="canvas-manipulation-box"]').attributes('style')).toContain(
+			'left: 50px; top: 50px; width: 100px; height: 50px;',
+		);
 	});
 
 	it('draws nothing without a selection the canvas can move', () => {
@@ -87,14 +96,16 @@ describe('graphicsCanvasManipulationOverlay', () => {
 	});
 
 	// #747: a locked layer is outlined with a badge, and nothing on it moves.
-	it('badges each selected locked layer at the preview\'s scale, with no handle to move it', () => {
+	it("badges each selected locked layer at the preview's scale, with no handle to move it", () => {
 		const wrapper = mountOverlay({
 			rect: null,
 			locked: [RECT],
 		});
 
 		const outline = wrapper.get('[data-testid="canvas-locked-layer"]');
-		expect(outline.attributes('style')).toContain('left: 50px; top: 50px; width: 100px; height: 50px;');
+		expect(outline.attributes('style')).toContain(
+			'left: 50px; top: 50px; width: 100px; height: 50px;',
+		);
 		expect(outline.get('[role="img"]').attributes('aria-label')).toBe('Locked');
 		expect(wrapper.find('[data-handle]').exists()).toBe(false);
 	});
@@ -152,7 +163,7 @@ describe('graphicsCanvasManipulationOverlay', () => {
 		expect(changes(free).at(-1)).toMatchObject({ x: 4 });
 	});
 
-	it('snaps to the lines it is given in its container\'s pixels, drawing the guide and the gap to the nearest neighbour while dragging', async () => {
+	it("snaps to the lines it is given in its container's pixels, drawing the guide and the gap to the nearest neighbour while dragging", async () => {
 		const wrapper = mountOverlay({
 			origin: { x: 100, y: 0 },
 			snapLines: {
@@ -179,7 +190,9 @@ describe('graphicsCanvasManipulationOverlay', () => {
 		await box.trigger('pointermove', { pointerId: 1, clientX: 98, clientY: 0 });
 
 		expect(changes(wrapper).at(-1)).toMatchObject({ x: 300 });
-		expect(wrapper.get('[data-testid="canvas-manipulation-guide"][data-axis="x"]').attributes('style')).toContain('left: 300px');
+		expect(
+			wrapper.get('[data-testid="canvas-manipulation-guide"][data-axis="x"]').attributes('style'),
+		).toContain('left: 300px');
 		const gap = wrapper.get('[data-testid="canvas-manipulation-gap"][data-axis="x"]');
 		expect(gap.text()).toBe('100');
 		expect(gap.attributes('style')).toContain('left: 300px; top: 75px; width: 50px;');
@@ -189,12 +202,14 @@ describe('graphicsCanvasManipulationOverlay', () => {
 		expect(wrapper.find('[data-testid="canvas-manipulation-gap"]').exists()).toBe(false);
 	});
 
-	it('reports a rectangle in its container\'s pixels when the container is offset', async () => {
+	it("reports a rectangle in its container's pixels when the container is offset", async () => {
 		const wrapper = mountOverlay({
 			origin: { x: 400, y: 200 },
 		});
 
-		expect(wrapper.get('[data-testid="canvas-manipulation-box"]').attributes('style')).toContain('left: 250px; top: 150px;');
+		expect(wrapper.get('[data-testid="canvas-manipulation-box"]').attributes('style')).toContain(
+			'left: 250px; top: 150px;',
+		);
 
 		await drag(wrapper, '[data-testid="canvas-manipulation-box"]', { x: 5, y: 5 });
 
@@ -251,7 +266,7 @@ describe('graphicsCanvasManipulationOverlay', () => {
 		{ rotation: 0, cursor: 'cursor-ew-resize' },
 		{ rotation: 45, cursor: 'cursor-nwse-resize' },
 		{ rotation: 90, cursor: 'cursor-ns-resize' },
-	])('turns the east handle\'s resize cursor with a $rotation° rotation', ({ rotation, cursor }) => {
+	])("turns the east handle's resize cursor with a $rotation° rotation", ({ rotation, cursor }) => {
 		const wrapper = mountOverlay({ rotation, anchor: 'center' });
 
 		expect(wrapper.get('[data-handle="e"]').classes()).toContain(cursor);
@@ -282,7 +297,12 @@ describe('graphicsCanvasManipulationOverlay', () => {
 
 		await drag(wrapper, '[data-handle="rotate"]', to, { shiftKey }, { x: 150, y: 75 });
 
-		expect(wrapper.emitted('rotate')?.map(([degrees]) => degrees).at(-1)).toBe(rotation);
+		expect(
+			wrapper
+				.emitted('rotate')
+				?.map(([degrees]) => degrees)
+				.at(-1),
+		).toBe(rotation);
 		expect(wrapper.emitted('change')).toBeUndefined();
 	});
 
@@ -325,20 +345,20 @@ describe('graphicsCanvasManipulationOverlay', () => {
 	it.each<[string, (wrapper: Wrapper) => Promise<void> | void]>([
 		[
 			'the pointer lets go',
-			wrapper => wrapper.get('[data-testid="canvas-manipulation-box"]').trigger('pointerup', { pointerId: 1 }),
+			(wrapper) =>
+				wrapper
+					.get('[data-testid="canvas-manipulation-box"]')
+					.trigger('pointerup', { pointerId: 1 }),
 		],
 		[
 			'the pointer is cancelled',
-			wrapper => wrapper.get('[data-testid="canvas-manipulation-box"]').trigger('pointercancel', { pointerId: 1 }),
+			(wrapper) =>
+				wrapper
+					.get('[data-testid="canvas-manipulation-box"]')
+					.trigger('pointercancel', { pointerId: 1 }),
 		],
-		[
-			'it goes away mid-drag',
-			wrapper => wrapper.unmount(),
-		],
-		[
-			'its selection may no longer be moved',
-			wrapper => wrapper.setProps({ rect: null }),
-		],
+		['it goes away mid-drag', (wrapper) => wrapper.unmount()],
+		['its selection may no longer be moved', (wrapper) => wrapper.setProps({ rect: null })],
 	])('says when a drag starts, and that it ended once %s', async (_case, finish) => {
 		const wrapper = mountOverlay();
 		const box = wrapper.get('[data-testid="canvas-manipulation-box"]');
@@ -402,26 +422,23 @@ describe('graphicsCanvasManipulationOverlay', () => {
 	});
 
 	it.each([
-		[
-			'⌘',
-			{ key: 'Meta', metaKey: true },
-		],
-		[
-			'Ctrl',
-			{ key: 'Control', ctrlKey: true },
-		],
-	])('lets a click with %s held through to the preview beneath, until it is let go', async (_, held) => {
-		const wrapper = mountOverlay();
-		const box = () => wrapper.get('[data-testid="canvas-manipulation-box"]');
+		['⌘', { key: 'Meta', metaKey: true }],
+		['Ctrl', { key: 'Control', ctrlKey: true }],
+	])(
+		'lets a click with %s held through to the preview beneath, until it is let go',
+		async (_, held) => {
+			const wrapper = mountOverlay();
+			const box = () => wrapper.get('[data-testid="canvas-manipulation-box"]');
 
-		window.dispatchEvent(new KeyboardEvent('keydown', held));
-		await wrapper.vm.$nextTick();
-		expect(box().attributes('data-passes-clicks')).toBe('true');
-		await drag(wrapper, '[data-testid="canvas-manipulation-box"]', { x: 30, y: 10 }, held);
-		expect(changes(wrapper)).toEqual([]);
+			window.dispatchEvent(new KeyboardEvent('keydown', held));
+			await wrapper.vm.$nextTick();
+			expect(box().attributes('data-passes-clicks')).toBe('true');
+			await drag(wrapper, '[data-testid="canvas-manipulation-box"]', { x: 30, y: 10 }, held);
+			expect(changes(wrapper)).toEqual([]);
 
-		window.dispatchEvent(new KeyboardEvent('keyup', { key: held.key }));
-		await wrapper.vm.$nextTick();
-		expect(box().attributes('data-passes-clicks')).toBe('false');
-	});
+			window.dispatchEvent(new KeyboardEvent('keyup', { key: held.key }));
+			await wrapper.vm.$nextTick();
+			expect(box().attributes('data-passes-clicks')).toBe('false');
+		},
+	);
 });

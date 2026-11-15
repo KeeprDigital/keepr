@@ -72,18 +72,14 @@ export function createContinuitySignal() {
 	const handlers = new Map<string, Set<() => void>>();
 	return {
 		onContinuityLost: vi.fn((channel: string, handler: () => void) => {
-			if (!handlers.has(channel))
-				handlers.set(channel, new Set());
+			if (!handlers.has(channel)) handlers.set(channel, new Set());
 			handlers.get(channel)!.add(handler);
 			return () => {
 				handlers.get(channel)!.delete(handler);
 			};
 		}),
 		reattach(channel: string) {
-			for (const handler of [
-				...handlers.get(channel) ?? [],
-			])
-				handler();
+			for (const handler of [...(handlers.get(channel) ?? [])]) handler();
 		},
 		/** The channels whose continuity something watches now. */
 		watched: () => [...handlers].filter(([, set]) => set.size > 0).map(([channel]) => channel),
@@ -101,10 +97,8 @@ export function createAttachSignal() {
 	const attached = new Set<string>();
 	return {
 		onceAttached: vi.fn((channel: string, handler: () => void) => {
-			if (attached.has(channel))
-				return () => {};
-			if (!waiting.has(channel))
-				waiting.set(channel, new Set());
+			if (attached.has(channel)) return () => {};
+			if (!waiting.has(channel)) waiting.set(channel, new Set());
 			// Its own entry, as the transport's: one handler can wait twice.
 			const once = () => handler();
 			waiting.get(channel)!.add(once);
@@ -114,12 +108,9 @@ export function createAttachSignal() {
 		}),
 		attach(channel: string) {
 			attached.add(channel);
-			const handlers = [
-				...waiting.get(channel) ?? [],
-			];
+			const handlers = [...(waiting.get(channel) ?? [])];
 			waiting.delete(channel);
-			for (const handler of handlers)
-				handler();
+			for (const handler of handlers) handler();
 		},
 		/** The channel detached: the next registration waits on its next attach. */
 		detach(channel: string) {
@@ -151,18 +142,20 @@ export function createFakeEventChannel() {
 		tokenError: null as Error | null,
 		onChannel: vi.fn((channel: string, type: string, handler: FakeChannelHandler) => {
 			const key = `${channel}|${type}`;
-			if (!handlers.has(key))
-				handlers.set(key, new Set());
+			if (!handlers.has(key)) handlers.set(key, new Set());
 			handlers.get(key)!.add(handler);
 			return () => handlers.get(key)!.delete(handler);
 		}),
 		onContinuityLost: continuity.onContinuityLost,
 		onceAttached: attachment.onceAttached,
 	});
-	function deliverOn(channel: string, type: string, eventId: number, payload: Record<string, unknown>) {
-		for (const handler of [
-			...handlers.get(`${channel}|${type}`) ?? [],
-		])
+	function deliverOn(
+		channel: string,
+		type: string,
+		eventId: number,
+		payload: Record<string, unknown>,
+	) {
+		for (const handler of [...(handlers.get(`${channel}|${type}`) ?? [])])
 			handler({ eventId, ...payload });
 	}
 	return {
@@ -172,32 +165,33 @@ export function createFakeEventChannel() {
 			deliverOn(`event:${eventId}`, type, eventId, payload);
 		},
 		/** A message of `type`, as one Screen's own channel delivers it. */
-		deliverToScreen(screenId: number, type: string, payload: Record<string, unknown> = {}, eventId = 1) {
+		deliverToScreen(
+			screenId: number,
+			type: string,
+			payload: Record<string, unknown> = {},
+			eventId = 1,
+		) {
 			deliverOn(`screen:${eventId}:${screenId}`, type, eventId, payload);
 		},
 		/** The Screen's channel attached: the first time, or again after a detach. */
-		attachScreen: (screenId: number, eventId = 1) => attachment.attach(`screen:${eventId}:${screenId}`),
+		attachScreen: (screenId: number, eventId = 1) =>
+			attachment.attach(`screen:${eventId}:${screenId}`),
 		/** The Screen's channel attached again having lost continuity. */
-		reattachScreen: (screenId: number, eventId = 1) => continuity.reattach(`screen:${eventId}:${screenId}`),
+		reattachScreen: (screenId: number, eventId = 1) =>
+			continuity.reattach(`screen:${eventId}:${screenId}`),
 		/** The channels something listens on now: a message handler, or a wait on its attach or continuity. */
 		listenedChannels() {
-			const messages = [...handlers].filter(([, set]) => set.size > 0).map(([key]) => key.split('|')[0]!);
-			return [
-				...new Set([
-					...messages,
-					...continuity.watched(),
-					...attachment.awaited(),
-				]),
-			].sort();
+			const messages = [...handlers]
+				.filter(([, set]) => set.size > 0)
+				.map(([key]) => key.split('|')[0]!);
+			return [...new Set([...messages, ...continuity.watched(), ...attachment.awaited()])].sort();
 		},
 		/** The Event channel attached: the first time, or again after a detach. */
 		attach: (eventId = 1) => attachment.attach(`event:${eventId}`),
 		/** The Event channel attached again having lost continuity. */
 		reattach: (eventId = 1) => continuity.reattach(`event:${eventId}`),
 		/** How many channel handlers are registered now, across every channel and type. */
-		listeners: () => [
-			...handlers.values(),
-		].reduce((total, set) => total + set.size, 0),
+		listeners: () => [...handlers.values()].reduce((total, set) => total + set.size, 0),
 		/** Back to connected with no token error; registrations are kept. */
 		reset() {
 			transport.connectionState = 'connected';

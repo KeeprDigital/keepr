@@ -1,12 +1,21 @@
 import type { StoredThemeTokens } from '~~/shared/modules/theme';
-import type { FeatureMatchOverlayModeConfig, FeatureMatchOverlayOutput } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchOverlayModeConfig,
+	FeatureMatchOverlayOutput,
+} from '~~/shared/types/screenConfig';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, nextTick, ref } from 'vue';
 import { eventKind } from '~~/shared/config/games';
-import { createFeatureMatchLayoutComposition, FEATURE_MATCH_LAYOUT_COMPOSITION_ID } from '~~/shared/featureMatchLayoutComposition';
-import { FEATURE_MATCH_SAMPLE_TOKEN_VALUES, featureMatchSampleDataset } from '~~/shared/featureMatchSampleDataset';
+import {
+	createFeatureMatchLayoutComposition,
+	FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+} from '~~/shared/featureMatchLayoutComposition';
+import {
+	FEATURE_MATCH_SAMPLE_TOKEN_VALUES,
+	featureMatchSampleDataset,
+} from '~~/shared/featureMatchSampleDataset';
 import { featureMatchStressDataset } from '~~/shared/featureMatchStressDataset';
 import { DEFAULT_GRAPHIC_TYPOGRAPHY, getGraphicItemDefinition } from '~~/shared/modules/graphics';
 import { applicationGraphicFont } from '~~/shared/types/graphics';
@@ -17,12 +26,17 @@ import { clock, shape, text } from '~~/test/helpers/graphicsComposition';
 import { LUFFY } from '~~/test/helpers/opCards';
 import { stubDocumentFonts } from '~~/test/nuxt/helpers/fontFaces';
 import Display from '~/components/Screen/Modes/FeatureMatchOverlay/Display.vue';
-import { GRAPHICS_PREVIEW_ANIMATION_MESSAGE, GRAPHICS_PREVIEW_READY_MESSAGE } from '~/modules/graphics/previewMessages';
+import {
+	GRAPHICS_PREVIEW_ANIMATION_MESSAGE,
+	GRAPHICS_PREVIEW_READY_MESSAGE,
+} from '~/modules/graphics/previewMessages';
 
 // Every Display a test mounts stays live otherwise, watching the same module-level mocks.
 enableAutoUnmount(afterEach);
 
-const mockConfig = ref<FeatureMatchOverlayModeConfig>(structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG));
+const mockConfig = ref<FeatureMatchOverlayModeConfig>(
+	structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG),
+);
 const mockOutputMode = ref<FeatureMatchOverlayOutput>('overlay');
 const mockPreviewGuides = ref(false);
 const mockPreviewSafeAreas = ref(false);
@@ -82,7 +96,10 @@ mockNuxtImport('useClockDisplay', () => () => ({
 }));
 
 /** The per-side deck data the host's own fetch path resolved; a stub here so these tests stay about composition, not fetching. */
-const mockSideboards = ref<{ player1: Array<{ name: string; quantity: number; imageUrl: string | null }> | null; player2: Array<{ name: string; quantity: number; imageUrl: string | null }> | null }>({ player1: null, player2: null });
+const mockSideboards = ref<{
+	player1: Array<{ name: string; quantity: number; imageUrl: string | null }> | null;
+	player2: Array<{ name: string; quantity: number; imageUrl: string | null }> | null;
+}>({ player1: null, player2: null });
 
 mockNuxtImport('useFeatureMatchOverlaySideboardData', () => () => ({
 	sideboards: computed(() => mockSideboards.value),
@@ -140,7 +157,7 @@ describe('featureMatchOverlayDisplay', () => {
 			expect(composition).toBeGreaterThan(source);
 		});
 
-		it('draws the Frame border and glow its Screen\'s surface override resolves, in the Key Output too', async () => {
+		it("draws the Frame border and glow its Screen's surface override resolves, in the Key Output too", async () => {
 			// What the Frame paints is decided by the render model and tested there;
 			// this pins only that the component draws what the Screen's tokens give it.
 			const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
@@ -165,10 +182,14 @@ describe('featureMatchOverlayDisplay', () => {
 
 			expect(border.attributes('stroke')).toBe('#ffffff');
 			expect(border.findAll('line')).toHaveLength(3);
-			expect(shadow.attributes()).toMatchObject({ 'stdDeviation': '6', 'flood-color': '#ffffff', 'flood-opacity': '0.5' });
+			expect(shadow.attributes()).toMatchObject({
+				stdDeviation: '6',
+				'flood-color': '#ffffff',
+				'flood-opacity': '0.5',
+			});
 		});
 
-		it('draws a Source Item glow its Screen\'s surface override resolves, in the Key Output too', async () => {
+		it("draws a Source Item glow its Screen's surface override resolves, in the Key Output too", async () => {
 			const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 			config.layout.sources = [
 				{
@@ -198,8 +219,9 @@ describe('featureMatchOverlayDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.get('.feature-match-overlay__source-glow').attributes('style'))
-				.toContain('drop-shadow(0 0 10px #ffffff80)');
+			expect(wrapper.get('.feature-match-overlay__source-glow').attributes('style')).toContain(
+				'drop-shadow(0 0 10px #ffffff80)',
+			);
 		});
 
 		it('never covers the host-owned layer with a backdrop of its own', async () => {
@@ -279,19 +301,22 @@ describe('featureMatchOverlayDisplay', () => {
 			// Best-of-five takes three wins, so each sampled player has one won box
 			// and two pending boxes.
 			expect(wrapper.findAll('[data-game-win="pending"]')).toHaveLength(4);
-			expect((wrapper.get('[data-game-win="won"]').element as HTMLElement).style.width).toBe('22px');
-			expect((wrapper.get('[data-game-win="won"]').element as HTMLElement).style.height).toBe('22px');
+			expect((wrapper.get('[data-game-win="won"]').element as HTMLElement).style.width).toBe(
+				'22px',
+			);
+			expect((wrapper.get('[data-game-win="won"]').element as HTMLElement).style.height).toBe(
+				'22px',
+			);
 
 			const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 			for (const item of config.layout.composition.items) {
-				if (item.type === 'game-wins')
-					item.displayMode = 'number';
+				if (item.type === 'game-wins') item.displayMode = 'number';
 			}
 			mockConfig.value = config;
 			await nextTick();
 
 			const scores = wrapper.findAll('[data-graphic-item-kind="game-wins"]');
-			expect(scores.map(score => score.text())).toEqual(['1', '1']);
+			expect(scores.map((score) => score.text())).toEqual(['1', '1']);
 			expect(wrapper.find('[data-game-win]').exists()).toBe(false);
 		});
 
@@ -300,12 +325,15 @@ describe('featureMatchOverlayDisplay', () => {
 			config.layout.composition = {
 				...createFeatureMatchLayoutComposition(),
 				items: [
-					Object.assign(getGraphicItemDefinition('deck-list').createDefault({
-						id: 'deck',
-						label: 'Deck',
-						canvasWidth: 1920,
-						canvasHeight: 1080,
-					}), { view: 'grid' as const }),
+					Object.assign(
+						getGraphicItemDefinition('deck-list').createDefault({
+							id: 'deck',
+							label: 'Deck',
+							canvasWidth: 1920,
+							canvasHeight: 1080,
+						}),
+						{ view: 'grid' as const },
+					),
 				],
 			};
 			mockConfig.value = config;
@@ -314,9 +342,7 @@ describe('featureMatchOverlayDisplay', () => {
 				player2: { lifeTotal: 20, gameWins: 0, sideboardRevealed: true },
 			};
 			mockSideboards.value = {
-				player1: [
-					{ name: 'Duress', quantity: 2, imageUrl: null },
-				],
+				player1: [{ name: 'Duress', quantity: 2, imageUrl: null }],
 				player2: null,
 			};
 
@@ -334,22 +360,25 @@ describe('featureMatchOverlayDisplay', () => {
 			config.layout.composition = {
 				...createFeatureMatchLayoutComposition(),
 				items: [
-					Object.assign(getGraphicItemDefinition('deck-list').createDefault({
-						id: 'deck',
-						label: 'Deck',
-						canvasWidth: 1920,
-						canvasHeight: 1080,
-					}), {
-						view: 'grid' as const,
-						animation: {
-							exit: {
-								duration: 30,
-								easing: 'linear' as const,
-								delay: 0,
-								fade: { opacity: 0 },
+					Object.assign(
+						getGraphicItemDefinition('deck-list').createDefault({
+							id: 'deck',
+							label: 'Deck',
+							canvasWidth: 1920,
+							canvasHeight: 1080,
+						}),
+						{
+							view: 'grid' as const,
+							animation: {
+								exit: {
+									duration: 30,
+									easing: 'linear' as const,
+									delay: 0,
+									fade: { opacity: 0 },
+								},
 							},
 						},
-					}),
+					),
 				],
 			};
 			mockConfig.value = config;
@@ -358,9 +387,7 @@ describe('featureMatchOverlayDisplay', () => {
 				player2: { lifeTotal: 20, gameWins: 0, sideboardRevealed: true },
 			};
 			mockSideboards.value = {
-				player1: [
-					{ name: 'Duress', quantity: 2, imageUrl: null },
-				],
+				player1: [{ name: 'Duress', quantity: 2, imageUrl: null }],
 				player2: null,
 			};
 
@@ -403,22 +430,23 @@ describe('featureMatchOverlayDisplay', () => {
 			config.layout.composition = {
 				...createFeatureMatchLayoutComposition(),
 				items: [
-					Object.assign(getGraphicItemDefinition('deck-list').createDefault({
-						id: 'deck',
-						label: 'Deck',
-						canvasWidth: 1920,
-						canvasHeight: 1080,
-					}), {
-						view: 'grid' as const,
-						animation: { enter: SLOW, exit: SLOW },
-					}),
+					Object.assign(
+						getGraphicItemDefinition('deck-list').createDefault({
+							id: 'deck',
+							label: 'Deck',
+							canvasWidth: 1920,
+							canvasHeight: 1080,
+						}),
+						{
+							view: 'grid' as const,
+							animation: { enter: SLOW, exit: SLOW },
+						},
+					),
 				],
 			};
 			mockConfig.value = config;
 			mockSideboards.value = {
-				player1: [
-					{ name: 'Duress', quantity: 2, imageUrl: null },
-				],
+				player1: [{ name: 'Duress', quantity: 2, imageUrl: null }],
 				player2: null,
 			};
 		});
@@ -448,7 +476,7 @@ describe('featureMatchOverlayDisplay', () => {
 	});
 
 	// A One Piece deck is named by its Leader, which also sets its colours (ADR-0057).
-	it('shows a One Piece side\'s Leader where a Magic deck name and its colours would be', async () => {
+	it("shows a One Piece side's Leader where a Magic deck name and its colours would be", async () => {
 		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 		config.layout.composition = {
 			...createFeatureMatchLayoutComposition(),
@@ -522,7 +550,11 @@ describe('featureMatchOverlayDisplay', () => {
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('[data-graphic-item-id]').map(item => item.attributes('data-graphic-item-id'))).toEqual(drawn);
+		expect(
+			wrapper
+				.findAll('[data-graphic-item-id]')
+				.map((item) => item.attributes('data-graphic-item-id')),
+		).toEqual(drawn);
 	});
 
 	// ADR-0051: the overlay composes in the Event Canvas.
@@ -586,8 +618,12 @@ describe('featureMatchOverlayDisplay', () => {
 			expect(wrapper.findAll('.graphic-item-guide--source').length).toBeGreaterThan(0);
 
 			const html = wrapper.html();
-			expect(html.indexOf('aria-label="Select canvas"')).toBeLessThan(html.indexOf('data-item-guide'));
-			expect(html.indexOf('data-item-guide')).toBeLessThan(html.indexOf('graphic-item-guide--source'));
+			expect(html.indexOf('aria-label="Select canvas"')).toBeLessThan(
+				html.indexOf('data-item-guide'),
+			);
+			expect(html.indexOf('data-item-guide')).toBeLessThan(
+				html.indexOf('graphic-item-guide--source'),
+			);
 		});
 
 		// The host-owned half of the pair below, which nothing pinned until #260: the frame's
@@ -622,7 +658,11 @@ describe('featureMatchOverlayDisplay', () => {
 			expect(postMessage).toHaveBeenCalledWith(
 				{
 					type: 'graphics-compositor:select',
-					target: { type: 'item', graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID, itemId: 'shared-clock' },
+					target: {
+						type: 'item',
+						graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+						itemId: 'shared-clock',
+					},
 				},
 				window.location.origin,
 			);
@@ -645,19 +685,25 @@ describe('featureMatchOverlayDisplay', () => {
 				'graphics-compositor:select',
 				{ type: 'item', graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID, itemId: 'shared-clock' },
 			],
-		])('reports %s as a toggle, marking nothing itself', async (_, guide, modifiers, type, target) => {
-			mockConfig.value = guidedConfig();
-			mockPreviewGuides.value = true;
-			mockIsPreview.value = true;
-			const postMessage = vi.spyOn(window.parent, 'postMessage');
+		])(
+			'reports %s as a toggle, marking nothing itself',
+			async (_, guide, modifiers, type, target) => {
+				mockConfig.value = guidedConfig();
+				mockPreviewGuides.value = true;
+				mockIsPreview.value = true;
+				const postMessage = vi.spyOn(window.parent, 'postMessage');
 
-			const wrapper = await mountComponent();
-			await wrapper.get(guide).trigger('click', modifiers);
+				const wrapper = await mountComponent();
+				await wrapper.get(guide).trigger('click', modifiers);
 
-			expect(postMessage).toHaveBeenCalledWith({ type, target, toggle: true }, window.location.origin);
-			expect(wrapper.findAll('.is-selected')).toHaveLength(0);
-			postMessage.mockRestore();
-		});
+				expect(postMessage).toHaveBeenCalledWith(
+					{ type, target, toggle: true },
+					window.location.origin,
+				);
+				expect(wrapper.findAll('.is-selected')).toHaveLength(0);
+				postMessage.mockRestore();
+			},
+		);
 
 		it('marks the shared Graphic Item the editor selected', async () => {
 			mockConfig.value = guidedConfig();
@@ -667,16 +713,24 @@ describe('featureMatchOverlayDisplay', () => {
 			mockIsPreview.value = true;
 
 			const wrapper = await mountComponent();
-			expect(wrapper.get('[data-item-guide="shared-clock"]').classes()).not.toContain('is-selected');
+			expect(wrapper.get('[data-item-guide="shared-clock"]').classes()).not.toContain(
+				'is-selected',
+			);
 
-			window.dispatchEvent(new MessageEvent('message', {
-				origin: window.location.origin,
-				source: window.parent,
-				data: {
-					type: 'graphics-compositor:selected-target',
-					target: { type: 'item', graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID, itemId: 'shared-clock' },
-				},
-			}));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					origin: window.location.origin,
+					source: window.parent,
+					data: {
+						type: 'graphics-compositor:selected-target',
+						target: {
+							type: 'item',
+							graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+							itemId: 'shared-clock',
+						},
+					},
+				}),
+			);
 			await nextTick();
 
 			expect(wrapper.get('[data-item-guide="shared-clock"]').classes()).toContain('is-selected');
@@ -696,26 +750,32 @@ describe('featureMatchOverlayDisplay', () => {
 			const target = { type: 'source', itemId: 'main-source' };
 			// A window that did not embed this frame, then the embedding one speaking
 			// from somewhere else.
-			window.dispatchEvent(new MessageEvent('message', {
-				origin: window.location.origin,
-				source: {
-					postMessage: vi.fn(),
-				} as unknown as MessageEventSource,
-				data: { type: 'feature-match-overlay:selected-target', target },
-			}));
-			window.dispatchEvent(new MessageEvent('message', {
-				origin: 'https://example.invalid',
-				source: window.parent,
-				data: { type: 'feature-match-overlay:selected-target', target },
-			}));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					origin: window.location.origin,
+					source: {
+						postMessage: vi.fn(),
+					} as unknown as MessageEventSource,
+					data: { type: 'feature-match-overlay:selected-target', target },
+				}),
+			);
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					origin: 'https://example.invalid',
+					source: window.parent,
+					data: { type: 'feature-match-overlay:selected-target', target },
+				}),
+			);
 			await nextTick();
 			expect(guide().classes()).not.toContain('is-selected');
 
-			window.dispatchEvent(new MessageEvent('message', {
-				origin: window.location.origin,
-				source: window.parent,
-				data: { type: 'feature-match-overlay:selected-target', target },
-			}));
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					origin: window.location.origin,
+					source: window.parent,
+					data: { type: 'feature-match-overlay:selected-target', target },
+				}),
+			);
 			await nextTick();
 
 			expect(guide().classes()).toContain('is-selected');
@@ -740,13 +800,15 @@ describe('featureMatchOverlayDisplay', () => {
 			expect(wrapper.find('[aria-label="Select Player 1 Source"]').exists()).toBe(true);
 			const locked = wrapper.findAll('[data-locked="true"]');
 			expect(locked).toHaveLength(2);
-			for (const guide of locked)
-				await guide.trigger('click');
-			expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({
-				target: expect.objectContaining({
-					itemId: expect.any(String),
+			for (const guide of locked) await guide.trigger('click');
+			expect(postMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({
+					target: expect.objectContaining({
+						itemId: expect.any(String),
+					}),
 				}),
-			}), expect.anything());
+				expect.anything(),
+			);
 			postMessage.mockRestore();
 		});
 
@@ -762,26 +824,36 @@ describe('featureMatchOverlayDisplay', () => {
 				const sourceGuide = () => wrapper.get('[aria-label="Select Main Match Source"]');
 				expect(sourceGuide().classes()).not.toContain('is-selected');
 
-				window.dispatchEvent(new MessageEvent('message', {
-					origin: window.location.origin,
-					source: window.parent,
-					data: {
-						type: 'feature-match-overlay:selected-target',
-						target: { type: 'source', itemId: 'main-source' },
-					},
-				}));
-				window.dispatchEvent(new MessageEvent('message', {
-					origin: window.location.origin,
-					source: window.parent,
-					data: {
-						type: 'graphics-compositor:selected-target',
-						target: { type: 'item', graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID, itemId: 'shared-clock' },
-					},
-				}));
+				window.dispatchEvent(
+					new MessageEvent('message', {
+						origin: window.location.origin,
+						source: window.parent,
+						data: {
+							type: 'feature-match-overlay:selected-target',
+							target: { type: 'source', itemId: 'main-source' },
+						},
+					}),
+				);
+				window.dispatchEvent(
+					new MessageEvent('message', {
+						origin: window.location.origin,
+						source: window.parent,
+						data: {
+							type: 'graphics-compositor:selected-target',
+							target: {
+								type: 'item',
+								graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+								itemId: 'shared-clock',
+							},
+						},
+					}),
+				);
 				await nextTick();
 
 				expect(sourceGuide().classes()).not.toContain('is-selected');
-				expect(wrapper.get('[data-item-guide="shared-clock"]').classes()).not.toContain('is-selected');
+				expect(wrapper.get('[data-item-guide="shared-clock"]').classes()).not.toContain(
+					'is-selected',
+				);
 			});
 		});
 
@@ -794,8 +866,11 @@ describe('featureMatchOverlayDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.findAll('[data-safe-area-guide]').map(guide => guide.attributes('data-safe-area-guide')))
-				.toEqual(['action-safe', 'title-safe']);
+			expect(
+				wrapper
+					.findAll('[data-safe-area-guide]')
+					.map((guide) => guide.attributes('data-safe-area-guide')),
+			).toEqual(['action-safe', 'title-safe']);
 			expect(wrapper.find('[aria-label="Select canvas"]').exists()).toBe(false);
 			expect(wrapper.find('[data-item-guide]').exists()).toBe(false);
 		});
@@ -832,10 +907,8 @@ describe('featureMatchOverlayDisplay', () => {
 
 			try {
 				await mountComponent();
-			}
-			finally {
-				if (originalParent)
-					Object.defineProperty(window, 'parent', originalParent);
+			} finally {
+				if (originalParent) Object.defineProperty(window, 'parent', originalParent);
 			}
 
 			return announced;
@@ -844,9 +917,7 @@ describe('featureMatchOverlayDisplay', () => {
 		it('tells the editor it is listening, as soon as it is', async () => {
 			mockIsPreview.value = true;
 
-			expect(await mountAnnouncing()).toEqual([
-				{ type: GRAPHICS_PREVIEW_READY_MESSAGE },
-			]);
+			expect(await mountAnnouncing()).toEqual([{ type: GRAPHICS_PREVIEW_READY_MESSAGE }]);
 		});
 
 		it('announces nothing from a live Screen Output, which has no editor to answer', async () => {
@@ -859,12 +930,12 @@ describe('featureMatchOverlayDisplay', () => {
 			mockIsPreview.value = true;
 			const announced: unknown[] = [];
 			const originalPostMessage = window.postMessage;
-			window.postMessage = ((message: unknown) => announced.push(message)) as typeof window.postMessage;
+			window.postMessage = ((message: unknown) =>
+				announced.push(message)) as typeof window.postMessage;
 
 			try {
 				await mountComponent();
-			}
-			finally {
+			} finally {
 				window.postMessage = originalPostMessage;
 			}
 
@@ -879,10 +950,10 @@ describe('featureMatchOverlayDisplay', () => {
 			mockPreviewGuides.value = true;
 			const installed: string[] = [];
 			const install = window.addEventListener.bind(window);
-			const addEventListener = vi.spyOn(window, 'addEventListener')
+			const addEventListener = vi
+				.spyOn(window, 'addEventListener')
 				.mockImplementation((...args: Parameters<Window['addEventListener']>) => {
-					if (args[0] === 'message')
-						installed.push('listener');
+					if (args[0] === 'message') installed.push('listener');
 					install(...args);
 				});
 			const parent = {
@@ -893,17 +964,15 @@ describe('featureMatchOverlayDisplay', () => {
 
 			try {
 				await mountComponent();
-			}
-			finally {
-				if (originalParent)
-					Object.defineProperty(window, 'parent', originalParent);
+			} finally {
+				if (originalParent) Object.defineProperty(window, 'parent', originalParent);
 				addEventListener.mockRestore();
 			}
 
 			expect(installed.at(-1)).toBe('ready');
 			// The two this component installs itself, either side of whatever the mode
 			// data installs — the point is that none of them comes after the ready.
-			expect(installed.filter(entry => entry === 'listener').length).toBeGreaterThanOrEqual(2);
+			expect(installed.filter((entry) => entry === 'listener').length).toBeGreaterThanOrEqual(2);
 		});
 	});
 
@@ -924,8 +993,7 @@ describe('featureMatchOverlayDisplay', () => {
 				canvasWidth: 1920,
 				canvasHeight: 1080,
 			});
-			if (nameplate.type !== 'text')
-				throw new Error('expected a Text Graphic Item');
+			if (nameplate.type !== 'text') throw new Error('expected a Text Graphic Item');
 			nameplate.text = '{player1Name}';
 			config.layout.composition = {
 				...createFeatureMatchLayoutComposition(),
@@ -969,21 +1037,23 @@ describe('featureMatchOverlayDisplay', () => {
 				event: { game: 'op' },
 				sampleDataset: 'mtg',
 			},
-		] as const)('stands in the $kind sample for event $event.game and Theme preview $sampleDataset', async ({ kind, event, sampleDataset }) => {
-			const config = layoutBindingAToken();
-			const nameplate = config.layout.composition.items[0]!;
-			if (nameplate.type === 'text')
-				nameplate.text = '{player1Name} {player1Deck}';
-			mockConfig.value = config;
-			mockUsesSampleDataset.value = true;
-			mockEvent.value = event;
-			mockSampleDataset = sampleDataset;
+		] as const)(
+			'stands in the $kind sample for event $event.game and Theme preview $sampleDataset',
+			async ({ kind, event, sampleDataset }) => {
+				const config = layoutBindingAToken();
+				const nameplate = config.layout.composition.items[0]!;
+				if (nameplate.type === 'text') nameplate.text = '{player1Name} {player1Deck}';
+				mockConfig.value = config;
+				mockUsesSampleDataset.value = true;
+				mockEvent.value = event;
+				mockSampleDataset = sampleDataset;
 
-			const wrapper = await mountComponent();
+				const wrapper = await mountComponent();
 
-			const { player1Name, player1Deck } = featureMatchSampleDataset(kind).tokenValues;
-			expect(wrapper.text()).toContain(`${player1Name} ${player1Deck}`);
-		});
+				const { player1Name, player1Deck } = featureMatchSampleDataset(kind).tokenValues;
+				expect(wrapper.text()).toContain(`${player1Name} ${player1Deck}`);
+			},
+		);
 
 		// The one failure sample data must never cause.
 		it('never reaches a live Screen Output', async () => {
@@ -1013,10 +1083,7 @@ describe('featureMatchOverlayDisplay', () => {
 			const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 			config.layout.composition = {
 				...createFeatureMatchLayoutComposition(),
-				items: [
-					text('nameplate', { text: nameplate, width: 1600 }),
-					clock('clock'),
-				],
+				items: [text('nameplate', { text: nameplate, width: 1600 }), clock('clock')],
 			};
 			config.layout.sources = [];
 			return config;
@@ -1054,27 +1121,31 @@ describe('featureMatchOverlayDisplay', () => {
 				game: 'mtg',
 				variant: 'commander',
 			},
-		] as const)('shows the $game $variant values over $over while the toggle is on, and not once it is off', async ({ usesSample, match, game, ...event }) => {
-			mockConfig.value = layoutShowing('{player1Name} {player1Deck}');
-			mockUsesSampleDataset.value = usesSample;
-			mockMatch.value = match;
-			const variant = 'variant' in event
-				? event.variant
-				: undefined;
-			mockEvent.value = { game, variant };
-			mockPreviewStressDataset.value = true;
+		] as const)(
+			'shows the $game $variant values over $over while the toggle is on, and not once it is off',
+			async ({ usesSample, match, game, ...event }) => {
+				mockConfig.value = layoutShowing('{player1Name} {player1Deck}');
+				mockUsesSampleDataset.value = usesSample;
+				mockMatch.value = match;
+				const variant = 'variant' in event ? event.variant : undefined;
+				mockEvent.value = { game, variant };
+				mockPreviewStressDataset.value = true;
 
-			const wrapper = await mountComponent();
-			const { player1Name, player1Deck } = featureMatchStressDataset(eventKind({ game, variant }), { untimed: false }).tokenValues;
+				const wrapper = await mountComponent();
+				const { player1Name, player1Deck } = featureMatchStressDataset(
+					eventKind({ game, variant }),
+					{ untimed: false },
+				).tokenValues;
 
-			expect(wrapper.text()).toContain(`${player1Name} ${player1Deck}`);
-			expect(wrapper.get('[data-graphic-item-kind="clock"]').text()).toBe('1:23:45');
+				expect(wrapper.text()).toContain(`${player1Name} ${player1Deck}`);
+				expect(wrapper.get('[data-graphic-item-kind="clock"]').text()).toBe('1:23:45');
 
-			mockPreviewStressDataset.value = false;
-			await nextTick();
+				mockPreviewStressDataset.value = false;
+				await nextTick();
 
-			expect(wrapper.text()).not.toContain(String(player1Name));
-		});
+				expect(wrapper.text()).not.toContain(String(player1Name));
+			},
+		);
 
 		// An Untimed Match shows its Untimed Label where the clock would be.
 		it.each([
@@ -1086,23 +1157,27 @@ describe('featureMatchOverlayDisplay', () => {
 				event: { game: 'mtg' },
 			},
 			{
-				untimedBy: 'the Event\'s Match Format',
+				untimedBy: "the Event's Match Format",
 				matchState: null,
 				event: { game: 'mtg', featureMatchDefaultClockType: 'untimed' },
 			},
-		])('shows the longest Untimed Label for a Match untimed by $untimedBy', async ({ matchState, event }) => {
-			mockConfig.value = layoutShowing('{player1Name}');
-			mockUsesSampleDataset.value = matchState === null;
-			mockMatch.value = matchState ? LIVE_MATCH : null;
-			mockMatchState.value = matchState;
-			mockEvent.value = event;
-			mockPreviewStressDataset.value = true;
+		])(
+			'shows the longest Untimed Label for a Match untimed by $untimedBy',
+			async ({ matchState, event }) => {
+				mockConfig.value = layoutShowing('{player1Name}');
+				mockUsesSampleDataset.value = matchState === null;
+				mockMatch.value = matchState ? LIVE_MATCH : null;
+				mockMatchState.value = matchState;
+				mockEvent.value = event;
+				mockPreviewStressDataset.value = true;
 
-			const wrapper = await mountComponent();
+				const wrapper = await mountComponent();
 
-			expect(wrapper.get('[data-graphic-item-kind="clock"]').text())
-				.toBe(featureMatchStressDataset('mtg-two-player', { untimed: true }).context.clockDisplayTime);
-		});
+				expect(wrapper.get('[data-graphic-item-kind="clock"]').text()).toBe(
+					featureMatchStressDataset('mtg-two-player', { untimed: true }).context.clockDisplayTime,
+				);
+			},
+		);
 	});
 
 	describe('the host-owned Source Items', () => {
@@ -1116,8 +1191,11 @@ describe('featureMatchOverlayDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.findAll('[data-graphic-item-id]').map(item => item.attributes('data-graphic-item-id')))
-				.toEqual(['back-source', 'front-source']);
+			expect(
+				wrapper
+					.findAll('[data-graphic-item-id]')
+					.map((item) => item.attributes('data-graphic-item-id')),
+			).toEqual(['back-source', 'front-source']);
 		});
 
 		it('omits a hidden Source Item entirely', async () => {
@@ -1155,9 +1233,7 @@ describe('featureMatchOverlayDisplay', () => {
 							assetId: 'video-asset' as never,
 							revisionId: 'video-revision-1' as never,
 						},
-						...(videoCompatibility
-							? { videoCompatibility }
-							: {}),
+						...(videoCompatibility ? { videoCompatibility } : {}),
 					},
 				] as never,
 			};
@@ -1169,8 +1245,9 @@ describe('featureMatchOverlayDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.get('video').attributes('src'))
-				.toBe('/private-assets/video-asset/video-revision-1');
+			expect(wrapper.get('video').attributes('src')).toBe(
+				'/private-assets/video-asset/video-revision-1',
+			);
 			expect(wrapper.get('.feature-match-overlay').attributes('data-export-ready')).toBe('true');
 		});
 
@@ -1181,8 +1258,9 @@ describe('featureMatchOverlayDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.get('video').attributes('src'))
-				.toBe('/private-assets/video-asset/video-revision-1');
+			expect(wrapper.get('video').attributes('src')).toBe(
+				'/private-assets/video-asset/video-revision-1',
+			);
 			expect(wrapper.get('.feature-match-overlay').attributes('data-export-ready')).toBe('true');
 		});
 	});
@@ -1197,7 +1275,8 @@ describe('featureMatchOverlayDisplay', () => {
 			return wrapper.get('.feature-match-overlay__frame-border').attributes('stroke');
 		}
 		function sourceBorder(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
-			return (wrapper.get('[data-graphic-item-id="main-source"]').element as HTMLElement).style.borderTop;
+			return (wrapper.get('[data-graphic-item-id="main-source"]').element as HTMLElement).style
+				.borderTop;
 		}
 		function panelFill(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
 			return wrapper.get('[data-graphic-item-kind="shape"] path').attributes('fill');
@@ -1226,21 +1305,24 @@ describe('featureMatchOverlayDisplay', () => {
 				border: '4px solid #ffffff',
 				panel: '#ffffff',
 			},
-		] as const)('restyles its Frame, Source Items and panels live when the Theme\'s accent changes, in the $output Output', async ({ output, stroke, border, panel }) => {
-			mockOutputMode.value = output;
-			mockTheme.value = { accent: '#123456' };
-			const wrapper = await mountComponent();
+		] as const)(
+			"restyles its Frame, Source Items and panels live when the Theme's accent changes, in the $output Output",
+			async ({ output, stroke, border, panel }) => {
+				mockOutputMode.value = output;
+				mockTheme.value = { accent: '#123456' };
+				const wrapper = await mountComponent();
 
-			mockTheme.value = { accent: '#c0ffee' };
-			await nextTick();
+				mockTheme.value = { accent: '#c0ffee' };
+				await nextTick();
 
-			expect(frameStroke(wrapper)).toBe(stroke);
-			expect(sourceBorder(wrapper)).toBe(border);
-			expect(panelFill(wrapper)).toBe(panel);
-		});
+				expect(frameStroke(wrapper)).toBe(stroke);
+				expect(sourceBorder(wrapper)).toBe(border);
+				expect(panelFill(wrapper)).toBe(panel);
+			},
+		);
 
 		// A Screen takes the accent from its Theme alone; an override stored before is read by nothing.
-		it('restyles them from its Theme\'s accent, never a stored override of it', async () => {
+		it("restyles them from its Theme's accent, never a stored override of it", async () => {
 			mockTheme.value = { accent: '#123456' };
 			mockScreen.value = {
 				themeOverrides: { accent: '#654321' },
@@ -1253,7 +1335,7 @@ describe('featureMatchOverlayDisplay', () => {
 		});
 
 		// The override is in the form stored before writes were literal-only: its colour names the Theme's accent.
-		it('fills the Frame from the Screen\'s Frame surface override', async () => {
+		it("fills the Frame from the Screen's Frame surface override", async () => {
 			mockTheme.value = { accent: '#abcdef' };
 			mockScreen.value = {
 				themeOverrides: {
@@ -1269,33 +1351,40 @@ describe('featureMatchOverlayDisplay', () => {
 
 			const fill = (await mountComponent()).get('.feature-match-overlay__frame-fill');
 
-			expect(fill.attributes()).toMatchObject({ 'fill': '#abcdef', 'fill-opacity': '0.5' });
+			expect(fill.attributes()).toMatchObject({ fill: '#abcdef', 'fill-opacity': '0.5' });
 		});
 
-		it('draws its Event Branding from the Theme\'s logo, resolved through its exact revision', async () => {
+		it("draws its Event Branding from the Theme's logo, resolved through its exact revision", async () => {
 			mockTheme.value = {
 				logo: { kind: 'image', assetId: 'logo-asset', revisionId: 'logo-revision' },
 			};
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.get('[data-graphic-item-kind="media"] img').attributes('src'))
-				.toBe('/private-assets/logo-asset/logo-revision');
+			expect(wrapper.get('[data-graphic-item-kind="media"] img').attributes('src')).toBe(
+				'/private-assets/logo-asset/logo-revision',
+			);
 		});
 
-		it('draws the Screen\'s Frame media beneath the Frame\'s own', async () => {
+		it("draws the Screen's Frame media beneath the Frame's own", async () => {
 			mockScreen.value = {
 				themeOverrides: {
-					'feature-match-overlay.frame-media': { kind: 'image', assetId: 'backdrop', revisionId: 'backdrop-1' },
+					'feature-match-overlay.frame-media': {
+						kind: 'image',
+						assetId: 'backdrop',
+						revisionId: 'backdrop-1',
+					},
 				},
 			};
 
 			const image = (await mountComponent()).get('.feature-match-overlay__theme-frame-image');
 
-			expect(image.attributes('href') ?? image.attributes('xlink:href')).toBe('/private-assets/backdrop/backdrop-1');
+			expect(image.attributes('href') ?? image.attributes('xlink:href')).toBe(
+				'/private-assets/backdrop/backdrop-1',
+			);
 		});
 
-		it('draws the Frame\'s Animation Effect the Theme names', async () => {
+		it("draws the Frame's Animation Effect the Theme names", async () => {
 			mockTheme.value = {
 				'animation-effect': { effect: 'net' },
 			};
@@ -1305,7 +1394,7 @@ describe('featureMatchOverlayDisplay', () => {
 			expect(frame.attributes('data-frame-animation-effect')).toBe('net');
 		});
 
-		it('loads a library font the Theme\'s heading supplies to a bound Graphic Item', async () => {
+		it("loads a library font the Theme's heading supplies to a bound Graphic Item", async () => {
 			Object.defineProperty(document, 'fonts', {
 				configurable: true,
 				value: {
@@ -1317,13 +1406,21 @@ describe('featureMatchOverlayDisplay', () => {
 				},
 			});
 			const sources: string[] = [];
-			vi.stubGlobal('FontFace', class {
-				constructor(public family: string, public source: string) {
-					sources.push(source);
-				}
+			vi.stubGlobal(
+				'FontFace',
+				class {
+					constructor(
+						public family: string,
+						public source: string,
+					) {
+						sources.push(source);
+					}
 
-				async load() { return this; }
-			});
+					async load() {
+						return this;
+					}
+				},
+			);
 			mockTheme.value = {
 				heading: {
 					font: {
@@ -1339,9 +1436,12 @@ describe('featureMatchOverlayDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			await vi.waitFor(() => expect(sources).toContain('url("/private-assets/heading-font/heading-font-1")'));
-			expect(wrapper.get('[data-graphic-item-kind="text"] p').attributes('style'))
-				.toContain('font-family: stream-keepr-graphic-asset-heading-font-heading-font-1;');
+			await vi.waitFor(() =>
+				expect(sources).toContain('url("/private-assets/heading-font/heading-font-1")'),
+			);
+			expect(wrapper.get('[data-graphic-item-kind="text"] p').attributes('style')).toContain(
+				'font-family: stream-keepr-graphic-asset-heading-font-heading-font-1;',
+			);
 		});
 	});
 
@@ -1370,7 +1470,11 @@ describe('featureMatchOverlayDisplay', () => {
 
 		it('draws a library-sourced Frame image from its exact revision content URL', async () => {
 			mockConfig.value = frameWith({
-				backgroundImage: { kind: 'asset', assetId: 'plate' as never, revisionId: 'plate-1' as never },
+				backgroundImage: {
+					kind: 'asset',
+					assetId: 'plate' as never,
+					revisionId: 'plate-1' as never,
+				},
 			});
 
 			const wrapper = await mountComponent();
@@ -1385,7 +1489,9 @@ describe('featureMatchOverlayDisplay', () => {
 
 			const wrapper = await mountComponent();
 
-			expect(wrapper.get('.frame-layer image').html()).toContain('https://cdn.example.com/plate.png');
+			expect(wrapper.get('.frame-layer image').html()).toContain(
+				'https://cdn.example.com/plate.png',
+			);
 		});
 
 		it('plays a library-sourced Frame video from its exact revision content URL', async () => {
@@ -1477,16 +1583,22 @@ describe('featureMatchOverlayDisplay', () => {
 				finishLoad = resolve;
 			});
 			const sources: string[] = [];
-			vi.stubGlobal('FontFace', class {
-				constructor(public family: string, public source: string) {
-					sources.push(source);
-				}
+			vi.stubGlobal(
+				'FontFace',
+				class {
+					constructor(
+						public family: string,
+						public source: string,
+					) {
+						sources.push(source);
+					}
 
-				async load() {
-					await loaded;
-					return this;
-				}
-			});
+					async load() {
+						await loaded;
+						return this;
+					}
+				},
+			);
 
 			const wrapper = await mountComponent();
 			const overlay = wrapper.get('.feature-match-overlay');
@@ -1500,17 +1612,25 @@ describe('featureMatchOverlayDisplay', () => {
 				expect(wrapper.get('.feature-match-overlay').attributes('data-font-ready')).toBe('true');
 			});
 			expect(wrapper.get('.feature-match-overlay').attributes('data-export-ready')).toBe('true');
-			expect((wrapper.get('.feature-match-overlay').element as HTMLElement).style.visibility).toBe('');
+			expect((wrapper.get('.feature-match-overlay').element as HTMLElement).style.visibility).toBe(
+				'',
+			);
 		});
 
 		it('reports a font that cannot load without leaving the entire output blank', async () => {
 			// Withheld from export, but revealed: the Frame, Sources and other Items still paint.
-			vi.stubGlobal('FontFace', class {
-				constructor(public family: string, public source: string) {}
-				async load(): Promise<never> {
-					throw new Error('font revision content is unavailable');
-				}
-			});
+			vi.stubGlobal(
+				'FontFace',
+				class {
+					constructor(
+						public family: string,
+						public source: string,
+					) {}
+					async load(): Promise<never> {
+						throw new Error('font revision content is unavailable');
+					}
+				},
+			);
 
 			const wrapper = await mountComponent();
 
@@ -1544,7 +1664,9 @@ describe('featureMatchOverlayDisplay', () => {
 		mockConfig.value = config;
 
 		const wrapper = await mountComponent();
-		expect(fonts.load).toHaveBeenCalledWith(`normal ${DEFAULT_GRAPHIC_TYPOGRAPHY.fontWeight} 1em "Poppins"`);
+		expect(fonts.load).toHaveBeenCalledWith(
+			`normal ${DEFAULT_GRAPHIC_TYPOGRAPHY.fontWeight} 1em "Poppins"`,
+		);
 		expect(wrapper.get('.feature-match-overlay').attributes('data-font-ready')).toBe('false');
 
 		load.resolve([{}]);
@@ -1568,7 +1690,7 @@ describe('featureMatchOverlayDisplay', () => {
 			const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 			config.layout.composition = {
 				...createFeatureMatchLayoutComposition(),
-				items: ['bar', 'badge'].map(id => shape(id, { animation: fadeIn })),
+				items: ['bar', 'badge'].map((id) => shape(id, { animation: fadeIn })),
 			};
 			config.layout.frame = {
 				...config.layout.frame,
@@ -1578,32 +1700,35 @@ describe('featureMatchOverlayDisplay', () => {
 		}
 
 		function pushRun(plan: Record<string, unknown> | null) {
-			window.dispatchEvent(new MessageEvent('message', {
-				origin: window.location.origin,
-				source: window.parent,
-				data: {
-					type: GRAPHICS_PREVIEW_ANIMATION_MESSAGE,
-					plan: plan && {
-						graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
-						scope: 'phase',
-						phase: 'enter',
-						run: 1,
-						speed: 1,
-						loop: false,
-						...plan,
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					origin: window.location.origin,
+					source: window.parent,
+					data: {
+						type: GRAPHICS_PREVIEW_ANIMATION_MESSAGE,
+						plan: plan && {
+							graphicId: FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+							scope: 'phase',
+							phase: 'enter',
+							run: 1,
+							speed: 1,
+							loop: false,
+							...plan,
+						},
 					},
-				},
-			}));
+				}),
+			);
 			return nextTick();
 		}
 
 		/** The items drawn faded out, named by their authored (document) order. */
 		function fadedOut(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
 			const order = ['bar', 'badge'];
-			return wrapper.findAll('[data-graphic-item-kind="shape"]')
-				.flatMap((node, index) => (node.attributes('style') ?? '').includes('opacity: 0')
-					? [order[index]]
-					: []);
+			return wrapper
+				.findAll('[data-graphic-item-kind="shape"]')
+				.flatMap((node, index) =>
+					(node.attributes('style') ?? '').includes('opacity: 0') ? [order[index]] : [],
+				);
 		}
 
 		beforeEach(() => {
@@ -1612,21 +1737,9 @@ describe('featureMatchOverlayDisplay', () => {
 		});
 
 		it.each([
-			[
-				'the whole composition',
-				{},
-				['bar', 'badge'],
-			],
-			[
-				'the selected Graphic Item alone',
-				{ itemId: 'badge' },
-				['badge'],
-			],
-			[
-				'nothing for a run naming another composition',
-				{ graphicId: 'lower-third' },
-				[],
-			],
+			['the whole composition', {}, ['bar', 'badge']],
+			['the selected Graphic Item alone', { itemId: 'badge' }, ['badge']],
+			['nothing for a run naming another composition', { graphicId: 'lower-third' }, []],
 		])('plays %s from the start of its phase', async (_case, plan, moving) => {
 			const wrapper = await mountComponent();
 			expect(fadedOut(wrapper)).toEqual([]);
@@ -1654,7 +1767,7 @@ describe('featureMatchOverlayDisplay', () => {
 		});
 
 		// A run moves Graphic Items only; the Frame's Animation Effect keeps drawing.
-		it('keeps the Frame\'s Animation Effect running through a run', async () => {
+		it("keeps the Frame's Animation Effect running through a run", async () => {
 			mockTheme.value = {
 				'animation-effect': { effect: 'net' },
 			};
@@ -1662,7 +1775,9 @@ describe('featureMatchOverlayDisplay', () => {
 				global: {
 					stubs: {
 						FeatureMatchOverlayFrameMedia: true,
-						ScreenAnimationEffectSurface: { template: '<div data-testid="frame-animation-effect" />' },
+						ScreenAnimationEffectSurface: {
+							template: '<div data-testid="frame-animation-effect" />',
+						},
 					},
 				},
 			});

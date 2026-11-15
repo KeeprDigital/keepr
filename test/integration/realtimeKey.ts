@@ -40,14 +40,12 @@ assertRealtimeTestFile();
  */
 function resolveAblyApiKey(): string {
 	const fromEnvironment = process.env[INTEGRATION_ABLY_API_KEY_ENV];
-	if (fromEnvironment)
-		return fromEnvironment;
+	if (fromEnvironment) return fromEnvironment;
 
 	try {
 		const dotenvPath = fileURLToPath(new URL('../../.env', import.meta.url));
 		return parseEnv(readFileSync(dotenvPath, 'utf8'))[INTEGRATION_ABLY_API_KEY_ENV] ?? '';
-	}
-	catch {
+	} catch {
 		// No `.env`, or one that cannot be read: the same answer as a checkout
 		// carrying no key, which is the case this whole path exists to name.
 		return '';

@@ -1,7 +1,4 @@
-import type {
-	ArchetypeBreakdownResponse,
-	CardBreakdownResponse,
-} from '~~/shared/types/metagame';
+import type { ArchetypeBreakdownResponse, CardBreakdownResponse } from '~~/shared/types/metagame';
 import type { ScreenOutputMetagameResponse } from '~~/shared/types/screenOutputReads';
 import type { MetagameChartBar } from '~~/shared/utils/metagameChart';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
@@ -12,7 +9,9 @@ import { useScreenModeFreshness } from '~/modules/screen-mode/freshness';
 import { useScreenModeHearing } from '~/modules/screen-mode/hearing';
 import { usePaginatedScreenMode } from '~/modules/screen-mode/pagination';
 
-type MetagameDisplayRow = ArchetypeBreakdownResponse['entries'][number] | CardBreakdownResponse['entries'][number];
+type MetagameDisplayRow =
+	| ArchetypeBreakdownResponse['entries'][number]
+	| CardBreakdownResponse['entries'][number];
 
 export function useMetagameModeData(context: ScreenContext) {
 	const config = useScreenModeConfig(context, 'metagame');
@@ -29,22 +28,22 @@ export function useMetagameModeData(context: ScreenContext) {
 	// held Event context changes the target.
 	const freshness = useScreenModeFreshness<ScreenOutputMetagameResponse | null>({
 		hearing: useScreenModeHearing(context, 'metagame', () => config.value),
-		source: () => outputReads.scopeKey.value && JSON.stringify([
-			outputReads.scopeKey.value,
-			config.value.viewMode,
-			config.value.scope,
-			config.value.topN,
-			config.value.minPoints,
-			config.value.playerListId,
-			config.value.archetypeId,
-			config.value.sortBy,
-			config.value.cardSortBy,
-			config.value.limit,
-			config.value.archetypeLimit,
-			config.value.viewMode === 'cards'
-				? null
-				: eventConversionTarget(eventStore.displayEvent),
-		]),
+		source: () =>
+			outputReads.scopeKey.value &&
+			JSON.stringify([
+				outputReads.scopeKey.value,
+				config.value.viewMode,
+				config.value.scope,
+				config.value.topN,
+				config.value.minPoints,
+				config.value.playerListId,
+				config.value.archetypeId,
+				config.value.sortBy,
+				config.value.cardSortBy,
+				config.value.limit,
+				config.value.archetypeLimit,
+				config.value.viewMode === 'cards' ? null : eventConversionTarget(eventStore.displayEvent),
+			]),
 		read: () => outputReads.metagame(),
 		initialData: null,
 		errorMessage: 'Failed to load metagame data',
@@ -55,15 +54,11 @@ export function useMetagameModeData(context: ScreenContext) {
 	// ── Response data ──
 	const archetypeData = computed<ArchetypeBreakdownResponse | null>(() => {
 		const read = freshness.data.value;
-		return read && read.viewMode !== 'cards'
-			? read.breakdown
-			: null;
+		return read && read.viewMode !== 'cards' ? read.breakdown : null;
 	});
 	const cardData = computed<CardBreakdownResponse | null>(() => {
 		const read = freshness.data.value;
-		return read?.viewMode === 'cards'
-			? read.breakdown
-			: null;
+		return read?.viewMode === 'cards' ? read.breakdown : null;
 	});
 
 	// ── Active data based on viewMode ──
@@ -82,16 +77,16 @@ export function useMetagameModeData(context: ScreenContext) {
 
 	// ── Header ──
 	const headerText = computed(() => {
-		if (config.value.headerText)
-			return config.value.headerText;
+		if (config.value.headerText) return config.value.headerText;
 
-		const prefix = scope.value === 'topN'
-			? `Top ${config.value.topN}`
-			: scope.value === 'minPoints'
-				? `${config.value.minPoints}+ Points`
-				: scope.value === 'playerList'
-					? 'List'
-					: 'Full Field';
+		const prefix =
+			scope.value === 'topN'
+				? `Top ${config.value.topN}`
+				: scope.value === 'minPoints'
+					? `${config.value.minPoints}+ Points`
+					: scope.value === 'playerList'
+						? 'List'
+						: 'Full Field';
 
 		switch (config.value.viewMode) {
 			// The Archetype as its read names it: the Screen holds its id alone (ADR-0038).
@@ -109,11 +104,8 @@ export function useMetagameModeData(context: ScreenContext) {
 	// ── Display Rows (paginated) ──
 	const displayRows = computed<MetagameDisplayRow[]>(() => {
 		const data = activeData.value;
-		if (!data)
-			return [];
-		return 'entries' in data
-			? data.entries
-			: [];
+		if (!data) return [];
+		return 'entries' in data ? data.entries : [];
 	});
 
 	// ── Chart ──
@@ -128,28 +120,19 @@ export function useMetagameModeData(context: ScreenContext) {
 	// A chart is one page: it draws every bar at once (Other folds the rest),
 	// so it gives the Page Rotation nothing to page.
 	const pagedRows = computed<MetagameDisplayRow[]>(() =>
-		config.value.viewMode === 'chart'
-			? []
-			: displayRows.value,
+		config.value.viewMode === 'chart' ? [] : displayRows.value,
 	);
-	const {
-		rowCount,
-		pageData,
-		pageSize,
-		totalPages,
-		currentPage,
-		setPage,
-		nextPage,
-		prevPage,
-	} = usePaginatedScreenMode(context, { mode: 'metagame', config, rows: pagedRows });
+	const { rowCount, pageData, pageSize, totalPages, currentPage, setPage, nextPage, prevPage } =
+		usePaginatedScreenMode(context, { mode: 'metagame', config, rows: pagedRows });
 
 	// ── Empty State ──
 	const isEmpty = computed(() => freshness.answered.value && displayRows.value.length === 0);
 	// Read off the breakdown: an output holds no roster to count (#604).
 	const emptyMessage = computed(() => {
-		const fieldSize = config.value.viewMode === 'cards'
-			? cardData.value?.totalDecks
-			: archetypeData.value?.totalPlayers;
+		const fieldSize =
+			config.value.viewMode === 'cards'
+				? cardData.value?.totalDecks
+				: archetypeData.value?.totalPlayers;
 		if (!fieldSize) {
 			return 'No players in this event';
 		}

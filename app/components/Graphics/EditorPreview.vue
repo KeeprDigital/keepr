@@ -3,10 +3,18 @@ import type { GraphicAnimationPhase, GraphicRect } from '~~/shared/types/graphic
 import type { ScreenOutput } from '~~/shared/types/screenConfig';
 import type { ScreenOutputPathOptions } from '~~/shared/utils/screenOutput';
 import type { EditorSelectionFrame } from '~/modules/graphics/editor/layerFrame';
-import type { ExpectedSender, GraphicsPreviewAnimationPlan, GraphicsPreviewPush, MessageEnvelope } from '~/modules/graphics/previewMessages';
+import type {
+	ExpectedSender,
+	GraphicsPreviewAnimationPlan,
+	GraphicsPreviewPush,
+	MessageEnvelope,
+} from '~/modules/graphics/previewMessages';
 import type { GraphicsSelectionTarget } from '~/modules/graphics/selection';
 import { screenOutputPath } from '~~/shared/utils/screenOutput';
-import { isGraphicsPreviewReadyMessage, isGraphicsPreviewSelectMessage } from '~/modules/graphics/previewMessages';
+import {
+	isGraphicsPreviewReadyMessage,
+	isGraphicsPreviewSelectMessage,
+} from '~/modules/graphics/previewMessages';
 
 /**
  * The one preview shell both graphics editors mount (#1101): the shared preview
@@ -34,42 +42,45 @@ import { isGraphicsPreviewReadyMessage, isGraphicsPreviewSelectMessage } from '~
  * Guides and the host's URL options ride the preview's own URL, which a live
  * Screen Output never carries, so nothing drawn here can reach one.
  */
-const props = withDefaults(defineProps<{
-	eventId: number;
-	screenSlug: string;
-	canvasWidth: number;
-	canvasHeight: number;
-	/** The frame's accessible name. */
-	title: string;
-	/** What the frame is told, one message per type, each a plain cloneable object. */
-	messages: readonly GraphicsPreviewPush[];
-	/** What else the host asks of its preview's URL. */
-	urlOptions?: Pick<ScreenOutputPathOptions, 'stressDataset'>;
-	/**
-	 * A report from the frame in the host's own vocabulary, checked with the
-	 * host's guard against this frame as the expected sender. True when it was
-	 * one, so the frame gives focus back as it does for a selection.
-	 */
-	receive?: (message: MessageEnvelope, expected: ExpectedSender) => boolean;
-	/** What an animation run plays, or null when nothing playable is selected. */
-	animationTarget: Pick<GraphicsPreviewAnimationPlan, 'graphicId' | 'itemId'> | null;
-	/** Why Play is unavailable while there is no target. */
-	animationHint: string;
-	/** The host's lifecycle phases; every phase when absent. */
-	animationPhases?: readonly GraphicAnimationPhase[];
-	/** Where the selected layers sit on the canvas, when this session may move them. */
-	selectionFrame?: EditorSelectionFrame | null;
-	selectionLabel?: string;
-	/** Where each selected locked layer sits on the canvas, badged as locked. */
-	lockedBoxes?: readonly GraphicRect[];
-	/** A solid colour behind the frame; omitted, it shows transparency. */
-	background?: string;
-	/** The tallest the fitted preview is drawn, as a CSS length. */
-	fitHeight?: string;
-	collapsible?: boolean;
-}>(), {
-	collapsible: true,
-});
+const props = withDefaults(
+	defineProps<{
+		eventId: number;
+		screenSlug: string;
+		canvasWidth: number;
+		canvasHeight: number;
+		/** The frame's accessible name. */
+		title: string;
+		/** What the frame is told, one message per type, each a plain cloneable object. */
+		messages: readonly GraphicsPreviewPush[];
+		/** What else the host asks of its preview's URL. */
+		urlOptions?: Pick<ScreenOutputPathOptions, 'stressDataset'>;
+		/**
+		 * A report from the frame in the host's own vocabulary, checked with the
+		 * host's guard against this frame as the expected sender. True when it was
+		 * one, so the frame gives focus back as it does for a selection.
+		 */
+		receive?: (message: MessageEnvelope, expected: ExpectedSender) => boolean;
+		/** What an animation run plays, or null when nothing playable is selected. */
+		animationTarget: Pick<GraphicsPreviewAnimationPlan, 'graphicId' | 'itemId'> | null;
+		/** Why Play is unavailable while there is no target. */
+		animationHint: string;
+		/** The host's lifecycle phases; every phase when absent. */
+		animationPhases?: readonly GraphicAnimationPhase[];
+		/** Where the selected layers sit on the canvas, when this session may move them. */
+		selectionFrame?: EditorSelectionFrame | null;
+		selectionLabel?: string;
+		/** Where each selected locked layer sits on the canvas, badged as locked. */
+		lockedBoxes?: readonly GraphicRect[];
+		/** A solid colour behind the frame; omitted, it shows transparency. */
+		background?: string;
+		/** The tallest the fitted preview is drawn, as a CSS length. */
+		fitHeight?: string;
+		collapsible?: boolean;
+	}>(),
+	{
+		collapsible: true,
+	},
+);
 
 const emit = defineEmits<{
 	/** `toggle` is a ⌘- or Ctrl-click: add the layer to the selection, or take it out (#740). */
@@ -84,46 +95,50 @@ const emit = defineEmits<{
 }>();
 
 /** The run the animation control describes; null composes at the Graphic Resting State. */
-const animationPlan = defineModel<GraphicsPreviewAnimationPlan | null>('animationPlan', { default: null });
+const animationPlan = defineModel<GraphicsPreviewAnimationPlan | null>('animationPlan', {
+	default: null,
+});
 
 const output = ref<ScreenOutput>('overlay');
 const itemGuides = ref(true);
 const safeAreaGuides = ref(false);
 const frame = ref<HTMLIFrameElement | null>(null);
 
-const url = computed(() => screenOutputPath({
-	eventId: props.eventId,
-	screenSlug: props.screenSlug,
-	output: output.value,
-	embed: 'preview',
-	itemGuides: itemGuides.value,
-	safeAreaGuides: safeAreaGuides.value,
-	...props.urlOptions,
-}));
+const url = computed(() =>
+	screenOutputPath({
+		eventId: props.eventId,
+		screenSlug: props.screenSlug,
+		output: output.value,
+		embed: 'preview',
+		itemGuides: itemGuides.value,
+		safeAreaGuides: safeAreaGuides.value,
+		...props.urlOptions,
+	}),
+);
 
 /** What the frame was last told, per message type, as sent. */
 const told = new Map<string, string>();
 
 function post(message: GraphicsPreviewPush, onlyIfChanged: boolean) {
 	const target = frame.value?.contentWindow;
-	if (!import.meta.client || !target)
-		return;
+	if (!import.meta.client || !target) return;
 	const sent = JSON.stringify(message);
-	if (onlyIfChanged && told.get(message.type) === sent)
-		return;
+	if (onlyIfChanged && told.get(message.type) === sent) return;
 	told.set(message.type, sent);
 	target.postMessage(JSON.parse(sent), window.location.origin);
 }
 
 function pushAll() {
-	for (const message of props.messages)
-		post(message, false);
+	for (const message of props.messages) post(message, false);
 }
 
-watch(() => props.messages, (messages) => {
-	for (const message of messages)
-		post(message, true);
-}, { deep: true });
+watch(
+	() => props.messages,
+	(messages) => {
+		for (const message of messages) post(message, true);
+	},
+	{ deep: true },
+);
 
 // Each switch changes the URL, which reloads the frame; its `load` and its ready
 // both push again, and so does this, once the new frame exists.
@@ -154,8 +169,7 @@ function hear(message: MessageEvent) {
 		return;
 	}
 
-	if (props.receive?.(message, expected))
-		releaseFrameFocus();
+	if (props.receive?.(message, expected)) releaseFrameFocus();
 }
 
 onMounted(() => window.addEventListener('message', hear));
@@ -183,7 +197,11 @@ onBeforeUnmount(() => window.removeEventListener('message', hear));
 				:target="animationTarget"
 				:phases="animationPhases"
 				:hint="animationHint"
-				@update:plan="plan => { animationPlan = plan }"
+				@update:plan="
+					(plan) => {
+						animationPlan = plan;
+					}
+				"
 			>
 				<slot name="animation" />
 			</GraphicsAnimationPreviewControls>

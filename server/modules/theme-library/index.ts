@@ -1,8 +1,16 @@
 import type { DbTheme } from '~~/server/db/schema';
 import type { GraphicsAssetLibrary } from '~~/server/modules/graphics-asset-library';
 import type { ThemeInUseData, ThemeListResponse, ThemeResponse } from '~~/shared/types/theme';
-import { mapThemeToResponse, mapThemeToScreenOutput, mapThemeToSummary } from '~~/server/mappers/theme';
-import { ThemeAssetReferenceConflict, ThemeInUseError, themeService } from '~~/server/services/theme';
+import {
+	mapThemeToResponse,
+	mapThemeToScreenOutput,
+	mapThemeToSummary,
+} from '~~/server/mappers/theme';
+import {
+	ThemeAssetReferenceConflict,
+	ThemeInUseError,
+	themeService,
+} from '~~/server/services/theme';
 import { publishMessage } from '~~/server/utils/ably';
 import { assertGraphicsTemplateReferencesSelectable } from '~~/server/utils/graphicsTemplateReferences';
 import { themeTokenValueGraphicAssetReferences } from '~~/shared/themeAssetReferences';
@@ -39,40 +47,39 @@ export function themeLibraryModule() {
 	}
 
 	async function get(themeId: string): Promise<ThemeResponse> {
-		return mapThemeToResponse(await themes.findById(themeId) ?? themeNotFound());
+		return mapThemeToResponse((await themes.findById(themeId)) ?? themeNotFound());
 	}
 
 	/** A new Theme sets no token, so it reads identically to the Default Theme. */
 	async function create(name: string): Promise<ThemeResponse> {
-		return mapThemeToResponse(await themes.create({
-			id: randomUuid(),
-			name,
-		}));
+		return mapThemeToResponse(
+			await themes.create({
+				id: randomUuid(),
+				name,
+			}),
+		);
 	}
 
 	async function rename(themeId: string, name: string): Promise<ThemeResponse> {
-		return mapThemeToResponse(await themes.rename(themeId, name) ?? themeNotFound());
+		return mapThemeToResponse((await themes.rename(themeId, name)) ?? themeNotFound());
 	}
 
 	async function remove(themeId: string): Promise<void> {
 		let deleted: boolean;
 		try {
 			deleted = await themes.remove(themeId);
-		}
-		catch (error) {
-			if (!(error instanceof ThemeInUseError))
-				throw error;
+		} catch (error) {
+			if (!(error instanceof ThemeInUseError)) throw error;
 			const data: ThemeInUseData = { code: THEME_IN_USE, events: error.events };
 			throw createError({
 				statusCode: 409,
-				message: `This Theme cannot be deleted while ${error.events.length === 1
-					? 'an Event uses'
-					: 'Events use'} it: ${error.events.map(event => event.name).join(', ')}`,
+				message: `This Theme cannot be deleted while ${
+					error.events.length === 1 ? 'an Event uses' : 'Events use'
+				} it: ${error.events.map((event) => event.name).join(', ')}`,
 				data,
 			});
 		}
-		if (!deleted)
-			themeNotFound();
+		if (!deleted) themeNotFound();
 	}
 
 	/** Announce a committed token write on every Event using the Theme, and on no other. */
@@ -81,7 +88,9 @@ export function themeLibraryModule() {
 		const payload = {
 			theme: mapThemeToScreenOutput(theme),
 		};
-		await Promise.all(users.map(event => publishMessage(event.id, 'theme:updated', payload, originConnectionId)));
+		await Promise.all(
+			users.map((event) => publishMessage(event.id, 'theme:updated', payload, originConnectionId)),
+		);
 	}
 
 	/**
@@ -91,7 +100,13 @@ export function themeLibraryModule() {
 	 * select now, asked of the library first so a refusal names the slot, and
 	 * again in the statement that commits.
 	 */
-	async function setToken({ themeId, token, value, originConnectionId, graphicsAssets }: TokenWriteParams & {
+	async function setToken({
+		themeId,
+		token,
+		value,
+		originConnectionId,
+		graphicsAssets,
+	}: TokenWriteParams & {
 		value: unknown;
 		graphicsAssets: () => Pick<GraphicsAssetLibrary, 'inspectGraphicAssetRevisions'>;
 	}): Promise<ThemeResponse> {
@@ -104,22 +119,24 @@ export function themeLibraryModule() {
 			});
 		}
 		// A Mode Token or a former token: accepted, with nothing to store, version or announce.
-		if (write.dropped)
-			return await get(themeId);
-		const references = themeTokenValueGraphicAssetReferences(themeTokenDefinition(token)!.definition.type, write.value, token);
+		if (write.dropped) return await get(themeId);
+		const references = themeTokenValueGraphicAssetReferences(
+			themeTokenDefinition(token)!.definition.type,
+			write.value,
+			token,
+		);
 		if (references.length > 0)
 			await assertGraphicsTemplateReferencesSelectable(graphicsAssets(), references, 'Theme');
 		let written: DbTheme | undefined;
 		try {
 			written = await themes.setToken(themeId, token, write.value, references);
-		}
-		catch (error) {
-			if (!(error instanceof ThemeAssetReferenceConflict))
-				throw error;
+		} catch (error) {
+			if (!(error instanceof ThemeAssetReferenceConflict)) throw error;
 			throw createError({
 				statusCode: 409,
 				statusMessage: 'Conflict',
-				message: 'A Graphic Asset Revision this value names stopped being selectable while it was being saved. Choose another, or restore the asset.',
+				message:
+					'A Graphic Asset Revision this value names stopped being selectable while it was being saved. Choose another, or restore the asset.',
 			});
 		}
 		const theme = written ?? themeNotFound();
@@ -133,10 +150,13 @@ export function themeLibraryModule() {
 	 * Mode Token stored before a Theme held Foundation Tokens only releases its
 	 * Graphic Asset References here.
 	 */
-	async function clearToken({ themeId, token, originConnectionId }: TokenWriteParams): Promise<ThemeResponse> {
-		const { theme, cleared } = await themes.clearToken(themeId, token) ?? themeNotFound();
-		if (cleared)
-			await announce(theme, originConnectionId);
+	async function clearToken({
+		themeId,
+		token,
+		originConnectionId,
+	}: TokenWriteParams): Promise<ThemeResponse> {
+		const { theme, cleared } = (await themes.clearToken(themeId, token)) ?? themeNotFound();
+		if (cleared) await announce(theme, originConnectionId);
 		return mapThemeToResponse(theme);
 	}
 

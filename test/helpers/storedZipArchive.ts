@@ -9,10 +9,10 @@ import { crc32 } from 'node:zlib';
  * pass unnoticed.
  */
 
-const LOCAL_HEADER_SIGNATURE = 0x04034B50;
-const CENTRAL_HEADER_SIGNATURE = 0x02014B50;
-const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054B50;
-const DATA_DESCRIPTOR_SIGNATURE = 0x08074B50;
+const LOCAL_HEADER_SIGNATURE = 0x04034b50;
+const CENTRAL_HEADER_SIGNATURE = 0x02014b50;
+const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
+const DATA_DESCRIPTOR_SIGNATURE = 0x08074b50;
 
 export interface StoredZipArchiveEntry {
 	name: string;
@@ -40,8 +40,7 @@ function view(bytes: Uint8Array) {
 function endOfCentralDirectoryOffset(bytes: Uint8Array): number {
 	const data = view(bytes);
 	for (let offset = bytes.byteLength - 22; offset >= 0; offset -= 1) {
-		if (data.getUint32(offset, true) === END_OF_CENTRAL_DIRECTORY_SIGNATURE)
-			return offset;
+		if (data.getUint32(offset, true) === END_OF_CENTRAL_DIRECTORY_SIGNATURE) return offset;
 	}
 	throw new Error('Archive has no end-of-central-directory record');
 }
@@ -69,29 +68,28 @@ export function readStoredZipArchive(bytes: Uint8Array): StoredZipArchive {
 		const extraLength = data.getUint16(cursor + 30, true);
 		const commentLength = data.getUint16(cursor + 32, true);
 		const localHeaderOffset = data.getUint32(cursor + 42, true);
-		const name = Buffer.from(bytes.subarray(cursor + 46, cursor + 46 + nameLength)).toString('utf8');
+		const name = Buffer.from(bytes.subarray(cursor + 46, cursor + 46 + nameLength)).toString(
+			'utf8',
+		);
 		cursor += 46 + nameLength + extraLength + commentLength;
 
-		if (compressionMethod !== 0)
-			throw new Error(`Entry ${name} is not stored uncompressed`);
+		if (compressionMethod !== 0) throw new Error(`Entry ${name} is not stored uncompressed`);
 		if (compressedSize !== uncompressedSize)
 			throw new Error(`Entry ${name} has mismatched stored sizes`);
 		if (data.getUint32(localHeaderOffset, true) !== LOCAL_HEADER_SIGNATURE)
 			throw new Error(`Entry ${name} has no local header signature`);
 		const localNameLength = data.getUint16(localHeaderOffset + 26, true);
 		const localExtraLength = data.getUint16(localHeaderOffset + 28, true);
-		const localName = Buffer.from(bytes.subarray(
-			localHeaderOffset + 30,
-			localHeaderOffset + 30 + localNameLength,
-		)).toString('utf8');
+		const localName = Buffer.from(
+			bytes.subarray(localHeaderOffset + 30, localHeaderOffset + 30 + localNameLength),
+		).toString('utf8');
 		if (localName !== name)
 			throw new Error(`Entry ${name} disagrees with its local header name ${localName}`);
 
 		const dataOffset = localHeaderOffset + 30 + localNameLength + localExtraLength;
 		const entryBytes = bytes.slice(dataOffset, dataOffset + compressedSize);
 		const observedCrc = crc32(Buffer.from(entryBytes));
-		if (observedCrc !== expectedCrc)
-			throw new Error(`Entry ${name} fails its recorded CRC-32`);
+		if (observedCrc !== expectedCrc) throw new Error(`Entry ${name} fails its recorded CRC-32`);
 
 		let dataDescriptor: StoredZipArchiveEntry['dataDescriptor'];
 		if ((generalPurposeFlags & 0x08) !== 0) {
@@ -103,7 +101,10 @@ export function readStoredZipArchive(bytes: Uint8Array): StoredZipArchive {
 				compressedSize: data.getUint32(descriptorOffset + 8, true),
 				uncompressedSize: data.getUint32(descriptorOffset + 12, true),
 			};
-			if (dataDescriptor.crc32 !== expectedCrc || dataDescriptor.uncompressedSize !== uncompressedSize)
+			if (
+				dataDescriptor.crc32 !== expectedCrc ||
+				dataDescriptor.uncompressedSize !== uncompressedSize
+			)
 				throw new Error(`Entry ${name} disagrees with its data descriptor`);
 		}
 
@@ -118,30 +119,31 @@ export function readStoredZipArchive(bytes: Uint8Array): StoredZipArchive {
 	}
 
 	function entry(name: string) {
-		const found = entries.find(item => item.name === name);
-		if (!found)
-			throw new Error(`Archive has no entry named ${name}`);
+		const found = entries.find((item) => item.name === name);
+		if (!found) throw new Error(`Archive has no entry named ${name}`);
 		return found;
 	}
 
 	return {
 		entries,
-		entryNames: entries.map(item => item.name),
+		entryNames: entries.map((item) => item.name),
 		byteLength: bytes.byteLength,
 		entry,
 		text: (name: string) => Buffer.from(entry(name).bytes).toString('utf8'),
-		json: <T = unknown>(name: string) => JSON.parse(Buffer.from(entry(name).bytes).toString('utf8')) as T,
+		json: <T = unknown>(name: string) =>
+			JSON.parse(Buffer.from(entry(name).bytes).toString('utf8')) as T,
 	};
 }
 
-export async function collectStream(stream: ReadableStream<Uint8Array>): Promise<Uint8Array<ArrayBuffer>> {
+export async function collectStream(
+	stream: ReadableStream<Uint8Array>,
+): Promise<Uint8Array<ArrayBuffer>> {
 	const chunks: Uint8Array[] = [];
 	let byteLength = 0;
 	const reader = stream.getReader();
 	for (;;) {
 		const { done, value } = await reader.read();
-		if (done)
-			break;
+		if (done) break;
 		chunks.push(value);
 		byteLength += value.byteLength;
 	}

@@ -1,8 +1,17 @@
 import type { SocialProfileProjectionValue } from '~~/shared/types/graphics';
-import type { ScreenOutputTalent, ScreenOutputTalentResponse } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputTalent,
+	ScreenOutputTalentResponse,
+} from '~~/shared/types/screenOutputReads';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
-import { msUntilNextTalentScreenProfile, projectTalentScreenSocialProfile } from '~~/shared/modules/talent-screen';
-import { TALENT_SCREEN_AUTO_HEADER_TEXT, talentScreenTalentIds } from '~~/shared/screenModeConfigs/talent';
+import {
+	msUntilNextTalentScreenProfile,
+	projectTalentScreenSocialProfile,
+} from '~~/shared/modules/talent-screen';
+import {
+	TALENT_SCREEN_AUTO_HEADER_TEXT,
+	talentScreenTalentIds,
+} from '~~/shared/screenModeConfigs/talent';
 import { useScreenModeFreshness } from '~/modules/screen-mode/freshness';
 import { useScreenModeHearing } from '~/modules/screen-mode/hearing';
 
@@ -17,19 +26,23 @@ export interface ShownTalent extends ScreenOutputTalent {
  * while not rotating or while server time is unknown, which shows the first profile.
  */
 function useRotationInstant(rotating: () => boolean, dwellMs: () => number) {
-	return useClockProjection<number | undefined>(serverTime => rotating()
-		? {
-				value: serverTime,
-				nextChangeInMs: msUntilNextTalentScreenProfile({
-					dwellMs: dwellMs(),
-					now: serverTime,
-				}),
-			}
-		: { value: undefined, nextChangeInMs: null }, {
-		whileServerTimeUnknown: {
-			show: () => undefined,
+	return useClockProjection<number | undefined>(
+		(serverTime) =>
+			rotating()
+				? {
+						value: serverTime,
+						nextChangeInMs: msUntilNextTalentScreenProfile({
+							dwellMs: dwellMs(),
+							now: serverTime,
+						}),
+					}
+				: { value: undefined, nextChangeInMs: null },
+		{
+			whileServerTimeUnknown: {
+				show: () => undefined,
+			},
 		},
-	});
+	);
 }
 
 /**
@@ -45,8 +58,7 @@ export function useTalentModeData(context: ScreenContext) {
 		hearing: useScreenModeHearing(context, 'talent', () => config.value),
 		source: () => {
 			const ids = shownIds.value;
-			if (!outputReads.scopeKey.value || ids.length === 0)
-				return null;
+			if (!outputReads.scopeKey.value || ids.length === 0) return null;
 			// What the server derives the answer from: the Talents, and what it shows of each.
 			return [
 				outputReads.scopeKey.value,
@@ -65,21 +77,25 @@ export function useTalentModeData(context: ScreenContext) {
 		() => config.value.socialProfileDwellMs,
 	);
 
-	const talents = computed<ShownTalent[]>(() => freshness.data.value.talents.map(talent => ({
-		...talent,
-		shownProfiles: config.value.rotateSocialProfiles
-			? [
-					projectTalentScreenSocialProfile(talent.socialProfiles, {
-						dwellMs: config.value.socialProfileDwellMs,
-						now: rotationInstant.value,
-					}),
-				].filter(shown => shown !== undefined)
-			: talent.socialProfiles,
-	})));
+	const talents = computed<ShownTalent[]>(() =>
+		freshness.data.value.talents.map((talent) => ({
+			...talent,
+			shownProfiles: config.value.rotateSocialProfiles
+				? [
+						projectTalentScreenSocialProfile(talent.socialProfiles, {
+							dwellMs: config.value.socialProfileDwellMs,
+							now: rotationInstant.value,
+						}),
+					].filter((shown) => shown !== undefined)
+				: talent.socialProfiles,
+		})),
+	);
 
 	const headerText = computed(() => config.value.headerText || TALENT_SCREEN_AUTO_HEADER_TEXT);
 	/** Nothing is selected, or every Talent selected is gone. */
-	const isEmpty = computed(() => shownIds.value.length === 0 || (freshness.answered.value && talents.value.length === 0));
+	const isEmpty = computed(
+		() => shownIds.value.length === 0 || (freshness.answered.value && talents.value.length === 0),
+	);
 
 	return {
 		/** Rendering Readiness: its first read has answered or failed. */

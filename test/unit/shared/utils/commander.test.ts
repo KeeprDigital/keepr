@@ -12,45 +12,32 @@ function commander(name: string, colorIdentity: string): Commander {
 	};
 }
 
-describe('a Seat\'s deck, from its Commanders', () => {
+describe("a Seat's deck, from its Commanders", () => {
 	// The deck is the Commanders' names; its colours are their colour identity, each once, in WUBRG order.
 	it.each([
 		{
 			held: 'one Commander',
-			commanders: [
-				commander('Atraxa', 'WUBG'),
-			],
+			commanders: [commander('Atraxa', 'WUBG')],
 			deck: { deckName: 'Atraxa', deckColors: 'WUBG' },
 		},
 		{
 			held: 'a pair, in WUBRG order whatever order they are held in',
-			commanders: [
-				commander('Kraum', 'UR'),
-				commander('Tymna', 'WB'),
-			],
+			commanders: [commander('Kraum', 'UR'), commander('Tymna', 'WB')],
 			deck: { deckName: 'Kraum / Tymna', deckColors: 'WUBR' },
 		},
 		{
 			held: 'a pair sharing colours',
-			commanders: [
-				commander('Atraxa', 'WUBG'),
-				commander('Tymna', 'WB'),
-			],
+			commanders: [commander('Atraxa', 'WUBG'), commander('Tymna', 'WB')],
 			deck: { deckName: 'Atraxa / Tymna', deckColors: 'WUBG' },
 		},
 		{
 			held: 'a colourless Commander',
-			commanders: [
-				commander('Kozilek', ''),
-			],
+			commanders: [commander('Kozilek', '')],
 			deck: { deckName: 'Kozilek', deckColors: 'C' },
 		},
 		{
 			held: 'a colourless Commander beside a coloured one',
-			commanders: [
-				commander('Kozilek', ''),
-				commander('Krenko', 'R'),
-			],
+			commanders: [commander('Kozilek', ''), commander('Krenko', 'R')],
 			deck: { deckName: 'Kozilek / Krenko', deckColors: 'R' },
 		},
 		{
@@ -69,14 +56,14 @@ describe('a Commander picked from a Scryfall card', () => {
 			card: 'a single-faced card',
 			scryfall: {
 				id: 'a1',
-				name: 'Atraxa, Praetors\' Voice',
+				name: "Atraxa, Praetors' Voice",
 				color_identity: ['B', 'G', 'U', 'W'],
 				set: 'cm2',
 				collector_number: '10',
 			},
 			picked: {
 				scryfallId: 'a1',
-				name: 'Atraxa, Praetors\' Voice',
+				name: "Atraxa, Praetors' Voice",
 				colorIdentity: 'WUBG',
 				setCode: 'cm2',
 				collectorNumber: '10',

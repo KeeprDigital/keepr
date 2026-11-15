@@ -72,9 +72,8 @@ describe('media Graphic Item exact references', () => {
 
 	it('indexes an exact silent-video revision from a Graphic Group child', () => {
 		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
-		const group = config.layout.composition.items.find(item => item.type === 'group');
-		if (group?.type !== 'group')
-			throw new Error('Expected a Graphic Group fixture');
+		const group = config.layout.composition.items.find((item) => item.type === 'group');
+		if (group?.type !== 'group') throw new Error('Expected a Graphic Group fixture');
 		config.layout.composition = {
 			...config.layout.composition,
 			items: [

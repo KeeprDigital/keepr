@@ -31,11 +31,10 @@ export default defineEventHandler(async (event): Promise<GraphicsOperationsCockp
 		return await withActorNames(
 			cockpit,
 			cockpit.outcome === 'complete'
-				? cockpit.ingestion.operations.map(operation => operation.initiatedBy)
+				? cockpit.ingestion.operations.map((operation) => operation.initiatedBy)
 				: [],
 		);
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

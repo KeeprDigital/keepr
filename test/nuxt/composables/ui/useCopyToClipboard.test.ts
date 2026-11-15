@@ -17,9 +17,7 @@ const execCommand = vi.fn<(command: string) => boolean>();
 
 function stubClipboardApi(present: boolean) {
 	Object.defineProperty(navigator, 'clipboard', {
-		value: present
-			? { writeText }
-			: undefined,
+		value: present ? { writeText } : undefined,
 		configurable: true,
 		writable: true,
 	});
@@ -120,15 +118,19 @@ describe('useCopyToClipboard', () => {
 		});
 		const { copyToClipboard } = useCopyToClipboard();
 
-		await expect(copyToClipboard('https://example.test/screen', {
-			successTitle: 'URL Copied',
-		})).resolves.toBe(false);
+		await expect(
+			copyToClipboard('https://example.test/screen', {
+				successTitle: 'URL Copied',
+			}),
+		).resolves.toBe(false);
 
 		expect(mocks.toast.add).toHaveBeenCalledTimes(1);
-		expect(mocks.toast.add).toHaveBeenCalledWith(expect.objectContaining({
-			title: 'Copy failed',
-			color: 'error',
-		}));
+		expect(mocks.toast.add).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Copy failed',
+				color: 'error',
+			}),
+		);
 	});
 
 	it('leaves no textarea behind, whether the legacy write succeeded or failed', async () => {

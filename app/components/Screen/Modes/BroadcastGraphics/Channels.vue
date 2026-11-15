@@ -40,14 +40,14 @@ const emit = defineEmits<{
 	 * except that deleting a Graphic Channel carries both, because releasing its members
 	 * must never be a second write.
 	 */
-	'update:channels': [next: { channels?: GraphicChannelConfig[]; graphics?: BroadcastGraphicConfig[] }];
+	'update:channels': [
+		next: { channels?: GraphicChannelConfig[]; graphics?: BroadcastGraphicConfig[] },
+	];
 }>();
 
-const POLICY_OPTIONS = GRAPHIC_CHANNEL_HANDOFF_POLICY_VALUES.map(value => ({
+const POLICY_OPTIONS = GRAPHIC_CHANNEL_HANDOFF_POLICY_VALUES.map((value) => ({
 	value,
-	label: value === 'overlap'
-		? 'Overlap'
-		: 'Out then in',
+	label: value === 'overlap' ? 'Overlap' : 'Out then in',
 })) satisfies Array<{ value: GraphicChannelHandoffPolicy; label: string }>;
 
 const canAuthor = computed(() => props.writable === true);
@@ -59,14 +59,16 @@ const canAuthor = computed(() => props.writable === true);
  * decides membership and the decision is per graphic. The Live workspace groups; this
  * assigns.
  */
-const memberships = computed(() => props.graphics.map(graphic => ({
-	graphic,
-	// A channel the Screen no longer declares reads as no channel, exactly as it
-	// resolves everywhere else, so the picker offers the author the real answer.
-	channelId: props.channels.some(channel => channel.id === graphic.channelId)
-		? graphic.channelId ?? null
-		: null,
-})));
+const memberships = computed(() =>
+	props.graphics.map((graphic) => ({
+		graphic,
+		// A channel the Screen no longer declares reads as no channel, exactly as it
+		// resolves everywhere else, so the picker offers the author the real answer.
+		channelId: props.channels.some((channel) => channel.id === graphic.channelId)
+			? (graphic.channelId ?? null)
+			: null,
+	})),
+);
 
 /**
  * The closed section in one line: how many lanes, and how many of the Screen's
@@ -75,22 +77,20 @@ const memberships = computed(() => props.graphics.map(graphic => ({
  */
 const summary = computed(() => {
 	const lanes = props.channels.length;
-	if (lanes === 0)
-		return 'None';
-	const assigned = memberships.value.filter(entry => entry.channelId !== null).length;
-	return `${lanes} ${lanes === 1
-		? 'channel'
-		: 'channels'} · ${assigned} of ${props.graphics.length} graphics assigned`;
+	if (lanes === 0) return 'None';
+	const assigned = memberships.value.filter((entry) => entry.channelId !== null).length;
+	return `${lanes} ${
+		lanes === 1 ? 'channel' : 'channels'
+	} · ${assigned} of ${props.graphics.length} graphics assigned`;
 });
 
 const channelOptions = computed(() => [
 	{ value: null, label: 'No Graphic Channel' },
-	...props.channels.map(channel => ({ value: channel.id, label: channel.name })),
+	...props.channels.map((channel) => ({ value: channel.id, label: channel.name })),
 ]);
 
 function write(next: { channels?: GraphicChannelConfig[]; graphics?: BroadcastGraphicConfig[] }) {
-	if (!canAuthor.value)
-		return;
+	if (!canAuthor.value) return;
 	emit('update:channels', next);
 }
 
@@ -111,17 +111,17 @@ function addChannel() {
 
 function renameChannel(channelId: string, name: string) {
 	write({
-		channels: props.channels.map(channel => (channel.id === channelId
-			? { ...channel, name }
-			: channel)),
+		channels: props.channels.map((channel) =>
+			channel.id === channelId ? { ...channel, name } : channel,
+		),
 	});
 }
 
 function setPolicy(channelId: string, handoff: GraphicChannelHandoffPolicy) {
 	write({
-		channels: props.channels.map(channel => (channel.id === channelId
-			? { ...channel, handoff }
-			: channel)),
+		channels: props.channels.map((channel) =>
+			channel.id === channelId ? { ...channel, handoff } : channel,
+		),
 	});
 }
 
@@ -133,21 +133,18 @@ function released(graphic: BroadcastGraphicConfig): BroadcastGraphicConfig {
 
 function removeChannel(channelId: string) {
 	write({
-		channels: props.channels.filter(channel => channel.id !== channelId),
-		graphics: props.graphics.map(graphic => (graphic.channelId === channelId
-			? released(graphic)
-			: graphic)),
+		channels: props.channels.filter((channel) => channel.id !== channelId),
+		graphics: props.graphics.map((graphic) =>
+			graphic.channelId === channelId ? released(graphic) : graphic,
+		),
 	});
 }
 
 function setMembership(graphicId: string, channelId: string | null) {
 	write({
 		graphics: props.graphics.map((graphic) => {
-			if (graphic.id !== graphicId)
-				return graphic;
-			return channelId === null
-				? released(graphic)
-				: { ...graphic, channelId };
+			if (graphic.id !== graphicId) return graphic;
+			return channelId === null ? released(graphic) : { ...graphic, channelId };
 		}),
 	});
 }
@@ -162,8 +159,8 @@ function setMembership(graphicId: string, channelId: string | null) {
 		data-testid="graphic-channels"
 	>
 		<ScreenSettingsHint>
-			A Graphic Channel keeps at most one of its Broadcast Graphics on air. Graphics in
-			different channels, or in none, run concurrently.
+			A Graphic Channel keeps at most one of its Broadcast Graphics on air. Graphics in different
+			channels, or in none, run concurrently.
 		</ScreenSettingsHint>
 
 		<UButton
@@ -220,9 +217,7 @@ function setMembership(graphicId: string, channelId: string | null) {
 		</div>
 
 		<div v-if="channels.length > 0 && graphics.length > 0" class="space-y-1.5">
-			<p class="text-xs font-medium">
-				Membership
-			</p>
+			<p class="text-xs font-medium">Membership</p>
 			<div
 				v-for="entry in memberships"
 				:key="entry.graphic.id"

@@ -51,10 +51,15 @@ export function payloadFor(
 	after: unknown,
 	commandType: Parameters<typeof mapBroadcastGraphicsCommandResult>[1] = 'Take',
 ) {
-	return broadcastGraphicsCommandAppliedPayload(mapBroadcastGraphicsCommandResult(row(after), commandType), before);
+	return broadcastGraphicsCommandAppliedPayload(
+		mapBroadcastGraphicsCommandResult(row(after), commandType),
+		before,
+	);
 }
 
-export function messageBytes(payload: ReturnType<typeof broadcastGraphicsCommandAppliedPayload>): number {
+export function messageBytes(
+	payload: ReturnType<typeof broadcastGraphicsCommandAppliedPayload>,
+): number {
 	return realtimeMessageBytes(3, 'broadcastGraphicsLiveSession:commandApplied', payload);
 }
 
@@ -70,11 +75,13 @@ export function wholeStateBytes(state: BroadcastGraphicsLiveState): number {
 }
 
 export function inputKeys(count: number): string[] {
-	return Array.from({ length: count }, (_, index) => `${index}`.padStart(MAX_GRAPHIC_INPUT_KEY_LENGTH, 'k'));
+	return Array.from({ length: count }, (_, index) =>
+		`${index}`.padStart(MAX_GRAPHIC_INPUT_KEY_LENGTH, 'k'),
+	);
 }
 
 export function declarations(keys: string[]): GraphicInputDeclaration[] {
-	return keys.map(key => ({
+	return keys.map((key) => ({
 		key,
 		label: key,
 		type: 'text',
@@ -99,13 +106,8 @@ function spread(total: number, carriers: number, perGraphic: number): number[] {
 	if (carriers * perGraphic < total)
 		throw new Error(`${carriers} Broadcast Graphics cannot carry ${total} at ${perGraphic} each`);
 
-	return Array.from(
-		{ length: MAX_BROADCAST_GRAPHICS_PER_SCREEN },
-		(_, index) => index >= carriers
-			? 0
-			: Math.floor(total / carriers) + (index < total % carriers
-				? 1
-				: 0),
+	return Array.from({ length: MAX_BROADCAST_GRAPHICS_PER_SCREEN }, (_, index) =>
+		index >= carriers ? 0 : Math.floor(total / carriers) + (index < total % carriers ? 1 : 0),
 	);
 }
 
@@ -115,10 +117,23 @@ function spread(total: number, carriers: number, perGraphic: number): number[] {
  * Input bound, accepted, updated twice with one update in flight, then given a
  * maximal override and working value.
  */
-export function liveStateAtCaps(inputCarriers: number, sourceCarriers: number): BroadcastGraphicsLiveState {
-	const ids = Array.from({ length: MAX_BROADCAST_GRAPHICS_PER_SCREEN }, (_, index) => `${index}`.padStart(GRAPHIC_ID_LENGTH, 'g'));
-	const inputCounts = spread(MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN, inputCarriers, MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC);
-	const sourceCounts = spread(MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN, sourceCarriers, MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC);
+export function liveStateAtCaps(
+	inputCarriers: number,
+	sourceCarriers: number,
+): BroadcastGraphicsLiveState {
+	const ids = Array.from({ length: MAX_BROADCAST_GRAPHICS_PER_SCREEN }, (_, index) =>
+		`${index}`.padStart(GRAPHIC_ID_LENGTH, 'g'),
+	);
+	const inputCounts = spread(
+		MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN,
+		inputCarriers,
+		MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC,
+	);
+	const sourceCounts = spread(
+		MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN,
+		sourceCarriers,
+		MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC,
+	);
 	const authored = 'a'.repeat(MAX_GRAPHIC_TEXT_LENGTH);
 	const wire = 'w'.repeat(MAX_GRAPHIC_INPUT_VALUE_LENGTH);
 	let state = createInitialBroadcastGraphicsLiveState();
@@ -129,66 +144,99 @@ export function liveStateAtCaps(inputCarriers: number, sourceCarriers: number): 
 		let resolved = `1${authored.slice(1)}`;
 		const context = {
 			inputs: declarations(keys),
-			sources: sourceKeys.map(key => ({ key, label: key, kind: 'player' as const })),
-			bindings: keys.map(key => ({ inputKey: key, sourceKey: sourceKeys[0]!, fieldId: 'name' })),
-			resolveBindings: () => Object.fromEntries(keys.map(key => [key, resolved])),
+			sources: sourceKeys.map((key) => ({ key, label: key, kind: 'player' as const })),
+			bindings: keys.map((key) => ({ inputKey: key, sourceKey: sourceKeys[0]!, fieldId: 'name' })),
+			resolveBindings: () => Object.fromEntries(keys.map((key) => [key, resolved])),
 			durations: { enter: 0, update: 10_000, exit: 500 },
 		} satisfies Omit<BroadcastGraphicsReductionContext, 'acceptedAt'>;
 
 		for (const sourceKey of sourceKeys.slice(0, sourceCounts[index]!)) {
-			state = reduce(state, {
-				type: 'Select Source',
-				payload: { graphicId, sourceKey, selectionId: 999_999 },
-			}, context, 900);
+			state = reduce(
+				state,
+				{
+					type: 'Select Source',
+					payload: { graphicId, sourceKey, selectionId: 999_999 },
+				},
+				context,
+				900,
+			);
 		}
 
-		state = reduce(state, {
-			type: 'Take',
-			payload: { graphicId },
-		}, context, 1_000);
+		state = reduce(
+			state,
+			{
+				type: 'Take',
+				payload: { graphicId },
+			},
+			context,
+			1_000,
+		);
 		resolved = `2${authored.slice(1)}`;
-		state = reduce(state, {
-			type: 'Update Graphic',
-			payload: { graphicId, basedOnAcceptedRevision: 1 },
-		}, context, 1_100);
+		state = reduce(
+			state,
+			{
+				type: 'Update Graphic',
+				payload: { graphicId, basedOnAcceptedRevision: 1 },
+			},
+			context,
+			1_100,
+		);
 		resolved = `3${authored.slice(1)}`;
-		state = reduce(state, {
-			type: 'Update Graphic',
-			payload: { graphicId, basedOnAcceptedRevision: 2 },
-		}, context, 1_200);
+		state = reduce(
+			state,
+			{
+				type: 'Update Graphic',
+				payload: { graphicId, basedOnAcceptedRevision: 2 },
+			},
+			context,
+			1_200,
+		);
 
 		for (const key of keys) {
-			state = reduce(state, {
-				type: 'Set Override',
-				payload: { graphicId, inputKey: key, value: wire },
-			}, context, 1_300);
-			state = reduce(state, {
-				type: 'Set Input',
-				payload: { graphicId, inputKey: key, value: wire },
-			}, context, 1_300);
+			state = reduce(
+				state,
+				{
+					type: 'Set Override',
+					payload: { graphicId, inputKey: key, value: wire },
+				},
+				context,
+				1_300,
+			);
+			state = reduce(
+				state,
+				{
+					type: 'Set Input',
+					payload: { graphicId, inputKey: key, value: wire },
+				},
+				context,
+				1_300,
+			);
 		}
 	});
 
 	// The three optional schedule fields no single command writes together.
 	return {
 		...state,
-		playout: Object.fromEntries(Object.entries(state.playout).map(([graphicId, record]) => [
-			graphicId,
-			{
-				...record,
-				cut: true,
-				reversalCompletesAt: 1_999_999_999_999,
-				updateStartedAt: 1_999_999_999_999,
-				cyclingStartedAt: 1_999_999_999_999,
-			},
-		])),
+		playout: Object.fromEntries(
+			Object.entries(state.playout).map(([graphicId, record]) => [
+				graphicId,
+				{
+					...record,
+					cut: true,
+					reversalCompletesAt: 1_999_999_999_999,
+					updateStartedAt: 1_999_999_999_999,
+					cyclingStartedAt: 1_999_999_999_999,
+				},
+			]),
+		),
 	};
 }
 
 /** The Broadcast Graphic carrying the most Graphic Inputs. */
 export function richestGraphicId(state: BroadcastGraphicsLiveState): string {
-	return Object.entries(state.inputs)
-		.sort(([, a], [, b]) => Object.keys(b.working).length - Object.keys(a.working).length)[0]![0];
+	return Object.entries(state.inputs).sort(
+		([, a], [, b]) => Object.keys(b.working).length - Object.keys(a.working).length,
+	)[0]![0];
 }
 
 /**
@@ -201,53 +249,78 @@ export function fullyFilledState(count: number, padding: readonly number[] = [])
 	const paddingKeys = inputKeys(count + padding.length).slice(count);
 	let resolved = '1'.repeat(MAX_GRAPHIC_TEXT_LENGTH);
 	const context = (): Omit<BroadcastGraphicsReductionContext, 'acceptedAt'> => ({
-		inputs: declarations([
-			...keys,
-			...paddingKeys,
-		]),
-		sources: [
-			{ key: keys[0]!, label: keys[0]!, kind: 'player' as const },
-		],
-		bindings: keys.map(key => ({ inputKey: key, sourceKey: keys[0]!, fieldId: 'name' })),
-		resolveBindings: () => Object.fromEntries(keys.map(key => [key, resolved])),
+		inputs: declarations([...keys, ...paddingKeys]),
+		sources: [{ key: keys[0]!, label: keys[0]!, kind: 'player' as const }],
+		bindings: keys.map((key) => ({ inputKey: key, sourceKey: keys[0]!, fieldId: 'name' })),
+		resolveBindings: () => Object.fromEntries(keys.map((key) => [key, resolved])),
 		durations: { enter: 0, update: 10_000, exit: 500 },
 	});
 	const wire = 'w'.repeat(MAX_GRAPHIC_INPUT_VALUE_LENGTH);
 
 	let state = createInitialBroadcastGraphicsLiveState();
-	state = reduce(state, {
-		type: 'Take',
-		payload: { graphicId },
-	}, context(), 1_000);
+	state = reduce(
+		state,
+		{
+			type: 'Take',
+			payload: { graphicId },
+		},
+		context(),
+		1_000,
+	);
 	resolved = '2'.repeat(MAX_GRAPHIC_TEXT_LENGTH);
-	state = reduce(state, {
-		type: 'Update Graphic',
-		payload: { graphicId, basedOnAcceptedRevision: 1 },
-	}, context(), 1_100);
+	state = reduce(
+		state,
+		{
+			type: 'Update Graphic',
+			payload: { graphicId, basedOnAcceptedRevision: 1 },
+		},
+		context(),
+		1_100,
+	);
 	resolved = '3'.repeat(MAX_GRAPHIC_TEXT_LENGTH);
-	state = reduce(state, {
-		type: 'Update Graphic',
-		payload: { graphicId, basedOnAcceptedRevision: 2 },
-	}, context(), 1_200);
+	state = reduce(
+		state,
+		{
+			type: 'Update Graphic',
+			payload: { graphicId, basedOnAcceptedRevision: 2 },
+		},
+		context(),
+		1_200,
+	);
 	for (const key of keys) {
-		state = reduce(state, {
-			type: 'Set Override',
-			payload: { graphicId, inputKey: key, value: wire },
-		}, context(), 1_300);
-		state = reduce(state, {
-			type: 'Set Input',
-			payload: { graphicId, inputKey: key, value: wire },
-		}, context(), 1_300);
+		state = reduce(
+			state,
+			{
+				type: 'Set Override',
+				payload: { graphicId, inputKey: key, value: wire },
+			},
+			context(),
+			1_300,
+		);
+		state = reduce(
+			state,
+			{
+				type: 'Set Input',
+				payload: { graphicId, inputKey: key, value: wire },
+			},
+			context(),
+			1_300,
+		);
 	}
 	paddingKeys.forEach((key, index) => {
-		state = reduce(state, {
-			type: 'Set Input',
-			payload: {
-				graphicId,
-				inputKey: key,
-				value: 'p'.repeat(padding[index]!),
+		state = reduce(
+			state,
+			{
+				type: 'Set Input',
+				payload: {
+					graphicId,
+					inputKey: key,
+					value: 'p'.repeat(padding[index]!),
+				},
 			},
-		}, context(), 1_350);
+			context(),
+			1_350,
+		);
 	});
 
 	return { graphicId, keys, context, state };
@@ -256,14 +329,19 @@ export function fullyFilledState(count: number, padding: readonly number[] = [])
 /** A maximal edit to the first Graphic Input of a fully-filled Broadcast Graphic, as published. */
 export function editFirstInput(count: number) {
 	const { graphicId, keys, context, state } = fullyFilledState(count);
-	const after = reduce(state, {
-		type: 'Set Input',
-		payload: {
-			graphicId,
-			inputKey: keys[0]!,
-			value: 'x'.repeat(MAX_GRAPHIC_INPUT_VALUE_LENGTH),
+	const after = reduce(
+		state,
+		{
+			type: 'Set Input',
+			payload: {
+				graphicId,
+				inputKey: keys[0]!,
+				value: 'x'.repeat(MAX_GRAPHIC_INPUT_VALUE_LENGTH),
+			},
 		},
-	}, context(), 1_400);
+		context(),
+		1_400,
+	);
 
 	return payloadFor(state, after, 'Set Input');
 }
@@ -272,7 +350,7 @@ export function editFirstInput(count: number) {
 export function realisticShow() {
 	const keys = Array.from({ length: 8 }, (_, index) => `input${index}`);
 	const context = {
-		inputs: keys.map(key => ({
+		inputs: keys.map((key) => ({
 			key,
 			label: key,
 			type: 'text' as const,
@@ -287,33 +365,61 @@ export function realisticShow() {
 	for (let index = 0; index < 6; index++) {
 		const graphicId = `graphic-${index}`;
 		for (const key of keys) {
-			state = reduce(state, {
-				type: 'Set Input',
-				payload: {
-					graphicId,
-					inputKey: key,
-					value: 'v'.repeat(60),
+			state = reduce(
+				state,
+				{
+					type: 'Set Input',
+					payload: {
+						graphicId,
+						inputKey: key,
+						value: 'v'.repeat(60),
+					},
 				},
-			}, context, 1_000);
+				context,
+				1_000,
+			);
 		}
-		state = reduce(state, {
-			type: 'Take',
-			payload: { graphicId },
-		}, context, 1_000);
+		state = reduce(
+			state,
+			{
+				type: 'Take',
+				payload: { graphicId },
+			},
+			context,
+			1_000,
+		);
 	}
 
-	const edit = payloadFor(state, reduce(state, {
-		type: 'Set Input',
-		payload: {
-			graphicId: 'graphic-0',
-			inputKey: keys[0]!,
-			value: 'q'.repeat(60),
-		},
-	}, context, 2_000), 'Set Input');
-	const off = payloadFor(state, reduce(state, {
-		type: 'Out',
-		payload: { graphicId: 'graphic-0' },
-	}, context, 2_000), 'Out');
+	const edit = payloadFor(
+		state,
+		reduce(
+			state,
+			{
+				type: 'Set Input',
+				payload: {
+					graphicId: 'graphic-0',
+					inputKey: keys[0]!,
+					value: 'q'.repeat(60),
+				},
+			},
+			context,
+			2_000,
+		),
+		'Set Input',
+	);
+	const off = payloadFor(
+		state,
+		reduce(
+			state,
+			{
+				type: 'Out',
+				payload: { graphicId: 'graphic-0' },
+			},
+			context,
+			2_000,
+		),
+		'Out',
+	);
 
 	return { state, edit, off };
 }

@@ -33,8 +33,11 @@ defineExpose({ saving });
 
 const layers = computed<BackgroundLayer[]>(() => config.value.backgroundLayers ?? []);
 const placementTokens = computed(() => placeScreenThemeTokens(props.screen.currentMode).placement);
-const holdsSomething = computed(() => layers.value.length > 0
-	|| placementTokens.value.some(name => props.screen.themeOverrides?.[name] !== undefined));
+const holdsSomething = computed(
+	() =>
+		layers.value.length > 0 ||
+		placementTokens.value.some((name) => props.screen.themeOverrides?.[name] !== undefined),
+);
 
 function writeLayers(nextLayers: BackgroundLayer[]) {
 	updateConfig({ backgroundLayers: nextLayers });
@@ -48,15 +51,7 @@ function writeLayers(nextLayers: BackgroundLayer[]) {
 		subtitle="Layers behind this mode's content, and where the content sits in the Event Canvas."
 		:default-open="holdsSomething"
 	>
-		<ScreenBackgroundSource
-			:layers="layers"
-			:event-id="eventId"
-			@update:layers="writeLayers"
-		/>
-		<ScreenThemeTokenRows
-			:event-id="eventId"
-			heading="Placement"
-			:names="placementTokens"
-		/>
+		<ScreenBackgroundSource :layers="layers" :event-id="eventId" @update:layers="writeLayers" />
+		<ScreenThemeTokenRows :event-id="eventId" heading="Placement" :names="placementTokens" />
 	</ScreenSettingsSection>
 </template>

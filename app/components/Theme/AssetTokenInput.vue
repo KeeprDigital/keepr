@@ -19,12 +19,12 @@ const emit = defineEmits<{
 	commit: [value: ThemeAsset | null];
 }>();
 
-const kinds = computed(() => [
-	...(props.assetKinds ?? ['image']),
-]);
-const reference = computed<GraphicAssetReference | undefined>(() => props.modelValue
-	? { assetId: props.modelValue.assetId, revisionId: props.modelValue.revisionId }
-	: undefined);
+const kinds = computed(() => [...(props.assetKinds ?? ['image'])]);
+const reference = computed<GraphicAssetReference | undefined>(() =>
+	props.modelValue
+		? { assetId: props.modelValue.assetId, revisionId: props.modelValue.revisionId }
+		: undefined,
+);
 
 function select(asset: GraphicAsset, selected: GraphicAssetReference) {
 	emit('commit', { kind: asset.kind, assetId: selected.assetId, revisionId: selected.revisionId });
@@ -32,8 +32,7 @@ function select(asset: GraphicAsset, selected: GraphicAssetReference) {
 
 /** Only the picker's Clear arrives here: a choice also fires `select`, which is the commit. */
 function clear(next: GraphicAssetReference | undefined) {
-	if (next === undefined && props.modelValue)
-		emit('commit', null);
+	if (next === undefined && props.modelValue) emit('commit', null);
 }
 </script>
 

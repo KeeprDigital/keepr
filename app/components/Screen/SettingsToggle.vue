@@ -13,15 +13,8 @@ const model = defineModel<boolean | undefined>({ required: true });
 
 <template>
 	<div>
-		<ScreenSettingsField
-			:label="label"
-			:description="description"
-			align="center"
-		>
-			<USwitch
-				:model-value="model ?? true"
-				@update:model-value="model = $event"
-			/>
+		<ScreenSettingsField :label="label" :description="description" align="center">
+			<USwitch :model-value="model ?? true" @update:model-value="model = $event" />
 		</ScreenSettingsField>
 		<div v-if="$slots.default" class="mt-3">
 			<slot />

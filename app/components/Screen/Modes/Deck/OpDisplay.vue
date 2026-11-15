@@ -16,16 +16,8 @@ import { CARD_BADGE_POSITION_CLASSES } from '~/utils/cardBadgePosition';
  * Mainboard's layout block (ADR-0054).
  */
 const context = useScreenContext();
-const {
-	config,
-	displayedDeckListId,
-	playerName,
-	leader,
-	groups,
-	costCurve,
-	error,
-	ready,
-} = useOpDeckModeData(context);
+const { config, displayedDeckListId, playerName, leader, groups, costCurve, error, ready } =
+	useOpDeckModeData(context);
 
 const primaryTextStyle = {
 	color: foundationTokenVar('text-primary'),
@@ -59,16 +51,18 @@ const groupLabelHeight = useLayoutHeight(labelProbe);
 const groupsElement = ref<HTMLElement | null>(null);
 const { width: groupsWidth, height: groupsHeight } = useElementSize(groupsElement);
 
-const solved = computed(() => solveDeckGroups({
-	counts: groups.value.map(group => group.cards.length),
-	width: groupsWidth.value,
-	height: groupsHeight.value,
-	columns: layout.value.columns,
-	maxCardWidth: layout.value.maxCardSize,
-	gap: layout.value.cardGap,
-	labelHeight: groupLabelHeight.value,
-	groupGap: GROUP_GAP,
-}));
+const solved = computed(() =>
+	solveDeckGroups({
+		counts: groups.value.map((group) => group.cards.length),
+		width: groupsWidth.value,
+		height: groupsHeight.value,
+		columns: layout.value.columns,
+		maxCardWidth: layout.value.maxCardSize,
+		gap: layout.value.cardGap,
+		labelHeight: groupLabelHeight.value,
+		groupGap: GROUP_GAP,
+	}),
+);
 const cardWidth = computed(() => `${solved.value.cardWidth}px`);
 const cardGap = computed(() => `${solved.value.gap}px`);
 
@@ -94,14 +88,21 @@ const groupsStyle = computed(() => ({
 
 const showPlayerName = computed(() => config.value.showPlayerName !== false && !!playerName.value);
 const showLeaderName = computed(() => config.value.showDeckName !== false && !!leader.value);
-const showLeaderColors = computed(() => config.value.showDeckColors !== false && !!leader.value?.colors.length);
-const showHeader = computed(() => showPlayerName.value || showLeaderName.value || showLeaderColors.value);
-const showCostCurve = computed(() => config.value.showCostCurve !== false && costCurve.value.length > 0);
+const showLeaderColors = computed(
+	() => config.value.showDeckColors !== false && !!leader.value?.colors.length,
+);
+const showHeader = computed(
+	() => showPlayerName.value || showLeaderName.value || showLeaderColors.value,
+);
+const showCostCurve = computed(
+	() => config.value.showCostCurve !== false && costCurve.value.length > 0,
+);
 
-const costCurveMax = computed(() => Math.max(1, ...costCurve.value.map(bucket => bucket.count)));
+const costCurveMax = computed(() => Math.max(1, ...costCurve.value.map((bucket) => bucket.count)));
 
-const quantityPositionClass = computed(() =>
-	CARD_BADGE_POSITION_CLASSES[config.value.quantityPosition ?? DEFAULT_QUANTITY_POSITION]);
+const quantityPositionClass = computed(
+	() => CARD_BADGE_POSITION_CLASSES[config.value.quantityPosition ?? DEFAULT_QUANTITY_POSITION],
+);
 const quantityBadgeStyle = computed(() => ({
 	fontSize: `${cardBadgeTextSize(config.value.quantityBadgeSize, solved.value.cardWidth, DECK_AUTO_BADGE_RATIOS.quantityBadgeSize)}px`,
 	width: '1.75em',
@@ -121,8 +122,15 @@ const quantityBadgeStyle = computed(() => ({
 			:style="displayStyle"
 		>
 			<transition mode="out-in" name="deck-swap">
-				<div v-if="displayedDeckListId !== null" :key="displayedDeckListId" class="flex flex-col w-full h-full">
-					<div v-if="showHeader" class="shrink-0 mb-4 flex flex-wrap items-center justify-center gap-3 text-center">
+				<div
+					v-if="displayedDeckListId !== null"
+					:key="displayedDeckListId"
+					class="flex flex-col w-full h-full"
+				>
+					<div
+						v-if="showHeader"
+						class="shrink-0 mb-4 flex flex-wrap items-center justify-center gap-3 text-center"
+					>
 						<h2
 							v-if="showPlayerName"
 							data-testid="deck-player-name"
@@ -140,13 +148,20 @@ const quantityBadgeStyle = computed(() => ({
 					<div class="flex flex-1 min-h-0 gap-6">
 						<!-- The Leader fits a fixed share of the Screen. -->
 						<div class="flex flex-col shrink-0 min-h-0 gap-4 w-[28%]">
-							<div v-if="leader" class="op-leader-space flex-1 min-h-0 flex justify-center items-start">
+							<div
+								v-if="leader"
+								class="op-leader-space flex-1 min-h-0 flex justify-center items-start"
+							>
 								<div
 									data-testid="op-deck-leader"
 									:data-number="leader.number"
 									class="op-leader mtg-card"
 								>
-									<img :src="leader.imageUrl" :alt="leader.name" class="w-full h-full object-cover">
+									<img
+										:src="leader.imageUrl"
+										:alt="leader.name"
+										class="w-full h-full object-cover"
+									/>
 								</div>
 							</div>
 
@@ -165,7 +180,9 @@ const quantityBadgeStyle = computed(() => ({
 									:data-count="bucket.count"
 									class="flex flex-col items-center justify-end flex-1 h-full min-w-0"
 								>
-									<span class="text-xs tabular-nums" :style="secondaryTextStyle">{{ bucket.count || '' }}</span>
+									<span class="text-xs tabular-nums" :style="secondaryTextStyle">{{
+										bucket.count || ''
+									}}</span>
 									<div
 										class="w-full rounded-t"
 										:style="{
@@ -173,16 +190,16 @@ const quantityBadgeStyle = computed(() => ({
 											backgroundColor: modeTokenVar('deck', 'meta-pill-accent'),
 										}"
 									/>
-									<span class="text-xs tabular-nums" :style="secondaryTextStyle">{{ bucket.cost }}</span>
+									<span class="text-xs tabular-nums" :style="secondaryTextStyle">{{
+										bucket.cost
+									}}</span>
 								</div>
 							</div>
 						</div>
 
 						<!-- A group heading as the Theme types it, measured for the layout. -->
 						<div ref="labelProbe" aria-hidden="true" class="invisible absolute pointer-events-none">
-							<h3 class="text-lg pb-2" :style="titleStyle">
-								Character
-							</h3>
+							<h3 class="text-lg pb-2" :style="titleStyle">Character</h3>
 						</div>
 
 						<div
@@ -201,7 +218,8 @@ const quantityBadgeStyle = computed(() => ({
 								:style="groupStyle(index)"
 							>
 								<h3 class="text-lg shrink-0 pb-2" :style="titleStyle">
-									{{ group.label }} <span class="tabular-nums" :style="secondaryTextStyle">{{ group.count }}</span>
+									{{ group.label }}
+									<span class="tabular-nums" :style="secondaryTextStyle">{{ group.count }}</span>
 								</h3>
 								<ScreenCardGrid
 									:columns="solved.columns"

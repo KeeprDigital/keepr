@@ -5,7 +5,7 @@ import { jpegPixel, webpPixel } from '~~/test/helpers/graphicsImageFixtures';
 
 function jpegSegment(marker: number, payload: Uint8Array) {
 	const length = payload.byteLength + 2;
-	return Uint8Array.of(0xFF, marker, length >>> 8, length & 0xFF, ...payload);
+	return Uint8Array.of(0xff, marker, length >>> 8, length & 0xff, ...payload);
 }
 
 function insertAfterJpegSignature(bytes: Uint8Array, segment: Uint8Array) {
@@ -52,7 +52,7 @@ function extendedWebp(flags: number) {
 
 function jpegFrameDataOffset(bytes: Uint8Array) {
 	for (let index = 0; index < bytes.byteLength - 1; index++) {
-		if (bytes[index] === 0xFF && (bytes[index + 1] === 0xC0 || bytes[index + 1] === 0xC2))
+		if (bytes[index] === 0xff && (bytes[index + 1] === 0xc0 || bytes[index + 1] === 0xc2))
 			return index + 4;
 	}
 	throw new Error('JPEG fixture does not contain a supported frame marker');
@@ -80,50 +80,56 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 			colorModel: 'rgba',
 			hasAlpha: true,
 		},
-	])('accepts one complete decodable $label frame', async ({
-		bytes,
-		sourceFileName,
-		declaredMime,
-		format,
-		canonicalMime,
-		colorModel,
-		hasAlpha,
-	}) => {
-		const processed = await processStillImage(bytes, {
+	])(
+		'accepts one complete decodable $label frame',
+		async ({
+			bytes,
 			sourceFileName,
 			declaredMime,
-		});
+			format,
+			canonicalMime,
+			colorModel,
+			hasAlpha,
+		}) => {
+			const processed = await processStillImage(bytes, {
+				sourceFileName,
+				declaredMime,
+			});
 
-		expect(processed.report).toEqual({
-			outcome: 'accepted',
-			compatibilityProfile: 'still-image-v1',
-			issues: [],
-			facts: {
-				kind: 'image',
-				format,
-				canonicalMime,
-				byteLength: bytes.byteLength,
-				sha256: digestOf(bytes),
-				width: 1,
-				height: 1,
-				pixelCount: 1,
-				frameCount: 1,
-				bitDepth: 8,
-				colorSpace: 'srgb',
-				colorModel,
-				hasAlpha,
-				orientation: 'normal',
-			},
-		});
-		expect(Array.from(processed.thumbnail.slice(0, 8)))
-			.toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-		await expect(processStillImage(bytes, {
-			sourceFileName,
-			declaredMime,
-		})).resolves.toMatchObject({
-			thumbnail: processed.thumbnail,
-		});
-	});
+			expect(processed.report).toEqual({
+				outcome: 'accepted',
+				compatibilityProfile: 'still-image-v1',
+				issues: [],
+				facts: {
+					kind: 'image',
+					format,
+					canonicalMime,
+					byteLength: bytes.byteLength,
+					sha256: digestOf(bytes),
+					width: 1,
+					height: 1,
+					pixelCount: 1,
+					frameCount: 1,
+					bitDepth: 8,
+					colorSpace: 'srgb',
+					colorModel,
+					hasAlpha,
+					orientation: 'normal',
+				},
+			});
+			expect(Array.from(processed.thumbnail.slice(0, 8))).toEqual([
+				137, 80, 78, 71, 13, 10, 26, 10,
+			]);
+			await expect(
+				processStillImage(bytes, {
+					sourceFileName,
+					declaredMime,
+				}),
+			).resolves.toMatchObject({
+				thumbnail: processed.thumbnail,
+			});
+		},
+	);
 
 	it('rejects JPEG orientation metadata that would silently rotate rendering', async () => {
 		const exifOrientationSix = Uint8Array.of(
@@ -135,7 +141,7 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 			0,
 			0x49,
 			0x49,
-			0x2A,
+			0x2a,
 			0,
 			8,
 			0,
@@ -160,15 +166,14 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 			0,
 			0,
 		);
-		const rotated = insertAfterJpegSignature(
-			jpegPixel,
-			jpegSegment(0xE1, exifOrientationSix),
-		);
+		const rotated = insertAfterJpegSignature(jpegPixel, jpegSegment(0xe1, exifOrientationSix));
 
-		await expect(processStillImage(rotated, {
-			sourceFileName: 'rotated.jpg',
-			declaredMime: 'image/jpeg',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(rotated, {
+				sourceFileName: 'rotated.jpg',
+				declaredMime: 'image/jpeg',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'unsupported-image-orientation' },
 		});
 	});
@@ -176,13 +181,15 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 	it('rejects truncated JPEG EXIF metadata as malformed', async () => {
 		const truncatedExif = insertAfterJpegSignature(
 			jpegPixel,
-			jpegSegment(0xE1, Uint8Array.of(0x45, 0x78, 0x69, 0x66, 0)),
+			jpegSegment(0xe1, Uint8Array.of(0x45, 0x78, 0x69, 0x66, 0)),
 		);
 
-		await expect(processStillImage(truncatedExif, {
-			sourceFileName: 'truncated-exif.jpg',
-			declaredMime: 'image/jpeg',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(truncatedExif, {
+				sourceFileName: 'truncated-exif.jpg',
+				declaredMime: 'image/jpeg',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'malformed-jpeg' },
 		});
 	});
@@ -200,22 +207,20 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 			height: 4097,
 			code: 'image-pixels-exceeded',
 		},
-	])('rejects JPEG $label limits from bounded frame evidence', async ({
-		width,
-		height,
-		code,
-	}) => {
+	])('rejects JPEG $label limits from bounded frame evidence', async ({ width, height, code }) => {
 		const outOfBounds = Uint8Array.from(jpegPixel);
 		const frameOffset = jpegFrameDataOffset(outOfBounds);
 		outOfBounds[frameOffset + 1] = height >>> 8;
-		outOfBounds[frameOffset + 2] = height & 0xFF;
+		outOfBounds[frameOffset + 2] = height & 0xff;
 		outOfBounds[frameOffset + 3] = width >>> 8;
-		outOfBounds[frameOffset + 4] = width & 0xFF;
+		outOfBounds[frameOffset + 4] = width & 0xff;
 
-		await expect(processStillImage(outOfBounds, {
-			sourceFileName: 'out-of-bounds.jpg',
-			declaredMime: 'image/jpeg',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(outOfBounds, {
+				sourceFileName: 'out-of-bounds.jpg',
+				declaredMime: 'image/jpeg',
+			}),
+		).rejects.toMatchObject({
 			issue: { code },
 		});
 	});
@@ -224,10 +229,12 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 		const twelveBit = Uint8Array.from(jpegPixel);
 		twelveBit[jpegFrameDataOffset(twelveBit)] = 12;
 
-		await expect(processStillImage(twelveBit, {
-			sourceFileName: 'twelve-bit.jpg',
-			declaredMime: 'image/jpeg',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(twelveBit, {
+				sourceFileName: 'twelve-bit.jpg',
+				declaredMime: 'image/jpeg',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'unsupported-jpeg-colour' },
 		});
 	});
@@ -235,46 +242,56 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 	it('rejects embedded JPEG colour profiles', async () => {
 		const profiled = insertAfterJpegSignature(
 			jpegPixel,
-			jpegSegment(0xE2, new TextEncoder().encode('ICC_PROFILE\0')),
+			jpegSegment(0xe2, new TextEncoder().encode('ICC_PROFILE\0')),
 		);
 
-		await expect(processStillImage(profiled, {
-			sourceFileName: 'profiled.jpg',
-			declaredMime: 'image/jpeg',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(profiled, {
+				sourceFileName: 'profiled.jpg',
+				declaredMime: 'image/jpeg',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'unsupported-jpeg-profile' },
 		});
 	});
 
 	it('rejects malformed WebP extended-header feature bits', async () => {
-		await expect(processStillImage(extendedWebp(0x01), {
-			sourceFileName: 'reserved.webp',
-			declaredMime: 'image/webp',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(extendedWebp(0x01), {
+				sourceFileName: 'reserved.webp',
+				declaredMime: 'image/webp',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'malformed-webp' },
 		});
 	});
 
 	it('rejects animated WebP feature evidence', async () => {
-		await expect(processStillImage(extendedWebp(0x02), {
-			sourceFileName: 'animated.webp',
-			declaredMime: 'image/webp',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(extendedWebp(0x02), {
+				sourceFileName: 'animated.webp',
+				declaredMime: 'image/webp',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'unsupported-webp-animation' },
 		});
 	});
 
 	it('reconciles WebP extended alpha evidence with the frame payload', async () => {
-		await expect(processStillImage(extendedWebp(0), {
-			sourceFileName: 'missing-alpha-flag.webp',
-			declaredMime: 'image/webp',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(extendedWebp(0), {
+				sourceFileName: 'missing-alpha-flag.webp',
+				declaredMime: 'image/webp',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'malformed-webp' },
 		});
-		await expect(processStillImage(extendedWebp(0x10), {
-			sourceFileName: 'alpha.webp',
-			declaredMime: 'image/webp',
-		})).resolves.toMatchObject({
+		await expect(
+			processStillImage(extendedWebp(0x10), {
+				sourceFileName: 'alpha.webp',
+				declaredMime: 'image/webp',
+			}),
+		).resolves.toMatchObject({
 			report: {
 				outcome: 'accepted',
 				facts: { colorModel: 'rgba', hasAlpha: true },
@@ -286,10 +303,12 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 		const unsupportedVersion = Uint8Array.from(webpPixel);
 		unsupportedVersion[24] = unsupportedVersion[24]! | 0x20;
 
-		await expect(processStillImage(unsupportedVersion, {
-			sourceFileName: 'future.webp',
-			declaredMime: 'image/webp',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(unsupportedVersion, {
+				sourceFileName: 'future.webp',
+				declaredMime: 'image/webp',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'unsupported-webp-profile' },
 		});
 	});
@@ -298,10 +317,12 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 		const reservedHeader = extendedWebp(0);
 		reservedHeader[21] = 1;
 
-		await expect(processStillImage(reservedHeader, {
-			sourceFileName: 'reserved-header.webp',
-			declaredMime: 'image/webp',
-		})).rejects.toMatchObject({
+		await expect(
+			processStillImage(reservedHeader, {
+				sourceFileName: 'reserved-header.webp',
+				declaredMime: 'image/webp',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'malformed-webp' },
 		});
 	});
@@ -323,14 +344,14 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 			},
 			code: 'conflicting-image-mime',
 		},
-	])('rejects a conflicting JPEG $label declaration with a stable code', async ({
-		declarations,
-		code,
-	}) => {
-		await expect(processStillImage(jpegPixel, declarations)).rejects.toMatchObject({
-			issue: { code },
-		});
-	});
+	])(
+		'rejects a conflicting JPEG $label declaration with a stable code',
+		async ({ declarations, code }) => {
+			await expect(processStillImage(jpegPixel, declarations)).rejects.toMatchObject({
+				issue: { code },
+			});
+		},
+	);
 
 	it.each([
 		{
@@ -347,17 +368,17 @@ describe('the still-image-v1 Graphic Asset Compatibility Profile', () => {
 			declaredMime: 'image/webp',
 			code: 'malformed-webp',
 		},
-	])('rejects a partial $label decode with a stable code', async ({
-		bytes,
-		sourceFileName,
-		declaredMime,
-		code,
-	}) => {
-		await expect(processStillImage(bytes.subarray(0, -1), {
-			sourceFileName,
-			declaredMime,
-		})).rejects.toMatchObject({
-			issue: { code },
-		});
-	});
+	])(
+		'rejects a partial $label decode with a stable code',
+		async ({ bytes, sourceFileName, declaredMime, code }) => {
+			await expect(
+				processStillImage(bytes.subarray(0, -1), {
+					sourceFileName,
+					declaredMime,
+				}),
+			).rejects.toMatchObject({
+				issue: { code },
+			});
+		},
+	);
 });

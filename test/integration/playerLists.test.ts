@@ -11,7 +11,11 @@ describe('player lists API', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration PlayerLists Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration PlayerLists Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 
@@ -31,8 +35,7 @@ describe('player lists API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('creates a player list and returns 201', async () => {
@@ -110,7 +113,11 @@ describe('a player list and its members', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration PlayerList Extended', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration PlayerList Extended',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 
@@ -150,8 +157,7 @@ describe('a player list and its members', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	// ── PATCH /player-lists/[listId] ──

@@ -54,7 +54,9 @@ describe('player deck display details', () => {
 			reviewedAt: new Date('2026-07-15T01:00:00.000Z'),
 		};
 
-		expect(resolvePlayerDeckDetails(reviewedDeck, { id: 6, name: 'Wrong', colors: 'U' })).toMatchObject({
+		expect(
+			resolvePlayerDeckDetails(reviewedDeck, { id: 6, name: 'Wrong', colors: 'U' }),
+		).toMatchObject({
 			name: 'Imported Burn',
 			colors: 'R',
 		});

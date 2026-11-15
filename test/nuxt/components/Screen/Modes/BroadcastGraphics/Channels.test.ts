@@ -13,7 +13,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, default: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 
 const UInputStub = defineComponent({
@@ -22,7 +23,8 @@ const UInputStub = defineComponent({
 		disabled: { type: Boolean, default: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)">',
+	template:
+		'<input :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)">',
 });
 
 const USelectStub = defineComponent({
@@ -38,7 +40,8 @@ const USelectStub = defineComponent({
 		disabled: { type: Boolean, default: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<select :value="modelValue ?? \'\'" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value === \'\' ? null : $event.target.value)"><option v-for="item in items" :key="String(item.value)" :value="item.value ?? \'\'">{{ item.label }}</option></select>',
+	template:
+		'<select :value="modelValue ?? \'\'" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.value === \'\' ? null : $event.target.value)"><option v-for="item in items" :key="String(item.value)" :value="item.value ?? \'\'">{{ item.label }}</option></select>',
 });
 
 const lowerThirdA: BroadcastGraphicConfig = { id: 'alpha', name: 'Alpha', items: [] };
@@ -50,11 +53,13 @@ const lowerThirdB: BroadcastGraphicConfig = {
 };
 const thirds: GraphicChannelConfig = { id: 'thirds', name: 'Lower thirds' };
 
-async function mountPanel(props: {
-	graphics?: BroadcastGraphicConfig[];
-	channels?: GraphicChannelConfig[];
-	writable?: boolean;
-} = {}) {
+async function mountPanel(
+	props: {
+		graphics?: BroadcastGraphicConfig[];
+		channels?: GraphicChannelConfig[];
+		writable?: boolean;
+	} = {},
+) {
 	const wrapper = mount(Channels, {
 		props: {
 			graphics: [lowerThirdA, lowerThirdB],
@@ -96,7 +101,10 @@ describe('broadcastGraphicsChannels', () => {
 		const wrapper = await mountPanel();
 
 		expect(
-			(wrapper.get('[data-testid="graphic-channel-policy"]').element as unknown as HTMLSelectElement).value,
+			(
+				wrapper.get('[data-testid="graphic-channel-policy"]')
+					.element as unknown as HTMLSelectElement
+			).value,
 		).toBe('overlap');
 	});
 
@@ -121,10 +129,7 @@ describe('broadcastGraphicsChannels', () => {
 
 		// Membership moves no channel, so the write carries none: it says what changed.
 		expect(written(wrapper)).toEqual({
-			graphics: [
-				{ ...lowerThirdA, channelId: 'thirds' },
-				lowerThirdB,
-			],
+			graphics: [{ ...lowerThirdA, channelId: 'thirds' }, lowerThirdB],
 		});
 	});
 
@@ -147,10 +152,7 @@ describe('broadcastGraphicsChannels', () => {
 
 		expect(written(wrapper)).toEqual({
 			channels: [],
-			graphics: [
-				lowerThirdA,
-				{ id: 'bravo', name: 'Bravo', items: [] },
-			],
+			graphics: [lowerThirdA, { id: 'bravo', name: 'Bravo', items: [] }],
 		});
 	});
 
@@ -158,20 +160,27 @@ describe('broadcastGraphicsChannels', () => {
 		const wrapper = await mountPanel({ writable: false });
 
 		expect(wrapper.get('[data-testid="graphic-channel-add"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="graphic-channel-name"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="graphic-channel-policy"]').attributes('disabled')).toBeDefined();
-		expect(wrapper.get('[data-testid="graphic-channel-remove"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="graphic-channel-name"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="graphic-channel-policy"]').attributes('disabled'),
+		).toBeDefined();
+		expect(
+			wrapper.get('[data-testid="graphic-channel-remove"]').attributes('disabled'),
+		).toBeDefined();
 	});
 
 	it('reads membership of a Graphic Channel the Screen no longer declares as no membership', async () => {
 		const wrapper = await mountPanel({
-			channels: [
-				{ id: 'other', name: 'Other' },
-			],
+			channels: [{ id: 'other', name: 'Other' }],
 		});
 
 		expect(
-			(wrapper.get('[data-graphic-channel-membership="bravo"] select').element as unknown as HTMLSelectElement).value,
+			(
+				wrapper.get('[data-graphic-channel-membership="bravo"] select')
+					.element as unknown as HTMLSelectElement
+			).value,
 		).toBe('');
 	});
 

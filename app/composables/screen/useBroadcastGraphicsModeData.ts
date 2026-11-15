@@ -1,4 +1,8 @@
-import type { BroadcastGraphicConfig, GraphicInputValue, SocialProfileProjectionValues } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicInputValue,
+	SocialProfileProjectionValues,
+} from '~~/shared/types/graphics';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
 import type { LockedGraphicItem } from '~/modules/graphics/editor/layerLocks';
 import type { GraphicsPreviewState } from '~/modules/graphics/previewMessages';
@@ -37,8 +41,8 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	const sessionStore = useBroadcastGraphicsLiveSessionStore();
 	const previewState = ref<GraphicsPreviewState | null>(null);
 
-	const graphics = computed<readonly BroadcastGraphicConfig[]>(() =>
-		previewState.value?.graphics ?? storedConfig.value.graphics ?? [],
+	const graphics = computed<readonly BroadcastGraphicConfig[]>(
+		() => previewState.value?.graphics ?? storedConfig.value.graphics ?? [],
 	);
 
 	/**
@@ -70,8 +74,7 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	 * taken on air, always in the Screen's authored stack order.
 	 */
 	const onAirGraphicIds = computed<readonly string[]>(() => {
-		if (previewState.value)
-			return previewState.value.graphics.map(graphic => graphic.id);
+		if (previewState.value) return previewState.value.graphics.map((graphic) => graphic.id);
 
 		const screenId = screen.value?.id;
 		// Timed, because an exiting Broadcast Graphic is still on program: it leaves the
@@ -103,11 +106,11 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	 * not a preview: it embeds the real Overlay Output, so it shows the background
 	 * the way every other output does.
 	 */
-	const background = computed(() => (
+	const background = computed(() =>
 		isAuthoringPreview.value
 			? null
-			: parseBroadcastGraphicsBackgroundConfig(storedConfig.value.background)
-	));
+			: parseBroadcastGraphicsBackgroundConfig(storedConfig.value.background),
+	);
 
 	/**
 	 * The rendering each composed Broadcast Graphic draws, and the one an update phase
@@ -129,7 +132,9 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 		return sessionStore.renderedInputValues(screenId, graphics.value, liveNow.value);
 	});
 
-	const inputValues = computed<Record<string, Record<string, GraphicInputValue>>>(() => renderedInputs.value.current);
+	const inputValues = computed<Record<string, Record<string, GraphicInputValue>>>(
+		() => renderedInputs.value.current,
+	);
 	const outgoingInputValues = computed(() => renderedInputs.value.outgoing);
 	const renderedSocialProfiles = computed(() => {
 		if (previewState.value) {
@@ -148,18 +153,21 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	);
 	const outgoingSocialProfileValues = computed(() => renderedSocialProfiles.value.outgoing);
 	const renderedSocialProfilePresentations = computed(() => {
-		if (previewState.value)
-			return { current: {}, outgoing: {} };
+		if (previewState.value) return { current: {}, outgoing: {} };
 		const screenId = screen.value?.id;
 		return screenId
 			? sessionStore.renderedSocialProfilePresentations(screenId, graphics.value, liveNow.value)
 			: { current: {}, outgoing: {} };
 	});
-	const socialProfilePresentations = computed(() => renderedSocialProfilePresentations.value.current);
-	const outgoingSocialProfilePresentations = computed(() => renderedSocialProfilePresentations.value.outgoing);
+	const socialProfilePresentations = computed(
+		() => renderedSocialProfilePresentations.value.current,
+	);
+	const outgoingSocialProfilePresentations = computed(
+		() => renderedSocialProfilePresentations.value.outgoing,
+	);
 
-	const selectedTarget = computed<GraphicsSelectionTarget>(() =>
-		previewState.value?.selectedTarget ?? { type: 'canvas' },
+	const selectedTarget = computed<GraphicsSelectionTarget>(
+		() => previewState.value?.selectedTarget ?? { type: 'canvas' },
 	);
 
 	/**
@@ -168,9 +176,9 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	 * falls through to what lies beneath. Read from the stack the editor pushed;
 	 * a live output has none, and draws no guide to hold one anyway.
 	 */
-	const lockedItems = computed<readonly LockedGraphicItem[]>(() => previewState.value
-		? lockedGraphicItems(previewState.value.graphics)
-		: []);
+	const lockedItems = computed<readonly LockedGraphicItem[]>(() =>
+		previewState.value ? lockedGraphicItems(previewState.value.graphics) : [],
+	);
 
 	/*
 	 * The live playout clock.
@@ -197,17 +205,17 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	 */
 	function hasLiveMotion(now: number): boolean {
 		const screenId = screen.value?.id;
-		if (previewState.value || !screenId)
-			return false;
+		if (previewState.value || !screenId) return false;
 
-		return sessionStore.hasActiveSocialProfileRotation(screenId, graphics.value) || Object.keys(
-			sessionStore.animationProjection(screenId, graphics.value, now, channels.value),
-		).length > 0;
+		return (
+			sessionStore.hasActiveSocialProfileRotation(screenId, graphics.value) ||
+			Object.keys(sessionStore.animationProjection(screenId, graphics.value, now, channels.value))
+				.length > 0
+		);
 	}
 
 	function startLiveClock() {
-		if (!previewState.value)
-			liveClock.start();
+		if (!previewState.value) liveClock.start();
 	}
 
 	// Every accepted command reaches this client as a new snapshot, and a new snapshot
@@ -218,9 +226,7 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 		[
 			() => {
 				const screenId = screen.value?.id;
-				const session = screenId
-					? sessionStore.sessions.get(screenId)
-					: undefined;
+				const session = screenId ? sessionStore.sessions.get(screenId) : undefined;
 				return session
 					? `${session.id}:${session.sequence}:${sessionStore.clockSynchronized}`
 					: null;
@@ -248,20 +254,20 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	// one-item run, so an item named on a plan is not honoured here.
 	const previewPlan = computed(() => {
 		const plan = previewState.value?.animation;
-		if (!plan)
-			return null;
+		if (!plan) return null;
 		const { itemId: _itemId, ...whole } = plan;
 		return whole;
 	});
 
 	const previewTimeline = computed(() => {
 		const plan = previewPlan.value;
-		const graphic = plan && graphics.value.find(entry => entry.id === plan.graphicId);
-		return plan && graphic
-			? resolveGraphicAnimationPreview(graphic, plan).timeline
-			: [];
+		const graphic = plan && graphics.value.find((entry) => entry.id === plan.graphicId);
+		return plan && graphic ? resolveGraphicAnimationPreview(graphic, plan).timeline : [];
 	});
-	const { position: previewPosition } = useGraphicAnimationPreviewClock(previewPlan, previewTimeline);
+	const { position: previewPosition } = useGraphicAnimationPreviewClock(
+		previewPlan,
+		previewTimeline,
+	);
 
 	const animationProjection = computed<Record<string, GraphicsAnimationProjection[]>>(() => {
 		const plan = previewPlan.value;
@@ -278,20 +284,28 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 		}
 
 		const screenId = screen.value?.id;
-		if (previewState.value || !screenId)
-			return {};
+		if (previewState.value || !screenId) return {};
 
 		// Live playout: every phase derived from the Live Session's own authoritative
 		// effective start times, read on the authoritative clock. Nothing here is
 		// accumulated between frames, so an output that opens late, reloads, or
 		// reconnects catches up to the current phase instead of replaying it.
-		return sessionStore.animationProjection(screenId, graphics.value, liveNow.value, channels.value);
+		return sessionStore.animationProjection(
+			screenId,
+			graphics.value,
+			liveNow.value,
+			channels.value,
+		);
 	});
 
 	function handlePreviewStateMessage(message: MessageEvent) {
-		if (!isPreview?.value)
-			return;
-		if (!isGraphicsPreviewStateMessage(message, { origin: window.location.origin, source: window.parent }))
+		if (!isPreview?.value) return;
+		if (
+			!isGraphicsPreviewStateMessage(message, {
+				origin: window.location.origin,
+				source: window.parent,
+			})
+		)
 			return;
 
 		previewState.value = readGraphicsPreviewState(message.data.state);
@@ -304,10 +318,12 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	 * marks nothing itself.
 	 */
 	function publishSelection(target: GraphicsSelectionTarget, toggle = false) {
-		if (!isPreview?.value || !import.meta.client)
-			return;
+		if (!isPreview?.value || !import.meta.client) return;
 
-		window.parent?.postMessage(previewSelectMessage(GRAPHICS_PREVIEW_SELECT_MESSAGE, target, toggle), window.location.origin);
+		window.parent?.postMessage(
+			previewSelectMessage(GRAPHICS_PREVIEW_SELECT_MESSAGE, target, toggle),
+			window.location.origin,
+		);
 	}
 
 	// A preview has no Live Session of its own: it renders the working stack, so
@@ -322,26 +338,27 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	// It reads that snapshot through its Screen, whatever credential it holds
 	// (#604): a Screen Output has no Session for the Live Control path.
 	const outputReads = useScreenOutputReads(context);
-	watch(() => screen.value?.id, (screenId, _previous, onCleanup) => {
-		if (screenId)
-			onCleanup(sessionStore.readSessionAsScreenOutput(screenId, () => outputReads.liveSession()));
-	}, { immediate: true });
+	watch(
+		() => screen.value?.id,
+		(screenId, _previous, onCleanup) => {
+			if (screenId)
+				onCleanup(
+					sessionStore.readSessionAsScreenOutput(screenId, () => outputReads.liveSession()),
+				);
+		},
+		{ immediate: true },
+	);
 	useBroadcastGraphicsLiveSessionSync(
-		() => (isPreview?.value
-			? undefined
-			: eventId.value ?? undefined),
+		() => (isPreview?.value ? undefined : (eventId.value ?? undefined)),
 		() => (isPreview?.value ? undefined : screen.value?.id),
 		// Its Live Session's messages arrive on the channel the rendering follows.
-		() => (isPreview?.value
-			? null
-			: renderingChannel(context)),
+		() => (isPreview?.value ? null : renderingChannel(context)),
 	);
 	// A Theme preview's sample has a Live Session but no Event to follow: it is
 	// read once, through the same Screen read, and never changes. The store keys
 	// it by the sample's own Screen, which no Screen Output reads.
 	const sampleScope = sampleDataset ? outputReads.scope.value : null;
-	if (sampleScope)
-		void sessionStore.loadSession(sampleScope.eventId, sampleScope.screenId);
+	if (sampleScope) void sessionStore.loadSession(sampleScope.eventId, sampleScope.screenId);
 
 	onMounted(() => {
 		window.addEventListener('message', handlePreviewStateMessage);

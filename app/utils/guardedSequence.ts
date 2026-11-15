@@ -56,7 +56,7 @@ export function createGuardedSequence(): GuardedSequence {
 	let currentFlight: Flight | null = null;
 	return {
 		begin: () => {
-			const flight = createFlight(candidate => candidate === currentFlight);
+			const flight = createFlight((candidate) => candidate === currentFlight);
 			currentFlight = flight;
 			return flight;
 		},
@@ -70,7 +70,7 @@ export function createKeyedGuardedSequence<K = string>(): KeyedGuardedSequence<K
 	const currentByKey = new Map<K, Flight>();
 	return {
 		begin: (key: K) => {
-			const flight = createFlight(candidate => currentByKey.get(key) === candidate);
+			const flight = createFlight((candidate) => currentByKey.get(key) === candidate);
 			currentByKey.set(key, flight);
 			return flight;
 		},

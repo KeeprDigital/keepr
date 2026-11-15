@@ -19,27 +19,16 @@ export function useAsyncAction() {
 		action: () => Promise<T>,
 		options: AsyncActionOptions = {},
 	): Promise<T | null> => {
-		const {
-			loadingRef,
-			errorRef,
-			onError,
-			throwError = false,
-			flight = unguarded,
-		} = options;
+		const { loadingRef, errorRef, onError, throwError = false, flight = unguarded } = options;
 
-		if (loadingRef)
-			loadingRef.value = true;
-		if (errorRef)
-			errorRef.value = null;
+		if (loadingRef) loadingRef.value = true;
+		if (errorRef) errorRef.value = null;
 
 		try {
 			const result = await action();
 			return result;
-		}
-		catch (e) {
-			const errorMessage = e instanceof Error
-				? e.message
-				: 'An error occurred';
+		} catch (e) {
+			const errorMessage = e instanceof Error ? e.message : 'An error occurred';
 
 			if (errorRef && flight.current) {
 				errorRef.value = errorMessage;
@@ -54,10 +43,8 @@ export function useAsyncAction() {
 			}
 
 			return null;
-		}
-		finally {
-			if (loadingRef && flight.current)
-				loadingRef.value = false;
+		} finally {
+			if (loadingRef && flight.current) loadingRef.value = false;
 		}
 	};
 

@@ -17,10 +17,10 @@ import { templatePackagePreflightIssue } from './template-package-preflight-issu
  * manifest never declared to travel inside a package.
  */
 
-const LOCAL_HEADER_SIGNATURE = 0x04034B50;
-const CENTRAL_HEADER_SIGNATURE = 0x02014B50;
-const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054B50;
-const DATA_DESCRIPTOR_SIGNATURE = 0x08074B50;
+const LOCAL_HEADER_SIGNATURE = 0x04034b50;
+const CENTRAL_HEADER_SIGNATURE = 0x02014b50;
+const END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
+const DATA_DESCRIPTOR_SIGNATURE = 0x08074b50;
 
 const LOCAL_HEADER_BYTES = 30;
 const CENTRAL_HEADER_BYTES = 46;
@@ -38,8 +38,8 @@ const ENCRYPTION_FLAGS = 0x2041;
  * limits can produce. It bounds the one read whose length comes from the
  * archive's own claim rather than from a limit we already enforced.
  */
-const MAXIMUM_CENTRAL_DIRECTORY_BYTES
-	= TEMPLATE_PACKAGE_LIMITS.maximumEntryCount * (CENTRAL_HEADER_BYTES + MAXIMUM_ENTRY_NAME_BYTES);
+const MAXIMUM_CENTRAL_DIRECTORY_BYTES =
+	TEMPLATE_PACKAGE_LIMITS.maximumEntryCount * (CENTRAL_HEADER_BYTES + MAXIMUM_ENTRY_NAME_BYTES);
 
 /** A safe relative path: the same shape the exporter is allowed to write. */
 const SAFE_ENTRY_NAME = /^[\w.-]+(?:\/[\w.-]+)*$/;
@@ -63,9 +63,9 @@ export interface TemplatePackageArchiveEntry {
 	hasDataDescriptor: boolean;
 }
 
-export type ReadTemplatePackageArchiveOutcome
-	= | { outcome: 'read'; entries: readonly TemplatePackageArchiveEntry[] }
-		| { outcome: 'rejected'; issues: readonly TemplatePackagePreflightIssue[] };
+export type ReadTemplatePackageArchiveOutcome =
+	| { outcome: 'read'; entries: readonly TemplatePackageArchiveEntry[] }
+	| { outcome: 'rejected'; issues: readonly TemplatePackagePreflightIssue[] };
 
 function view(bytes: Uint8Array) {
 	return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -86,18 +86,16 @@ async function readExact(
 	length: number,
 ): Promise<Uint8Array | undefined> {
 	if (
-		!Number.isSafeInteger(offset)
-		|| !Number.isSafeInteger(length)
-		|| offset < 0
-		|| length <= 0
-		|| offset + length > source.byteLength
+		!Number.isSafeInteger(offset) ||
+		!Number.isSafeInteger(length) ||
+		offset < 0 ||
+		length <= 0 ||
+		offset + length > source.byteLength
 	) {
 		return undefined;
 	}
 	const bytes = await source.read(offset, length);
-	return bytes.byteLength === length
-		? bytes
-		: undefined;
+	return bytes.byteLength === length ? bytes : undefined;
 }
 
 interface CentralDirectoryEntry {
@@ -117,8 +115,8 @@ interface CentralDirectoryEntry {
  * regular file is refused whatever it points at.
  */
 function isLinkEntry(externalAttributes: number): boolean {
-	const unixMode = (externalAttributes >>> 16) & 0xFFFF;
-	return unixMode !== 0 && (unixMode & 0xF000) === 0xA000;
+	const unixMode = (externalAttributes >>> 16) & 0xffff;
+	return unixMode !== 0 && (unixMode & 0xf000) === 0xa000;
 }
 
 function inspectEntryName(name: string): TemplatePackagePreflightIssue | undefined {
@@ -130,7 +128,7 @@ function inspectEntryName(name: string): TemplatePackagePreflightIssue | undefin
 	}
 	// Traversal is reported on its own so an author can tell a hostile archive
 	// from one that merely carries an unusual character.
-	if (name.split(/[/\\]/).some(segment => segment === '.' || segment === '..')) {
+	if (name.split(/[/\\]/).some((segment) => segment === '.' || segment === '..')) {
 		return templatePackagePreflightIssue('package-entry-path-traversal', {
 			subject: name,
 			message: 'Package entry name traverses outside its archive',
@@ -157,16 +155,12 @@ function parseCentralDirectory(
 	for (let index = 0; index < entryCount; index += 1) {
 		if (cursor + CENTRAL_HEADER_BYTES > bytes.byteLength) {
 			return {
-				issues: [
-					malformed(`Central directory ends before entry ${index + 1}`),
-				],
+				issues: [malformed(`Central directory ends before entry ${index + 1}`)],
 			};
 		}
 		if (data.getUint32(cursor, true) !== CENTRAL_HEADER_SIGNATURE) {
 			return {
-				issues: [
-					malformed(`Central directory entry ${index + 1} has no header signature`),
-				],
+				issues: [malformed(`Central directory entry ${index + 1} has no header signature`)],
 			};
 		}
 		const flags = data.getUint16(cursor + 8, true);
@@ -190,9 +184,7 @@ function parseCentralDirectory(
 		}
 		if (diskStart !== 0) {
 			return {
-				issues: [
-					malformed(`Package entry ${index + 1} claims to live on another disk`),
-				],
+				issues: [malformed(`Package entry ${index + 1} claims to live on another disk`)],
 			};
 		}
 		// An extra field or comment is space the manifest never declared, and the
@@ -204,8 +196,9 @@ function parseCentralDirectory(
 				],
 			};
 		}
-		const name = new TextDecoder('utf-8', { fatal: false })
-			.decode(bytes.subarray(cursor + CENTRAL_HEADER_BYTES, nameEnd));
+		const name = new TextDecoder('utf-8', { fatal: false }).decode(
+			bytes.subarray(cursor + CENTRAL_HEADER_BYTES, nameEnd),
+		);
 		entries.push({
 			name,
 			crc32,
@@ -220,9 +213,7 @@ function parseCentralDirectory(
 	}
 	if (cursor !== bytes.byteLength) {
 		return {
-			issues: [
-				malformed('Central directory carries bytes beyond its declared entries'),
-			],
+			issues: [malformed('Central directory carries bytes beyond its declared entries')],
 		};
 	}
 	return { entries };
@@ -249,9 +240,7 @@ export async function readTemplatePackageArchive(
 	if (source.byteLength < END_OF_CENTRAL_DIRECTORY_BYTES) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				malformed('The received archive is too short to be a package'),
-			],
+			issues: [malformed('The received archive is too short to be a package')],
 		};
 	}
 
@@ -265,47 +254,37 @@ export async function readTemplatePackageArchive(
 	if (!endRecord) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				malformed('The archive has no readable end-of-central-directory record'),
-			],
+			issues: [malformed('The archive has no readable end-of-central-directory record')],
 		};
 	}
 	const endView = view(endRecord);
 	if (endView.getUint32(0, true) !== END_OF_CENTRAL_DIRECTORY_SIGNATURE) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				malformed('The archive does not end with its central directory record'),
-			],
+			issues: [malformed('The archive does not end with its central directory record')],
 		};
 	}
 	if (
-		endView.getUint16(4, true) !== 0
-		|| endView.getUint16(6, true) !== 0
-		|| endView.getUint16(20, true) !== 0
+		endView.getUint16(4, true) !== 0 ||
+		endView.getUint16(6, true) !== 0 ||
+		endView.getUint16(20, true) !== 0
 	) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				malformed('The archive is split across disks or carries a comment'),
-			],
+			issues: [malformed('The archive is split across disks or carries a comment')],
 		};
 	}
 	const entryCount = endView.getUint16(8, true);
 	if (entryCount !== endView.getUint16(10, true)) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				malformed('The archive disagrees with itself about how many entries it holds'),
-			],
+			issues: [malformed('The archive disagrees with itself about how many entries it holds')],
 		};
 	}
 	if (entryCount === 0) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				malformed('The archive declares no entries'),
-			],
+			issues: [malformed('The archive declares no entries')],
 		};
 	}
 	if (entryCount > TEMPLATE_PACKAGE_LIMITS.maximumEntryCount) {
@@ -321,15 +300,13 @@ export async function readTemplatePackageArchive(
 	const centralDirectoryByteLength = endView.getUint32(12, true);
 	const centralDirectoryOffset = endView.getUint32(16, true);
 	if (
-		centralDirectoryByteLength > MAXIMUM_CENTRAL_DIRECTORY_BYTES
-		|| centralDirectoryOffset + centralDirectoryByteLength
-		!== source.byteLength - END_OF_CENTRAL_DIRECTORY_BYTES
+		centralDirectoryByteLength > MAXIMUM_CENTRAL_DIRECTORY_BYTES ||
+		centralDirectoryOffset + centralDirectoryByteLength !==
+			source.byteLength - END_OF_CENTRAL_DIRECTORY_BYTES
 	) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				malformed('The central directory does not end where the end record begins'),
-			],
+			issues: [malformed('The central directory does not end where the end record begins')],
 		};
 	}
 	const centralDirectory = await readExact(
@@ -340,22 +317,18 @@ export async function readTemplatePackageArchive(
 	if (!centralDirectory) {
 		return {
 			outcome: 'rejected',
-			issues: [
-				malformed('The central directory could not be read'),
-			],
+			issues: [malformed('The central directory could not be read')],
 		};
 	}
 
 	const parsed = parseCentralDirectory(centralDirectory, entryCount);
-	if ('issues' in parsed)
-		return { outcome: 'rejected', issues: parsed.issues };
+	if ('issues' in parsed) return { outcome: 'rejected', issues: parsed.issues };
 
 	const issues: TemplatePackagePreflightIssue[] = [];
 	const seenNames = new Map<string, string>();
 	for (const entry of parsed.entries) {
 		const nameIssue = inspectEntryName(entry.name);
-		if (nameIssue)
-			issues.push(nameIssue);
+		if (nameIssue) issues.push(nameIssue);
 		// Case collisions are refused because a receiver that resolved them by
 		// filesystem rules would install different content on different platforms.
 		// Locale-invariant on purpose: a Turkish locale folds "I" to "ı", so
@@ -363,51 +336,61 @@ export async function readTemplatePackageArchive(
 		const collisionKey = entry.name.toLowerCase();
 		const collided = seenNames.get(collisionKey);
 		if (collided !== undefined) {
-			issues.push(templatePackagePreflightIssue('duplicate-package-entry-path', {
-				subject: entry.name,
-				message: collided === entry.name
-					? 'The archive declares the same entry path twice'
-					: `Package entry name collides with "${collided}" when compared case-insensitively`,
-			}));
-		}
-		else {
+			issues.push(
+				templatePackagePreflightIssue('duplicate-package-entry-path', {
+					subject: entry.name,
+					message:
+						collided === entry.name
+							? 'The archive declares the same entry path twice'
+							: `Package entry name collides with "${collided}" when compared case-insensitively`,
+				}),
+			);
+		} else {
 			seenNames.set(collisionKey, entry.name);
 		}
 		if ((entry.flags & ENCRYPTION_FLAGS) !== 0) {
-			issues.push(templatePackagePreflightIssue('encrypted-package-entry', {
-				subject: entry.name,
-				message: 'Package entry is encrypted',
-			}));
+			issues.push(
+				templatePackagePreflightIssue('encrypted-package-entry', {
+					subject: entry.name,
+					message: 'Package entry is encrypted',
+				}),
+			);
 		}
 		if (entry.method !== STORED_METHOD) {
-			issues.push(templatePackagePreflightIssue('compressed-package-entry', {
-				subject: entry.name,
-				message: 'Package entry is compressed rather than stored',
-			}));
+			issues.push(
+				templatePackagePreflightIssue('compressed-package-entry', {
+					subject: entry.name,
+					message: 'Package entry is compressed rather than stored',
+				}),
+			);
 		}
 		if (isLinkEntry(entry.externalAttributes)) {
-			issues.push(templatePackagePreflightIssue('package-entry-link', {
-				subject: entry.name,
-				message: 'Package entry is a link rather than a regular file',
-			}));
+			issues.push(
+				templatePackagePreflightIssue('package-entry-link', {
+					subject: entry.name,
+					message: 'Package entry is a link rather than a regular file',
+				}),
+			);
 		}
 		if (entry.compressedSize !== entry.byteLength) {
-			issues.push(templatePackagePreflightIssue('inconsistent-package-entry-size', {
-				subject: entry.name,
-				message: `Package entry declares ${entry.compressedSize} stored bytes but ${entry.byteLength} expanded bytes`,
-			}));
+			issues.push(
+				templatePackagePreflightIssue('inconsistent-package-entry-size', {
+					subject: entry.name,
+					message: `Package entry declares ${entry.compressedSize} stored bytes but ${entry.byteLength} expanded bytes`,
+				}),
+			);
 		}
 	}
 
-	const expandedByteLength = parsed.entries
-		.reduce((total, entry) => total + entry.byteLength, 0);
+	const expandedByteLength = parsed.entries.reduce((total, entry) => total + entry.byteLength, 0);
 	if (expandedByteLength > TEMPLATE_PACKAGE_LIMITS.maximumExpandedByteLength) {
-		issues.push(templatePackagePreflightIssue('package-expanded-limit-exceeded', {
-			message: `The archive would expand to ${expandedByteLength} bytes, beyond the ${TEMPLATE_PACKAGE_LIMITS.maximumExpandedByteLength}-byte limit`,
-		}));
+		issues.push(
+			templatePackagePreflightIssue('package-expanded-limit-exceeded', {
+				message: `The archive would expand to ${expandedByteLength} bytes, beyond the ${TEMPLATE_PACKAGE_LIMITS.maximumExpandedByteLength}-byte limit`,
+			}),
+		);
 	}
-	if (issues.length > 0)
-		return { outcome: 'rejected', issues };
+	if (issues.length > 0) return { outcome: 'rejected', issues };
 
 	// Local headers are only worth reading once the directory itself is sound.
 	const entries: TemplatePackageArchiveEntry[] = [];
@@ -423,8 +406,8 @@ export async function readTemplatePackageArchive(
 			continue;
 		}
 		if (
-			headerView.getUint16(6, true) !== entry.flags
-			|| headerView.getUint16(8, true) !== entry.method
+			headerView.getUint16(6, true) !== entry.flags ||
+			headerView.getUint16(8, true) !== entry.method
 		) {
 			issues.push(malformed(`Package entry "${entry.name}" disagrees with its local header`));
 			continue;
@@ -432,30 +415,40 @@ export async function readTemplatePackageArchive(
 		const localNameLength = headerView.getUint16(26, true);
 		const localExtraLength = headerView.getUint16(28, true);
 		if (localExtraLength !== 0) {
-			issues.push(malformed(`Package entry "${entry.name}" carries an undeclared local extra field`));
+			issues.push(
+				malformed(`Package entry "${entry.name}" carries an undeclared local extra field`),
+			);
 			continue;
 		}
 		// Without a data descriptor the local header states the CRC and sizes
 		// itself. Two records describing the same bytes must agree, or a reader
 		// choosing either one could extract something different.
-		if ((entry.flags & 0x08) === 0 && (
-			headerView.getUint32(14, true) !== entry.crc32
-			|| headerView.getUint32(18, true) !== entry.compressedSize
-			|| headerView.getUint32(22, true) !== entry.byteLength
-		)) {
-			issues.push(malformed(`Package entry "${entry.name}" disagrees with its local header sizes or checksum`));
+		if (
+			(entry.flags & 0x08) === 0 &&
+			(headerView.getUint32(14, true) !== entry.crc32 ||
+				headerView.getUint32(18, true) !== entry.compressedSize ||
+				headerView.getUint32(22, true) !== entry.byteLength)
+		) {
+			issues.push(
+				malformed(
+					`Package entry "${entry.name}" disagrees with its local header sizes or checksum`,
+				),
+			);
 			continue;
 		}
-		const localName = localNameLength === 0
-			? undefined
-			: await readExact(source, entry.localHeaderOffset + LOCAL_HEADER_BYTES, localNameLength);
+		const localName =
+			localNameLength === 0
+				? undefined
+				: await readExact(source, entry.localHeaderOffset + LOCAL_HEADER_BYTES, localNameLength);
 		if (!localName || new TextDecoder().decode(localName) !== entry.name) {
 			issues.push(malformed(`Package entry "${entry.name}" disagrees with its local header name`));
 			continue;
 		}
 		const dataOffset = entry.localHeaderOffset + LOCAL_HEADER_BYTES + localNameLength;
 		if (dataOffset + entry.byteLength > centralDirectoryOffset) {
-			issues.push(malformed(`Package entry "${entry.name}" declares bytes beyond the archive body`));
+			issues.push(
+				malformed(`Package entry "${entry.name}" declares bytes beyond the archive body`),
+			);
 			continue;
 		}
 		// Bit 3 moves the CRC and sizes into a descriptor after the entry's bytes.
@@ -470,11 +463,11 @@ export async function readTemplatePackageArchive(
 			);
 			const descriptorView = descriptor && view(descriptor);
 			if (
-				!descriptorView
-				|| descriptorView.getUint32(0, true) !== DATA_DESCRIPTOR_SIGNATURE
-				|| descriptorView.getUint32(4, true) !== entry.crc32
-				|| descriptorView.getUint32(8, true) !== entry.byteLength
-				|| descriptorView.getUint32(12, true) !== entry.byteLength
+				!descriptorView ||
+				descriptorView.getUint32(0, true) !== DATA_DESCRIPTOR_SIGNATURE ||
+				descriptorView.getUint32(4, true) !== entry.crc32 ||
+				descriptorView.getUint32(8, true) !== entry.byteLength ||
+				descriptorView.getUint32(12, true) !== entry.byteLength
 			) {
 				issues.push(malformed(`Package entry "${entry.name}" disagrees with its data descriptor`));
 				continue;
@@ -488,8 +481,7 @@ export async function readTemplatePackageArchive(
 			hasDataDescriptor,
 		});
 	}
-	if (issues.length > 0)
-		return { outcome: 'rejected', issues };
+	if (issues.length > 0) return { outcome: 'rejected', issues };
 
 	// Overlapping or gapped entries would let bytes belong to two entries at once,
 	// or hide bytes no entry declares. Both are undeclared content.
@@ -508,9 +500,8 @@ export async function readTemplatePackageArchive(
 				],
 			};
 		}
-		expectedOffset = entry.dataOffset
-			+ entry.byteLength
-			+ (entry.hasDataDescriptor ? DATA_DESCRIPTOR_BYTES : 0);
+		expectedOffset =
+			entry.dataOffset + entry.byteLength + (entry.hasDataDescriptor ? DATA_DESCRIPTOR_BYTES : 0);
 	}
 	if (expectedOffset !== centralDirectoryOffset) {
 		return {

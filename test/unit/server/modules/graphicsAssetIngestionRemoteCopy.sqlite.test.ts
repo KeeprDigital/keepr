@@ -50,7 +50,8 @@ vi.mock('~~/server/utils/auth', () => ({
 // and, on its 503 branch, `setResponseHeader` — neither of which a unit run
 // has. Nothing in the ingestion module calls either.
 vi.stubGlobal('createError', (input: { statusCode: number; message: string; cause?: unknown }) =>
-	Object.assign(new Error(input.message), input));
+	Object.assign(new Error(input.message), input),
+);
 const mockSetResponseHeader = vi.fn();
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
 
@@ -91,10 +92,8 @@ function createRemoteHost(options: {
 		resolver: {
 			async resolve(hostname) {
 				resolved.push(hostname);
-				if (options.resolverUnavailable?.includes(hostname))
-					return { outcome: 'unavailable' };
-				if (options.unresolvable?.includes(hostname))
-					return { outcome: 'not-found' };
+				if (options.resolverUnavailable?.includes(hostname)) return { outcome: 'unavailable' };
+				if (options.unresolvable?.includes(hostname)) return { outcome: 'not-found' };
 				return {
 					outcome: 'resolved',
 					addresses: options.addresses?.[hostname] ?? ['93.184.216.34'],
@@ -108,8 +107,7 @@ function createRemoteHost(options: {
 				headers: Object.fromEntries(request.headers.entries()),
 			});
 			const hop = hops[`${url.origin}${url.pathname}`];
-			if (!hop)
-				return new Response(null, { status: 404 });
+			if (!hop) return new Response(null, { status: 404 });
 			if (hop.location) {
 				return new Response(null, {
 					status: hop.status ?? 302,
@@ -134,9 +132,10 @@ function createRemoteHost(options: {
 				});
 				return new Response(failing, {
 					status: hop.status ?? 200,
-					headers: hop.contentLength === null
-						? {}
-						: { 'content-length': hop.contentLength ?? String(payload.byteLength) },
+					headers:
+						hop.contentLength === null
+							? {}
+							: { 'content-length': hop.contentLength ?? String(payload.byteLength) },
 				});
 			}
 			return new Response(payload, {
@@ -145,9 +144,7 @@ function createRemoteHost(options: {
 					...(hop.contentLength === null
 						? {}
 						: { 'content-length': hop.contentLength ?? String(payload.byteLength) }),
-					...(hop.contentType
-						? { 'content-type': hop.contentType }
-						: {}),
+					...(hop.contentType ? { 'content-type': hop.contentType } : {}),
 				},
 			});
 		},
@@ -278,13 +275,14 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			initiatedBy: operation.initiatedBy,
 		});
 		expect(staged.outcome).toBe('available');
-		if (staged.outcome !== 'available')
-			return;
-		await expect(consumeBoundedByteStream({
-			body: staged.body,
-			byteLength: staged.byteLength,
-			maximumByteLength: staged.byteLength,
-		})).resolves.toEqual(transparentPixelPng);
+		if (staged.outcome !== 'available') return;
+		await expect(
+			consumeBoundedByteStream({
+				body: staged.body,
+				byteLength: staged.byteLength,
+				maximumByteLength: staged.byteLength,
+			}),
+		).resolves.toEqual(transparentPixelPng);
 
 		const completed = await ingestion.confirmGraphicAssetBrowserEvidence({
 			operationId: operation.id,
@@ -307,12 +305,12 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 
 		const assets = await storedAssets();
 		expect(assets).toHaveLength(1);
-		await expect(storedRevisionContent({ catalogue, canonical }, publishedRevision(completed)))
-			.resolves
-			.toMatchObject({
-				contentType: 'image/png',
-				byteLength: transparentPixelPng.byteLength,
-			});
+		await expect(
+			storedRevisionContent({ catalogue, canonical }, publishedRevision(completed)),
+		).resolves.toMatchObject({
+			contentType: 'image/png',
+			byteLength: transparentPixelPng.byteLength,
+		});
 	});
 
 	it.each([
@@ -372,9 +370,7 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			failure: { code: 'remote-source-rejected', retryable: false },
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code },
-				],
+				issues: [{ code }],
 			},
 		});
 		expect(remote.requests).toEqual([]);
@@ -394,40 +390,38 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			label: 'private',
 			addresses: ['93.184.216.34', '192.168.10.4'],
 		},
-	] as const)('rejects a hostname whose DNS result includes a $label address', async ({
-		addresses,
-		label,
-	}) => {
-		const { ingestion, remote } = createIngestion({
-			addresses: {
-				'cdn.example.test': [...addresses],
-			},
-		});
-		const operation = await ingestion.initiateRemoteGraphicAssetCopy({
-			idempotencyKey: `remote-dns-${label}`,
-			initiatedBy: 'graphics-author-1',
-			name: 'Rebound remote source',
-			sourceFileName: 'scoreboard.png',
-		});
+	] as const)(
+		'rejects a hostname whose DNS result includes a $label address',
+		async ({ addresses, label }) => {
+			const { ingestion, remote } = createIngestion({
+				addresses: {
+					'cdn.example.test': [...addresses],
+				},
+			});
+			const operation = await ingestion.initiateRemoteGraphicAssetCopy({
+				idempotencyKey: `remote-dns-${label}`,
+				initiatedBy: 'graphics-author-1',
+				name: 'Rebound remote source',
+				sourceFileName: 'scoreboard.png',
+			});
 
-		const failed = await ingestion.copyRemoteGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		});
+			const failed = await ingestion.copyRemoteGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			});
 
-		expect(failed).toMatchObject({
-			stage: 'failed',
-			failure: { code: 'remote-source-rejected', retryable: false },
-			report: {
-				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-destination-not-public' },
-				],
-			},
-		});
-		expect(remote.requests).toEqual([]);
-	});
+			expect(failed).toMatchObject({
+				stage: 'failed',
+				failure: { code: 'remote-source-rejected', retryable: false },
+				report: {
+					outcome: 'rejected',
+					issues: [{ code: 'remote-source-destination-not-public' }],
+				},
+			});
+			expect(remote.requests).toEqual([]);
+		},
+	);
 
 	it('rejects a hostname with no public DNS result', async () => {
 		const { ingestion } = createIngestion({
@@ -440,17 +434,17 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			sourceFileName: 'scoreboard.png',
 		});
 
-		await expect(ingestion.copyRemoteGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		})).resolves.toMatchObject({
+		await expect(
+			ingestion.copyRemoteGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			}),
+		).resolves.toMatchObject({
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-destination-not-public' },
-				],
+				issues: [{ code: 'remote-source-destination-not-public' }],
 			},
 		});
 	});
@@ -491,12 +485,10 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			failure: { code: 'remote-source-rejected', retryable: false },
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-destination-not-public' },
-				],
+				issues: [{ code: 'remote-source-destination-not-public' }],
 			},
 		});
-		expect(remote.requests.map(request => request.url)).toEqual([
+		expect(remote.requests.map((request) => request.url)).toEqual([
 			'https://cdn.example.test/scoreboard.png',
 			'https://edge.example.test/hop-one.png',
 		]);
@@ -522,17 +514,17 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			sourceFileName: 'scoreboard.png',
 		});
 
-		await expect(ingestion.copyRemoteGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		})).resolves.toMatchObject({
+		await expect(
+			ingestion.copyRemoteGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			}),
+		).resolves.toMatchObject({
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-not-https' },
-				],
+				issues: [{ code: 'remote-source-not-https' }],
 			},
 		});
 	});
@@ -564,12 +556,10 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-redirect-limit-exceeded' },
-				],
+				issues: [{ code: 'remote-source-redirect-limit-exceeded' }],
 			},
 		});
-		expect(remote.requests.map(request => request.url)).toEqual([
+		expect(remote.requests.map((request) => request.url)).toEqual([
 			'https://cdn.example.test/hop-0.png',
 			'https://cdn.example.test/hop-1.png',
 			'https://cdn.example.test/hop-2.png',
@@ -593,11 +583,13 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			sourceFileName: 'scoreboard.png',
 		});
 
-		await expect(ingestion.copyRemoteGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/hop-0.png',
-		})).resolves.toMatchObject({
+		await expect(
+			ingestion.copyRemoteGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/hop-0.png',
+			}),
+		).resolves.toMatchObject({
 			stage: 'awaiting-confirmation',
 			report: { outcome: 'accepted' },
 		});
@@ -644,7 +636,8 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		const copied = await ingestion.copyRemoteGraphicAssetSource({
 			operationId: operation.id,
 			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png?signature=super-secret&token=leak#private-fragment',
+			sourceUrl:
+				'https://cdn.example.test/scoreboard.png?signature=super-secret&token=leak#private-fragment',
 		});
 		const completed = await ingestion.confirmGraphicAssetBrowserEvidence({
 			operationId: operation.id,
@@ -711,15 +704,11 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			failure: { code: 'remote-source-rejected', retryable: false },
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code },
-				],
+				issues: [{ code }],
 			},
 		});
 		// A reported byte count must name the length the source actually declared.
-		const reported = failed.report?.outcome === 'rejected'
-			? failed.report.issues[0]!.message
-			: '';
+		const reported = failed.report?.outcome === 'rejected' ? failed.report.issues[0]!.message : '';
 		expect(reported).not.toContain('undefined');
 		if (code === 'remote-source-length-mismatch')
 			expect(reported).toContain(String(transparentPixelPng.byteLength + 5));
@@ -794,9 +783,7 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			failure: { code: 'remote-source-rejected', retryable: false },
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-length-exceeded' },
-				],
+				issues: [{ code: 'remote-source-length-exceeded' }],
 			},
 		});
 		await expect(
@@ -820,17 +807,17 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			sourceFileName: 'scoreboard.png',
 		});
 
-		await expect(ingestion.copyRemoteGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		})).resolves.toMatchObject({
+		await expect(
+			ingestion.copyRemoteGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			}),
+		).resolves.toMatchObject({
 			stage: 'failed',
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-not-retrievable' },
-				],
+				issues: [{ code: 'remote-source-not-retrievable' }],
 			},
 		});
 	});
@@ -868,8 +855,8 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			failure: { code: 'validation-failed', retryable: false },
 		});
 		expect(
-			failed.report?.outcome === 'rejected'
-			&& failed.report.issues.every(issue => !issue.code.startsWith('remote-source-')),
+			failed.report?.outcome === 'rejected' &&
+				failed.report.issues.every((issue) => !issue.code.startsWith('remote-source-')),
 		).toBe(true);
 	});
 
@@ -896,10 +883,9 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		});
 
 		// The upload the checkpoint named is completed, so nothing is left to abort.
-		await expect(catalogue.getGraphicAssetMultipartState(
-			operation.id,
-			operation.initiatedBy,
-		)).resolves.toBeUndefined();
+		await expect(
+			catalogue.getGraphicAssetMultipartState(operation.id, operation.initiatedBy),
+		).resolves.toBeUndefined();
 		const authoritative = await ingestion.getIngestionOperation({
 			operationId: operation.id,
 			initiatedBy: operation.initiatedBy,
@@ -926,10 +912,12 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		// A remote copy has no client-supplied parts to resume from; the checkpoint
 		// carries the uploadId alone.
 		expect(state?.parts).toEqual([]);
-		await expect(stranded.staging.resumeMultipart(
-			graphicsObjectIdentity(`ingestion/${stranded.operation.id}/source`),
-			stranded.uploadId!,
-		)).resolves.toMatchObject({ outcome: 'resumed' });
+		await expect(
+			stranded.staging.resumeMultipart(
+				graphicsObjectIdentity(`ingestion/${stranded.operation.id}/source`),
+				stranded.uploadId!,
+			),
+		).resolves.toMatchObject({ outcome: 'resumed' });
 	});
 
 	// The thrown-read death, which no injected store failure reaches.
@@ -940,8 +928,7 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			...delegate,
 			async beginMultipart(input) {
 				const started = await delegate.beginMultipart(input);
-				if (started.outcome === 'started')
-					uploadId = started.upload.uploadId;
+				if (started.outcome === 'started') uploadId = started.upload.uploadId;
 				return started;
 			},
 		};
@@ -976,14 +963,15 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		// the same reclamation the structured one does: the upload is gone and the
 		// checkpoint no longer names it.
 		expect(uploadId).toBeDefined();
-		await expect(staging.resumeMultipart(
-			graphicsObjectIdentity(`ingestion/${operation.id}/source`),
-			uploadId!,
-		)).resolves.toMatchObject({ outcome: 'unavailable' });
-		await expect(catalogue.getGraphicAssetMultipartState(
-			operation.id,
-			operation.initiatedBy,
-		)).resolves.toBeUndefined();
+		await expect(
+			staging.resumeMultipart(
+				graphicsObjectIdentity(`ingestion/${operation.id}/source`),
+				uploadId!,
+			),
+		).resolves.toMatchObject({ outcome: 'unavailable' });
+		await expect(
+			catalogue.getGraphicAssetMultipartState(operation.id, operation.initiatedBy),
+		).resolves.toBeUndefined();
 	});
 
 	it('clears the checkpoint when something else reclaimed the upload first', async () => {
@@ -993,8 +981,7 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			...delegate,
 			async beginMultipart(input) {
 				const started = await delegate.beginMultipart(input);
-				if (started.outcome === 'started')
-					uploadId = started.upload.uploadId;
+				if (started.outcome === 'started') uploadId = started.upload.uploadId;
 				return started;
 			},
 			async uploadPart(input) {
@@ -1034,10 +1021,9 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		// already gone, so keeping the checkpoint would strand the next attempt
 		// behind an abort that can never answer anything but 'already reclaimed'.
 		expect(uploadId).toBeDefined();
-		await expect(catalogue.getGraphicAssetMultipartState(
-			operation.id,
-			operation.initiatedBy,
-		)).resolves.toBeUndefined();
+		await expect(
+			catalogue.getGraphicAssetMultipartState(operation.id, operation.initiatedBy),
+		).resolves.toBeUndefined();
 	});
 
 	it('retries past a checkpoint naming an upload the staging store no longer holds', async () => {
@@ -1047,10 +1033,12 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		// state #293 is about: the checkpoint names an upload that is already gone.
 		// Every retry re-aborts it, and an abort of a gone upload used to answer
 		// unavailable — so the operation refused until the 24h sweep.
-		await expect(stranded.staging.abortMultipart({
-			identity: graphicsObjectIdentity(`ingestion/${stranded.operation.id}/source`),
-			uploadId: stranded.uploadId!,
-		})).resolves.toEqual({ outcome: 'aborted' });
+		await expect(
+			stranded.staging.abortMultipart({
+				identity: graphicsObjectIdentity(`ingestion/${stranded.operation.id}/source`),
+				uploadId: stranded.uploadId!,
+			}),
+		).resolves.toEqual({ outcome: 'aborted' });
 
 		const retried = await stranded.ingestion.copyRemoteGraphicAssetSource({
 			operationId: stranded.operation.id,
@@ -1066,33 +1054,43 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			transferredByteLength: oversizedRemoteSource.byteLength,
 			failure: { code: 'validation-failed', retryable: false },
 		});
-		await expect(stranded.catalogue.getGraphicAssetMultipartState(
-			stranded.operation.id,
-			stranded.operation.initiatedBy,
-		)).resolves.toBeUndefined();
+		await expect(
+			stranded.catalogue.getGraphicAssetMultipartState(
+				stranded.operation.id,
+				stranded.operation.initiatedBy,
+			),
+		).resolves.toBeUndefined();
 	});
 
 	it('refuses a remote copy whose stranded upload the staging store cannot answer for', async () => {
 		const stranded = await strandRemoteCopyMultipartUpload('remote-checkpoint-abort-unavailable');
 		stranded.staging.injectTransientFailure('multipart-abort');
 
-		const thrown = await stranded.ingestion.copyRemoteGraphicAssetSource({
-			operationId: stranded.operation.id,
-			initiatedBy: stranded.operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		}).then(() => null, (error: unknown) => error);
+		const thrown = await stranded.ingestion
+			.copyRemoteGraphicAssetSource({
+				operationId: stranded.operation.id,
+				initiatedBy: stranded.operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			})
+			.then(
+				() => null,
+				(error: unknown) => error,
+			);
 
 		// A store that cannot answer may still be holding the upload, so this
 		// attempt stops rather than stranding it behind a second one.
 		expect(thrown).toMatchObject({
 			code: 'graphics-asset-library-unavailable',
-			message: 'Graphics Asset staging byte store could not release a previous approved remote Graphic Asset copy attempt',
+			message:
+				'Graphics Asset staging byte store could not release a previous approved remote Graphic Asset copy attempt',
 		});
 		// The checkpoint is what a later sweep reclaims from, so it survives.
-		await expect(stranded.catalogue.getGraphicAssetMultipartState(
-			stranded.operation.id,
-			stranded.operation.initiatedBy,
-		)).resolves.toMatchObject({ uploadId: stranded.uploadId });
+		await expect(
+			stranded.catalogue.getGraphicAssetMultipartState(
+				stranded.operation.id,
+				stranded.operation.initiatedBy,
+			),
+		).resolves.toMatchObject({ uploadId: stranded.uploadId });
 
 		// No route test covers remote-copy.post.ts, so its mapping to a public 503 naming the store
 		// is run here; the event is distinguishable so the header call is matched to it (#356).
@@ -1100,13 +1098,14 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		let routeError: unknown;
 		try {
 			rethrowGraphicsAssetApiError(thrown, requestEvent);
-		}
-		catch (error) {
+		} catch (error) {
 			routeError = error;
 		}
 		const refusal = await publicServerFailure(routeError);
 		expect(refusal.statusCode).toBe(503);
-		expect(refusal.message).toBe('Graphics Asset staging byte store could not release a previous approved remote Graphic Asset copy attempt');
+		expect(refusal.message).toBe(
+			'Graphics Asset staging byte store could not release a previous approved remote Graphic Asset copy attempt',
+		);
 		expect(mockSetResponseHeader).toHaveBeenCalledWith(requestEvent, 'retry-after', 5);
 	});
 
@@ -1114,10 +1113,12 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		const context = await strandRemoteCopyMultipartUpload('remote-copy-retry');
 		const identity = graphicsObjectIdentity(`ingestion/${context.operation.id}/source`);
 		const [stranded] = context.uploadIds;
-		await expect(context.catalogue.getGraphicAssetMultipartState(
-			context.operation.id,
-			context.operation.initiatedBy,
-		)).resolves.toMatchObject({ uploadId: stranded });
+		await expect(
+			context.catalogue.getGraphicAssetMultipartState(
+				context.operation.id,
+				context.operation.initiatedBy,
+			),
+		).resolves.toMatchObject({ uploadId: stranded });
 
 		const retried = await context.ingestion.copyRemoteGraphicAssetSource({
 			operationId: context.operation.id,
@@ -1128,16 +1129,18 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		// The retry took an upload of its own, so the checkpoint could only name
 		// one of the two: the first has to be reclaimed rather than forgotten.
 		expect(context.uploadIds).toHaveLength(2);
-		await expect(context.staging.resumeMultipart(identity, stranded!))
-			.resolves
-			.toMatchObject({ outcome: 'unavailable' });
+		await expect(context.staging.resumeMultipart(identity, stranded!)).resolves.toMatchObject({
+			outcome: 'unavailable',
+		});
 		expect(retried).toMatchObject({
 			transferredByteLength: oversizedRemoteSource.byteLength,
 		});
-		await expect(context.catalogue.getGraphicAssetMultipartState(
-			context.operation.id,
-			context.operation.initiatedBy,
-		)).resolves.toBeUndefined();
+		await expect(
+			context.catalogue.getGraphicAssetMultipartState(
+				context.operation.id,
+				context.operation.initiatedBy,
+			),
+		).resolves.toBeUndefined();
 	});
 
 	it('refuses to start another upload while the stranded one cannot be aborted', async () => {
@@ -1146,22 +1149,26 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 		const [stranded] = context.uploadIds;
 
 		context.staging.injectTransientFailure('multipart-abort');
-		await expect(context.ingestion.copyRemoteGraphicAssetSource({
-			operationId: context.operation.id,
-			initiatedBy: context.operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		})).rejects.toMatchObject({ code: 'graphics-asset-library-unavailable' });
+		await expect(
+			context.ingestion.copyRemoteGraphicAssetSource({
+				operationId: context.operation.id,
+				initiatedBy: context.operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			}),
+		).rejects.toMatchObject({ code: 'graphics-asset-library-unavailable' });
 
 		// Nothing new was started, so the checkpoint still names the upload a
 		// later sweep has to reclaim.
 		expect(context.uploadIds).toHaveLength(1);
-		await expect(context.staging.resumeMultipart(identity, stranded!))
-			.resolves
-			.toMatchObject({ outcome: 'resumed' });
-		await expect(context.catalogue.getGraphicAssetMultipartState(
-			context.operation.id,
-			context.operation.initiatedBy,
-		)).resolves.toMatchObject({ uploadId: stranded });
+		await expect(context.staging.resumeMultipart(identity, stranded!)).resolves.toMatchObject({
+			outcome: 'resumed',
+		});
+		await expect(
+			context.catalogue.getGraphicAssetMultipartState(
+				context.operation.id,
+				context.operation.initiatedBy,
+			),
+		).resolves.toMatchObject({ uploadId: stranded });
 	});
 
 	it('reports no client-transfer facts for a remote copy holding a checkpoint', async () => {
@@ -1222,16 +1229,20 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			sourceFileName: 'scoreboard.png',
 		});
 
-		await expect(ingestion.copyRemoteGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		})).rejects.toMatchObject({ code: 'graphics-asset-library-unavailable' });
+		await expect(
+			ingestion.copyRemoteGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			}),
+		).rejects.toMatchObject({ code: 'graphics-asset-library-unavailable' });
 
-		await expect(ingestion.getIngestionOperation({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-		})).resolves.toMatchObject({ stage: 'created', transferredByteLength: 0 });
+		await expect(
+			ingestion.getIngestionOperation({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+			}),
+		).resolves.toMatchObject({ stage: 'created', transferredByteLength: 0 });
 
 		remote.requests.length = 0;
 		const reinitiated = await ingestion.initiateRemoteGraphicAssetCopy({
@@ -1256,18 +1267,18 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			sourceFileName: 'scoreboard.png',
 		});
 
-		await expect(ingestion.copyRemoteGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		})).resolves.toMatchObject({
+		await expect(
+			ingestion.copyRemoteGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			}),
+		).resolves.toMatchObject({
 			stage: 'failed',
 			failure: { code: 'remote-source-rejected', retryable: false },
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-not-retrievable' },
-				],
+				issues: [{ code: 'remote-source-not-retrievable' }],
 			},
 		});
 	});
@@ -1349,10 +1360,12 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			staging.readMetadata(graphicsObjectIdentity(`ingestion/${operation.id}/source`)),
 		).resolves.toMatchObject({ outcome: 'missing' });
 		await expect(storedAssets()).resolves.toEqual([]);
-		await expect(ingestion.resolveStagedGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-		})).resolves.toMatchObject({ outcome: 'missing' });
+		await expect(
+			ingestion.resolveStagedGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+			}),
+		).resolves.toMatchObject({ outcome: 'missing' });
 	});
 
 	it('refuses a local streamed upload against a remote-copy operation', async () => {
@@ -1364,11 +1377,13 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			sourceFileName: 'scoreboard.png',
 		});
 
-		await expect(ingestion.uploadGraphicAsset({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			bytes: boundedBytes(transparentPixelPng),
-		})).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
+		await expect(
+			ingestion.uploadGraphicAsset({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				bytes: boundedBytes(transparentPixelPng),
+			}),
+		).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
 	});
 
 	it('refuses a client multipart transfer against a remote-copy operation', async () => {
@@ -1380,10 +1395,12 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			sourceFileName: 'scoreboard.png',
 		});
 
-		await expect(ingestion.startGraphicAssetMultipartUpload({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-		})).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
+		await expect(
+			ingestion.startGraphicAssetMultipartUpload({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+			}),
+		).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
 	});
 
 	it('refuses a remote copy against a local-upload operation', async () => {
@@ -1396,10 +1413,12 @@ describe('approved remote HTTPS copy at the Graphic Asset ingestion seam', () =>
 			declaredByteLength: transparentPixelPng.byteLength,
 		});
 
-		await expect(ingestion.copyRemoteGraphicAssetSource({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			sourceUrl: 'https://cdn.example.test/scoreboard.png',
-		})).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
+		await expect(
+			ingestion.copyRemoteGraphicAssetSource({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				sourceUrl: 'https://cdn.example.test/scoreboard.png',
+			}),
+		).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
 	});
 });

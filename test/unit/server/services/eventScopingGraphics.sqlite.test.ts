@@ -9,7 +9,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // another Event) stay off air (#468).
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -66,15 +67,18 @@ interface SeededEvent {
 }
 
 async function seedEvent(name: string, index: number): Promise<SeededEvent> {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name, game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
 
-	const [talent] = await db.insert(schema.eventTalents)
+	const [talent] = await db
+		.insert(schema.eventTalents)
 		.values({ eventId, name: `${name} Talent` })
 		.returning({ id: schema.eventTalents.id });
-	const [screen] = await db.insert(schema.screens)
+	const [screen] = await db
+		.insert(schema.screens)
 		.values({
 			eventId,
 			name: `${name} Screen`,
@@ -83,16 +87,20 @@ async function seedEvent(name: string, index: number): Promise<SeededEvent> {
 			assetCapabilityDigest: `digest-${index}`,
 		})
 		.returning({ id: schema.screens.id });
-	const [player] = await db.insert(schema.players)
+	const [player] = await db
+		.insert(schema.players)
 		.values({ eventId, name: `${name} Player` })
 		.returning({ id: schema.players.id });
-	const [archetype] = await db.insert(schema.archetypes)
+	const [archetype] = await db
+		.insert(schema.archetypes)
 		.values({ eventId, name: 'Shared Archetype' })
 		.returning({ id: schema.archetypes.id });
-	const [phase] = await db.insert(schema.phases)
+	const [phase] = await db
+		.insert(schema.phases)
 		.values({ eventId, name: `${name} Swiss` })
 		.returning({ id: schema.phases.id });
-	const [round] = await db.insert(schema.rounds)
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: phase!.id,
@@ -100,10 +108,12 @@ async function seedEvent(name: string, index: number): Promise<SeededEvent> {
 			roundNumber: 1,
 		})
 		.returning({ id: schema.rounds.id });
-	const [match] = await db.insert(schema.matches)
+	const [match] = await db
+		.insert(schema.matches)
 		.values({ eventId, roundId: round!.id })
 		.returning({ id: schema.matches.id });
-	const [slot] = await db.insert(schema.featureMatches)
+	const [slot] = await db
+		.insert(schema.featureMatches)
 		.values({ eventId })
 		.returning({ id: schema.featureMatches.id });
 
@@ -133,7 +143,8 @@ beforeAll(async () => {
 	one = await seedEvent('Event One', 1);
 	two = await seedEvent('Event Two', 2);
 
-	const [sessionTwo] = await db.insert(schema.featureMatchSessions)
+	const [sessionTwo] = await db
+		.insert(schema.featureMatchSessions)
 		.values({
 			eventId: two.eventId,
 			slotId: two.slotId,
@@ -145,12 +156,14 @@ beforeAll(async () => {
 		.returning({ id: schema.featureMatchSessions.id });
 	sessionTwoId = sessionTwo!.id;
 
-	const [crossWiredSlot] = await db.insert(schema.featureMatches)
+	const [crossWiredSlot] = await db
+		.insert(schema.featureMatches)
 		.values({ eventId: one.eventId, activeSessionId: sessionTwoId, player1Id: two.playerId })
 		.returning({ id: schema.featureMatches.id });
 	crossWiredSlotId = crossWiredSlot!.id;
 
-	const [liveSessionTwo] = await db.insert(schema.broadcastGraphicsLiveSessions)
+	const [liveSessionTwo] = await db
+		.insert(schema.broadcastGraphicsLiveSessions)
 		.values({
 			eventId: two.eventId,
 			screenId: two.screenId,
@@ -161,7 +174,8 @@ beforeAll(async () => {
 		.returning({ id: schema.broadcastGraphicsLiveSessions.id });
 	liveSessionTwoId = liveSessionTwo!.id;
 
-	await db.update(schema.screens)
+	await db
+		.update(schema.screens)
 		.set({
 			activeCard: storedCard('card-two'),
 			activeCardVersion: 1,
@@ -195,26 +209,35 @@ describe('screenService event scoping', () => {
 
 	it('lists only the asking Event', async () => {
 		const service = screenService();
-		expect((await service.findByEventId(one.eventId)).map(screen => screen.id)).toEqual([one.screenId]);
-		expect((await service.findIdsByEventId(one.eventId)).map(row => row.id)).toEqual([one.screenId]);
+		expect((await service.findByEventId(one.eventId)).map((screen) => screen.id)).toEqual([
+			one.screenId,
+		]);
+		expect((await service.findIdsByEventId(one.eventId)).map((row) => row.id)).toEqual([
+			one.screenId,
+		]);
 	});
 
 	it('versioned writes with the wrong Event touch nothing', async () => {
 		const service = screenService();
-		expect(await service.update(two.screenId, one.eventId, { name: 'Hijacked' }, 0)).toBeUndefined();
+		expect(
+			await service.update(two.screenId, one.eventId, { name: 'Hijacked' }, 0),
+		).toBeUndefined();
 		expect((await service.findById(two.screenId, two.eventId))?.name).toBe('Event Two Screen');
 	});
 });
 
 describe('cardService event scoping', () => {
-	it('never surfaces another Event\'s Screen Card', async () => {
+	it("never surfaces another Event's Screen Card", async () => {
 		const service = cardService();
 		expect(await service.getScreenCard(two.eventId, two.screenId)).toEqual({
 			card: expect.objectContaining({ id: 'card-two' }),
 			revision: 1,
 		});
 		// Nor its Card revision: the wrong Event reads as a Screen never written.
-		expect(await service.getScreenCard(one.eventId, two.screenId)).toEqual({ card: null, revision: 0 });
+		expect(await service.getScreenCard(one.eventId, two.screenId)).toEqual({
+			card: null,
+			revision: 0,
+		});
 	});
 });
 
@@ -228,7 +251,9 @@ describe('broadcastGraphicsStateService event scoping', () => {
 	it('the Event-wide active-session sweep stays inside the asking Event', async () => {
 		const service = broadcastGraphicsStateService();
 		expect(await service.findActiveSessionsByEvent(one.eventId)).toEqual([]);
-		expect((await service.findActiveSessionsByEvent(two.eventId)).map(session => session.id)).toEqual([liveSessionTwoId]);
+		expect(
+			(await service.findActiveSessionsByEvent(two.eventId)).map((session) => session.id),
+		).toEqual([liveSessionTwoId]);
 	});
 });
 
@@ -241,8 +266,10 @@ describe('featureMatchService event scoping', () => {
 
 	it('lists and counts only the asking Event', async () => {
 		const service = featureMatchService();
-		const ids = (await service.findByEventId(one.eventId)).map(slot => slot.id);
-		expect(ids.toSorted((a, b) => a - b)).toEqual([one.slotId, crossWiredSlotId].toSorted((a, b) => a - b));
+		const ids = (await service.findByEventId(one.eventId)).map((slot) => slot.id);
+		expect(ids.toSorted((a, b) => a - b)).toEqual(
+			[one.slotId, crossWiredSlotId].toSorted((a, b) => a - b),
+		);
 		expect(await service.countByEventId(one.eventId)).toBe(2);
 		expect(await service.countByEventId(two.eventId)).toBe(1);
 	});
@@ -255,8 +282,10 @@ describe('featureMatchService event scoping', () => {
 });
 
 describe('featureMatchStateService event scoping', () => {
-	it('refuses to open a session on another Event\'s Slot', async () => {
-		expect(await featureMatchStateService().createSessionForSlot(two.slotId, one.eventId)).toBeNull();
+	it("refuses to open a session on another Event's Slot", async () => {
+		expect(
+			await featureMatchStateService().createSessionForSlot(two.slotId, one.eventId),
+		).toBeNull();
 	});
 
 	it('a player reference into another Event resolves no snapshot data', async () => {
@@ -297,17 +326,21 @@ describe('graphicBindingDataService event scoping', () => {
 });
 
 describe('playerFeatureMatchSyncService event scoping', () => {
-	it('reverse sync never rewrites another Event\'s Slot pairing the same player', async () => {
+	it("reverse sync never rewrites another Event's Slot pairing the same player", async () => {
 		// Event 2's Slot deliberately pairs Event 1's player; the schema does not
 		// forbid it, so only the sync's Event predicate keeps it untouched.
-		await db.update(schema.featureMatches)
+		await db
+			.update(schema.featureMatches)
 			.set({ player1Id: one.playerId })
 			.where(eq(schema.featureMatches.id, two.slotId));
-		await db.update(schema.featureMatches)
+		await db
+			.update(schema.featureMatches)
 			.set({ player1Id: one.playerId, activeSessionId: null })
 			.where(eq(schema.featureMatches.id, one.slotId));
 
-		const updated = await playerFeatureMatchSyncService().syncMatchesFromPlayers(one.eventId, [one.playerId]);
+		const updated = await playerFeatureMatchSyncService().syncMatchesFromPlayers(one.eventId, [
+			one.playerId,
+		]);
 		expect(updated).toEqual([one.slotId]);
 
 		const slotOne = await db.query.featureMatches.findFirst({

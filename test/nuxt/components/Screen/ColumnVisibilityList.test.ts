@@ -24,7 +24,8 @@ const USwitchStub = defineComponent({
 		modelValue: { type: Boolean, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" data-testid="column-visible" @click="$emit(\'update:modelValue\', !modelValue)">{{ String(!!modelValue) }}</button>',
+	template:
+		'<button type="button" data-testid="column-visible" @click="$emit(\'update:modelValue\', !modelValue)">{{ String(!!modelValue) }}</button>',
 });
 
 const labels = { position: '#', name: 'Name', deck: 'Deck' };
@@ -38,11 +39,20 @@ function columns() {
 }
 
 function shownRows(wrapper: ReturnType<typeof mountList>) {
-	return wrapper.findAll('[data-testid="column-row"]')
-		.map(row => `${row.get('[data-testid="column-label"]').text()} ${row.get('[data-testid="column-visible"]').text()}`);
+	return wrapper
+		.findAll('[data-testid="column-row"]')
+		.map(
+			(row) =>
+				`${row.get('[data-testid="column-label"]').text()} ${row.get('[data-testid="column-visible"]').text()}`,
+		);
 }
 
-function mountList(props: { columns?: Array<{ key: string; visible: boolean }>; labels?: Record<string, string> } = {}) {
+function mountList(
+	props: {
+		columns?: Array<{ key: string; visible: boolean }>;
+		labels?: Record<string, string>;
+	} = {},
+) {
 	return mount(ColumnVisibilityList, {
 		props: { columns: props.columns ?? columns(), labels: props.labels ?? labels },
 		global: {
@@ -85,9 +95,7 @@ describe('screenColumnVisibilityList', () => {
 		await nextTick();
 		draggable.vm.$emit('end');
 
-		expect(wrapper.emitted('update')).toEqual([
-			[reordered],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[reordered]]);
 	});
 
 	it('never touches the columns it was given', async () => {

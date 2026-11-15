@@ -13,21 +13,27 @@ const { screen, sampleDataset, sampleVariant } = useScreenContext();
 const eventStore = useEventStore();
 /** The kind of Event shown: the Theme preview's sample's, or else the Event's. */
 const kind = computed(() => {
-	if (sampleDataset)
-		return eventKind({ game: sampleDataset, variant: sampleVariant });
+	if (sampleDataset) return eventKind({ game: sampleDataset, variant: sampleVariant });
 	const event = eventStore.displayEvent;
-	return event
-		? eventKind(event)
-		: undefined;
+	return event ? eventKind(event) : undefined;
 });
-const followsSlot = computed(() =>
-	resolveScreenModeConfig(screen.value?.modeConfigs, 'deck').deckSource.type === 'featureMatchSlot');
+const followsSlot = computed(
+	() =>
+		resolveScreenModeConfig(screen.value?.modeConfigs, 'deck').deckSource.type ===
+		'featureMatchSlot',
+);
 const showsCommanderSeat = computed(() => followsSlot.value && kind.value === 'mtg-commander');
-const showsOnePiece = computed(() => !showsCommanderSeat.value && (kind.value === 'op' || followsSlot.value));
+const showsOnePiece = computed(
+	() => !showsCommanderSeat.value && (kind.value === 'op' || followsSlot.value),
+);
 </script>
 
 <template>
 	<ScreenModesDeckOpDisplay v-if="showsOnePiece" />
 	<!-- Keyed, so a display set up to follow a Seat is never reused for another source. -->
-	<ScreenModesDeckMtgDisplay v-else :key="showsCommanderSeat ? 'seat' : 'deck'" :follows-seat="showsCommanderSeat" />
+	<ScreenModesDeckMtgDisplay
+		v-else
+		:key="showsCommanderSeat ? 'seat' : 'deck'"
+		:follows-seat="showsCommanderSeat"
+	/>
 </template>

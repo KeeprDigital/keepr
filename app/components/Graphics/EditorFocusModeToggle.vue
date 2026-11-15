@@ -17,9 +17,11 @@ const { active, toggle } = useEditorFocusModeHost();
 		:color="active ? 'primary' : 'neutral'"
 		:icon="active ? 'i-lucide-minimize-2' : 'i-lucide-maximize-2'"
 		:aria-pressed="active"
-		:title="active
-			? 'Bring back the app sidebar and Screen settings'
-			: 'Hide the app sidebar and Screen settings so the editor fills the page'"
+		:title="
+			active
+				? 'Bring back the app sidebar and Screen settings'
+				: 'Hide the app sidebar and Screen settings so the editor fills the page'
+		"
 		data-testid="editor-focus-mode-toggle"
 		@click="toggle"
 	>

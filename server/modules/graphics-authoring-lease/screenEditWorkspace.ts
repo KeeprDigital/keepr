@@ -15,7 +15,10 @@ import { graphicsAuthoringLeaseModule } from './index';
  * the one path every such write takes (#607); a route only says who is asking.
  */
 
-export function screenEditWorkspaceLeaseRef(eventId: number, screenId: number): GraphicsAuthoringLeaseRef {
+export function screenEditWorkspaceLeaseRef(
+	eventId: number,
+	screenId: number,
+): GraphicsAuthoringLeaseRef {
 	return {
 		artifact: screenEditWorkspaceArtifact(screenId),
 		eventId,

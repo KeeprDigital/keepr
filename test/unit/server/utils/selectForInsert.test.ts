@@ -45,12 +45,18 @@ describe('selectForInsert', () => {
 
 		// Keys deliberately scrambled relative to the table declaration: the map
 		// names columns, so its ordering must not matter.
-		await db.insert(gadgets).select(selectForInsert(gadgets, {
-			sortOrder: sql`json_extract(value, '$.sortOrder')`,
-			name: sql`json_extract(value, '$.name')`,
-			id: sql`null`,
-			eventId: sql`${41}`,
-		}, sql`from json_each(${payload})`));
+		await db.insert(gadgets).select(
+			selectForInsert(
+				gadgets,
+				{
+					sortOrder: sql`json_extract(value, '$.sortOrder')`,
+					name: sql`json_extract(value, '$.name')`,
+					id: sql`null`,
+					eventId: sql`${41}`,
+				},
+				sql`from json_each(${payload})`,
+			),
+		);
 
 		const rows = await db.select().from(gadgets).orderBy(gadgets.sortOrder);
 		expect(rows).toEqual([
@@ -73,20 +79,28 @@ describe('selectForInsert', () => {
 		await db.insert(gadgets).values({ eventId: 41, name: 'solo', sortOrder: 1 });
 		await client.execute('create unique index if not exists gadgets_name_unique on gadgets(name)');
 
-		const payload = JSON.stringify([
-			{ name: 'solo', sortOrder: 5 },
-		]);
-		const returned = await db.insert(gadgets).select(selectForInsert(gadgets, {
-			id: sql`null`,
-			eventId: sql`${41}`,
-			name: sql`json_extract(value, '$.name')`,
-			sortOrder: sql`json_extract(value, '$.sortOrder')`,
-		}, sql`from json_each(${payload}) where true`)).onConflictDoUpdate({
-			target: gadgets.name,
-			set: {
-				sortOrder: sql.raw('excluded.sort_order'),
-			},
-		}).returning();
+		const payload = JSON.stringify([{ name: 'solo', sortOrder: 5 }]);
+		const returned = await db
+			.insert(gadgets)
+			.select(
+				selectForInsert(
+					gadgets,
+					{
+						id: sql`null`,
+						eventId: sql`${41}`,
+						name: sql`json_extract(value, '$.name')`,
+						sortOrder: sql`json_extract(value, '$.sortOrder')`,
+					},
+					sql`from json_each(${payload}) where true`,
+				),
+			)
+			.onConflictDoUpdate({
+				target: gadgets.name,
+				set: {
+					sortOrder: sql.raw('excluded.sort_order'),
+				},
+			})
+			.returning();
 
 		expect(returned).toEqual([
 			{
@@ -109,14 +123,20 @@ describe('selectForInsert', () => {
 	});
 
 	it('rejects a map with an unknown column, naming it', () => {
-		expect(() => selectForInsert(gadgets, {
-			id: sql`null`,
-			eventId: sql`${41}`,
-			name: sql`'x'`,
-			sortOrder: sql`0`,
-			// @ts-expect-error — the stray key under test
-			colour: sql`'red'`,
-		}, sql`where true`)).toThrow(/colour/);
+		expect(() =>
+			selectForInsert(
+				gadgets,
+				{
+					id: sql`null`,
+					eventId: sql`${41}`,
+					name: sql`'x'`,
+					sortOrder: sql`0`,
+					// @ts-expect-error — the stray key under test
+					colour: sql`'red'`,
+				},
+				sql`where true`,
+			),
+		).toThrow(/colour/);
 	});
 });
 
@@ -139,10 +159,16 @@ describe('selectForInsert with a generated column', () => {
 	});
 
 	it('inserts without an expression for the generated column', async () => {
-		await db.insert(gizmos).select(selectForInsert(gizmos, {
-			id: sql`null`,
-			width: sql`${21}`,
-		}, sql`where true`));
+		await db.insert(gizmos).select(
+			selectForInsert(
+				gizmos,
+				{
+					id: sql`null`,
+					width: sql`${21}`,
+				},
+				sql`where true`,
+			),
+		);
 
 		const rows = await db.select().from(gizmos);
 		expect(rows).toEqual([
@@ -155,11 +181,17 @@ describe('selectForInsert with a generated column', () => {
 	});
 
 	it('rejects an expression for the generated column, naming it', () => {
-		expect(() => selectForInsert(gizmos, {
-			id: sql`null`,
-			width: sql`${21}`,
-			// @ts-expect-error — generated columns take no insert expression
-			doubled: sql`0`,
-		}, sql`where true`)).toThrow(/doubled/);
+		expect(() =>
+			selectForInsert(
+				gizmos,
+				{
+					id: sql`null`,
+					width: sql`${21}`,
+					// @ts-expect-error — generated columns take no insert expression
+					doubled: sql`0`,
+				},
+				sql`where true`,
+			),
+		).toThrow(/doubled/);
 	});
 });

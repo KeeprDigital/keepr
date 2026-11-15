@@ -9,7 +9,9 @@ import type { AnimationEffectFactory } from './types';
  * never reaches this map — refused upstream rather than approximated.
  */
 const effectLoaders: {
-	[Effect in AnimationEffectName]: () => Promise<{ default: AnimationEffectFactory<AnimationEffectParams<Effect>> }>;
+	[Effect in AnimationEffectName]: () => Promise<{
+		default: AnimationEffectFactory<AnimationEffectParams<Effect>>;
+	}>;
 } = {
 	caustics: () => import('./caustics'),
 	cells: () => import('./cells'),

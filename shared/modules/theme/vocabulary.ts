@@ -31,7 +31,7 @@ function chartSeries(slot: number, color: string) {
  * share one divider, and its secondary text is a colour, not an opacity.
  */
 export const FOUNDATION_TOKENS = {
-	'surface': {
+	surface: {
 		type: 'color',
 		label: 'Surface',
 		// Clear, so the Screen's background shows through.
@@ -59,33 +59,33 @@ export const FOUNDATION_TOKENS = {
 		label: 'Text on primary text',
 		default: '#111827',
 	},
-	'accent': {
+	accent: {
 		type: 'color',
 		label: 'Accent',
 		default: '#0077a3',
 	},
-	'positive': {
+	positive: {
 		type: 'color',
 		label: 'Positive',
 		default: '#4ade80',
 	},
-	'negative': {
+	negative: {
 		type: 'color',
 		label: 'Negative',
 		default: '#f87171',
 	},
-	'caution': {
+	caution: {
 		type: 'color',
 		label: 'Caution',
 		default: '#facc15',
 	},
-	'divider': {
+	divider: {
 		type: 'color',
 		label: 'Divider',
 		default: 'rgba(255, 255, 255, 0.12)',
 	},
 	// What lifts a badge off the card art under it, wherever a mode has badges.
-	'shadow': {
+	shadow: {
 		type: 'color',
 		label: 'Shadow',
 		default: 'rgba(0, 0, 0, 0.1)',
@@ -106,14 +106,14 @@ export const FOUNDATION_TOKENS = {
 		label: 'Chart series Other',
 		default: '#898781',
 	},
-	'logo': {
+	logo: {
 		type: 'asset',
 		label: 'Primary logo',
 		assetKinds: ['image', 'silent-video'],
 		// None: the Default Theme carries no production's branding.
 		default: null,
 	},
-	'heading': {
+	heading: {
 		type: 'typography',
 		label: 'Heading',
 		default: {
@@ -124,7 +124,7 @@ export const FOUNDATION_TOKENS = {
 			case: 'uppercase',
 		},
 	},
-	'body': {
+	body: {
 		type: 'typography',
 		label: 'Body',
 		default: {
@@ -145,7 +145,7 @@ export const FOUNDATION_TOKENS = {
 			color: { token: 'accent' },
 		},
 	},
-	'panel': {
+	panel: {
 		type: 'surface-style',
 		label: 'Panel',
 		default: {
@@ -198,18 +198,18 @@ export const FOUNDATION_TOKENS = {
 			fade: { opacity: 0 },
 		},
 	},
-	'inset': {
+	inset: {
 		type: 'dimension',
 		label: 'Screen inset',
 		default: 0,
 		bounds: { min: 0, max: 480 },
 	},
-	'alignment': {
+	alignment: {
 		type: 'alignment',
 		label: 'Screen alignment',
 		default: { horizontal: 'center', vertical: 'center' },
 	},
-	'background': {
+	background: {
 		type: 'backgroundLayers',
 		label: 'Background',
 		// Empty: a Background Screen stays black and a plain mode clear.
@@ -240,21 +240,21 @@ export const FOUNDATION_TOKEN_KINDS = [
 	'chart',
 ] as const;
 
-export type FoundationTokenKind = typeof FOUNDATION_TOKEN_KINDS[number];
+export type FoundationTokenKind = (typeof FOUNDATION_TOKEN_KINDS)[number];
 
 /** Each Foundation Token's kind: a token added to the vocabulary names one here. */
 export const FOUNDATION_TOKEN_KIND: Readonly<Record<FoundationTokenName, FoundationTokenKind>> = {
-	'surface': 'colours',
+	surface: 'colours',
 	'surface-raised': 'colours',
 	'text-primary': 'colours',
 	'text-secondary': 'colours',
 	'text-inverse': 'colours',
-	'accent': 'colours',
-	'positive': 'colours',
-	'negative': 'colours',
-	'caution': 'colours',
-	'divider': 'colours',
-	'shadow': 'colours',
+	accent: 'colours',
+	positive: 'colours',
+	negative: 'colours',
+	caution: 'colours',
+	divider: 'colours',
+	shadow: 'colours',
 	'series-1': 'chart',
 	'series-2': 'chart',
 	'series-3': 'chart',
@@ -264,24 +264,24 @@ export const FOUNDATION_TOKEN_KIND: Readonly<Record<FoundationTokenName, Foundat
 	'series-7': 'chart',
 	'series-8': 'chart',
 	'series-other': 'chart',
-	'logo': 'assets',
-	'heading': 'type',
-	'body': 'type',
+	logo: 'assets',
+	heading: 'type',
+	body: 'type',
 	'accent-fill': 'surfaces',
-	'panel': 'surfaces',
+	panel: 'surfaces',
 	'panel-shape': 'surfaces',
 	'motion-enter': 'motion',
 	'motion-update': 'motion',
 	'motion-exit': 'motion',
-	'inset': 'background',
-	'alignment': 'background',
-	'background': 'background',
+	inset: 'background',
+	alignment: 'background',
+	background: 'background',
 	'animation-effect': 'background',
 };
 
 /** The Foundation Tokens of one type, which a Mode Token of that type may name. */
 export type FoundationTokenNameOfType<T extends ThemeTokenType> = {
-	[N in FoundationTokenName]: typeof FOUNDATION_TOKENS[N]['type'] extends T ? N : never;
+	[N in FoundationTokenName]: (typeof FOUNDATION_TOKENS)[N]['type'] extends T ? N : never;
 }[FoundationTokenName];
 
 /**

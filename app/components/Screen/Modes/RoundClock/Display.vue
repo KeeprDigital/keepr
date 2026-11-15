@@ -20,18 +20,12 @@ const clockColors: Record<Exclude<RoundClockState, 'untimed'>, string> = {
 
 const clockStyle = computed(() => ({
 	...foundationTypographyStyle('heading'),
-	color: clock.value.state === 'untimed'
-		? undefined
-		: clockColors[clock.value.state],
+	color: clock.value.state === 'untimed' ? undefined : clockColors[clock.value.state],
 }));
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
 		<div class="round-clock-display" :data-clock-state="clock.state" :style="surfaceStyle">
 			<div v-if="config.showRoundName" class="round-clock-name" :style="roundNameStyle">
 				{{ round?.name }}

@@ -24,37 +24,46 @@ const PHOTO_COLUMN_OMIT = {
 const photoField = graphicAssetReferenceSchema.nullable().optional();
 
 /** Free text such as "Host" or "Commentator"; blank stores none (#782). */
-const roleField = z.string().max(100).nullable().optional().transform(role => role === undefined
-	? undefined
-	: role?.trim() || null);
+const roleField = z
+	.string()
+	.max(100)
+	.nullable()
+	.optional()
+	.transform((role) => (role === undefined ? undefined : role?.trim() || null));
 
 function socialProfileField(network: Parameters<typeof normalizeSocialProfileInput>[0]) {
-	return z.string().transform((value, context) => {
-		try {
-			return normalizeSocialProfileInput(network, value);
-		}
-		catch (error) {
-			context.addIssue({
-				code: 'custom',
-				message: error instanceof SocialProfileInputError
-					? error.message
-					: 'Invalid Social Profile',
-			});
-			return z.NEVER;
-		}
-	}).optional();
+	return z
+		.string()
+		.transform((value, context) => {
+			try {
+				return normalizeSocialProfileInput(network, value);
+			} catch (error) {
+				context.addIssue({
+					code: 'custom',
+					message:
+						error instanceof SocialProfileInputError ? error.message : 'Invalid Social Profile',
+				});
+				return z.NEVER;
+			}
+		})
+		.optional();
 }
 
-export const socialProfilesInputSchema = z.object({
-	twitch: socialProfileField('twitch'),
-	youtube: socialProfileField('youtube'),
-	x: socialProfileField('x'),
-	instagram: socialProfileField('instagram'),
-	tiktok: socialProfileField('tiktok'),
-	bluesky: socialProfileField('bluesky'),
-}).strict().transform(profiles => Object.fromEntries(
-	Object.entries(profiles).filter((entry): entry is [string, string] => entry[1] !== undefined),
-));
+export const socialProfilesInputSchema = z
+	.object({
+		twitch: socialProfileField('twitch'),
+		youtube: socialProfileField('youtube'),
+		x: socialProfileField('x'),
+		instagram: socialProfileField('instagram'),
+		tiktok: socialProfileField('tiktok'),
+		bluesky: socialProfileField('bluesky'),
+	})
+	.strict()
+	.transform((profiles) =>
+		Object.fromEntries(
+			Object.entries(profiles).filter((entry): entry is [string, string] => entry[1] !== undefined),
+		),
+	);
 
 // CREATE
 export const createTalentSchema = createInsertSchema(eventTalents)

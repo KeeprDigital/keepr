@@ -26,7 +26,11 @@ describe('broadcast graphics playout command API', () => {
 	beforeAll(async () => {
 		const event = await $fetch<{ id: number }>('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Broadcast Graphics Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Broadcast Graphics Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 	});
@@ -34,8 +38,7 @@ describe('broadcast graphics playout command API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('opens a Broadcast Graphics Live Session with every placed graphic off', async () => {
@@ -97,7 +100,12 @@ describe('broadcast graphics playout command API', () => {
 		};
 
 		const first = await harness.send(command);
-		const replay = await sendBroadcastGraphicsCommand(eventId, harness.screen.id, harness.session().id, command);
+		const replay = await sendBroadcastGraphicsCommand(
+			eventId,
+			harness.screen.id,
+			harness.session().id,
+			command,
+		);
 
 		expect(replay.sequence).toBe(first.sequence);
 		// Including the effective animation start time: a retried Take must not restart
@@ -173,20 +181,16 @@ describe('broadcast graphics playout command API', () => {
 		// epoch may exist per Screen — the partial unique index on the active status
 		// is what enforces it, and the loser of the race has to resolve to the
 		// winner's epoch rather than failing or creating a second one.
-		const screen = await createBroadcastGraphicsScreen(
-			eventId,
-			'playout-single-epoch',
-			[
-				integrationBroadcastGraphic('a'),
-			],
-		);
+		const screen = await createBroadcastGraphicsScreen(eventId, 'playout-single-epoch', [
+			integrationBroadcastGraphic('a'),
+		]);
 
 		const opened = await Promise.all(
 			Array.from({ length: 6 }, () => getBroadcastGraphicsLiveSession(eventId, screen.id)),
 		);
 
-		expect(new Set(opened.map(session => session.id)).size).toBe(1);
-		expect(opened.every(session => session.status === 'active')).toBe(true);
+		expect(new Set(opened.map((session) => session.id)).size).toBe(1);
+		expect(opened.every((session) => session.status === 'active')).toBe(true);
 	});
 
 	it('refuses a snapshot for a Screen that is not in Broadcast Graphics mode', async () => {
@@ -216,7 +220,11 @@ describe('broadcast graphics live playout animation', () => {
 	beforeAll(async () => {
 		const event = await $fetch<{ id: number }>('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Live Playout Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Live Playout Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 	});
@@ -224,8 +232,7 @@ describe('broadcast graphics live playout animation', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('stamps effective start times on the clock outputs synchronise against', async () => {
@@ -258,7 +265,10 @@ describe('broadcast graphics live playout animation', () => {
 	it('reverses an entrance that Out interrupted, bounded by the entrance itself', async () => {
 		// The longest entrance an author may write: Out has to land inside it to interrupt it.
 		const harness = await createGraphicsHarness(eventId, 'playout-reverse', [
-			integrationBroadcastGraphic('a', integrationGraphicAnimation({ enter: 10_000, exit: 10_000 })),
+			integrationBroadcastGraphic(
+				'a',
+				integrationGraphicAnimation({ enter: 10_000, exit: 10_000 }),
+			),
 		]);
 
 		const taken = await harness.send({
@@ -275,16 +285,17 @@ describe('broadcast graphics live playout animation', () => {
 		const record = outed.currentState.playout.a!;
 		const startedAt = taken.currentState.playout.a!.effectiveStartedAt;
 
-		expect(Object.keys(record).toSorted())
-			.toEqual([
-				'cut',
-				'effectiveStartedAt',
-				'onAir',
-				'reversalCompletesAt',
-			]);
+		expect(Object.keys(record).toSorted()).toEqual([
+			'cut',
+			'effectiveStartedAt',
+			'onAir',
+			'reversalCompletesAt',
+		]);
 		// The reversal unwinds exactly as much of the entrance as had played, so it
 		// completes as far after Out as Out was after Take.
-		expect(record.reversalCompletesAt!).toBe(record.effectiveStartedAt + (record.effectiveStartedAt - startedAt));
+		expect(record.reversalCompletesAt!).toBe(
+			record.effectiveStartedAt + (record.effectiveStartedAt - startedAt),
+		);
 		expect(record.reversalCompletesAt! - record.effectiveStartedAt).toBeLessThanOrEqual(10_000);
 	});
 
@@ -298,9 +309,7 @@ describe('broadcast graphics live playout animation', () => {
 		const harness = await createGraphicsHarness(eventId, 'playout-exit-cycling', [
 			integrationBroadcastGraphicWithInputs(
 				'a',
-				[
-					integrationTextInput('name'),
-				],
+				[integrationTextInput('name')],
 				integrationGraphicAnimation({ onScreen: 5000, exit: 5000 }),
 			),
 		]);
@@ -318,14 +327,16 @@ describe('broadcast graphics live playout animation', () => {
 
 		// No enter recipe, so cycling began the instant the Take settled — and that is the
 		// instant the exit now carries.
-		expect(outed.currentState.playout.a!.cyclingStartedAt)
-			.toBe(taken.currentState.playout.a!.effectiveStartedAt);
+		expect(outed.currentState.playout.a!.cyclingStartedAt).toBe(
+			taken.currentState.playout.a!.effectiveStartedAt,
+		);
 		expect(outed.currentState.playout.a!.onAir).toBe(false);
 
 		// Every reader reloads the same origin rather than deriving one of its own.
 		const reloaded = await harness.reload();
-		expect(reloaded.currentState.playout.a!.cyclingStartedAt)
-			.toBe(outed.currentState.playout.a!.cyclingStartedAt);
+		expect(reloaded.currentState.playout.a!.cyclingStartedAt).toBe(
+			outed.currentState.playout.a!.cyclingStartedAt,
+		);
 	});
 
 	/**
@@ -355,8 +366,7 @@ describe('broadcast graphics live playout animation', () => {
 		async function serverClockPasses(instant: number): Promise<void> {
 			for (;;) {
 				const { serverTime } = await $fetch<{ serverTime: number }>('/api/time');
-				if (serverTime > instant)
-					return;
+				if (serverTime > instant) return;
 				await new Promise((resolve) => {
 					setTimeout(resolve, instant - serverTime + 1);
 				});
@@ -368,10 +378,7 @@ describe('broadcast graphics live playout animation', () => {
 			const harness = await createGraphicsHarness(
 				eventId,
 				slug,
-				[
-					member('a', true),
-					member('b'),
-				],
+				[member('a', true), member('b')],
 				[channel],
 			);
 			const incumbent = await harness.send({
@@ -379,17 +386,25 @@ describe('broadcast graphics live playout animation', () => {
 				type: 'Take',
 				payload: { graphicId: 'a' },
 			});
-			await serverClockPasses(incumbent.currentState.playout.a!.effectiveStartedAt + INCUMBENT_ENTER_MS);
+			await serverClockPasses(
+				incumbent.currentState.playout.a!.effectiveStartedAt + INCUMBENT_ENTER_MS,
+			);
 
-			return (await harness.send({
-				commandId: playoutCommandId('take-b'),
-				type: 'Take',
-				payload: { graphicId: 'b' },
-			})).currentState.playout;
+			return (
+				await harness.send({
+					commandId: playoutCommandId('take-b'),
+					type: 'Take',
+					payload: { graphicId: 'b' },
+				})
+			).currentState.playout;
 		}
 
 		it('outs the incumbent before the newcomer enters, under Out then in', async () => {
-			const state = await handOff('channel-out-then-in', { id: 'thirds', name: 'Lower thirds', handoff: 'out-then-in' });
+			const state = await handOff('channel-out-then-in', {
+				id: 'thirds',
+				name: 'Lower thirds',
+				handoff: 'out-then-in',
+			});
 
 			// The newcomer's entrance is scheduled at exactly the instant the incumbent's exit
 			// completes, so it is held off every output until then rather than overlapping it.

@@ -33,8 +33,7 @@ export default defineEventHandler(async (event) => {
 				maximumByteLength: MAX_SILENT_VIDEO_INGESTION_BYTES,
 			}),
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

@@ -6,7 +6,10 @@ import type { MeleeSyncContext } from './context';
 import type { PreviousRoundStandingsResult } from './roundMatches';
 import { createError } from 'h3';
 import { InvalidMeleePlayerSnapshotError, mapMeleePlayersToDb } from '~~/server/mappers/melee';
-import { eventDataPublicationModule, publishSyncAfterCommit } from '~~/server/modules/event-data-publication';
+import {
+	eventDataPublicationModule,
+	publishSyncAfterCommit,
+} from '~~/server/modules/event-data-publication';
 import {
 	MeleeRoundNotReadyError,
 	syncMatchesFromMelee,
@@ -14,7 +17,10 @@ import {
 } from '~~/server/modules/melee-sync/roundMatches';
 import { asOneOutputChange } from '~~/server/modules/screen-output-publication';
 import { importedMtgCardResolverService } from '~~/server/services/importedMtgCardResolver';
-import { describeKeptStructure, removeImportedStructure } from '~~/server/services/importedStructure';
+import {
+	describeKeptStructure,
+	removeImportedStructure,
+} from '~~/server/services/importedStructure';
 import { requireMeleeService } from '~~/server/services/meleeIntegration';
 import { mtgCardService } from '~~/server/services/mtgCard';
 import { phaseService } from '~~/server/services/phase';
@@ -79,14 +85,13 @@ interface StructureChangeSet {
 }
 
 function hasStructureChanges(changes: StructureChangeSet) {
-	return Object.values(changes.phases).some(ids => ids.length > 0)
-		|| Object.values(changes.rounds).some(ids => ids.length > 0);
+	return (
+		Object.values(changes.phases).some((ids) => ids.length > 0) ||
+		Object.values(changes.rounds).some((ids) => ids.length > 0)
+	);
 }
 
-async function publishAfterCommit(
-	warnings: string[],
-	publish: () => Promise<void>,
-): Promise<void> {
+async function publishAfterCommit(warnings: string[], publish: () => Promise<void>): Promise<void> {
 	await publishSyncAfterCommit(warnings, publish, 'melee_sync_realtime_publish_failed');
 }
 
@@ -96,8 +101,19 @@ async function publishAfterCommit(
  */
 function buildPhasesAndRounds(meleeEvent: MeleeEventParsed) {
 	const result: Array<{
-		phase: { name: string; sortOrder: number; externalId: string; externalSource: 'melee'; formatExternalId: string };
-		rounds: Array<{ name: string; roundNumber: number; externalId: string; externalSource: 'melee' }>;
+		phase: {
+			name: string;
+			sortOrder: number;
+			externalId: string;
+			externalSource: 'melee';
+			formatExternalId: string;
+		};
+		rounds: Array<{
+			name: string;
+			roundNumber: number;
+			externalId: string;
+			externalSource: 'melee';
+		}>;
 	}> = [];
 	const phaseExternalIds = new Set<number>();
 	const roundExternalIds = new Set<number>();
@@ -123,12 +139,14 @@ function buildPhasesAndRounds(meleeEvent: MeleeEventParsed) {
 			formatExternalId: phase.FormatId,
 		};
 
-		const rounds = phase.Rounds.slice().sort((a, b) => a.SortOrder - b.SortOrder).map((round, roundIndex) => ({
-			name: round.Name,
-			roundNumber: roundIndex + 1,
-			externalId: round.ID.toString(),
-			externalSource: 'melee' as const,
-		}));
+		const rounds = phase.Rounds.slice()
+			.sort((a, b) => a.SortOrder - b.SortOrder)
+			.map((round, roundIndex) => ({
+				name: round.Name,
+				roundNumber: roundIndex + 1,
+				externalId: round.ID.toString(),
+				externalSource: 'melee' as const,
+			}));
 
 		result.push({ phase: phaseData, rounds });
 	}
@@ -166,7 +184,7 @@ export function createMeleeSyncWorkflows() {
 		const melee = requireMeleeService(eventData);
 		const { originConnectionId } = syncContext;
 
-		const rawMeleeEvent = meleeEventSnapshot ?? await melee.fetchEvent();
+		const rawMeleeEvent = meleeEventSnapshot ?? (await melee.fetchEvent());
 		const gameCompatibility = inspectSourceGame(eventData, rawMeleeEvent);
 		const structure = buildPhasesAndRounds(rawMeleeEvent);
 
@@ -177,29 +195,32 @@ export function createMeleeSyncWorkflows() {
 		// and stale records are removed only after all upstream records have been upserted.
 		const existingPhases = await phaseSvc.findByEventId(eventId);
 		const existingRounds = await roundSvc.findByEventId(eventId);
-		const existingPhaseByExternalId = new Map(existingPhases.flatMap(phase =>
-			phase.externalSource === 'melee' && phase.externalId
-				? [
-						[phase.externalId, phase] as const,
-					]
-				: [],
-		));
-		const existingRoundByExternalId = new Map(existingRounds.flatMap(round =>
-			round.externalSource === 'melee' && round.externalId
-				? [
-						[round.externalId, round] as const,
-					]
-				: [],
-		));
+		const existingPhaseByExternalId = new Map(
+			existingPhases.flatMap((phase) =>
+				phase.externalSource === 'melee' && phase.externalId
+					? [[phase.externalId, phase] as const]
+					: [],
+			),
+		);
+		const existingRoundByExternalId = new Map(
+			existingRounds.flatMap((round) =>
+				round.externalSource === 'melee' && round.externalId
+					? [[round.externalId, round] as const]
+					: [],
+			),
+		);
 		const incomingPhaseExternalIds = new Set<string>();
 		const incomingRoundExternalIds = new Set<string>();
 		const changes: StructureChangeSet = {
 			phases: { created: [], updated: [], deleted: [] },
 			rounds: { created: [], updated: [], deleted: [] },
 		};
-		const warnings: string[] = gameCompatibility.status === 'unknown'
-			? ['Melee.gg reported an unrecognized game; generic Event structure was synced but submitted data will be skipped']
-			: [];
+		const warnings: string[] =
+			gameCompatibility.status === 'unknown'
+				? [
+						'Melee.gg reported an unrecognized game; generic Event structure was synced but submitted data will be skipped',
+					]
+				: [];
 
 		let totalPhases = 0;
 		let totalRounds = 0;
@@ -207,10 +228,11 @@ export function createMeleeSyncWorkflows() {
 		for (const { phase: phaseData, rounds: roundsData } of structure) {
 			incomingPhaseExternalIds.add(phaseData.externalId);
 			const existingPhase = existingPhaseByExternalId.get(phaseData.externalId);
-			const phaseUnchanged = existingPhase
-				&& existingPhase.name === phaseData.name
-				&& existingPhase.sortOrder === phaseData.sortOrder
-				&& existingPhase.formatExternalId === phaseData.formatExternalId;
+			const phaseUnchanged =
+				existingPhase &&
+				existingPhase.name === phaseData.name &&
+				existingPhase.sortOrder === phaseData.sortOrder &&
+				existingPhase.formatExternalId === phaseData.formatExternalId;
 			let phase = existingPhase;
 			if (!phaseUnchanged) {
 				const upserted = await phaseSvc.upsertByExternalId({
@@ -230,10 +252,11 @@ export function createMeleeSyncWorkflows() {
 			for (const roundData of roundsData) {
 				incomingRoundExternalIds.add(roundData.externalId);
 				const existingRound = existingRoundByExternalId.get(roundData.externalId);
-				const roundUnchanged = existingRound
-					&& existingRound.name === roundData.name
-					&& existingRound.roundNumber === roundData.roundNumber
-					&& existingRound.phaseId === phase.id;
+				const roundUnchanged =
+					existingRound &&
+					existingRound.name === roundData.name &&
+					existingRound.roundNumber === roundData.roundNumber &&
+					existingRound.phaseId === phase.id;
 				if (!roundUnchanged) {
 					const { round, created } = await roundSvc.upsertByExternalId({
 						eventId,
@@ -247,14 +270,20 @@ export function createMeleeSyncWorkflows() {
 			}
 		}
 
-		const staleRoundIds = existingRounds.filter(round =>
-			round.externalSource === 'melee'
-			&& (!round.externalId || !incomingRoundExternalIds.has(round.externalId)),
-		).map(round => round.id);
-		const stalePhaseIds = existingPhases.filter(phase =>
-			phase.externalSource === 'melee'
-			&& (!phase.externalId || !incomingPhaseExternalIds.has(phase.externalId)),
-		).map(phase => phase.id);
+		const staleRoundIds = existingRounds
+			.filter(
+				(round) =>
+					round.externalSource === 'melee' &&
+					(!round.externalId || !incomingRoundExternalIds.has(round.externalId)),
+			)
+			.map((round) => round.id);
+		const stalePhaseIds = existingPhases
+			.filter(
+				(phase) =>
+					phase.externalSource === 'melee' &&
+					(!phase.externalId || !incomingPhaseExternalIds.has(phase.externalId)),
+			)
+			.map((phase) => phase.id);
 		if (staleRoundIds.length > 0 || stalePhaseIds.length > 0) {
 			// A stale Phase or Round still holding manual structure is kept as
 			// manual structure rather than deleted through it (ADR-0040).
@@ -264,9 +293,9 @@ export function createMeleeSyncWorkflows() {
 				roundIds: staleRoundIds,
 			});
 			changes.rounds.deleted.push(...removal.deletedRoundIds);
-			changes.rounds.updated.push(...removal.keptRounds.map(round => round.id));
+			changes.rounds.updated.push(...removal.keptRounds.map((round) => round.id));
 			changes.phases.deleted.push(...removal.deletedPhaseIds);
-			changes.phases.updated.push(...removal.keptPhases.map(phase => phase.id));
+			changes.phases.updated.push(...removal.keptPhases.map((phase) => phase.id));
 			warnings.push(...describeKeptStructure(removal, 'stale'));
 			// Ahead of the structure's announcement, and with no origin: the syncing
 			// client never received these Screens back (ADR-0060).
@@ -275,13 +304,17 @@ export function createMeleeSyncWorkflows() {
 		}
 
 		if (hasStructureChanges(changes)) {
-			await publishAfterCommit(warnings, async () => await publication.meleeStructureSynced({
-				eventId,
-				originConnectionId,
-				phaseCount: totalPhases,
-				roundCount: totalRounds,
-				changes,
-			}));
+			await publishAfterCommit(
+				warnings,
+				async () =>
+					await publication.meleeStructureSynced({
+						eventId,
+						originConnectionId,
+						phaseCount: totalPhases,
+						roundCount: totalRounds,
+						changes,
+					}),
+			);
 		}
 
 		return {
@@ -293,9 +326,7 @@ export function createMeleeSyncWorkflows() {
 			},
 			phases: totalPhases,
 			rounds: totalRounds,
-			...(warnings.length > 0
-				? { warnings }
-				: {}),
+			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	}
 
@@ -318,7 +349,9 @@ export function createMeleeSyncWorkflows() {
 			]);
 			const gameCompatibility = inspectSourceGame(eventData, meleeEvent);
 			if (gameCompatibility.status === 'unknown') {
-				warnings.push('Melee.gg reported an unrecognized game; generic Players were synced but submitted data will be skipped');
+				warnings.push(
+					'Melee.gg reported an unrecognized game; generic Players were synced but submitted data will be skipped',
+				);
 			}
 			mergedPlayers = fetchedPlayers;
 		}
@@ -333,7 +366,7 @@ export function createMeleeSyncWorkflows() {
 		// empty one for an Event that holds some would deactivate them all.
 		if (playerSnapshot.length === 0) {
 			const held = await playerSvc.findAll({ eventId });
-			if (held.some(player => player.externalSource === 'melee'))
+			if (held.some((player) => player.externalSource === 'melee'))
 				throw new InvalidMeleePlayerSnapshotError();
 		}
 
@@ -344,38 +377,49 @@ export function createMeleeSyncWorkflows() {
 			updated,
 			deactivated,
 		} = await playerSvc.reconcileMeleeSnapshot(eventId, playerSnapshot, new Date());
-		const playerIds = upsertedPlayers.map(player => player.id);
+		const playerIds = upsertedPlayers.map((player) => player.id);
 		// The Player reconcile above has committed, so the reverse sync is a
 		// follow-on: a lost Session race must not fail a bulk write that landed.
-		const updatedMatchIds = await playerFeatureMatchSyncService().syncMatchesFromPlayersAfterCommit(eventId, playerIds);
+		const updatedMatchIds = await playerFeatureMatchSyncService().syncMatchesFromPlayersAfterCommit(
+			eventId,
+			playerIds,
+		);
 
 		// One sync is one change to a Screen: its channel is told once for these.
 		await asOneOutputChange(async () => {
 			if (updatedMatchIds.length > 0) {
-				await publishAfterCommit(warnings, async () => await publication.meleeFeatureMatchesSynced({
-					eventId,
-					originConnectionId,
-					slotIds: updatedMatchIds,
-				}));
+				await publishAfterCommit(
+					warnings,
+					async () =>
+						await publication.meleeFeatureMatchesSynced({
+							eventId,
+							originConnectionId,
+							slotIds: updatedMatchIds,
+						}),
+				);
 			}
 			// A sync that changed no Player has nothing to announce: every follower
 			// would re-read or reload only to find what it holds (#798).
 			if (created + updated + deactivated > 0) {
-				await publishAfterCommit(warnings, async () => await publication.meleePlayersSynced({
-					eventId,
-					originConnectionId,
-					playerCount: upsertedPlayers.length,
-				}));
+				await publishAfterCommit(
+					warnings,
+					async () =>
+						await publication.meleePlayersSynced({
+							eventId,
+							originConnectionId,
+							playerCount: upsertedPlayers.length,
+						}),
+				);
 			}
 		});
 
 		return {
 			success: true,
-			message: `Synced ${mergedPlayers.length} active players from melee.gg${deactivated > 0
-				? `; deactivated ${deactivated} missing player${deactivated === 1
-					? ''
-					: 's'}`
-				: ''}`,
+			message: `Synced ${mergedPlayers.length} active players from melee.gg${
+				deactivated > 0
+					? `; deactivated ${deactivated} missing player${deactivated === 1 ? '' : 's'}`
+					: ''
+			}`,
 			results: {
 				created,
 				updated,
@@ -383,9 +427,7 @@ export function createMeleeSyncWorkflows() {
 				matchesUpdated: updatedMatchIds.length,
 				errors: [],
 			},
-			...(warnings.length > 0
-				? { warnings }
-				: {}),
+			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	}
 
@@ -407,24 +449,32 @@ export function createMeleeSyncWorkflows() {
 		const result = await syncMatchesFromMelee(eventId, eventData, round, phase ?? null, options);
 		// Pairings for this Round complete the one before it. The Round's own write
 		// has committed, so a failure here must not lose its announcement.
-		let previousRoundStandings: Awaited<ReturnType<typeof syncPreviousRoundStandingsFromMelee>> = null;
+		let previousRoundStandings: Awaited<ReturnType<typeof syncPreviousRoundStandingsFromMelee>> =
+			null;
 		const firstPairing = round.lastSyncedAt == null;
-		const fillPreviousRound = (options.previousRoundStandings ?? 'always') === 'always' || firstPairing;
+		const fillPreviousRound =
+			(options.previousRoundStandings ?? 'always') === 'always' || firstPairing;
 		if (result.matchCount > 0 && fillPreviousRound) {
 			try {
-				previousRoundStandings = await syncPreviousRoundStandingsFromMelee(eventId, eventData, round, options);
-			}
-			catch (error) {
-				console.warn(JSON.stringify({
-					message: 'melee_sync_previous_round_standings_failed',
+				previousRoundStandings = await syncPreviousRoundStandingsFromMelee(
 					eventId,
-					roundId,
-					errorName: errorNameOf(error),
-					errorMessage: error instanceof Error
-						? error.message
-						: String(error),
-				}));
-				afterCommitWarnings.push('Matches were saved, but the previous Round\'s Round Standings could not be stored');
+					eventData,
+					round,
+					options,
+				);
+			} catch (error) {
+				console.warn(
+					JSON.stringify({
+						message: 'melee_sync_previous_round_standings_failed',
+						eventId,
+						roundId,
+						errorName: errorNameOf(error),
+						errorMessage: error instanceof Error ? error.message : String(error),
+					}),
+				);
+				afterCommitWarnings.push(
+					"Matches were saved, but the previous Round's Round Standings could not be stored",
+				);
 			}
 		}
 
@@ -434,9 +484,7 @@ export function createMeleeSyncWorkflows() {
 		// changes are announced under its own Round id.
 		const changedRounds: PreviousRoundStandingsResult[] = [
 			{ roundId, ...result },
-			...(previousRoundStandings
-				? [previousRoundStandings]
-				: []),
+			...(previousRoundStandings ? [previousRoundStandings] : []),
 		];
 		const announcements: Array<{
 			kind: 'matchResults' | 'pairings' | 'roundStandings';
@@ -445,31 +493,34 @@ export function createMeleeSyncWorkflows() {
 		}> = [
 			{
 				kind: 'matchResults',
-				changed: changed => changed.resultChangedMatchIds.length > 0,
-				publish: async changed => await publication.meleeMatchResultsSynced({
-					eventId,
-					originConnectionId,
-					roundId: changed.roundId,
-					matchIds: changed.resultChangedMatchIds,
-				}),
+				changed: (changed) => changed.resultChangedMatchIds.length > 0,
+				publish: async (changed) =>
+					await publication.meleeMatchResultsSynced({
+						eventId,
+						originConnectionId,
+						roundId: changed.roundId,
+						matchIds: changed.resultChangedMatchIds,
+					}),
 			},
 			{
 				kind: 'pairings',
-				changed: changed => changed.pairingsChanged,
-				publish: async changed => await publication.meleePairingsSynced({
-					eventId,
-					originConnectionId,
-					roundId: changed.roundId,
-				}),
+				changed: (changed) => changed.pairingsChanged,
+				publish: async (changed) =>
+					await publication.meleePairingsSynced({
+						eventId,
+						originConnectionId,
+						roundId: changed.roundId,
+					}),
 			},
 			{
 				kind: 'roundStandings',
-				changed: changed => changed.standingsChanged,
-				publish: async changed => await publication.meleeRoundStandingsSynced({
-					eventId,
-					originConnectionId,
-					roundId: changed.roundId,
-				}),
+				changed: (changed) => changed.standingsChanged,
+				publish: async (changed) =>
+					await publication.meleeRoundStandingsSynced({
+						eventId,
+						originConnectionId,
+						roundId: changed.roundId,
+					}),
 			},
 		];
 		// One sync is one change to a Screen: its channel is told once, with every kind that changed.
@@ -477,32 +528,38 @@ export function createMeleeSyncWorkflows() {
 			for (const changed of changedRounds) {
 				for (const announcement of announcements) {
 					if (announcement.changed(changed))
-						await publishAfterCommit(afterCommitWarnings, async () => await announcement.publish(changed));
+						await publishAfterCommit(
+							afterCommitWarnings,
+							async () => await announcement.publish(changed),
+						);
 				}
 				// A stale Match's delete unlinked these Slots and dropped these
 				// Assignments, which no message above names. With no origin: the
 				// syncing client's response carries neither.
 				if (changed.unlinkedSlotIds.length > 0) {
 					await publishAfterCommit(afterCommitWarnings, async () => {
-						await publication.featureMatchSlotsUpdated({ eventId, slotIds: changed.unlinkedSlotIds });
+						await publication.featureMatchSlotsUpdated({
+							eventId,
+							slotIds: changed.unlinkedSlotIds,
+						});
 					});
 				}
 				for (const id of changed.droppedAssignmentIds)
-					await publishAfterCommit(afterCommitWarnings, async () => await publication.featureMatchAssignmentDeleted({ eventId, id }));
+					await publishAfterCommit(
+						afterCommitWarnings,
+						async () => await publication.featureMatchAssignmentDeleted({ eventId, id }),
+					);
 			}
 		});
 		const published = announcements
-			.filter(announcement => changedRounds.some(announcement.changed))
-			.map(announcement => announcement.kind);
+			.filter((announcement) => changedRounds.some(announcement.changed))
+			.map((announcement) => announcement.kind);
 
 		return {
 			...result,
 			previousRoundStandings,
 			published,
-			warnings: [
-				...(result.warnings ?? []),
-				...afterCommitWarnings,
-			],
+			warnings: [...(result.warnings ?? []), ...afterCommitWarnings],
 		};
 	}
 
@@ -515,12 +572,22 @@ export function createMeleeSyncWorkflows() {
 	) {
 		const snapshot = await fetchCoreSnapshot(eventData);
 		await checkpoint?.();
-		const structureResult = await syncEventStructure(syncContext, eventId, eventData, snapshot.event);
+		const structureResult = await syncEventStructure(
+			syncContext,
+			eventId,
+			eventData,
+			snapshot.event,
+		);
 		recordProgress?.({
 			lastEventSyncedAt: new Date(),
 		});
 		await checkpoint?.();
-		const playersResult = await syncPlayers(syncContext, eventId, eventData, snapshot.mappedPlayers);
+		const playersResult = await syncPlayers(
+			syncContext,
+			eventId,
+			eventData,
+			snapshot.mappedPlayers,
+		);
 		recordProgress?.({
 			lastPlayersSyncedAt: new Date(),
 		});
@@ -538,9 +605,10 @@ export function createMeleeSyncWorkflows() {
 				lastDecklistsSyncedAt: new Date(),
 			});
 		}
-		const success = structureResult.success !== false
-			&& playersResult.success !== false
-			&& deckListsResult.success !== false;
+		const success =
+			structureResult.success !== false &&
+			playersResult.success !== false &&
+			deckListsResult.success !== false;
 
 		return {
 			success,
@@ -576,14 +644,24 @@ export function createMeleeSyncWorkflows() {
 		const snapshot = await fetchCoreSnapshot(eventData);
 		await checkpoint?.();
 
-		const structureResult = await syncEventStructure(syncContext, eventId, eventData, snapshot.event);
+		const structureResult = await syncEventStructure(
+			syncContext,
+			eventId,
+			eventData,
+			snapshot.event,
+		);
 		steps.push('structure');
 		recordProgress?.({
 			lastEventSyncedAt: new Date(),
 		});
 		await checkpoint?.();
 
-		const playersResult = await syncPlayers(syncContext, eventId, eventData, snapshot.mappedPlayers);
+		const playersResult = await syncPlayers(
+			syncContext,
+			eventId,
+			eventData,
+			snapshot.mappedPlayers,
+		);
 		steps.push('players');
 		recordProgress?.({
 			lastPlayersSyncedAt: new Date(),
@@ -611,19 +689,19 @@ export function createMeleeSyncWorkflows() {
 
 		const roundSvc = roundService();
 		const allRounds = await roundSvc.findByEventId(eventId);
-		const eligibleRounds = allRounds.filter(round => isMeleeManagedRound(round));
-		const nextRound = eligibleRounds.find(round => round.lastSyncedAt === null) ?? null;
-		const roundResults: Array<Awaited<ReturnType<typeof syncRoundMatches>> & { role: 'previous' | 'next' | 'latest' }> = [];
+		const eligibleRounds = allRounds.filter((round) => isMeleeManagedRound(round));
+		const nextRound = eligibleRounds.find((round) => round.lastSyncedAt === null) ?? null;
+		const roundResults: Array<
+			Awaited<ReturnType<typeof syncRoundMatches>> & { role: 'previous' | 'next' | 'latest' }
+		> = [];
 		const notReadyWarnings: string[] = [];
 
 		if (advanceRound && nextRound) {
-			const nextRoundIndex = eligibleRounds.findIndex(round => round.id === nextRound.id);
-			const previousRound = nextRoundIndex > 0
-				? eligibleRounds[nextRoundIndex - 1]
-				: null;
+			const nextRoundIndex = eligibleRounds.findIndex((round) => round.id === nextRound.id);
+			const previousRound = nextRoundIndex > 0 ? eligibleRounds[nextRoundIndex - 1] : null;
 			if (previousRound?.lastSyncedAt) {
 				roundResults.push({
-					...await syncRoundMatches(syncContext, eventId, eventData, previousRound.id),
+					...(await syncRoundMatches(syncContext, eventId, eventData, previousRound.id)),
 					role: 'previous',
 				});
 				steps.push('previous-round');
@@ -633,22 +711,20 @@ export function createMeleeSyncWorkflows() {
 			// of the update: what it refreshed stands, and the operator is told.
 			try {
 				roundResults.push({
-					...await syncRoundMatches(syncContext, eventId, eventData, nextRound.id),
+					...(await syncRoundMatches(syncContext, eventId, eventData, nextRound.id)),
 					role: 'next',
 				});
 				steps.push('next-round');
-			}
-			catch (error) {
-				if (!(error instanceof MeleeRoundNotReadyError))
-					throw error;
+			} catch (error) {
+				if (!(error instanceof MeleeRoundNotReadyError)) throw error;
 				notReadyWarnings.push(error.message);
 			}
-		}
-		else {
-			const latestSyncedRound = eligibleRounds.filter(round => round.lastSyncedAt !== null).at(-1) ?? null;
+		} else {
+			const latestSyncedRound =
+				eligibleRounds.filter((round) => round.lastSyncedAt !== null).at(-1) ?? null;
 			if (latestSyncedRound) {
 				roundResults.push({
-					...await syncRoundMatches(syncContext, eventId, eventData, latestSyncedRound.id),
+					...(await syncRoundMatches(syncContext, eventId, eventData, latestSyncedRound.id)),
 					role: 'latest',
 				});
 				steps.push('latest-round');
@@ -660,20 +736,24 @@ export function createMeleeSyncWorkflows() {
 			...(structureResult.warnings ?? []),
 			...(playersResult.warnings ?? []),
 			...(deckListsResult?.warnings ?? []),
-			...roundResults.flatMap(result => result.warnings ?? []),
+			...roundResults.flatMap((result) => result.warnings ?? []),
 			...notReadyWarnings,
 		];
 		return {
 			success,
-			message: success ? 'Updated event data from Melee.gg' : 'Updated event data with deck list warnings',
+			message: success
+				? 'Updated event data from Melee.gg'
+				: 'Updated event data with deck list warnings',
 			warnings,
 			steps,
 			players: playersResult.results,
 			deckLists: deckListsResult?.results ?? null,
 			deckListsSkipped: deckListsResult?.skipped ?? false,
 			rounds: roundResults,
-			advancedRound: roundResults.find(result => result.role === 'next')?.round ?? null,
-			refreshedRound: roundResults.find(result => result.role === 'previous' || result.role === 'latest')?.round ?? null,
+			advancedRound: roundResults.find((result) => result.role === 'next')?.round ?? null,
+			refreshedRound:
+				roundResults.find((result) => result.role === 'previous' || result.role === 'latest')
+					?.round ?? null,
 		};
 	}
 
@@ -687,11 +767,10 @@ export function createMeleeSyncWorkflows() {
 	) {
 		const { originConnectionId } = syncContext;
 		const melee = requireMeleeService(eventData);
-		const rawMeleeEvent = meleeEventSnapshot ?? await melee.fetchEvent();
+		const rawMeleeEvent = meleeEventSnapshot ?? (await melee.fetchEvent());
 		const gameCompatibility = inspectSourceGame(eventData, rawMeleeEvent);
-		const unsupportedMessage = gameCompatibility.status === 'unknown'
-			? UNRECOGNIZED_GAME_DECK_LISTS_MESSAGE
-			: null;
+		const unsupportedMessage =
+			gameCompatibility.status === 'unknown' ? UNRECOGNIZED_GAME_DECK_LISTS_MESSAGE : null;
 		if (unsupportedMessage) {
 			if (options.unsupportedGame === 'reject') {
 				throw createError({
@@ -719,7 +798,7 @@ export function createMeleeSyncWorkflows() {
 			};
 		}
 
-		const mergedPlayers = mapMeleePlayersToDb(playersSnapshot ?? await melee.fetchPlayers(), []);
+		const mergedPlayers = mapMeleePlayersToDb(playersSnapshot ?? (await melee.fetchPlayers()), []);
 
 		const { cards: allCards, totalDeckLists } = collectImportedDeckCards(mergedPlayers);
 		const resolver = importedMtgCardResolverService();
@@ -728,9 +807,7 @@ export function createMeleeSyncWorkflows() {
 		const warnings: string[] = [];
 		const resolveImportedCard = createImportedCardResolver(resolutionMap);
 		const cardUpsertMap = buildResolvedCardUpserts(mergedPlayers, resolutionMap);
-		const nameToCard = await mtgCardService().batchUpsert([
-			...cardUpsertMap.values(),
-		]);
+		const nameToCard = await mtgCardService().batchUpsert([...cardUpsertMap.values()]);
 		const playersWithDeckLists = buildPlayersWithDeckLists(eventId, mergedPlayers);
 
 		const playerSvc = playerService();
@@ -749,39 +826,52 @@ export function createMeleeSyncWorkflows() {
 		});
 
 		if (unresolvedCards > 0) {
-			warnings.push(`${unresolvedCards} deck entr${unresolvedCards === 1
-				? 'y remains'
-				: 'ies remain'} unresolved and can be fixed from the Sync page`);
+			warnings.push(
+				`${unresolvedCards} deck entr${
+					unresolvedCards === 1 ? 'y remains' : 'ies remain'
+				} unresolved and can be fixed from the Sync page`,
+			);
 		}
 
-		const playerIds = upsertedPlayers.map(p => p.id);
+		const playerIds = upsertedPlayers.map((p) => p.id);
 		// The Player and deck writes above have committed, so the reverse sync is a
 		// follow-on: a lost Session race must not fail a bulk write that landed.
-		const updatedMatchIds = await playerFeatureMatchSyncService().syncMatchesFromPlayersAfterCommit(eventId, playerIds);
+		const updatedMatchIds = await playerFeatureMatchSyncService().syncMatchesFromPlayersAfterCommit(
+			eventId,
+			playerIds,
+		);
 		// One sync is one change to a Screen: its channel is told once for these.
 		await asOneOutputChange(async () => {
 			if (updatedMatchIds.length > 0) {
-				await publishAfterCommit(warnings, async () => await publication.meleeFeatureMatchesSynced({
-					eventId,
-					originConnectionId,
-					slotIds: updatedMatchIds,
-				}));
+				await publishAfterCommit(
+					warnings,
+					async () =>
+						await publication.meleeFeatureMatchesSynced({
+							eventId,
+							originConnectionId,
+							slotIds: updatedMatchIds,
+						}),
+				);
 			}
 
-			await publishAfterCommit(warnings, async () => await publication.meleeDeckListsSynced({
-				eventId,
-				originConnectionId,
-				playerCount: playersWithDeckLists.length,
-				deckCount: totalDeckLists,
-			}));
+			await publishAfterCommit(
+				warnings,
+				async () =>
+					await publication.meleeDeckListsSynced({
+						eventId,
+						originConnectionId,
+						playerCount: playersWithDeckLists.length,
+						deckCount: totalDeckLists,
+					}),
+			);
 		});
 
 		const success = skippedPlayers === 0;
 
 		if (!success) {
-			const partialFailure = new Error(`Deck list sync skipped ${skippedPlayers} player${skippedPlayers === 1
-				? ''
-				: 's'}`);
+			const partialFailure = new Error(
+				`Deck list sync skipped ${skippedPlayers} player${skippedPlayers === 1 ? '' : 's'}`,
+			);
 			warnings.push(partialFailure.message);
 		}
 

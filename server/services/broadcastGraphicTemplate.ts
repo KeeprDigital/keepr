@@ -70,7 +70,9 @@ export class BroadcastGraphicTemplateRevisionConflict extends Error {
  */
 export class BroadcastGraphicTemplateReferenceConflict extends Error {
 	constructor() {
-		super('A Graphic Asset Revision this Broadcast Graphic Template references can no longer be referenced');
+		super(
+			'A Graphic Asset Revision this Broadcast Graphic Template references can no longer be referenced',
+		);
 		this.name = 'BroadcastGraphicTemplateReferenceConflict';
 	}
 }
@@ -100,7 +102,7 @@ function templateAssetReferences(document: BroadcastGraphicConfig) {
 function broadcastGraphicTemplateReferenceFacts(
 	document: BroadcastGraphicConfig,
 ): IndexedGraphicAssetReferenceFacts[] {
-	return templateAssetReferences(document).map(item => ({
+	return templateAssetReferences(document).map((item) => ({
 		...item,
 		id: crypto.randomUUID(),
 		allowRetired: false,
@@ -123,14 +125,18 @@ function broadcastGraphicTemplateIndexStatements(
 	now: number,
 	referenceVersion: string,
 ): D1PreparedStatement[] {
-	const committed = 'EXISTS (SELECT 1 FROM broadcast_graphic_templates WHERE id = ? AND graphic_asset_reference_version = ?)';
+	const committed =
+		'EXISTS (SELECT 1 FROM broadcast_graphic_templates WHERE id = ? AND graphic_asset_reference_version = ?)';
 	return [
-		client.prepare(`
+		client
+			.prepare(`
 			DELETE FROM graphic_asset_references
 			WHERE owner_kind = '${OWNER_KIND}' AND owner_id = ?
 				AND ${committed}
-		`).bind(id, id, referenceVersion),
-		client.prepare(`
+		`)
+			.bind(id, id, referenceVersion),
+		client
+			.prepare(`
 			INSERT INTO graphic_asset_references (
 				id, asset_id, revision_id, owner_kind, owner_id, owner_slot,
 				event_id, created_at, updated_at
@@ -146,7 +152,8 @@ function broadcastGraphicTemplateIndexStatements(
 				${jsonElementGraphicAssetRevisionResolution('item')}
 			)
 				AND ${committed}
-		`).bind(id, now, now, referenceFacts, id, referenceVersion),
+		`)
+			.bind(id, now, now, referenceFacts, id, referenceVersion),
 	];
 }
 
@@ -170,22 +177,22 @@ export function broadcastGraphicTemplateService() {
 		referenceFacts: string,
 		referenceVersion: string,
 		now: number,
-	): D1PreparedStatement[] => broadcastGraphicTemplateIndexStatements(
-		client,
-		id,
-		referenceFacts,
-		now,
-		referenceVersion,
-	);
+	): D1PreparedStatement[] =>
+		broadcastGraphicTemplateIndexStatements(client, id, referenceFacts, now, referenceVersion);
 
-	const create = async (input: SaveBroadcastGraphicTemplate): Promise<DbBroadcastGraphicTemplate> => {
+	const create = async (
+		input: SaveBroadcastGraphicTemplate,
+	): Promise<DbBroadcastGraphicTemplate> => {
 		const referenceVersion = crypto.randomUUID();
 		const now = Date.now();
-		const referenceFacts = boundGraphicAssetReferenceFacts(broadcastGraphicTemplateReferenceFacts(input.document));
+		const referenceFacts = boundGraphicAssetReferenceFacts(
+			broadcastGraphicTemplateReferenceFacts(input.document),
+		);
 		const client = db.$client;
 
 		const [inserted] = await client.batch([
-			client.prepare(`
+			client
+				.prepare(`
 				INSERT INTO broadcast_graphic_templates (
 					id, name, description, revision, document,
 					graphic_asset_reference_version, created_at, updated_at
@@ -193,25 +200,24 @@ export function broadcastGraphicTemplateService() {
 				SELECT ?, ?, ?, 1, ?, ?, ?, ?
 				WHERE 1 = 1
 					${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
-			`).bind(
-				input.id,
-				input.name,
-				input.description,
-				JSON.stringify(input.document),
-				referenceVersion,
-				now,
-				now,
-				referenceFacts,
-			),
+			`)
+				.bind(
+					input.id,
+					input.name,
+					input.description,
+					JSON.stringify(input.document),
+					referenceVersion,
+					now,
+					now,
+					referenceFacts,
+				),
 			...referenceStatements(client, input.id, referenceFacts, referenceVersion, now),
 		]);
 
-		if (inserted?.meta.changes !== 1)
-			throw new BroadcastGraphicTemplateReferenceConflict();
+		if (inserted?.meta.changes !== 1) throw new BroadcastGraphicTemplateReferenceConflict();
 
 		const created = await findById(input.id);
-		if (!created)
-			throw new Error('Broadcast Graphic Template was not stored');
+		if (!created) throw new Error('Broadcast Graphic Template was not stored');
 		return created;
 	};
 
@@ -233,34 +239,35 @@ export function broadcastGraphicTemplateService() {
 		patch: BroadcastGraphicTemplatePatch,
 	): Promise<DbBroadcastGraphicTemplate | undefined> => {
 		const existing = await findById(id);
-		if (!existing)
-			return undefined;
+		if (!existing) return undefined;
 
 		const document = patch.document ?? existing.document;
 		const referenceVersion = crypto.randomUUID();
 		const now = Date.now();
-		const referenceFacts = boundGraphicAssetReferenceFacts(broadcastGraphicTemplateReferenceFacts(document));
+		const referenceFacts = boundGraphicAssetReferenceFacts(
+			broadcastGraphicTemplateReferenceFacts(document),
+		);
 		const client = db.$client;
 
 		const [updated] = await client.batch([
-			client.prepare(`
+			client
+				.prepare(`
 				UPDATE broadcast_graphic_templates
 				SET name = ?, description = ?, document = ?, revision = revision + 1,
 					graphic_asset_reference_version = ?, updated_at = ?
 				WHERE id = ? AND revision = ?
 					${REQUIRED_GRAPHIC_ASSET_REFERENCES_RESOLVE}
-			`).bind(
-				patch.name ?? existing.name,
-				patch.description === undefined
-					? existing.description
-					: patch.description,
-				JSON.stringify(document),
-				referenceVersion,
-				now,
-				id,
-				patch.revision,
-				referenceFacts,
-			),
+			`)
+				.bind(
+					patch.name ?? existing.name,
+					patch.description === undefined ? existing.description : patch.description,
+					JSON.stringify(document),
+					referenceVersion,
+					now,
+					id,
+					patch.revision,
+					referenceFacts,
+				),
 			...referenceStatements(client, id, referenceFacts, referenceVersion, now),
 		]);
 
@@ -271,8 +278,7 @@ export function broadcastGraphicTemplateService() {
 		// nobody else changed.
 		if (updated?.meta.changes !== 1) {
 			const current = await findById(id);
-			if (!current)
-				return undefined;
+			if (!current) return undefined;
 			if (current.revision === patch.revision)
 				throw new BroadcastGraphicTemplateReferenceConflict();
 			throw new BroadcastGraphicTemplateRevisionConflict(current.revision);
@@ -291,10 +297,12 @@ export function broadcastGraphicTemplateService() {
 	const remove = async (id: string): Promise<boolean> => {
 		const client = db.$client;
 		const results = await client.batch([
-			client.prepare(`
+			client
+				.prepare(`
 				DELETE FROM graphic_asset_references
 				WHERE owner_kind = '${OWNER_KIND}' AND owner_id = ?
-			`).bind(id),
+			`)
+				.bind(id),
 			client.prepare(`DELETE FROM broadcast_graphic_templates WHERE id = ?`).bind(id),
 		]);
 		return results[1]?.meta.changes === 1;

@@ -10,22 +10,25 @@ import { useConsumedEventData } from '~/modules/event-data/resync';
  * re-reads them on Reconnect Resync (#610), and emits the Player's id, or
  * `null` when cleared.
  */
-const props = withDefaults(defineProps<{
-	modelValue?: number | null;
-	eventId: number;
-	label?: string;
-	description?: string;
-	nullLabel?: string;
-	/**
-	 * The label a Player is offered under, or `null` to leave them out: a Deck
-	 * Source offers only Players holding a deck, named with it. Unset, every
-	 * Player is offered under their operator label (ADR-0077).
-	 */
-	offer?: (player: Player) => string | null;
-}>(), {
-	label: 'Player',
-	nullLabel: 'Select a player…',
-});
+const props = withDefaults(
+	defineProps<{
+		modelValue?: number | null;
+		eventId: number;
+		label?: string;
+		description?: string;
+		nullLabel?: string;
+		/**
+		 * The label a Player is offered under, or `null` to leave them out: a Deck
+		 * Source offers only Players holding a deck, named with it. Unset, every
+		 * Player is offered under their operator label (ADR-0077).
+		 */
+		offer?: (player: Player) => string | null;
+	}>(),
+	{
+		label: 'Player',
+		nullLabel: 'Select a player…',
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [playerId: number | null];
@@ -34,22 +37,19 @@ const emit = defineEmits<{
 const playerStore = usePlayerStore();
 
 const search = ref('');
-const items = computed(() => playerStore.players.flatMap((player) => {
-	const label = props.offer
-		? props.offer(player)
-		: playerLabel(player);
-	return label === null || !playerMatchesSearch(player, search.value)
-		? []
-		: [
-				{ label, value: player.id },
-			];
-}));
+const items = computed(() =>
+	playerStore.players.flatMap((player) => {
+		const label = props.offer ? props.offer(player) : playerLabel(player);
+		return label === null || !playerMatchesSearch(player, search.value)
+			? []
+			: [{ label, value: player.id }];
+	}),
+);
 
 useConsumedEventData(['players']);
 
 onMounted(async () => {
-	if (props.eventId && !playerStore.isLoaded)
-		await playerStore.loadPlayersByEventId(props.eventId);
+	if (props.eventId && !playerStore.isLoaded) await playerStore.loadPlayersByEventId(props.eventId);
 });
 </script>
 

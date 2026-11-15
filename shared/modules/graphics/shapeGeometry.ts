@@ -54,8 +54,7 @@ interface Point {
 }
 
 function clamp(value: number, min: number, max: number): number {
-	if (!Number.isFinite(value))
-		return min;
+	if (!Number.isFinite(value)) return min;
 	return Math.min(max, Math.max(min, value));
 }
 
@@ -70,18 +69,10 @@ function slantOffsets(width: number, geometry: ShapeGeometry) {
 	const right = clamp(geometry.rightSlant, -span, span);
 
 	const offsets = {
-		leftTop: left > 0
-			? left
-			: 0,
-		leftBottom: left < 0
-			? -left
-			: 0,
-		rightTop: right > 0
-			? right
-			: 0,
-		rightBottom: right < 0
-			? -right
-			: 0,
+		leftTop: left > 0 ? left : 0,
+		leftBottom: left < 0 ? -left : 0,
+		rightTop: right > 0 ? right : 0,
+		rightBottom: right < 0 ? -right : 0,
 	};
 
 	for (const edge of ['Top', 'Bottom'] as const) {
@@ -118,10 +109,9 @@ function distance(from: Point, to: Point): number {
 
 function towards(from: Point, to: Point, length: number): Point {
 	const span = distance(from, to);
-	if (span <= 0)
-		return { x: from.x, y: from.y };
+	if (span <= 0) return { x: from.x, y: from.y };
 	const ratio = length / span;
-	return { x: from.x + ((to.x - from.x) * ratio), y: from.y + ((to.y - from.y) * ratio) };
+	return { x: from.x + (to.x - from.x) * ratio, y: from.y + (to.y - from.y) * ratio };
 }
 
 /** Two decimals is finer than a canvas pixel and keeps a path comparable in a test. */
@@ -151,9 +141,10 @@ export function shapeGeometryPath(size: ShapeGeometrySize, geometry: ShapeGeomet
 		const corner = corners[index]!;
 		// Half of each adjacent edge is the most one corner may consume, so two
 		// neighbouring treatments can never overrun each other.
-		const treatmentSize = corner.treatment === 'square'
-			? 0
-			: clamp(corner.size, 0, Math.min(distance(vertex, previous), distance(vertex, next)) / 2);
+		const treatmentSize =
+			corner.treatment === 'square'
+				? 0
+				: clamp(corner.size, 0, Math.min(distance(vertex, previous), distance(vertex, next)) / 2);
 
 		return {
 			treatment: corner.treatment,
@@ -169,8 +160,7 @@ export function shapeGeometryPath(size: ShapeGeometrySize, geometry: ShapeGeomet
 	// A square corner's entry, vertex, and exit are the same point, so skip any
 	// line that would not move: the path of a plain rectangle stays four lines.
 	function lineTo(point: Point) {
-		if (coordinates(point) === coordinates(current))
-			return;
+		if (coordinates(point) === coordinates(current)) return;
 		commands.push(`L ${coordinates(point)}`);
 		current = point;
 	}
@@ -178,10 +168,11 @@ export function shapeGeometryPath(size: ShapeGeometrySize, geometry: ShapeGeomet
 	for (let index = 0; index < segments.length; index += 1) {
 		const segment = segments[index]!;
 		if (segment.treatment === 'rounded' && segment.size > 0) {
-			commands.push(`A ${round(segment.size)} ${round(segment.size)} 0 0 1 ${coordinates(segment.exit)}`);
+			commands.push(
+				`A ${round(segment.size)} ${round(segment.size)} 0 0 1 ${coordinates(segment.exit)}`,
+			);
 			current = segment.exit;
-		}
-		else {
+		} else {
 			lineTo(segment.exit);
 		}
 
@@ -189,8 +180,7 @@ export function shapeGeometryPath(size: ShapeGeometrySize, geometry: ShapeGeomet
 	}
 
 	// `Z` closes the path, so an explicit line back to the start is noise.
-	if (commands[commands.length - 1] === `L ${coordinates(segments[0]!.entry)}`)
-		commands.pop();
+	if (commands[commands.length - 1] === `L ${coordinates(segments[0]!.entry)}`) commands.pop();
 	commands.push('Z');
 
 	return commands.join(' ');
@@ -198,31 +188,28 @@ export function shapeGeometryPath(size: ShapeGeometrySize, geometry: ShapeGeomet
 
 /** True when the geometry is an unmodified rectangle, so nothing needs clipping. */
 export function isRectangularShapeGeometry(geometry: ShapeGeometry): boolean {
-	return geometry.leftSlant === 0
-		&& geometry.rightSlant === 0
-		&& SHAPE_CORNER_KEYS.every((key) => {
+	return (
+		geometry.leftSlant === 0 &&
+		geometry.rightSlant === 0 &&
+		SHAPE_CORNER_KEYS.every((key) => {
 			const corner = geometry[key];
 			return corner.treatment === 'square' || corner.size <= 0;
-		});
+		})
+	);
 }
 
 /** A one-line description of a geometry for the authoring tree. */
 export function shapeGeometrySummary(geometry: ShapeGeometry): string {
 	const parts: string[] = [];
 	const treatments = new Set(
-		SHAPE_CORNER_KEYS
-			.filter(key => geometry[key].treatment !== 'square' && geometry[key].size > 0)
-			.map(key => geometry[key].treatment),
+		SHAPE_CORNER_KEYS.filter(
+			(key) => geometry[key].treatment !== 'square' && geometry[key].size > 0,
+		).map((key) => geometry[key].treatment),
 	);
-	if (treatments.has('rounded'))
-		parts.push('rounded');
-	if (treatments.has('cut'))
-		parts.push('cut');
-	if (geometry.leftSlant !== 0 || geometry.rightSlant !== 0)
-		parts.push('slanted');
-	return parts.length > 0
-		? parts.join(' • ')
-		: 'rectangle';
+	if (treatments.has('rounded')) parts.push('rounded');
+	if (treatments.has('cut')) parts.push('cut');
+	if (geometry.leftSlant !== 0 || geometry.rightSlant !== 0) parts.push('slanted');
+	return parts.length > 0 ? parts.join(' • ') : 'rectangle';
 }
 
 /* ────────────────────────────────────────────────
@@ -235,7 +222,7 @@ export const SHAPE_GEOMETRY_PRESET_IDS = [
 	'slanted-edge',
 	'corner-cut',
 ] as const;
-export type ShapeGeometryPresetId = typeof SHAPE_GEOMETRY_PRESET_IDS[number];
+export type ShapeGeometryPresetId = (typeof SHAPE_GEOMETRY_PRESET_IDS)[number];
 
 export interface ShapeGeometryPresetResult {
 	geometry: ShapeGeometry;
@@ -289,7 +276,7 @@ const PRESETS: readonly ShapeGeometryPreset[] = [
 		id: 'slanted-edge',
 		label: 'Slanted edge',
 		icon: 'i-lucide-flag-triangle-right',
-		apply: size => ({
+		apply: (size) => ({
 			geometry: Object.assign(squareShapeGeometry(), {
 				rightSlant: Math.round(Math.max(0, size.height) * 0.6),
 			} satisfies Partial<ShapeGeometry>),
@@ -314,5 +301,5 @@ const PRESETS: readonly ShapeGeometryPreset[] = [
 export const SHAPE_GEOMETRY_PRESETS = PRESETS;
 
 export function getShapeGeometryPreset(id: ShapeGeometryPresetId): ShapeGeometryPreset {
-	return PRESETS.find(preset => preset.id === id) ?? PRESETS[0]!;
+	return PRESETS.find((preset) => preset.id === id) ?? PRESETS[0]!;
 }

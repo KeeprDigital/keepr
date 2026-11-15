@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-	buildMetagameScopeQuery,
-	useMetagameClient,
-} from '~~/app/modules/metagame/client';
+import { buildMetagameScopeQuery, useMetagameClient } from '~~/app/modules/metagame/client';
 
 const mockFetch = vi.fn();
 vi.stubGlobal('$fetch', mockFetch);
@@ -13,14 +10,8 @@ describe('metagame client module', () => {
 	});
 
 	it.each([
-		[
-			{ scope: 'all', topN: 16, playerListId: 5 },
-			{ scope: 'all' },
-		],
-		[
-			{ scope: 'all', minPoints: 9 },
-			{ scope: 'all' },
-		],
+		[{ scope: 'all', topN: 16, playerListId: 5 }, { scope: 'all' }],
+		[{ scope: 'all', minPoints: 9 }, { scope: 'all' }],
 		[
 			{ scope: 'topN', topN: 16 },
 			{ scope: 'topN', topN: 16 },
@@ -29,27 +20,30 @@ describe('metagame client module', () => {
 			{ scope: 'minPoints', minPoints: 9 },
 			{ scope: 'minPoints', minPoints: 9 },
 		],
-		[
-			{ scope: 'minPoints' },
-			{ scope: 'minPoints' },
-		],
+		[{ scope: 'minPoints' }, { scope: 'minPoints' }],
 		[
 			{ scope: 'playerList', playerListId: 5 },
 			{ scope: 'playerList', playerListId: 5 },
 		],
-		[
-			{ scope: 'playerList' },
-			{ scope: 'playerList' },
-		],
+		[{ scope: 'playerList' }, { scope: 'playerList' }],
 	] as const)('sends only the parameters scope %j uses', (options, query) => {
 		expect(buildMetagameScopeQuery(options)).toEqual(query);
 	});
 
 	it('defaults archetype sorting and sends a conversion target only when it is whole', async () => {
 		const client = useMetagameClient();
-		await client.loadArchetypeBreakdown(1, { scope: 'all' }, { conversionMetric: 'topN', conversionThreshold: 8 });
+		await client.loadArchetypeBreakdown(
+			1,
+			{ scope: 'all' },
+			{ conversionMetric: 'topN', conversionThreshold: 8 },
+		);
 		await client.loadArchetypeBreakdown(1, { scope: 'all' }, { conversionMetric: 'topN' });
-		await client.loadArchetypeDetail(1, 2, { scope: 'topN', topN: 16 }, { board: 'mainboard', conversionMetric: 'minPoints', conversionThreshold: 12 });
+		await client.loadArchetypeDetail(
+			1,
+			2,
+			{ scope: 'topN', topN: 16 },
+			{ board: 'mainboard', conversionMetric: 'minPoints', conversionThreshold: 12 },
+		);
 
 		expect(mockFetch.mock.calls).toEqual([
 			[
@@ -86,13 +80,17 @@ describe('metagame client module', () => {
 
 	it('defaults card sorting and limit, sends the archetype filter by id, and drops an unset pointedOnly', async () => {
 		const client = useMetagameClient();
-		await client.loadCardBreakdown(1, { scope: 'playerList', playerListId: 5 }, {
-			sortBy: 'totalCopies',
-			limit: 100,
-			board: 'sideboard',
-			archetypeId: 9,
-			pointedOnly: true,
-		});
+		await client.loadCardBreakdown(
+			1,
+			{ scope: 'playerList', playerListId: 5 },
+			{
+				sortBy: 'totalCopies',
+				limit: 100,
+				board: 'sideboard',
+				archetypeId: 9,
+				pointedOnly: true,
+			},
+		);
 		await client.loadCardBreakdown(1, { scope: 'all' }, { pointedOnly: false });
 
 		expect(mockFetch.mock.calls).toEqual([

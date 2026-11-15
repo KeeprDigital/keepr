@@ -35,7 +35,9 @@ export default defineEventHandler(async (event) => {
 			// The cause is what carries this sentence past the 5xx sanitizer; without
 			// it the operator reads 'Internal Server Error' beside a retry-after header
 			// and cannot tell a store that went away from a server that broke (#321).
-			const cause = new TemporarilyUnavailableError('Graphic Asset thumbnail is temporarily unavailable');
+			const cause = new TemporarilyUnavailableError(
+				'Graphic Asset thumbnail is temporarily unavailable',
+			);
 			throw createError({
 				statusCode: cause.statusCode,
 				statusMessage: 'Service Unavailable',
@@ -50,8 +52,7 @@ export default defineEventHandler(async (event) => {
 				'cache-control': 'private, no-store',
 			},
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

@@ -81,18 +81,21 @@ export default function createRidgelinesEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'ridgelines'>,
 ): AnimationEffectInstance<AnimationEffectParams<'ridgelines'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: RIDGELINES_FRAGMENT_SHADER,
-		uniforms: current => ({
-			crestColor: current.crestColor,
-			ridgeColor: current.ridgeColor,
-			backgroundColor: current.backgroundColor,
-			ridges: current.ridges,
-			relief: current.relief,
-			glow: current.glow,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: RIDGELINES_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				crestColor: current.crestColor,
+				ridgeColor: current.ridgeColor,
+				backgroundColor: current.backgroundColor,
+				ridges: current.ridges,
+				relief: current.relief,
+				glow: current.glow,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

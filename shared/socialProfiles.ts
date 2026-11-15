@@ -9,7 +9,7 @@ export const SUPPORTED_SOCIAL_NETWORK_KEYS = [
 	'bluesky',
 ] as const;
 
-export type SupportedSocialNetwork = typeof SUPPORTED_SOCIAL_NETWORK_KEYS[number];
+export type SupportedSocialNetwork = (typeof SUPPORTED_SOCIAL_NETWORK_KEYS)[number];
 
 export type SocialProfiles = Partial<Record<SupportedSocialNetwork, string>>;
 
@@ -83,8 +83,10 @@ export const SUPPORTED_SOCIAL_NETWORKS = [
 ] as const satisfies readonly SupportedSocialNetworkDefinition[];
 
 export const SUPPORTED_SOCIAL_NETWORK_BY_KEY = Object.fromEntries(
-	SUPPORTED_SOCIAL_NETWORKS.map(network => [network.key, network]),
-) as { [K in SupportedSocialNetwork]: Extract<typeof SUPPORTED_SOCIAL_NETWORKS[number], { key: K }> };
+	SUPPORTED_SOCIAL_NETWORKS.map((network) => [network.key, network]),
+) as {
+	[K in SupportedSocialNetwork]: Extract<(typeof SUPPORTED_SOCIAL_NETWORKS)[number], { key: K }>;
+};
 
 const HOST_NETWORKS: Readonly<Record<string, SupportedSocialNetwork>> = {
 	'twitch.tv': 'twitch',
@@ -110,10 +112,7 @@ const HOST_NETWORKS: Readonly<Record<string, SupportedSocialNetwork>> = {
 export class SocialProfileInputError extends Error {
 	public readonly network: SupportedSocialNetwork;
 
-	constructor(
-		network: SupportedSocialNetwork,
-		message: string,
-	) {
+	constructor(network: SupportedSocialNetwork, message: string) {
 		super(message);
 		this.network = network;
 		this.name = 'SocialProfileInputError';
@@ -128,32 +127,27 @@ function inputError(network: SupportedSocialNetwork) {
 }
 
 function looksLikeUrl(value: string) {
-	if (/^[a-z][a-z\d+.-]*:\/\//i.test(value) || /^www\./i.test(value))
-		return true;
+	if (/^[a-z][a-z\d+.-]*:\/\//i.test(value) || /^www\./i.test(value)) return true;
 
 	const possibleHost = value.split('/')[0]?.toLowerCase();
 	return possibleHost !== undefined && Object.hasOwn(HOST_NETWORKS, possibleHost);
 }
 
 function decodedPathSegments(url: URL, network: SupportedSocialNetwork) {
-	if (url.search || url.hash || url.username || url.password || url.port)
-		throw inputError(network);
+	if (url.search || url.hash || url.username || url.password || url.port) throw inputError(network);
 
 	try {
 		return url.pathname
 			.split('/')
 			.filter(Boolean)
-			.map(segment => decodeURIComponent(segment));
-	}
-	catch {
+			.map((segment) => decodeURIComponent(segment));
+	} catch {
 		throw inputError(network);
 	}
 }
 
 function normalizeHandle(network: SupportedSocialNetwork, handle: string | undefined) {
-	const normalized = handle?.startsWith('@')
-		? handle.slice(1)
-		: handle;
+	const normalized = handle?.startsWith('@') ? handle.slice(1) : handle;
 	if (!normalized || normalized.length > MAX_SOCIAL_PROFILE_HANDLE_LENGTH || /\s/.test(normalized))
 		throw inputError(network);
 
@@ -163,20 +157,15 @@ function normalizeHandle(network: SupportedSocialNetwork, handle: string | undef
 function handleFromProfileUrl(network: SupportedSocialNetwork, value: string) {
 	let url: URL;
 	try {
-		url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(value)
-			? value
-			: `https://${value}`);
-	}
-	catch {
+		url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(value) ? value : `https://${value}`);
+	} catch {
 		throw inputError(network);
 	}
 
-	if (url.protocol !== 'http:' && url.protocol !== 'https:')
-		throw inputError(network);
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') throw inputError(network);
 
 	const urlNetwork = HOST_NETWORKS[url.hostname.toLowerCase()];
-	if (urlNetwork !== network)
-		throw inputError(network);
+	if (urlNetwork !== network) throw inputError(network);
 
 	const segments = decodedPathSegments(url, network);
 	let handle: string | undefined;
@@ -184,19 +173,14 @@ function handleFromProfileUrl(network: SupportedSocialNetwork, value: string) {
 	switch (network) {
 		case 'youtube':
 		case 'tiktok':
-			handle = segments.length === 1 && segments[0]?.startsWith('@')
-				? segments[0].slice(1)
-				: undefined;
+			handle =
+				segments.length === 1 && segments[0]?.startsWith('@') ? segments[0].slice(1) : undefined;
 			break;
 		case 'bluesky':
-			handle = segments.length === 2 && segments[0] === 'profile'
-				? segments[1]
-				: undefined;
+			handle = segments.length === 2 && segments[0] === 'profile' ? segments[1] : undefined;
 			break;
 		default:
-			handle = segments.length === 1
-				? segments[0]
-				: undefined;
+			handle = segments.length === 1 ? segments[0] : undefined;
 	}
 
 	return normalizeHandle(network, handle);
@@ -211,11 +195,9 @@ export function normalizeSocialProfileInput(
 	input: string,
 ): string | undefined {
 	const trimmed = input.trim();
-	if (!trimmed)
-		return undefined;
+	if (!trimmed) return undefined;
 
-	if (looksLikeUrl(trimmed))
-		return handleFromProfileUrl(network, trimmed);
+	if (looksLikeUrl(trimmed)) return handleFromProfileUrl(network, trimmed);
 
 	return normalizeHandle(network, trimmed);
 }
@@ -235,9 +217,10 @@ export function socialProfileValues(
 ): SocialProfileProjectionValue[] {
 	return SUPPORTED_SOCIAL_NETWORKS.flatMap((network) => {
 		const handle = profiles[network.key];
-		if (networks && !networks.includes(network.key))
-			return [];
-		return handle === undefined || handle.length === 0 || handle.length > MAX_SOCIAL_PROFILE_HANDLE_LENGTH
+		if (networks && !networks.includes(network.key)) return [];
+		return handle === undefined ||
+			handle.length === 0 ||
+			handle.length > MAX_SOCIAL_PROFILE_HANDLE_LENGTH
 			? []
 			: [
 					{

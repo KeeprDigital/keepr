@@ -16,12 +16,10 @@ const emit = defineEmits<{
 }>();
 
 function update(value: number | null) {
-	if (value === null || !Number.isFinite(value))
-		return;
+	if (value === null || !Number.isFinite(value)) return;
 	const { min, max } = props.bounds ?? { min: 0, max: Number.POSITIVE_INFINITY };
 	const bounded = Math.min(max, Math.max(min, value));
-	if (bounded !== props.modelValue)
-		emit('commit', bounded);
+	if (bounded !== props.modelValue) emit('commit', bounded);
 }
 </script>
 

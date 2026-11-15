@@ -14,17 +14,23 @@ const mockPublishEventUpdated = vi.fn();
 const mockGetOriginConnectionId = vi.fn();
 const mockAcquireMeleeSyncLease = vi.fn();
 const mockReleaseMeleeSyncLease = vi.fn();
-const mockEventParamsParse = vi.fn(input => input);
-const mockMeleeConfigParse = vi.fn(input => input);
+const mockEventParamsParse = vi.fn((input) => input);
+const mockMeleeConfigParse = vi.fn((input) => input);
 const mockSetResponseHeader = vi.fn();
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getValidatedRouterParams', mockGetValidatedRouterParams);
 vi.stubGlobal('readValidatedBody', mockReadValidatedBody);
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
-vi.stubGlobal('createError', vi.fn((input: { statusCode: number; message: string; data?: unknown }) => {
-	return Object.assign(new Error(input.message), input);
-}));
+vi.stubGlobal(
+	'createError',
+	vi.fn((input: { statusCode: number; message: string; data?: unknown }) => {
+		return Object.assign(new Error(input.message), input);
+	}),
+);
 
 vi.mock('~~/server/schemas/api/event', () => ({
 	eventParamsSchema: { parse: mockEventParamsParse },
@@ -78,7 +84,8 @@ describe('pUT /api/events/[id]/melee-config credential boundary', () => {
 			meleeEventId: ' 123 ',
 			meleeClientId: ' client-id ',
 		});
-		mockFindEvent.mockReset()
+		mockFindEvent
+			.mockReset()
 			.mockResolvedValueOnce({
 				id: 1,
 				game: 'mtg',
@@ -128,10 +135,12 @@ describe('pUT /api/events/[id]/melee-config credential boundary', () => {
 	it('answers a keyring configuration fault by naming the setting an operator must fix', async () => {
 		const storedValue = 'stored-envelope-never-log';
 		mockFindEvent.mockReset().mockResolvedValue({ id: 1, meleeClientSecret: storedValue });
-		mockRequireMeleeIntegration.mockRejectedValue(new MeleeCredentialCryptoError(
-			'MELEE_CREDENTIAL_KEY_MISSING',
-			'Melee credential encryption key version "retired" is not configured',
-		));
+		mockRequireMeleeIntegration.mockRejectedValue(
+			new MeleeCredentialCryptoError(
+				'MELEE_CREDENTIAL_KEY_MISSING',
+				'Melee credential encryption key version "retired" is not configured',
+			),
+		);
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		const refusal = await refusalFrom(handler({} as any));
@@ -152,10 +161,12 @@ describe('pUT /api/events/[id]/melee-config credential boundary', () => {
 	});
 
 	it('answers the same fault from the final persistence boundary the same way', async () => {
-		mockUpdateMeleeConfig.mockRejectedValue(new MeleeCredentialCryptoError(
-			'MELEE_CREDENTIAL_KEY_MISSING',
-			'Melee credential encryption key version "active" is not configured',
-		));
+		mockUpdateMeleeConfig.mockRejectedValue(
+			new MeleeCredentialCryptoError(
+				'MELEE_CREDENTIAL_KEY_MISSING',
+				'Melee credential encryption key version "active" is not configured',
+			),
+		);
 
 		const refusal = await refusalFrom(handler({} as any));
 
@@ -169,30 +180,34 @@ describe('pUT /api/events/[id]/melee-config credential boundary', () => {
 
 	// A corrupt stored envelope stays a sanitized 500 with no crypto code in the body (#347).
 	it('sanitizes a corrupt stored envelope and keeps the crypto code out of the body', async () => {
-		mockRequireMeleeIntegration.mockRejectedValue(new MeleeCredentialCryptoError(
-			'MELEE_CREDENTIAL_DECRYPTION_FAILED',
-			'Stored Melee credential could not be decrypted',
-		));
+		mockRequireMeleeIntegration.mockRejectedValue(
+			new MeleeCredentialCryptoError(
+				'MELEE_CREDENTIAL_DECRYPTION_FAILED',
+				'Stored Melee credential could not be decrypted',
+			),
+		);
 
 		const refusal = await refusalFrom(handler({} as any));
 
 		expect(refusal.statusCode).toBe(500);
 		expect(refusal.message).toBe('Internal Server Error');
 		expect((refusal as { data?: unknown }).data).toBeUndefined();
-		expect(JSON.stringify({ statusCode: refusal.statusCode, statusMessage: refusal.statusMessage, message: refusal.message }))
-			.not
-			.toContain('MELEE_CREDENTIAL');
+		expect(
+			JSON.stringify({
+				statusCode: refusal.statusCode,
+				statusMessage: refusal.statusMessage,
+				message: refusal.message,
+			}),
+		).not.toContain('MELEE_CREDENTIAL');
 		expect(mockUpdateMeleeConfig).not.toHaveBeenCalled();
 		expect(mockReleaseMeleeSyncLease).toHaveBeenCalledWith(1, 'config-token');
 	});
 
 	it('does not misreport an upstream outage as invalid credentials', async () => {
 		// An outage (502) is not refused credentials (422), and nothing is persisted.
-		mockFetchMeleeEvent.mockRejectedValue(new MeleeTransportError(
-			'Melee.gg API request failed with status 503',
-			'http',
-			503,
-		));
+		mockFetchMeleeEvent.mockRejectedValue(
+			new MeleeTransportError('Melee.gg API request failed with status 503', 'http', 503),
+		);
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		const refusal = await refusalFrom(handler(requestEvent));
@@ -207,11 +222,9 @@ describe('pUT /api/events/[id]/melee-config credential boundary', () => {
 
 	// A sentence calling the outage temporary comes with how long to wait (#346).
 	it('tells a caller how long to wait for Melee.gg, beside a sentence saying what for', async () => {
-		mockFetchMeleeEvent.mockRejectedValue(new MeleeTransportError(
-			'Melee.gg API request failed with status 503',
-			'http',
-			503,
-		));
+		mockFetchMeleeEvent.mockRejectedValue(
+			new MeleeTransportError('Melee.gg API request failed with status 503', 'http', 503),
+		);
 		const refusal = await refusalFrom(handler(requestEvent));
 
 		expect(refusal.statusCode).toBe(502);
@@ -221,10 +234,9 @@ describe('pUT /api/events/[id]/melee-config credential boundary', () => {
 
 	it('gives the same interval when the upstream timed out rather than answered', async () => {
 		// A timeout and a bad gateway carry the same advice, so the same interval.
-		mockFetchMeleeEvent.mockRejectedValue(new MeleeTransportError(
-			'Melee.gg API request timed out',
-			'timeout',
-		));
+		mockFetchMeleeEvent.mockRejectedValue(
+			new MeleeTransportError('Melee.gg API request timed out', 'timeout'),
+		);
 		const refusal = await refusalFrom(handler(requestEvent));
 
 		expect(refusal.statusCode).toBe(504);
@@ -234,11 +246,9 @@ describe('pUT /api/events/[id]/melee-config credential boundary', () => {
 
 	it('does not tell a caller to wait for credentials Melee.gg refused', async () => {
 		// An unreachable Melee.gg resolves by waiting; refused credentials do not.
-		mockFetchMeleeEvent.mockRejectedValue(new MeleeTransportError(
-			'Melee.gg API request failed with status 401',
-			'http',
-			401,
-		));
+		mockFetchMeleeEvent.mockRejectedValue(
+			new MeleeTransportError('Melee.gg API request failed with status 401', 'http', 401),
+		);
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		await expect(handler({} as any)).rejects.toMatchObject({ statusCode: 400 });
@@ -253,10 +263,13 @@ describe('pUT /api/events/[id]/melee-config credential boundary', () => {
 
 		await expect(handler({} as any)).rejects.toMatchObject({
 			statusCode: 400,
-			message: 'Could not validate Melee.gg credentials. Check the event ID, client ID, and client secret.',
+			message:
+				'Could not validate Melee.gg credentials. Check the event ID, client ID, and client secret.',
 		});
 		expect(mockUpdateMeleeConfig).not.toHaveBeenCalled();
-		expect(warn).toHaveBeenCalledWith(JSON.stringify({ message: 'melee_credential_validation_failed' }));
+		expect(warn).toHaveBeenCalledWith(
+			JSON.stringify({ message: 'melee_credential_validation_failed' }),
+		);
 		warn.mockRestore();
 	});
 

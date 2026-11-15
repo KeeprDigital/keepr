@@ -9,18 +9,20 @@ let paused = false;
 
 function mountReading() {
 	let result!: ReturnType<typeof useGraphicsAdminReading<{ count: number }>>;
-	const wrapper = mount(defineComponent({
-		setup() {
-			result = useGraphicsAdminReading<{ count: number }>({
-				read: mockRead,
-				failureMessage: 'The reading failed.',
-				onAuthorizationLost,
-				onReading,
-				paused: () => paused,
-			});
-			return () => h('div');
-		},
-	}));
+	const wrapper = mount(
+		defineComponent({
+			setup() {
+				result = useGraphicsAdminReading<{ count: number }>({
+					read: mockRead,
+					failureMessage: 'The reading failed.',
+					onAuthorizationLost,
+					onReading,
+					paused: () => paused,
+				});
+				return () => h('div');
+			},
+		}),
+	);
 
 	return { wrapper, ...result };
 }
@@ -83,10 +85,12 @@ describe('useGraphicsAdminReading', () => {
 		const reading = mountReading();
 		await reading.load();
 
-		mockRead.mockRejectedValueOnce(transportFailure({
-			status: 503,
-			body: { message: 'The Graphics Asset Library store cannot be reached' },
-		}));
+		mockRead.mockRejectedValueOnce(
+			transportFailure({
+				status: 503,
+				body: { message: 'The Graphics Asset Library store cannot be reached' },
+			}),
+		);
 		await reading.load();
 
 		expect(reading.reading.value).toEqual({ count: 3 });
@@ -94,7 +98,7 @@ describe('useGraphicsAdminReading', () => {
 		expect(onAuthorizationLost).not.toHaveBeenCalled();
 	});
 
-	it('falls back to the caller\'s failure message when the failure carries none', async () => {
+	it("falls back to the caller's failure message when the failure carries none", async () => {
 		mockRead.mockRejectedValue({ some: 'object' });
 
 		const reading = mountReading();
@@ -173,10 +177,12 @@ describe('useGraphicsAdminReading', () => {
 
 			// First polled reading fails (non-authorization, so the stale reading
 			// stays on screen and polling continues): one tick is now skipped.
-			mockRead.mockRejectedValueOnce(transportFailure({
-				status: 503,
-				body: { message: 'down' },
-			}));
+			mockRead.mockRejectedValueOnce(
+				transportFailure({
+					status: 503,
+					body: { message: 'down' },
+				}),
+			);
 			await vi.advanceTimersByTimeAsync(5000);
 			await flushPromises();
 			expect(mockRead).toHaveBeenCalledTimes(2);
@@ -185,10 +191,12 @@ describe('useGraphicsAdminReading', () => {
 			expect(mockRead).toHaveBeenCalledTimes(2);
 
 			// Second failure: two ticks are skipped before the next attempt.
-			mockRead.mockRejectedValueOnce(transportFailure({
-				status: 503,
-				body: { message: 'down' },
-			}));
+			mockRead.mockRejectedValueOnce(
+				transportFailure({
+					status: 503,
+					body: { message: 'down' },
+				}),
+			);
 			await vi.advanceTimersByTimeAsync(5000);
 			await flushPromises();
 			expect(mockRead).toHaveBeenCalledTimes(3);

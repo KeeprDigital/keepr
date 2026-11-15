@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildFeatureMatchOverlayTemplateMetadataValues, featureMatchTokenValues } from '~~/shared/featureMatchOverlayValues';
+import {
+	buildFeatureMatchOverlayTemplateMetadataValues,
+	featureMatchTokenValues,
+} from '~~/shared/featureMatchOverlayValues';
 import { featureMatchTokenCatalogue } from '~~/shared/featureMatchTokenCatalogue';
 import { scryfallCardImageUrl } from '~~/shared/utils/scryfallCardImage';
 import { ATRAXA, KRAUM, TYMNA } from '~~/test/helpers/commanders';
@@ -48,54 +51,62 @@ describe('broadcast layout template metadata values', () => {
 	});
 
 	it('falls back to source match table, active session snapshot table, and event game format', () => {
-		expect(buildFeatureMatchOverlayTemplateMetadataValues({
-			event: { name: 'Local Open', game: 'op' },
-			featureMatch: { tableNumber: null, activeSession: null } as any,
-			sourceMatch: { tableNumber: 4 } as any,
-			round: null,
-			phase: { name: 'Top Cut' },
-		})).toMatchObject({
+		expect(
+			buildFeatureMatchOverlayTemplateMetadataValues({
+				event: { name: 'Local Open', game: 'op' },
+				featureMatch: { tableNumber: null, activeSession: null } as any,
+				sourceMatch: { tableNumber: 4 } as any,
+				round: null,
+				phase: { name: 'Top Cut' },
+			}),
+		).toMatchObject({
 			format: 'One Piece',
 			table: 'Table 4',
 			stage: 'Top Cut',
 		});
 
-		expect(buildFeatureMatchOverlayTemplateMetadataValues({
-			event: { name: 'Local Open', game: 'mtg' },
-			featureMatch: {
-				tableNumber: null,
-				activeSession: {
-					sourceSnapshot: { tableNumber: 9 },
-				},
-			} as any,
-			sourceMatch: null,
-			round: null,
-			phase: null,
-		}).table).toBe('Table 9');
+		expect(
+			buildFeatureMatchOverlayTemplateMetadataValues({
+				event: { name: 'Local Open', game: 'mtg' },
+				featureMatch: {
+					tableNumber: null,
+					activeSession: {
+						sourceSnapshot: { tableNumber: 9 },
+					},
+				} as any,
+				sourceMatch: null,
+				round: null,
+				phase: null,
+			}).table,
+		).toBe('Table 9');
 	});
 
 	it('uses round text as stage when phase metadata is unavailable', () => {
-		expect(buildFeatureMatchOverlayTemplateMetadataValues({
-			event: { name: 'Local Open', game: 'mtg' },
-			featureMatch: {
-				tableNumber: null,
-				roundName: 'Top 8 Quarterfinals',
-				activeSession: null,
-			} as any,
-			sourceMatch: null,
-			round: null,
-			phase: null,
-		}).stage).toBe('Top 8 Quarterfinals');
+		expect(
+			buildFeatureMatchOverlayTemplateMetadataValues({
+				event: { name: 'Local Open', game: 'mtg' },
+				featureMatch: {
+					tableNumber: null,
+					roundName: 'Top 8 Quarterfinals',
+					activeSession: null,
+				} as any,
+				sourceMatch: null,
+				round: null,
+				phase: null,
+			}).stage,
+		).toBe('Top 8 Quarterfinals');
 	});
 
 	it('returns blank strings when optional metadata is unavailable', () => {
-		expect(buildFeatureMatchOverlayTemplateMetadataValues({
-			event: null,
-			featureMatch: null,
-			sourceMatch: null,
-			round: null,
-			phase: null,
-		})).toEqual({
+		expect(
+			buildFeatureMatchOverlayTemplateMetadataValues({
+				event: null,
+				featureMatch: null,
+				sourceMatch: null,
+				round: null,
+				phase: null,
+			}),
+		).toEqual({
 			round: '',
 			stage: '',
 			table: '',
@@ -105,7 +116,7 @@ describe('broadcast layout template metadata values', () => {
 	});
 });
 
-describe('a side\'s deck on the Feature Match Overlay', () => {
+describe("a side's deck on the Feature Match Overlay", () => {
 	function valuesFor(game: 'mtg' | 'op', gameData: unknown) {
 		return featureMatchTokenValues({
 			event: {
@@ -159,7 +170,7 @@ describe('a side\'s deck on the Feature Match Overlay', () => {
 	});
 });
 
-describe('a side\'s name on the Feature Match Overlay', () => {
+describe("a side's name on the Feature Match Overlay", () => {
 	// Shown by the shared name-or-Nickname rule (ADR-0074).
 	it('shows a One Piece side with no name by its Nickname', () => {
 		const values = featureMatchTokenValues({
@@ -186,7 +197,7 @@ describe('a side\'s name on the Feature Match Overlay', () => {
 
 describe('which player a side shows on the Feature Match Overlay', () => {
 	// The active Session owns side order (ADR-0058); the Slot keeps pairing order.
-	it('names each side by the active Session\'s side order', () => {
+	it("names each side by the active Session's side order", () => {
 		const values = featureMatchTokenValues({
 			event: {
 				name: 'Open',
@@ -222,8 +233,7 @@ describe('which player a side shows on the Feature Match Overlay', () => {
 			values.player1Record,
 			values.player2Name,
 			values.player2Record,
-		])
-			.toEqual(['Ben', '2-1', 'Ana', '3-0']);
+		]).toEqual(['Ben', '2-1', 'Ana', '3-0']);
 	});
 });
 
@@ -237,7 +247,9 @@ describe('a Commander Slot on the Feature Match Overlay', () => {
 		displayPositionFormat: 'ordinal' as const,
 	};
 
-	function valuesFor(seats: Partial<Record<'player1Data' | 'player2Data' | 'player3Data' | 'player4Data', unknown>>) {
+	function valuesFor(
+		seats: Partial<Record<'player1Data' | 'player2Data' | 'player3Data' | 'player4Data', unknown>>,
+	) {
 		return featureMatchTokenValues({
 			event: EVENT,
 			featureMatch: {
@@ -254,21 +266,23 @@ describe('a Commander Slot on the Feature Match Overlay', () => {
 
 	// A Commander deck is its Commanders: their names, and their colour identity together (ADR-0087).
 	it('names a third and fourth Seat, each deck by its Commanders and its colours by their identity', () => {
-		expect(valuesFor({
-			player3Data: {
-				...seatedPlayer('Cleo', [TYMNA, KRAUM]),
-				pronouns: 'she/her',
-				lgs: 'Card Shop',
-			},
-			player4Data: seatedPlayer('Dara', [ATRAXA]),
-		})).toMatchObject({
+		expect(
+			valuesFor({
+				player3Data: {
+					...seatedPlayer('Cleo', [TYMNA, KRAUM]),
+					pronouns: 'she/her',
+					lgs: 'Card Shop',
+				},
+				player4Data: seatedPlayer('Dara', [ATRAXA]),
+			}),
+		).toMatchObject({
 			player3Name: 'Cleo',
-			player3Deck: 'Tymna the Weaver / Kraum, Ludevic\'s Opus',
+			player3Deck: "Tymna the Weaver / Kraum, Ludevic's Opus",
 			player3DeckColors: 'WUBR',
 			player3Pronouns: 'she/her',
 			player3Lgs: 'Card Shop',
 			player4Name: 'Dara',
-			player4Deck: 'Atraxa, Praetors\' Voice',
+			player4Deck: "Atraxa, Praetors' Voice",
 			player4DeckColors: 'WUBG',
 		});
 	});
@@ -293,16 +307,22 @@ describe('a Commander Slot on the Feature Match Overlay', () => {
 			second: '',
 		},
 	])('shows the card of each Commander a Seat holds: $name', ({ commanders, first, second }) => {
-		expect(valuesFor({
-			player2Data: seatedPlayer('Ben', commanders),
-		})).toMatchObject({
+		expect(
+			valuesFor({
+				player2Data: seatedPlayer('Ben', commanders),
+			}),
+		).toMatchObject({
 			player2Commander1Image: first,
 			player2Commander2Image: second,
 		});
 	});
 
 	it('reads an empty Seat as empty values', () => {
-		expect(valuesFor({})).toMatchObject({ player4Name: '', player4Deck: '', player4Commander1Image: '' });
+		expect(valuesFor({})).toMatchObject({
+			player4Name: '',
+			player4Deck: '',
+			player4Commander1Image: '',
+		});
 	});
 });
 
@@ -322,7 +342,7 @@ describe('the Feature Match token values of each kind of Event', () => {
 			kind: 'op' as const,
 			event: { game: 'op' as const, variant: null },
 		},
-	])('are keyed exactly as a $kind Event\'s catalogue ($event.variant)', ({ kind, event }) => {
+	])("are keyed exactly as a $kind Event's catalogue ($event.variant)", ({ kind, event }) => {
 		const values = featureMatchTokenValues({
 			event: { name: 'Open', ...event } as any,
 			featureMatch: null,
@@ -331,6 +351,10 @@ describe('the Feature Match token values of each kind of Event', () => {
 			phase: null,
 		});
 
-		expect(Object.keys(values).sort()).toEqual(featureMatchTokenCatalogue(kind).map(token => token.key).sort());
+		expect(Object.keys(values).sort()).toEqual(
+			featureMatchTokenCatalogue(kind)
+				.map((token) => token.key)
+				.sort(),
+		);
 	});
 });

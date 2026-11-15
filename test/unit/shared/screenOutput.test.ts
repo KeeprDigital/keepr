@@ -46,10 +46,12 @@ describe('screen Output selection', () => {
 	});
 
 	it('builds a plain Screen Output URL with no embed flags', () => {
-		expect(screenOutputPath({ eventId: 7, screenSlug: 'main' }))
-			.toBe('/event/7/screen/main?output=overlay');
-		expect(screenOutputPath({ eventId: 7, screenSlug: 'main', output: 'key' }))
-			.toBe('/event/7/screen/main?output=key');
+		expect(screenOutputPath({ eventId: 7, screenSlug: 'main' })).toBe(
+			'/event/7/screen/main?output=overlay',
+		);
+		expect(screenOutputPath({ eventId: 7, screenSlug: 'main', output: 'key' })).toBe(
+			'/event/7/screen/main?output=key',
+		);
 	});
 
 	it('carries the embed role, guide and stress flags only when the embedder asks for them', () => {
@@ -64,10 +66,12 @@ describe('screen Output selection', () => {
 		});
 
 		expect(preview).toBe('/event/7/screen/main?output=fill&embed=preview&guides=1&safe=1&stress=1');
-		expect(screenOutputPath({ eventId: 7, screenSlug: 'main', embed: 'preview' }))
-			.toBe('/event/7/screen/main?output=overlay&embed=preview');
-		expect(screenOutputPath({ eventId: 7, screenSlug: 'main', embed: 'monitor' }))
-			.toBe('/event/7/screen/main?output=overlay&embed=monitor');
+		expect(screenOutputPath({ eventId: 7, screenSlug: 'main', embed: 'preview' })).toBe(
+			'/event/7/screen/main?output=overlay&embed=preview',
+		);
+		expect(screenOutputPath({ eventId: 7, screenSlug: 'main', embed: 'monitor' })).toBe(
+			'/event/7/screen/main?output=overlay&embed=monitor',
+		);
 	});
 
 	it('reads an embed role from a Screen Output URL, and none from one that carries no role', () => {

@@ -14,8 +14,10 @@ const laterReference: GraphicAssetReference = {
 	assetId: 'image-asset' as never,
 	revisionId: 'image-revision-1' as never,
 };
-const videoUrl = '/api/screen-output/screens/42/assets/video-asset/revisions/video-revision-3/content';
-const imageUrl = '/api/screen-output/screens/42/assets/image-asset/revisions/image-revision-1/content';
+const videoUrl =
+	'/api/screen-output/screens/42/assets/video-asset/revisions/video-revision-3/content';
+const imageUrl =
+	'/api/screen-output/screens/42/assets/image-asset/revisions/image-revision-1/content';
 
 /** An output rendering one element per reference it currently publishes. */
 function mountOutput(references: Ref<GraphicAssetReference[]>) {
@@ -30,19 +32,24 @@ function mountOutput(references: Ref<GraphicAssetReference[]>) {
 	const Child = defineComponent({
 		setup() {
 			const { contentUrl } = useScreenGraphicAssetContentUrls(references);
-			return () => references.value.map(item => h('video', {
-				'key': item.assetId,
-				'data-asset': item.assetId,
-				'src': contentUrl(item),
-			}));
+			return () =>
+				references.value.map((item) =>
+					h('video', {
+						key: item.assetId,
+						'data-asset': item.assetId,
+						src: contentUrl(item),
+					}),
+				);
 		},
 	});
-	const wrapper = mount(defineComponent({
-		setup() {
-			provideScreenContext(context);
-			return () => h(Child);
-		},
-	}));
+	const wrapper = mount(
+		defineComponent({
+			setup() {
+				provideScreenContext(context);
+				return () => h(Child);
+			},
+		}),
+	);
 	return {
 		src: (asset: string) => wrapper.get(`[data-asset="${asset}"]`).attributes('src'),
 	};
@@ -67,23 +74,26 @@ describe('useScreenGraphicAssetContentUrls', () => {
 			settle: new Response(null, { status: 204 }),
 			added: imageUrl,
 		},
-	])('keeps on-air media resolved while a changed reference set is $answer', async ({ settle, added }) => {
-		const references = ref([reference]);
-		const output = mountOutput(references);
-		await flushPromises();
-		const reresolve = deferred<Response>();
-		vi.mocked(fetch).mockReturnValueOnce(reresolve.promise);
-
-		references.value = [reference, laterReference];
-		await flushPromises();
-		if (settle) {
-			reresolve.resolve(settle);
+	])(
+		'keeps on-air media resolved while a changed reference set is $answer',
+		async ({ settle, added }) => {
+			const references = ref([reference]);
+			const output = mountOutput(references);
 			await flushPromises();
-		}
+			const reresolve = deferred<Response>();
+			vi.mocked(fetch).mockReturnValueOnce(reresolve.promise);
 
-		expect(output.src('video-asset')).toBe(videoUrl);
-		expect(output.src('image-asset') ?? '').toBe(added);
-	});
+			references.value = [reference, laterReference];
+			await flushPromises();
+			if (settle) {
+				reresolve.resolve(settle);
+				await flushPromises();
+			}
+
+			expect(output.src('video-asset')).toBe(videoUrl);
+			expect(output.src('image-asset') ?? '').toBe(added);
+		},
+	);
 
 	it('asks again on the slow cadence after a refused capability session', async () => {
 		vi.useFakeTimers();
@@ -122,9 +132,10 @@ describe('useScreenGraphicAssetContentUrls', () => {
 		const Child = defineComponent({
 			setup() {
 				const { contentUrl } = useScreenGraphicAssetContentUrls([reference]);
-				return () => h('video', {
-					src: contentUrl(reference),
-				});
+				return () =>
+					h('video', {
+						src: contentUrl(reference),
+					});
 			},
 		});
 		const Parent = defineComponent({
@@ -141,13 +152,10 @@ describe('useScreenGraphicAssetContentUrls', () => {
 			'/api/screen-output/screens/42/assets/video-asset/revisions/video-revision-3/content',
 		);
 		expect(fetch).toHaveBeenCalledOnce();
-		expect(fetch).toHaveBeenCalledWith(
-			'/api/screen-output/screens/42/asset-capability-session',
-			{
-				method: 'POST',
-				headers: { authorization: 'Bearer opaque_fragment_capability' },
-			},
-		);
+		expect(fetch).toHaveBeenCalledWith('/api/screen-output/screens/42/asset-capability-session', {
+			method: 'POST',
+			headers: { authorization: 'Bearer opaque_fragment_capability' },
+		});
 		expect(URL.createObjectURL).not.toHaveBeenCalled();
 	});
 
@@ -163,21 +171,21 @@ describe('useScreenGraphicAssetContentUrls', () => {
 		const Child = defineComponent({
 			setup() {
 				const { contentUrl } = useScreenGraphicAssetContentUrls([reference]);
-				return () => h('video', {
-					src: contentUrl(reference),
-				});
+				return () =>
+					h('video', {
+						src: contentUrl(reference),
+					});
 			},
 		});
 		const showFirst = ref(true);
 		const Parent = defineComponent({
 			setup() {
 				provideScreenContext(context);
-				return () => h('div', [
-					showFirst.value
-						? h(Child, { key: 'first' })
-						: null,
-					h(Child, { key: 'second' }),
-				]);
+				return () =>
+					h('div', [
+						showFirst.value ? h(Child, { key: 'first' }) : null,
+						h(Child, { key: 'second' }),
+					]);
 			},
 		});
 
@@ -189,9 +197,9 @@ describe('useScreenGraphicAssetContentUrls', () => {
 		await nextTick();
 		await flushPromises();
 
-		expect(vi.mocked(fetch).mock.calls.every(([, options]) =>
-			options?.method === 'POST',
-		)).toBe(true);
+		expect(vi.mocked(fetch).mock.calls.every(([, options]) => options?.method === 'POST')).toBe(
+			true,
+		);
 		expect(wrapper.get('video').attributes('src')).toBe(
 			'/api/screen-output/screens/42/assets/video-asset/revisions/video-revision-3/content',
 		);

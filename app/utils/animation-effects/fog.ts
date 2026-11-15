@@ -104,18 +104,21 @@ export default function createFogEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'fog'>,
 ): AnimationEffectInstance<AnimationEffectParams<'fog'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: FOG_FRAGMENT_SHADER,
-		uniforms: current => ({
-			highlightColor: current.highlightColor,
-			midtoneColor: current.midtoneColor,
-			lowlightColor: current.lowlightColor,
-			backgroundColor: current.backgroundColor,
-			softness: current.softness,
-			scale: current.scale,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: FOG_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				highlightColor: current.highlightColor,
+				midtoneColor: current.midtoneColor,
+				lowlightColor: current.lowlightColor,
+				backgroundColor: current.backgroundColor,
+				softness: current.softness,
+				scale: current.scale,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

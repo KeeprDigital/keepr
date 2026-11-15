@@ -85,7 +85,7 @@ const emit = defineEmits<{ 'update:graphics': [graphics: BroadcastGraphicConfig[
 /** Every edit is aimed at the selected Broadcast Graphic, through the compositor editing module. */
 const { editGraphic } = useCompositorEditing(
 	() => props,
-	graphics => emit('update:graphics', graphics),
+	(graphics) => emit('update:graphics', graphics),
 );
 
 const selection = computed(() => resolveGraphicsSelection(props.graphics, props.selectedTarget));
@@ -96,12 +96,12 @@ const selection = computed(() => resolveGraphicsSelection(props.graphics, props.
  * itself selected — the same place its Graphic Inputs are declared.
  */
 const selectedGraphic = computed<BroadcastGraphicConfig | null>(() =>
-	selection.value.kind === 'graphic'
-		? selection.value.graphic
-		: null,
+	selection.value.kind === 'graphic' ? selection.value.graphic : null,
 );
 
-const sources = computed<GraphicSourceSelectionDeclaration[]>(() => selectedGraphic.value?.sources ?? []);
+const sources = computed<GraphicSourceSelectionDeclaration[]>(
+	() => selectedGraphic.value?.sources ?? [],
+);
 const inputs = computed<GraphicInputDeclaration[]>(() => selectedGraphic.value?.inputs ?? []);
 
 /**
@@ -112,12 +112,10 @@ const inputs = computed<GraphicInputDeclaration[]>(() => selectedGraphic.value?.
  * fields, and a binding made in that window is not corrected when the game arrives.
  */
 const bindableInputs = computed(() =>
-	sources.value.length > 0 && props.game !== undefined
-		? inputs.value
-		: [],
+	sources.value.length > 0 && props.game !== undefined ? inputs.value : [],
 );
 
-const SOURCE_KIND_OPTIONS = GRAPHIC_SOURCE_SELECTION_KIND_VALUES.map(kind => ({
+const SOURCE_KIND_OPTIONS = GRAPHIC_SOURCE_SELECTION_KIND_VALUES.map((kind) => ({
 	label: GRAPHIC_SOURCE_SELECTION_KIND_LABELS[kind],
 	value: kind,
 }));
@@ -134,17 +132,22 @@ const newSourceKind = ref<GraphicSourceSelectionKind>('player');
  */
 const draftSourceKeys = ref<Record<string, string>>({});
 
-watch(() => selectedGraphic.value?.id, () => {
-	draftSourceKeys.value = {};
-});
+watch(
+	() => selectedGraphic.value?.id,
+	() => {
+		draftSourceKeys.value = {};
+	},
+);
 
 /**
  * Whether another Graphic Source Selection fits, on this Broadcast Graphic and across
  * the Screen. The control is disabled rather than silently declining, so an author
  * meets the budget as a fact about the Screen rather than as a click that did nothing.
  */
-const canDeclareSource = computed(() =>
-	selectedGraphic.value !== null && canAddGraphicSourceSelection(props.graphics, selectedGraphic.value.id),
+const canDeclareSource = computed(
+	() =>
+		selectedGraphic.value !== null &&
+		canAddGraphicSourceSelection(props.graphics, selectedGraphic.value.id),
 );
 
 function addSource() {
@@ -160,8 +163,7 @@ function addSource() {
  * one too; this is the half that keeps a cleared field from writing the Screen.
  */
 function renameSource(key: string, label: string) {
-	if (label.trim() === '')
-		return;
+	if (label.trim() === '') return;
 	editGraphic(patchGraphicSourceSelection, key, { label });
 }
 
@@ -170,7 +172,7 @@ function removeSource(key: string) {
 }
 
 function sourceByKey(key: string): GraphicSourceSelectionDeclaration | undefined {
-	return sources.value.find(source => source.key === key);
+	return sources.value.find((source) => source.key === key);
 }
 
 function sourceLabel(key: string): string {
@@ -193,15 +195,13 @@ function derivationKey(from: GraphicSourceDerivation): string {
 }
 
 function derivationValue(source: GraphicSourceSelectionDeclaration): string {
-	return source.from
-		? derivationKey(source.from)
-		: OPERATOR_SELECTED;
+	return source.from ? derivationKey(source.from) : OPERATOR_SELECTED;
 }
 
 function derivationOptions(source: GraphicSourceSelectionDeclaration) {
 	return [
 		{ label: 'An operator picks it', value: OPERATOR_SELECTED },
-		...graphicSourceDerivationOptions(sources.value, source.key, props.variant).map(option => ({
+		...graphicSourceDerivationOptions(sources.value, source.key, props.variant).map((option) => ({
 			label: `${GRAPHIC_SOURCE_RELATION_LABELS[option.relation]} of ${sourceLabel(option.sourceKey)}`,
 			value: derivationKey(option),
 		})),
@@ -214,10 +214,10 @@ function chooseDerivation(key: string, value: string) {
 		return;
 	}
 
-	const from = graphicSourceDerivationOptions(sources.value, key, props.variant)
-		.find(option => derivationKey(option) === value);
-	if (!from)
-		return;
+	const from = graphicSourceDerivationOptions(sources.value, key, props.variant).find(
+		(option) => derivationKey(option) === value,
+	);
+	if (!from) return;
 
 	editGraphic(setGraphicSourceDerivation, key, from, props.variant);
 }
@@ -230,10 +230,8 @@ function chooseDerivation(key: string, value: string) {
  * promise an operator a control that never appears.
  */
 function sourceNote(source: GraphicSourceSelectionDeclaration): string {
-	if (isOperatorSelectedGraphicSource(source))
-		return 'Generates one picker in Live Control.';
-	if (source.from)
-		return `Follows ${sourceLabel(source.from.sourceKey)} — no picker of its own.`;
+	if (isOperatorSelectedGraphicSource(source)) return 'Generates one picker in Live Control.';
+	if (source.from) return `Follows ${sourceLabel(source.from.sourceKey)} — no picker of its own.`;
 	return 'Resolves the Event this Screen belongs to.';
 }
 
@@ -242,7 +240,7 @@ function sourceNote(source: GraphicSourceSelectionDeclaration): string {
  * ──────────────────────────────────────────────── */
 
 function bindingFor(inputKey: string) {
-	return selectedGraphic.value?.bindings?.find(binding => binding.inputKey === inputKey);
+	return selectedGraphic.value?.bindings?.find((binding) => binding.inputKey === inputKey);
 }
 
 /** The Graphic Source Selection a Graphic Input reads, bound or merely chosen. */
@@ -253,7 +251,7 @@ function boundSourceKey(inputKey: string): string {
 function bindingSourceOptions() {
 	return [
 		{ label: 'Entered manually', value: OPERATOR_SELECTED },
-		...sources.value.map(source => ({
+		...sources.value.map((source) => ({
 			label: `${source.label} (${GRAPHIC_SOURCE_SELECTION_KIND_LABELS[source.kind]})`,
 			value: source.key,
 		})),
@@ -279,22 +277,31 @@ function chooseBindingSource(input: GraphicInputDeclaration, sourceKey: string) 
 
 	const source = sourceByKey(sourceKey);
 	const fieldId = bindingFor(input.key)?.fieldId;
-	if (!source || fieldId === undefined)
-		return;
+	if (!source || fieldId === undefined) return;
 
 	editGraphic((graphics, graphicId) =>
 		isGraphicBindingFieldCompatible(source.kind, fieldId, input.type, props.game, props.variant)
-			? setGraphicInputBinding(graphics, graphicId, { inputKey: input.key, sourceKey, fieldId }, props.game, props.variant)
+			? setGraphicInputBinding(
+					graphics,
+					graphicId,
+					{ inputKey: input.key, sourceKey, fieldId },
+					props.game,
+					props.variant,
+				)
 			: deleteGraphicInputBinding(graphics, graphicId, input.key),
 	);
 }
 
 function chooseBindingField(input: GraphicInputDeclaration, fieldId: string) {
 	const sourceKey = boundSourceKey(input.key);
-	if (sourceKey === OPERATOR_SELECTED)
-		return;
+	if (sourceKey === OPERATOR_SELECTED) return;
 
-	editGraphic(setGraphicInputBinding, { inputKey: input.key, sourceKey, fieldId }, props.game, props.variant);
+	editGraphic(
+		setGraphicInputBinding,
+		{ inputKey: input.key, sourceKey, fieldId },
+		props.game,
+		props.variant,
+	);
 }
 
 function clearBinding(inputKey: string) {
@@ -305,26 +312,30 @@ function clearBinding(inputKey: string) {
 /** The fields this Graphic Input may bind to, in the two groups an author reads. */
 function bindingFieldGroups(input: GraphicInputDeclaration) {
 	const source = sourceByKey(boundSourceKey(input.key));
-	if (!source || props.game === undefined)
-		return [];
+	if (!source || props.game === undefined) return [];
 
-	const { common, gameSpecific } = bindableGraphicBindingFields(source.kind, input.type, props.game, props.variant);
+	const { common, gameSpecific } = bindableGraphicBindingFields(
+		source.kind,
+		input.type,
+		props.game,
+		props.variant,
+	);
 	const gameLabel = getGameConfig(props.game).label;
 
 	return [
 		common.length > 0
 			? [
 					{ type: 'label' as const, label: 'Common fields' },
-					...common.map(field => ({ label: field.label, value: field.id })),
+					...common.map((field) => ({ label: field.label, value: field.id })),
 				]
 			: [],
 		gameSpecific.length > 0
 			? [
 					{ type: 'label' as const, label: `${gameLabel} fields` },
-					...gameSpecific.map(field => ({ label: field.label, value: field.id })),
+					...gameSpecific.map((field) => ({ label: field.label, value: field.id })),
 				]
 			: [],
-	].filter(group => group.length > 0);
+	].filter((group) => group.length > 0);
 }
 
 /**
@@ -344,10 +355,8 @@ function unbindableReason(input: GraphicInputDeclaration): string | null {
 	// written straight to the mode configuration can still arrive in this state.
 	if (binding && !source)
 		return `This reads ${binding.sourceKey}, which this Broadcast Graphic no longer declares.`;
-	if (!source || bindingFieldGroups(input).length > 0)
-		return null;
-	if (props.game === undefined)
-		return null;
+	if (!source || bindingFieldGroups(input).length > 0) return null;
+	if (props.game === undefined) return null;
 
 	return `No ${GRAPHIC_SOURCE_SELECTION_KIND_LABELS[source.kind]} field holds a ${input.type} value on this Event.`;
 }
@@ -378,10 +387,14 @@ function unbindableReason(input: GraphicInputDeclaration): string | null {
 			</UButton>
 		</div>
 
-		<p v-if="!canDeclareSource" class="text-xs text-warning" data-testid="graphic-source-budget-spent">
-			This Broadcast Graphics Screen has no room for another Graphic Source Selection:
-			one Broadcast Graphic may declare {{ MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC }},
-			and the Screen {{ MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN }} in total.
+		<p
+			v-if="!canDeclareSource"
+			class="text-xs text-warning"
+			data-testid="graphic-source-budget-spent"
+		>
+			This Broadcast Graphics Screen has no room for another Graphic Source Selection: one Broadcast
+			Graphic may declare {{ MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC }}, and the Screen
+			{{ MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN }} in total.
 		</p>
 
 		<div
@@ -444,11 +457,13 @@ function unbindableReason(input: GraphicInputDeclaration): string | null {
 			per input rather than a list bindings could repeat an input in.
 		-->
 		<template v-if="inputs.length > 0">
-			<p class="text-sm font-semibold">
-				Graphic Input Bindings
-			</p>
+			<p class="text-sm font-semibold">Graphic Input Bindings</p>
 
-			<p v-if="sources.length === 0" class="text-xs text-muted" data-testid="graphic-binding-needs-source">
+			<p
+				v-if="sources.length === 0"
+				class="text-xs text-muted"
+				data-testid="graphic-binding-needs-source"
+			>
 				Declare a Graphic Source Selection to bind a Graphic Input to Event Data.
 			</p>
 
@@ -459,7 +474,11 @@ function unbindableReason(input: GraphicInputDeclaration): string | null {
 				simply not arrived yet, and binding a One Piece field on a Magic Event is
 				not something a later load undoes.
 			-->
-			<p v-else-if="game === undefined" class="text-xs text-muted" data-testid="graphic-binding-awaits-game">
+			<p
+				v-else-if="game === undefined"
+				class="text-xs text-muted"
+				data-testid="graphic-binding-awaits-game"
+			>
 				Waiting for this Event's game, which decides the fields a Graphic Input may bind to.
 			</p>
 
@@ -510,7 +529,11 @@ function unbindableReason(input: GraphicInputDeclaration): string | null {
 					/>
 				</UFormField>
 
-				<p v-else-if="unbindableReason(input)" class="text-xs text-warning" data-testid="graphic-binding-unavailable">
+				<p
+					v-else-if="unbindableReason(input)"
+					class="text-xs text-warning"
+					data-testid="graphic-binding-unavailable"
+				>
 					{{ unbindableReason(input) }}
 				</p>
 			</div>

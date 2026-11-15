@@ -1,4 +1,7 @@
-import type { BroadcastGraphicsCommandInput, BroadcastGraphicsLiveState } from '~~/shared/modules/broadcast-graphics-live-session';
+import type {
+	BroadcastGraphicsCommandInput,
+	BroadcastGraphicsLiveState,
+} from '~~/shared/modules/broadcast-graphics-live-session';
 import { describe, expect, it } from 'vitest';
 import {
 	broadcastGraphicsCommandAppliedPayload,
@@ -39,7 +42,11 @@ import {
  */
 function atTheCarryingBoundary() {
 	const build = (padding: number) => {
-		const { graphicId, keys, context, state } = fullyFilledState(11, [MAX_GRAPHIC_INPUT_VALUE_LENGTH, MAX_GRAPHIC_INPUT_VALUE_LENGTH, padding]);
+		const { graphicId, keys, context, state } = fullyFilledState(11, [
+			MAX_GRAPHIC_INPUT_VALUE_LENGTH,
+			MAX_GRAPHIC_INPUT_VALUE_LENGTH,
+			padding,
+		]);
 		const command: BroadcastGraphicsCommandInput = {
 			type: 'Set Input',
 			payload: {
@@ -56,20 +63,23 @@ function atTheCarryingBoundary() {
 	};
 	const fits = (padding: number): boolean => {
 		const { state, command, context } = build(padding);
-		return payloadFor(state, applyBroadcastGraphicsCommand(state, command, { ...context, acceptedAt: 1_400 }), 'Set Input').change !== undefined;
+		return (
+			payloadFor(
+				state,
+				applyBroadcastGraphicsCommand(state, command, { ...context, acceptedAt: 1_400 }),
+				'Set Input',
+			).change !== undefined
+		);
 	};
 
 	let low = 0;
 	let high = MAX_GRAPHIC_INPUT_VALUE_LENGTH;
-	if (fits(high))
-		throw new Error('the padding range no longer spans the carrying boundary');
+	if (fits(high)) throw new Error('the padding range no longer spans the carrying boundary');
 
 	while (low < high - 1) {
 		const middle = Math.floor((low + high) / 2);
-		if (fits(middle))
-			low = middle;
-		else
-			high = middle;
+		if (fits(middle)) low = middle;
+		else high = middle;
 	}
 
 	return build(low);
@@ -82,9 +92,14 @@ describe('the commandApplied notification at the largest live session the caps a
 
 	it('is measured against a live state that fills every cap the Screen has', () => {
 		const filled = Object.values(spreadState.inputs);
-		const inputCount = filled.reduce((total, inputs) => total + Object.keys(inputs.working).length, 0);
-		const sourceCount = Object.values(spreadState.sources ?? {})
-			.reduce((total, selections) => total + Object.keys(selections).length, 0);
+		const inputCount = filled.reduce(
+			(total, inputs) => total + Object.keys(inputs.working).length,
+			0,
+		);
+		const sourceCount = Object.values(spreadState.sources ?? {}).reduce(
+			(total, selections) => total + Object.keys(selections).length,
+			0,
+		);
 
 		expect(Object.keys(spreadState.playout)).toHaveLength(MAX_BROADCAST_GRAPHICS_PER_SCREEN);
 		expect(inputCount).toBe(MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN);
@@ -102,16 +117,20 @@ describe('the commandApplied notification at the largest live session the caps a
 	});
 
 	it('carries an Out as a playout-only change however much text the Broadcast Graphic holds', () => {
-		const after = applyBroadcastGraphicsCommand(spreadState, {
-			type: 'Out',
-			payload: {
-				graphicId: richestGraphicId(spreadState),
+		const after = applyBroadcastGraphicsCommand(
+			spreadState,
+			{
+				type: 'Out',
+				payload: {
+					graphicId: richestGraphicId(spreadState),
+				},
 			},
-		}, {
-			inputs: [],
-			acceptedAt: 2_000,
-			durations: { enter: 0, update: 10_000, exit: 500 },
-		});
+			{
+				inputs: [],
+				acceptedAt: 2_000,
+				durations: { enter: 0, update: 10_000, exit: 500 },
+			},
+		);
 
 		const payload = payloadFor(spreadState, after, 'Out');
 
@@ -125,10 +144,8 @@ describe('the commandApplied notification at the largest live session the caps a
 			const keys = Object.keys(state.inputs[graphicId]!.working);
 			const context = {
 				inputs: declarations(keys),
-				sources: [
-					{ key: keys[0]!, label: keys[0]!, kind: 'player' as const },
-				],
-				bindings: keys.map(key => ({ inputKey: key, sourceKey: keys[0]!, fieldId: 'name' })),
+				sources: [{ key: keys[0]!, label: keys[0]!, kind: 'player' as const }],
+				bindings: keys.map((key) => ({ inputKey: key, sourceKey: keys[0]!, fieldId: 'name' })),
 				durations: { enter: 0, update: 10_000, exit: 500 },
 			};
 			const value = 'x'.repeat(MAX_GRAPHIC_INPUT_VALUE_LENGTH);
@@ -152,9 +169,14 @@ describe('the commandApplied notification at the largest live session the caps a
 			];
 
 			for (const command of commands) {
-				const after = applyBroadcastGraphicsCommand(state, command, { ...context, acceptedAt: 2_000 });
+				const after = applyBroadcastGraphicsCommand(state, command, {
+					...context,
+					acceptedAt: 2_000,
+				});
 
-				expect(messageBytes(payloadFor(state, after))).toBeLessThanOrEqual(MAX_REALTIME_MESSAGE_BYTES);
+				expect(messageBytes(payloadFor(state, after))).toBeLessThanOrEqual(
+					MAX_REALTIME_MESSAGE_BYTES,
+				);
 			}
 		}
 	});
@@ -162,17 +184,21 @@ describe('the commandApplied notification at the largest live session the caps a
 	it('drops the change rather than the limit when one Broadcast Graphic’s Graphic Input state is too large', () => {
 		const graphicId = richestGraphicId(concentrated);
 		const keys = Object.keys(concentrated.inputs[graphicId]!.working);
-		const after = applyBroadcastGraphicsCommand(concentrated, {
-			type: 'Set Input',
-			payload: {
-				graphicId,
-				inputKey: keys[0]!,
-				value: 'x'.repeat(MAX_GRAPHIC_INPUT_VALUE_LENGTH),
+		const after = applyBroadcastGraphicsCommand(
+			concentrated,
+			{
+				type: 'Set Input',
+				payload: {
+					graphicId,
+					inputKey: keys[0]!,
+					value: 'x'.repeat(MAX_GRAPHIC_INPUT_VALUE_LENGTH),
+				},
 			},
-		}, {
-			inputs: declarations(keys),
-			acceptedAt: 2_000,
-		});
+			{
+				inputs: declarations(keys),
+				acceptedAt: 2_000,
+			},
+		);
 
 		const payload = payloadFor(concentrated, after);
 
@@ -212,13 +238,17 @@ describe('broadcastGraphicsCommandAppliedPayload', () => {
 	};
 
 	it('carries a change a peer can apply to land on exactly the committed state', () => {
-		const after = applyBroadcastGraphicsCommand(before, {
-			type: 'Take',
-			payload: { graphicId: 'slate' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_000,
-		});
+		const after = applyBroadcastGraphicsCommand(
+			before,
+			{
+				type: 'Take',
+				payload: { graphicId: 'slate' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_000,
+			},
+		);
 
 		const payload = payloadFor(before, after);
 
@@ -254,7 +284,7 @@ describe('broadcastGraphicsCommandAppliedPayload', () => {
 });
 
 describe('where the change stops being carried', () => {
-	it('carries a Graphic Input edit while one Broadcast Graphic\'s record fits, and falls back to a reload once it does not', () => {
+	it("carries a Graphic Input edit while one Broadcast Graphic's record fits, and falls back to a reload once it does not", () => {
 		const fits = editFirstInput(4);
 		const tooLarge = editFirstInput(MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC);
 

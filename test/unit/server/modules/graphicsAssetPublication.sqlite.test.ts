@@ -102,7 +102,7 @@ async function arrangeReclaimableState(
 ) {
 	await catalogue.recordCanonicalWrites({
 		operation,
-		contents: digests.map(digest => ({ digest, byteLength: 70 })),
+		contents: digests.map((digest) => ({ digest, byteLength: 70 })),
 		recordedAt: new Date(2_500).toISOString(),
 	});
 	for (const digest of digests) {
@@ -150,8 +150,7 @@ async function publishedAsset(catalogue: Catalogue, key: string, assetId: Graphi
 	const operation = await claimedOperation(catalogue, key);
 	await catalogue.publishGraphicAsset(publicationOf(operation, assetId));
 	const current = await catalogue.findCurrentGraphicAsset(assetId);
-	if (!current)
-		throw new Error(`Test setup failed to publish ${assetId}`);
+	if (!current) throw new Error(`Test setup failed to publish ${assetId}`);
 	return current;
 }
 
@@ -169,7 +168,9 @@ describe('an ordinary ingestion publication that holds its claim', () => {
 		});
 		await arrangeReclaimableState(catalogue, operation, [SOURCE_DIGEST, THUMBNAIL_DIGEST]);
 
-		const published = await catalogue.publishGraphicAsset(publicationOf(operation, 'published-asset'));
+		const published = await catalogue.publishGraphicAsset(
+			publicationOf(operation, 'published-asset'),
+		);
 
 		expect(published.stage).toBe('completed');
 		expect(await countOf('graphic_assets')).toBe(1);
@@ -196,7 +197,11 @@ describe('an ordinary ingestion publication that holds its claim', () => {
 		]);
 
 		const published = await catalogue.publishGraphicAssetReplacement({
-			...publicationOf(replacement, 'replaced', { source: REPLACEMENT_DIGEST, thumbnail: REPLACEMENT_THUMBNAIL_DIGEST, at: 4_000 }),
+			...publicationOf(replacement, 'replaced', {
+				source: REPLACEMENT_DIGEST,
+				thumbnail: REPLACEMENT_THUMBNAIL_DIGEST,
+				at: 4_000,
+			}),
 			targetAssetId: target,
 			assetId: target,
 		});
@@ -210,7 +215,11 @@ describe('an ordinary ingestion publication that holds its claim', () => {
 
 	it('spends the write candidates of a reuse that holds its claim', async () => {
 		const catalogue = createD1GraphicsAssetCatalogue(harness.database);
-		const reused = await publishedAsset(catalogue, 'upload-before-reuse', graphicAssetId('reused-asset'));
+		const reused = await publishedAsset(
+			catalogue,
+			'upload-before-reuse',
+			graphicAssetId('reused-asset'),
+		);
 		const operation = await claimedOperation(catalogue, 'reuse-held-claim', {
 			duplicateContentPolicy: 'reuse',
 		});
@@ -226,12 +235,12 @@ describe('an ordinary ingestion publication that holds its claim', () => {
 		expect(completed.result?.outcome).toBe('reused');
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(0);
 		// The arm returns what it built, so only the committed row proves the transition landed.
-		await expect(catalogue.getIngestionOperation(operation.id, operation.initiatedBy))
-			.resolves
-			.toMatchObject({
-				stage: 'completed',
-				result: { outcome: 'reused' },
-			});
+		await expect(
+			catalogue.getIngestionOperation(operation.id, operation.initiatedBy),
+		).resolves.toMatchObject({
+			stage: 'completed',
+			result: { outcome: 'reused' },
+		});
 	});
 
 	it('spends the write candidates of a replacement no-op that holds its claim', async () => {
@@ -253,12 +262,12 @@ describe('an ordinary ingestion publication that holds its claim', () => {
 		expect(completed.result?.outcome).toBe('replacement-noop');
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(0);
 		// Same reason as the reuse arm above: the return value is built, not read.
-		await expect(catalogue.getIngestionOperation(operation.id, operation.initiatedBy))
-			.resolves
-			.toMatchObject({
-				stage: 'completed',
-				result: { outcome: 'replacement-noop' },
-			});
+		await expect(
+			catalogue.getIngestionOperation(operation.id, operation.initiatedBy),
+		).resolves.toMatchObject({
+			stage: 'completed',
+			result: { outcome: 'replacement-noop' },
+		});
 	});
 
 	// A default Event gives the reuse arm a third guarded statement.
@@ -289,12 +298,12 @@ describe('an ordinary ingestion publication that holds its claim', () => {
 		const associations = await harness.client.execute(
 			'SELECT asset_id, event_id FROM graphic_asset_event_associations',
 		);
-		expect(associations.rows.map(row => ({
-			assetId: row.asset_id,
-			eventId: Number(row.event_id),
-		}))).toEqual([
-			{ assetId: 'event-reused-asset', eventId: DEFAULT_EVENT_ID },
-		]);
+		expect(
+			associations.rows.map((row) => ({
+				assetId: row.asset_id,
+				eventId: Number(row.event_id),
+			})),
+		).toEqual([{ assetId: 'event-reused-asset', eventId: DEFAULT_EVENT_ID }]);
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(0);
 	});
 });
@@ -307,9 +316,9 @@ describe('an ordinary ingestion publication that lost its claim', () => {
 
 		// Another attempt moved the operation on, so this one is publishing
 		// against a claim it no longer holds.
-		await expect(catalogue.publishGraphicAsset(publicationOf(staleSnapshot(operation), 'lost-claim-asset')))
-			.rejects
-			.toThrow(/lost its claim/i);
+		await expect(
+			catalogue.publishGraphicAsset(publicationOf(staleSnapshot(operation), 'lost-claim-asset')),
+		).rejects.toThrow(/lost its claim/i);
 
 		// Candidates still account for the bytes; the quarantine keeps its existing orphan clock.
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(2);
@@ -332,11 +341,17 @@ describe('an ordinary ingestion publication that lost its claim', () => {
 			REPLACEMENT_THUMBNAIL_DIGEST,
 		]);
 
-		await expect(catalogue.publishGraphicAssetReplacement({
-			...publicationOf(staleSnapshot(replacement), 'replacement', { source: REPLACEMENT_DIGEST, thumbnail: REPLACEMENT_THUMBNAIL_DIGEST, at: 4_000 }),
-			targetAssetId: target,
-			assetId: target,
-		})).rejects.toThrow(/replacement publication/i);
+		await expect(
+			catalogue.publishGraphicAssetReplacement({
+				...publicationOf(staleSnapshot(replacement), 'replacement', {
+					source: REPLACEMENT_DIGEST,
+					thumbnail: REPLACEMENT_THUMBNAIL_DIGEST,
+					at: 4_000,
+				}),
+				targetAssetId: target,
+				assetId: target,
+			}),
+		).rejects.toThrow(/replacement publication/i);
 
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(2);
 		expect(await countOf('graphics_content_quarantine')).toBe(2);
@@ -348,7 +363,11 @@ describe('an ordinary ingestion publication that lost its claim', () => {
 	// Its transition matching nothing is not an error, so a re-read would report the winner's success.
 	it('does not report a reuse it lost the claim to as its own success', async () => {
 		const catalogue = createD1GraphicsAssetCatalogue(harness.database);
-		const reused = await publishedAsset(catalogue, 'upload-before-lost-reuse', graphicAssetId('reused-asset'));
+		const reused = await publishedAsset(
+			catalogue,
+			'upload-before-lost-reuse',
+			graphicAssetId('reused-asset'),
+		);
 		const operation = await claimedOperation(catalogue, 'reuse-lost-claim', {
 			duplicateContentPolicy: 'reuse',
 		});
@@ -364,11 +383,13 @@ describe('an ordinary ingestion publication that lost its claim', () => {
 			operation.updatedAt,
 		);
 
-		await expect(catalogue.reuseGraphicAsset({
-			operation,
-			reusable: reused,
-			publishedAt: new Date(6_000).toISOString(),
-		})).rejects.toThrow(/lost its claim/i);
+		await expect(
+			catalogue.reuseGraphicAsset({
+				operation,
+				reusable: reused,
+				publishedAt: new Date(6_000).toISOString(),
+			}),
+		).rejects.toThrow(/lost its claim/i);
 
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(2);
 	});
@@ -382,11 +403,13 @@ describe('an ordinary ingestion publication that lost its claim', () => {
 		});
 		await arrangeReclaimableState(catalogue, operation, [SOURCE_DIGEST, THUMBNAIL_DIGEST]);
 
-		await expect(catalogue.completeGraphicAssetReplacementNoop({
-			operation: staleSnapshot(operation),
-			current,
-			completedAt: new Date(4_000).toISOString(),
-		})).rejects.toThrow(/lost its claim/i);
+		await expect(
+			catalogue.completeGraphicAssetReplacementNoop({
+				operation: staleSnapshot(operation),
+				current,
+				completedAt: new Date(4_000).toISOString(),
+			}),
+		).rejects.toThrow(/lost its claim/i);
 
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(2);
 	});
@@ -406,11 +429,13 @@ describe('an ordinary ingestion publication that lost its claim', () => {
 			args: ['completed', operation.id],
 		});
 
-		await expect(catalogue.completeGraphicAssetReplacementNoop({
-			operation,
-			current,
-			completedAt: new Date(4_000).toISOString(),
-		})).rejects.toThrow(/lost its claim/i);
+		await expect(
+			catalogue.completeGraphicAssetReplacementNoop({
+				operation,
+				current,
+				completedAt: new Date(4_000).toISOString(),
+			}),
+		).rejects.toThrow(/lost its claim/i);
 
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(2);
 	});
@@ -432,11 +457,13 @@ describe('an ordinary ingestion publication that lost its claim', () => {
 			args: ['completed', operation.id],
 		});
 
-		await expect(catalogue.reuseGraphicAsset({
-			operation,
-			reusable: reused,
-			publishedAt: new Date(4_000).toISOString(),
-		})).rejects.toThrow(/lost its claim/i);
+		await expect(
+			catalogue.reuseGraphicAsset({
+				operation,
+				reusable: reused,
+				publishedAt: new Date(4_000).toISOString(),
+			}),
+		).rejects.toThrow(/lost its claim/i);
 
 		expect(await countOf('graphics_canonical_write_candidates')).toBe(2);
 	});
@@ -458,11 +485,13 @@ describe('an ordinary ingestion publication that lost its claim', () => {
 		});
 		await arrangeReclaimableState(catalogue, operation, [SOURCE_DIGEST, THUMBNAIL_DIGEST]);
 
-		await expect(catalogue.reuseGraphicAsset({
-			operation: staleSnapshot(operation),
-			reusable: reused,
-			publishedAt: new Date(4_000).toISOString(),
-		})).rejects.toThrow(/lost its claim/i);
+		await expect(
+			catalogue.reuseGraphicAsset({
+				operation: staleSnapshot(operation),
+				reusable: reused,
+				publishedAt: new Date(4_000).toISOString(),
+			}),
+		).rejects.toThrow(/lost its claim/i);
 
 		// The association organises discovery around a publication that happened.
 		// This one did not, so the Event learns nothing about the asset.

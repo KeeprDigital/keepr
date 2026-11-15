@@ -30,7 +30,9 @@ type Sample<T> = T extends Date
  * type carries one. Keyed by the whole message type union, so a new message
  * type fails to compile here until it has a sample.
  */
-export function eventMessageSamples(ids: EventMessageSampleIds): { [K in MessageType]: MessagePayload<K> } {
+export function eventMessageSamples(ids: EventMessageSampleIds): {
+	[K in MessageType]: MessagePayload<K>;
+} {
 	const player = {
 		id: ids.playerId,
 		updatedAt: new Date('2026-01-02T00:00:00.000Z'),
@@ -95,9 +97,7 @@ export function eventMessageSamples(ids: EventMessageSampleIds): { [K in Message
 		'featureMatch:updated': { featureMatch },
 		'featureMatch:deleted': { featureMatchId: ids.slotId },
 		'featureMatch:reordered': {
-			featureMatches: [
-				{ featureMatchId: ids.slotId, sortOrder: 0 },
-			],
+			featureMatches: [{ featureMatchId: ids.slotId, sortOrder: 0 }],
 		},
 		'featureMatchAssignment:created': {
 			featureMatchAssignment: { id: 1 },

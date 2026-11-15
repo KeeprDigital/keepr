@@ -15,12 +15,10 @@ const listLoading = ref(false);
 const listError = ref<Error | null>(null);
 const hasEvents = computed(() => eventStore.eventsList.length > 0);
 const pageState = computed(() => {
-	if (listLoading.value)
-		return 'loading';
+	if (listLoading.value) return 'loading';
 	// EventList renders its own error UI; treat as 'ready' so content
 	// (and the page actions) still render instead of getting stuck.
-	if (listError.value)
-		return 'ready';
+	if (listError.value) return 'ready';
 	return hasEvents.value ? 'ready' : 'empty';
 });
 
@@ -33,11 +31,9 @@ async function loadList() {
 	listError.value = null;
 	try {
 		await eventStore.loadEventsList();
-	}
-	catch (e) {
+	} catch (e) {
 		listError.value = e as Error;
-	}
-	finally {
+	} finally {
 		listLoading.value = false;
 	}
 }
@@ -55,12 +51,7 @@ function createEvent() {
 		empty-description="Create your first event to start managing overlays and screens."
 	>
 		<template #actions>
-			<UButton
-				icon="i-lucide-plus"
-				@click="createEvent"
-			>
-				Create Event
-			</UButton>
+			<UButton icon="i-lucide-plus" @click="createEvent"> Create Event </UButton>
 		</template>
 
 		<EventList
@@ -71,9 +62,7 @@ function createEvent() {
 		/>
 
 		<template #empty-actions>
-			<UButton color="primary" icon="i-lucide-plus" @click="createEvent">
-				Create Event
-			</UButton>
+			<UButton color="primary" icon="i-lucide-plus" @click="createEvent"> Create Event </UButton>
 		</template>
 	</UICollectionPage>
 </template>

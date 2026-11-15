@@ -37,18 +37,18 @@ const A_KEY = 'Zm9vYmFyYmF6cXV4Zm9vYmFyYmF6cXV4Zm9vYmFyYmE=';
  * fixture about a broken checkout wearing the name of a working one.
  */
 function configuredBody() {
-	return LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES
-		.map(name => `${name}=${name === SIGNING_KEY
-			? A_KEY
-			: 'a-value'}`)
-		.join('\n');
+	return LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.map(
+		(name) => `${name}=${name === SIGNING_KEY ? A_KEY : 'a-value'}`,
+	).join('\n');
 }
 
 /** The states a checkout's files can be in, as bodies the reader gets. */
 const noFiles = () => [null, null];
 
 function blankFiles() {
-	const blanks = [...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES, ADMIN_TOKEN].map(name => `${name}=""`).join('\n');
+	const blanks = [...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES, ADMIN_TOKEN]
+		.map((name) => `${name}=""`)
+		.join('\n');
 	return [`${blanks}\n`, null];
 }
 
@@ -61,11 +61,9 @@ describe('which required names a local acceptance run needs', () => {
 	 * nothing would say so.
 	 */
 	it('classifies every required name as either needed here or unreached', () => {
-		expect([
-			...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES,
-			...LOCAL_ACCEPTANCE_UNREACHED_NUXT_NAMES,
-		].sort())
-			.toEqual([...LOCALLY_REQUIRED_NUXT_NAMES].sort());
+		expect(
+			[...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES, ...LOCAL_ACCEPTANCE_UNREACHED_NUXT_NAMES].sort(),
+		).toEqual([...LOCALLY_REQUIRED_NUXT_NAMES].sort());
 	});
 
 	/**
@@ -82,15 +80,18 @@ describe('which required names a local acceptance run needs', () => {
 	// A local run signs in with both; a deployed run, which has neither, is not checked (#396).
 	it('needs the auth secret and the bootstrap token a local run signs in with', () => {
 		expect(missingLocalAcceptanceNames({})).toEqual([SIGNING_KEY, AUTH_SECRET, BOOTSTRAP_TOKEN]);
-		expect(localAcceptanceConfiguration({ deployed: true, env: {}, readSources: noFiles }).missing).toEqual([]);
+		expect(
+			localAcceptanceConfiguration({ deployed: true, env: {}, readSources: noFiles }).missing,
+		).toEqual([]);
 	});
 
 	it('does not treat a bypass name in the environment as authentication for an acceptance run', () => {
 		// A harness is its own process and cannot see how the installation in front
 		// of it was started, so the name reaching *here* decides nothing. Only the
 		// staging path, which is the launcher, passes the decision in explicitly.
-		expect(missingLocalAcceptanceNames({ [LOCAL_AUTH_BYPASS_NAME]: LOCAL_AUTH_BYPASS_ENABLED_VALUE }))
-			.toEqual([SIGNING_KEY, AUTH_SECRET, BOOTSTRAP_TOKEN]);
+		expect(
+			missingLocalAcceptanceNames({ [LOCAL_AUTH_BYPASS_NAME]: LOCAL_AUTH_BYPASS_ENABLED_VALUE }),
+		).toEqual([SIGNING_KEY, AUTH_SECRET, BOOTSTRAP_TOKEN]);
 	});
 
 	it('lets the bypassed preview staging path omit its two Better Auth setup names', () => {
@@ -106,7 +107,7 @@ describe('which required names a local acceptance run needs', () => {
  * checkout that would still be refused. What these rows are about is whether a
  * value survives the fold, which is a question about one name.
  */
-describe('folding the checkout\'s sources into one answer', () => {
+describe("folding the checkout's sources into one answer", () => {
 	it('reads the name out of any one of them', () => {
 		for (const source of [
 			{ [SIGNING_KEY]: A_KEY },
@@ -119,9 +120,7 @@ describe('folding the checkout\'s sources into one answer', () => {
 	it('reads every name a local run needs, not only the first', () => {
 		// The negative control for the rows above: they would all pass against a
 		// fold that had stopped reading anything but the signing key.
-		expect(missingLocalAcceptanceNames(suppliedNames([
-			configuredBody(),
-		]))).toEqual([]);
+		expect(missingLocalAcceptanceNames(suppliedNames([configuredBody()]))).toEqual([]);
 	});
 
 	/**
@@ -140,17 +139,14 @@ describe('folding the checkout\'s sources into one answer', () => {
 	});
 
 	it('counts whitespace as blank, the way the readers do', () => {
-		expect(missingLocalAcceptanceNames(suppliedNames([
-			{ [SIGNING_KEY]: '   ' },
-		]))).toContain(SIGNING_KEY);
+		expect(missingLocalAcceptanceNames(suppliedNames([{ [SIGNING_KEY]: '   ' }]))).toContain(
+			SIGNING_KEY,
+		);
 	});
 
 	// A whitespace value must not occupy the name and hide a real later one.
 	it('does not let a whitespace-only earlier source shadow a real later one', () => {
-		const supplied = suppliedNames([
-			{ [SIGNING_KEY]: '   ' },
-			`${SIGNING_KEY}=${A_KEY}`,
-		]);
+		const supplied = suppliedNames([{ [SIGNING_KEY]: '   ' }, `${SIGNING_KEY}=${A_KEY}`]);
 		expect(supplied[SIGNING_KEY]).toBe(A_KEY);
 		expect(missingLocalAcceptanceNames(supplied)).not.toContain(SIGNING_KEY);
 	});
@@ -165,78 +161,86 @@ describe('a deployed run', () => {
 		const readSources = vi.fn(() => {
 			throw new Error('a deployed run must not read local configuration');
 		});
-		expect(localAcceptanceConfiguration({ deployed: true, env: {}, readSources }))
-			.toEqual({ checked: false, missing: [] });
+		expect(localAcceptanceConfiguration({ deployed: true, env: {}, readSources })).toEqual({
+			checked: false,
+			missing: [],
+		});
 		expect(readSources).not.toHaveBeenCalled();
 	});
 
 	it('never throws, however empty the checkout is', () => {
-		expect(requireLocalAcceptanceConfiguration({
-			deployed: true,
-			env: {},
-			readSources: noFiles,
-		})).toEqual({ checked: false, missing: [] });
+		expect(
+			requireLocalAcceptanceConfiguration({
+				deployed: true,
+				env: {},
+				readSources: noFiles,
+			}),
+		).toEqual({ checked: false, missing: [] });
 	});
 });
 
 describe('a local run', () => {
 	it('is checked, and reads the sources to decide', () => {
 		const readSources = vi.fn(noFiles);
-		expect(localAcceptanceConfiguration({ deployed: false, env: {}, readSources }))
-			.toEqual({
-				checked: true,
-				missing: [...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES],
-			});
+		expect(localAcceptanceConfiguration({ deployed: false, env: {}, readSources })).toEqual({
+			checked: true,
+			missing: [...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES],
+		});
 		expect(readSources).toHaveBeenCalledTimes(1);
 	});
 
 	it('passes silently when a source supplies the names', () => {
-		expect(requireLocalAcceptanceConfiguration({
-			deployed: false,
-			env: {},
-			readSources: () => [
-				configuredBody(),
-				null,
-			],
-		})).toEqual({ checked: true, missing: [] });
+		expect(
+			requireLocalAcceptanceConfiguration({
+				deployed: false,
+				env: {},
+				readSources: () => [configuredBody(), null],
+			}),
+		).toEqual({ checked: true, missing: [] });
 	});
 
 	it('stops the run with a stable code rather than letting it 503 its way to nothing', () => {
 		// Silenced only so a passing suite does not print the notice; the test
 		// below is the one that reads what was written.
 		vi.spyOn(process.stderr, 'write').mockReturnValue(true);
-		expect(() => requireLocalAcceptanceConfiguration({
-			deployed: false,
-			env: {},
-			readSources: noFiles,
-		})).toThrow(expect.objectContaining({
-			code: 'harness-local-configuration-missing',
-			detail: {
-				surface: 'Screen Output asset capabilities, signing in and every authenticated API route, '
-					+ 'and first-admin bootstrap',
-			},
-		}));
+		expect(() =>
+			requireLocalAcceptanceConfiguration({
+				deployed: false,
+				env: {},
+				readSources: noFiles,
+			}),
+		).toThrow(
+			expect.objectContaining({
+				code: 'harness-local-configuration-missing',
+				detail: {
+					surface:
+						'Screen Output asset capabilities, signing in and every authenticated API route, ' +
+						'and first-admin bootstrap',
+				},
+			}),
+		);
 	});
 
 	it('prints the notice before it throws, so the code has prose above it', () => {
 		const written = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
-		expect(() => requireLocalAcceptanceConfiguration({
-			deployed: false,
-			env: {},
-			readSources: noFiles,
-		})).toThrow();
+		expect(() =>
+			requireLocalAcceptanceConfiguration({
+				deployed: false,
+				env: {},
+				readSources: noFiles,
+			}),
+		).toThrow();
 		expect(written).toHaveBeenCalledTimes(1);
-		expect(written.mock.calls[0]![0])
-			.toBe(`${localConfigurationNotice([...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES])}\n`);
+		expect(written.mock.calls[0]![0]).toBe(
+			`${localConfigurationNotice([...LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES])}\n`,
+		);
 	});
 });
 
 describe('the notice', () => {
 	function noticeFor(readSources: () => (string | null)[], env: Record<string, string> = {}) {
 		const decision = localAcceptanceConfiguration({ deployed: false, env, readSources });
-		return decision.missing.length === 0
-			? undefined
-			: localConfigurationNotice(decision.missing);
+		return decision.missing.length === 0 ? undefined : localConfigurationNotice(decision.missing);
 	}
 
 	it('reads the same whether the file is absent or its values are blank, and carries the fix', () => {
@@ -244,7 +248,11 @@ describe('the notice', () => {
 
 		expect(notice).toBe(noticeFor(blankFiles));
 		expect(notice).toMatch(/\.env(?!\.example)/);
-		for (const token of ['copy .env in from the checkout you branched from', '`pnpm preview` stages .env into .output/server/', 'README.md → Local configuration'])
+		for (const token of [
+			'copy .env in from the checkout you branched from',
+			'`pnpm preview` stages .env into .output/server/',
+			'README.md → Local configuration',
+		])
 			expect(notice).toContain(token);
 	});
 
@@ -257,16 +265,9 @@ describe('the notice', () => {
 		[
 			'the shell alone carries the names',
 			noFiles,
-			Object.fromEntries(LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.map(name => [name, A_KEY])),
+			Object.fromEntries(LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.map((name) => [name, A_KEY])),
 		],
-		[
-			'only the built worker\'s own copy carries them',
-			() => [
-				null,
-				configuredBody(),
-			],
-			{},
-		],
+		["only the built worker's own copy carries them", () => [null, configuredBody()], {}],
 	] as const)('says nothing when %s', (_, readSources, env) => {
 		expect(noticeFor(readSources as () => (string | null)[], env)).toBeUndefined();
 	});
@@ -306,13 +307,12 @@ describe('staging .env for the preview', () => {
 	const source = `${SIGNING_KEY}=${A_KEY}\n`;
 
 	it('does nothing at all when there is no .env to stage', () => {
-		expect(previewStagingPlan({ source: null, existing: null, stale: false }))
-			.toEqual({
-				stage: false,
-				body: null,
-				removeStale: false,
-				lines: [],
-			});
+		expect(previewStagingPlan({ source: null, existing: null, stale: false })).toEqual({
+			stage: false,
+			body: null,
+			removeStale: false,
+			lines: [],
+		});
 	});
 
 	/**
@@ -329,7 +329,9 @@ describe('staging .env for the preview', () => {
 			bypassActive: true,
 		});
 
-		expect(plan.body).toBe(`${source}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`);
+		expect(plan.body).toBe(
+			`${source}${LOCAL_AUTH_BYPASS_NAME}=${LOCAL_AUTH_BYPASS_ENABLED_VALUE}\n`,
+		);
 		expect(plan.lines.at(-1)).toContain(LOCAL_AUTH_BYPASS_NAME);
 		expect(plan.lines.at(-1)).toContain('Local Developer User');
 		expect(plan.lines.at(-1)).toContain('loopback');
@@ -375,7 +377,11 @@ describe('staging .env for the preview', () => {
 	 * layer up. It still overwrites; it no longer does so silently.
 	 */
 	it('says so before replacing a staged copy that differs', () => {
-		const plan = previewStagingPlan({ source, existing: `${source}NUXT_ABLY_API_KEY=live\n`, stale: false });
+		const plan = previewStagingPlan({
+			source,
+			existing: `${source}NUXT_ABLY_API_KEY=live\n`,
+			stale: false,
+		});
 		expect(plan.stage).toBe(true);
 		expect(plan.lines).toHaveLength(2);
 		expect(plan.lines[0]).toContain('differs from the .env it is staged from');
@@ -394,8 +400,8 @@ describe('staging .env for the preview', () => {
 		const plan = previewStagingPlan({ source, existing: null, stale: true });
 
 		expect(plan.removeStale).toBe(true);
-		expect(plan.lines.some(line => line.includes(STALE_PREVIEW_DEV_VARS))).toBe(true);
-		expect(plan.lines.some(line => line.includes('shadow'))).toBe(true);
+		expect(plan.lines.some((line) => line.includes(STALE_PREVIEW_DEV_VARS))).toBe(true);
+		expect(plan.lines.some((line) => line.includes('shadow'))).toBe(true);
 	});
 
 	/**
@@ -427,16 +433,17 @@ describe('the failure this preflight raises', () => {
 		// 120 characters, and three surfaces come to 103.
 		const evidence = createAcceptanceEvidence({ harness: 'graphics-delivery-v1', secrets: [] });
 		const surface = sentenceList(
-			LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.map(name => LOCAL_NUXT_NAME_SURFACES[name]),
+			LOCAL_ACCEPTANCE_REQUIRED_NUXT_NAMES.map((name) => LOCAL_NUXT_NAME_SURFACES[name]),
 			'and',
 		);
 
-		expect(evidence.report([
-			{
-				code: 'harness-local-configuration-missing',
-				detail: { surface },
-			},
-		]))
-			.toBe(`graphics-delivery-v1 harness-local-configuration-missing surface=${surface}`);
+		expect(
+			evidence.report([
+				{
+					code: 'harness-local-configuration-missing',
+					detail: { surface },
+				},
+			]),
+		).toBe(`graphics-delivery-v1 harness-local-configuration-missing surface=${surface}`);
 	});
 });

@@ -13,17 +13,14 @@ interface ScryfallCardLike {
 }
 
 function normalizedOracleText(card: ScryfallCardLike): string {
-	return [
-		card.oracle_text,
-		...(card.card_faces ?? []).map(face => face.oracle_text),
-	]
+	return [card.oracle_text, ...(card.card_faces ?? []).map((face) => face.oracle_text)]
 		.filter((text): text is string => typeof text === 'string')
 		.join('\n')
 		.toLowerCase();
 }
 
 function normalizedKeywords(card: ScryfallCardLike): Set<string> {
-	return new Set((card.keywords ?? []).map(keyword => keyword.toLowerCase()));
+	return new Set((card.keywords ?? []).map((keyword) => keyword.toLowerCase()));
 }
 
 export function deriveDeckCounterTypesFromScryfallCard(card: ScryfallCardLike): DeckCounterType[] {
@@ -36,10 +33,10 @@ export function deriveDeckCounterTypesFromScryfallCard(card: ScryfallCardLike): 
 	}
 
 	if (
-		text.includes('poison counter')
-		|| keywords.has('toxic')
-		|| keywords.has('infect')
-		|| keywords.has('poisonous')
+		text.includes('poison counter') ||
+		keywords.has('toxic') ||
+		keywords.has('infect') ||
+		keywords.has('poisonous')
 	) {
 		counters.add('poison');
 	}
@@ -59,24 +56,20 @@ export function deriveDeckCounterTypesFromScryfallCard(card: ScryfallCardLike): 
 	return [...counters];
 }
 
-export function uniqueDeckCounterTypes(counterTypes: Iterable<string | null | undefined>): DeckCounterType[] {
-	const supported: DeckCounterType[] = [
-		'poison',
-		'energy',
-		'storm',
-		'experience',
-		'rad',
-	];
+export function uniqueDeckCounterTypes(
+	counterTypes: Iterable<string | null | undefined>,
+): DeckCounterType[] {
+	const supported: DeckCounterType[] = ['poison', 'energy', 'storm', 'experience', 'rad'];
 	const selected = new Set(counterTypes);
-	return supported.filter(type => selected.has(type));
+	return supported.filter((type) => selected.has(type));
 }
 
 export function counterConfigsForDeckCounterTypes(
 	counterTypes: Iterable<string | null | undefined>,
 	configs: CounterTypeConfig[],
 ): CounterTypeConfig[] {
-	const configByKey = new Map(configs.map(config => [config.key, config]));
+	const configByKey = new Map(configs.map((config) => [config.key, config]));
 	return uniqueDeckCounterTypes(counterTypes)
-		.map(type => configByKey.get(type))
+		.map((type) => configByKey.get(type))
 		.filter((config): config is CounterTypeConfig => !!config);
 }

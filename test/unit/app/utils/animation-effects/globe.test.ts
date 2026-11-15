@@ -45,18 +45,23 @@ function globeLineSegments(scene: THREE.Scene) {
 		(child): child is THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> =>
 			(child as THREE.LineSegments).isLineSegments,
 	);
-	const sphere = segments.find(segment => segment.geometry.type === 'EdgesGeometry');
-	const ball = segments.find(segment => segment.geometry.getAttribute('position')?.count === 160);
-	const poles = segments.find(segment => segment.geometry.getAttribute('position')?.count === 2 + 4 * 18 * 2);
+	const sphere = segments.find((segment) => segment.geometry.type === 'EdgesGeometry');
+	const ball = segments.find((segment) => segment.geometry.getAttribute('position')?.count === 160);
+	const poles = segments.find(
+		(segment) => segment.geometry.getAttribute('position')?.count === 2 + 4 * 18 * 2,
+	);
 	expect(sphere).toBeDefined();
 	expect(ball).toBeDefined();
 	expect(poles).toBeDefined();
 	return { sphere: sphere!, ball: ball!, poles: poles! };
 }
 
-function fieldDots(scene: THREE.Scene): THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial>[] {
+function fieldDots(
+	scene: THREE.Scene,
+): THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial>[] {
 	return fieldGroup(scene).children.filter(
-		(child): child is THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial> => (child as THREE.Mesh).isMesh,
+		(child): child is THREE.Mesh<THREE.SphereGeometry, THREE.MeshLambertMaterial> =>
+			(child as THREE.Mesh).isMesh,
 	);
 }
 
@@ -68,7 +73,7 @@ describe('createGlobeDelegate', () => {
 		expect(camera.position.toArray()).toEqual(start);
 	});
 
-	it('builds the fork\'s flat, unjittered point plane at its offset', () => {
+	it("builds the fork's flat, unjittered point plane at its offset", () => {
 		const { scene, params } = mountDelegate();
 		const group = fieldGroup(scene);
 		expect(group.position.toArray()).toEqual([-50, -20, 0]);
@@ -79,15 +84,11 @@ describe('createGlobeDelegate', () => {
 		expect(dots[0]!.material.color.getHexString()).toBe(params.lineColor.slice(1));
 	});
 
-	it('waves the plane with the fork\'s absolute sine of position and time', () => {
+	it("waves the plane with the fork's absolute sine of position and time", () => {
 		const { delegate, scene, context } = mountDelegate();
 		const dots = fieldDots(scene);
 		delegate.update({ ...context, elapsedSeconds: 2 });
-		for (const dot of [
-			dots[0]!,
-			dots[60]!,
-			dots.at(-1)!,
-		]) {
+		for (const dot of [dots[0]!, dots[60]!, dots.at(-1)!]) {
 			expect(dot.position.y).toBeCloseTo(
 				2 * Math.sin(dot.position.x / 10 + 0.6 * 2 + dot.position.z / 20),
 			);
@@ -99,7 +100,7 @@ describe('createGlobeDelegate', () => {
 		expect(dots[0]!.position.y).toBe(replay);
 	});
 
-	it('builds the wireframe globe, radial ball, and pole lines in the fork\'s tilted group', () => {
+	it("builds the wireframe globe, radial ball, and pole lines in the fork's tilted group", () => {
 		const { scene, params } = mountDelegate();
 		const group = globeGroup(scene);
 		expect(group.position.toArray()).toEqual([0, 15, 0]);
@@ -112,7 +113,7 @@ describe('createGlobeDelegate', () => {
 		expect(sphere.geometry.boundingSphere!.radius).toBeCloseTo(18, 0);
 	});
 
-	it('spins the globe pieces at the fork\'s per-frame rates over elapsed time', () => {
+	it("spins the globe pieces at the fork's per-frame rates over elapsed time", () => {
 		const { delegate, scene, context } = mountDelegate();
 		const { sphere, ball, poles } = globeLineSegments(scene);
 		delegate.update({ ...context, elapsedSeconds: 2 });

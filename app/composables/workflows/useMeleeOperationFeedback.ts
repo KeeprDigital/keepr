@@ -13,7 +13,10 @@ export function useMeleeOperationFeedback() {
 	const meleeStore = useMeleeStore();
 	const { runRequest } = useRequestFeedback();
 
-	async function reportMeleeOperation<T>(action: () => Promise<T>, after: AfterMeleeOperation = {}) {
+	async function reportMeleeOperation<T>(
+		action: () => Promise<T>,
+		after: AfterMeleeOperation = {},
+	) {
 		const earlier = meleeStore.lastOperation;
 		// An operation that recorded nothing, refused before it started or answered
 		// after the operator moved on, must not repeat what an earlier one recorded.
@@ -26,7 +29,8 @@ export function useMeleeOperationFeedback() {
 
 		return runRequest(action, {
 			success: () => recorded() ?? false,
-			error: ({ message }) => recorded() ?? { title: 'Operation Failed', description: message, color: 'error' },
+			error: ({ message }) =>
+				recorded() ?? { title: 'Operation Failed', description: message, color: 'error' },
 			...after,
 		});
 	}

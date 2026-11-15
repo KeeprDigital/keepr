@@ -17,7 +17,10 @@ import { stubH3Event } from '~~/test/helpers/h3Event';
 const mockGetCookie = vi.fn();
 const mockDeleteCookie = vi.fn();
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getCookie', mockGetCookie);
 vi.stubGlobal('deleteCookie', mockDeleteCookie);
 
@@ -28,9 +31,9 @@ const ISSUE_FAILED_COOKIE = 'stream_keepr_graphics_author_session_issue_failed';
 
 /** A request presenting exactly the named cookies. */
 function requestCarrying(...cookies: string[]) {
-	mockGetCookie.mockImplementation((_event, name: string) => cookies.includes(name)
-		? '1'
-		: undefined);
+	mockGetCookie.mockImplementation((_event, name: string) =>
+		cookies.includes(name) ? '1' : undefined,
+	);
 	return stubH3Event();
 }
 
@@ -51,7 +54,9 @@ describe('the retired author-session cookies', () => {
 		// forever.
 		handler(requestCarrying(ISSUE_FAILED_COOKIE));
 
-		expect(mockDeleteCookie).toHaveBeenCalledWith(expect.anything(), ISSUE_FAILED_COOKIE, { path: '/' });
+		expect(mockDeleteCookie).toHaveBeenCalledWith(expect.anything(), ISSUE_FAILED_COOKIE, {
+			path: '/',
+		});
 	});
 
 	it('writes nothing for a browser that holds neither', () => {

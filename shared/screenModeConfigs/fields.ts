@@ -19,14 +19,14 @@ export const SCREEN_SETTINGS_CARDS = [
 	'background-placement',
 ] as const;
 
-export type ScreenSettingsCard = typeof SCREEN_SETTINGS_CARDS[number];
+export type ScreenSettingsCard = (typeof SCREEN_SETTINGS_CARDS)[number];
 
 export const SCREEN_SETTINGS_CARD_TITLES = {
-	'live': 'Live',
-	'source': 'Source',
-	'content': 'Content',
-	'header': 'Header',
-	'paging': 'Paging',
+	live: 'Live',
+	source: 'Source',
+	content: 'Content',
+	header: 'Header',
+	paging: 'Paging',
 	'background-placement': 'Background & Placement',
 } as const satisfies Record<ScreenSettingsCard, string>;
 
@@ -109,7 +109,9 @@ export interface ConfigFieldMeta<Value extends string = string> {
 	 * What each value is called. Read from the Screen, it names only the values
 	 * the Screen offers, such as the sorts its Card Game reads.
 	 */
-	options?: OptionLabels<Value> | ((context: ScreenSettingsContext) => Partial<OptionLabels<Value>>);
+	options?:
+		| OptionLabels<Value>
+		| ((context: ScreenSettingsContext) => Partial<OptionLabels<Value>>);
 	/** What an empty field shows: Auto, All, the Current Round. */
 	placeholder?: string;
 	/** The Event Reference kind the field names, set through that kind's picker (ADR-0038). */
@@ -117,7 +119,10 @@ export interface ConfigFieldMeta<Value extends string = string> {
 	/** The named slot of the bespoke widget that edits it, for a field no plain control can. */
 	slot?: string;
 	/** What else an edit writing `value` to it writes, such as entering a view starting that view over. */
-	writesWith?: (value: unknown, context: ScreenSettingsContext) => Readonly<Record<string, unknown>> | undefined;
+	writesWith?: (
+		value: unknown,
+		context: ScreenSettingsContext,
+	) => Readonly<Record<string, unknown>> | undefined;
 	/** A colour string's control, or a nine-point position's. Every other field's is read from its schema. */
 	control?: 'color' | 'position';
 	step?: number;
@@ -150,7 +155,10 @@ type FieldValue<S extends z.ZodType> = NonNullable<z.output<S>>;
  * the field whole, `.optional()` and `.nullable()` included, so the metadata
  * stays on the field the contract holds.
  */
-export function editorField<S extends z.ZodType, const Reference extends EventReferenceKind = never>(
+export function editorField<
+	S extends z.ZodType,
+	const Reference extends EventReferenceKind = never,
+>(
 	schema: S,
 	meta: ConfigFieldMeta<OptionValue<FieldValue<S>>> & { reference?: Reference },
 ): EditorField<S, Reference> {
@@ -176,17 +184,17 @@ export function withEditorMeta<S extends z.ZodType, Reference extends EventRefer
 }
 
 /** How a field is edited: a plain control by its kind, its Event Reference kind's picker, a nested block's own fields, or a named slot. */
-export type ScreenModeConfigControl
-	= | 'number'
-		| 'toggle'
-		| 'select'
-		| 'position'
-		| 'color'
-		| 'text'
-		| 'set'
-		| 'reference'
-		| 'block'
-		| 'slot';
+export type ScreenModeConfigControl =
+	| 'number'
+	| 'toggle'
+	| 'select'
+	| 'position'
+	| 'color'
+	| 'text'
+	| 'set'
+	| 'reference'
+	| 'block'
+	| 'slot';
 
 /** One contract field as its settings page renders it: where, with what control, label, and bounds in displayed units. */
 export interface ScreenModeConfigField {
@@ -202,7 +210,10 @@ export interface ScreenModeConfigField {
 	placeholder?: string;
 	reference?: EventReferenceKind;
 	slot?: string;
-	writesWith?: (value: unknown, context: ScreenSettingsContext) => Readonly<Record<string, unknown>> | undefined;
+	writesWith?: (
+		value: unknown,
+		context: ScreenSettingsContext,
+	) => Readonly<Record<string, unknown>> | undefined;
 	/** Emptied, it writes the `null` that deletes it (ADR-0041): the field is optional or nullable. */
 	clearable: boolean;
 	min?: number;
@@ -220,20 +231,25 @@ export interface ScreenModeConfigField {
 
 type EditorFieldKeys<Shape extends z.ZodRawShape> = {
 	[K in keyof Shape]: Shape[K] extends { readonly [editorFieldBrand]: unknown } ? K : never;
-}[keyof Shape] & string;
+}[keyof Shape] &
+	string;
 
 /** The editor fields of a shape: every field it marks with `editorField`. */
 export type ScreenModeConfigFields<Shape extends z.ZodRawShape> = {
 	readonly [K in EditorFieldKeys<Shape>]: ScreenModeConfigField;
 };
 
-type ReferenceOf<Field> = Field extends { readonly [editorFieldBrand]: { readonly reference: infer Reference } }
+type ReferenceOf<Field> = Field extends {
+	readonly [editorFieldBrand]: { readonly reference: infer Reference };
+}
 	? Reference
 	: never;
 
 /** A shape's Event References: each field naming a kind, and that kind. */
 export type ShapeEventReferences<Shape extends z.ZodRawShape> = {
-	readonly [K in keyof Shape as [ReferenceOf<Shape[K]>] extends [never] ? never : K]: ReferenceOf<Shape[K]>;
+	readonly [K in keyof Shape as [ReferenceOf<Shape[K]>] extends [never] ? never : K]: ReferenceOf<
+		Shape[K]
+	>;
 };
 
 /** The schema under a field's `.optional()` and `.nullable()`: where its checks live. */
@@ -247,11 +263,11 @@ export function unwrapOptionalField(field: z.ZodType): z.ZodType {
 function fieldMeta(field: z.ZodType): ConfigFieldMeta | undefined {
 	let current: z.ZodType = field;
 	for (;;) {
-		const meta = (current.meta() as Record<string, unknown> | undefined)?.[EDITOR_META_KEY] as Partial<ConfigFieldMeta> | undefined;
-		if (typeof meta?.label === 'string')
-			return meta as ConfigFieldMeta;
-		if (!(current instanceof z.ZodOptional || current instanceof z.ZodNullable))
-			return undefined;
+		const meta = (current.meta() as Record<string, unknown> | undefined)?.[EDITOR_META_KEY] as
+			| Partial<ConfigFieldMeta>
+			| undefined;
+		if (typeof meta?.label === 'string') return meta as ConfigFieldMeta;
+		if (!(current instanceof z.ZodOptional || current instanceof z.ZodNullable)) return undefined;
 		current = current.unwrap() as z.ZodType;
 	}
 }
@@ -264,23 +280,21 @@ function inclusiveNumberBounds(schema: z.ZodNumber): { min?: number; max?: numbe
 	const bounds: { min?: number; max?: number } = {};
 	for (const check of schema.def.checks ?? []) {
 		const def = check._zod.def as { check: string; value?: unknown; inclusive?: boolean };
-		if (def.inclusive !== true || typeof def.value !== 'number')
-			continue;
+		if (def.inclusive !== true || typeof def.value !== 'number') continue;
 		if (def.check === 'greater_than') {
-			bounds.min = bounds.min === undefined
-				? def.value
-				: Math.max(bounds.min, def.value);
-		}
-		else if (def.check === 'less_than') {
-			bounds.max = bounds.max === undefined
-				? def.value
-				: Math.min(bounds.max, def.value);
+			bounds.min = bounds.min === undefined ? def.value : Math.max(bounds.min, def.value);
+		} else if (def.check === 'less_than') {
+			bounds.max = bounds.max === undefined ? def.value : Math.min(bounds.max, def.value);
 		}
 	}
 	return bounds;
 }
 
-function editorFieldView(key: string, field: z.ZodType, meta: ConfigFieldMeta): ScreenModeConfigField {
+function editorFieldView(
+	key: string,
+	field: z.ZodType,
+	meta: ConfigFieldMeta,
+): ScreenModeConfigField {
 	const inner = unwrapOptionalField(field);
 	const displayScale = meta.displayScale ?? 1;
 	const base = {
@@ -299,10 +313,8 @@ function editorFieldView(key: string, field: z.ZodType, meta: ConfigFieldMeta): 
 		clearable: inner !== field,
 		displayScale,
 	};
-	if (meta.slot !== undefined)
-		return { ...base, control: 'slot' };
-	if (meta.reference !== undefined)
-		return { ...base, control: 'reference' };
+	if (meta.slot !== undefined) return { ...base, control: 'slot' };
+	if (meta.reference !== undefined) return { ...base, control: 'reference' };
 	if (inner instanceof z.ZodObject) {
 		return {
 			...base,
@@ -322,36 +334,29 @@ function editorFieldView(key: string, field: z.ZodType, meta: ConfigFieldMeta): 
 		return {
 			...base,
 			control: 'number',
-			min: min === undefined
-				? undefined
-				: min / displayScale,
-			max: max === undefined
-				? undefined
-				: max / displayScale,
+			min: min === undefined ? undefined : min / displayScale,
+			max: max === undefined ? undefined : max / displayScale,
 			step: meta.step,
 			maxFor: meta.maxFor,
 		};
 	}
-	if (inner instanceof z.ZodBoolean)
-		return { ...base, control: 'toggle' };
+	if (inner instanceof z.ZodBoolean) return { ...base, control: 'toggle' };
 	if (inner instanceof z.ZodEnum) {
 		return {
 			...base,
-			control: meta.control === 'position'
-				? 'position'
-				: 'select',
+			control: meta.control === 'position' ? 'position' : 'select',
 			values: inner.options.map(String),
 		};
 	}
 	if (inner instanceof z.ZodString) {
 		return {
 			...base,
-			control: meta.control === 'color'
-				? 'color'
-				: 'text',
+			control: meta.control === 'color' ? 'color' : 'text',
 		};
 	}
-	throw new Error(`Editor field "${key}" has no plain control: name the slot of the bespoke widget that edits it (#1093).`);
+	throw new Error(
+		`Editor field "${key}" has no plain control: name the slot of the bespoke widget that edits it (#1093).`,
+	);
 }
 
 /**
@@ -366,16 +371,17 @@ export function assertFieldGroupsDeclared(
 	for (const field of Object.values(fields)) {
 		const name = [...path, field.key].join('.');
 		if (field.group !== undefined) {
-			const group = Object.hasOwn(groups, field.group)
-				? groups[field.group]
-				: undefined;
+			const group = Object.hasOwn(groups, field.group) ? groups[field.group] : undefined;
 			if (!group)
-				throw new Error(`Config field "${name}" names the settings group "${field.group}", which its contract does not declare.`);
+				throw new Error(
+					`Config field "${name}" names the settings group "${field.group}", which its contract does not declare.`,
+				);
 			if (group.card !== field.card)
-				throw new Error(`Config field "${name}" sits in the ${field.card} card, but its group "${field.group}" is in the ${group.card} card.`);
+				throw new Error(
+					`Config field "${name}" sits in the ${field.card} card, but its group "${field.group}" is in the ${group.card} card.`,
+				);
 		}
-		if (field.fields)
-			assertFieldGroupsDeclared(field.fields, groups, [...path, field.key]);
+		if (field.fields) assertFieldGroupsDeclared(field.fields, groups, [...path, field.key]);
 	}
 }
 
@@ -385,12 +391,13 @@ export function assertFieldGroupsDeclared(
  * `animationEffectParamFields` to config contracts, which keep their defaults
  * outside the schema.
  */
-export function screenModeConfigFields<Shape extends z.ZodRawShape>(shape: Shape): ScreenModeConfigFields<Shape> {
+export function screenModeConfigFields<Shape extends z.ZodRawShape>(
+	shape: Shape,
+): ScreenModeConfigFields<Shape> {
 	const fields: Record<string, ScreenModeConfigField> = {};
 	for (const [key, field] of Object.entries(shape)) {
 		const meta = fieldMeta(field as z.ZodType);
-		if (meta)
-			fields[key] = editorFieldView(key, field as z.ZodType, meta);
+		if (meta) fields[key] = editorFieldView(key, field as z.ZodType, meta);
 	}
 	return fields as ScreenModeConfigFields<Shape>;
 }
@@ -408,19 +415,20 @@ export function screenModeConfigFields<Shape extends z.ZodRawShape>(shape: Shape
  * value of another type, an exclusive bound, a key the shape does not have, and
  * a union or list. A fragment already in bounds is returned as it is.
  */
-export function clampToShapeBounds<T extends Record<string, unknown>>(shape: z.ZodRawShape, fragment: T): T {
+export function clampToShapeBounds<T extends Record<string, unknown>>(
+	shape: z.ZodRawShape,
+	fragment: T,
+): T {
 	let clamped: Record<string, unknown> | undefined;
 	for (const [key, value] of Object.entries(fragment)) {
 		const field = shape[key] as z.ZodType | undefined;
-		if (!field)
-			continue;
+		if (!field) continue;
 		const inner = unwrapOptionalField(field);
 		let next: unknown = value;
 		if (inner instanceof z.ZodNumber && typeof value === 'number' && Number.isFinite(value)) {
 			const { min, max } = inclusiveNumberBounds(inner);
 			next = Math.min(max ?? value, Math.max(min ?? value, value));
-		}
-		else if (inner instanceof z.ZodObject && isPlainRecord(value)) {
+		} else if (inner instanceof z.ZodObject && isPlainRecord(value)) {
 			next = clampToShapeBounds(inner.shape, value);
 		}
 		if (next !== value) {

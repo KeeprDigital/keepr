@@ -11,7 +11,8 @@ const LINK_CONTEXT = 'stream-keepr:screen-output-link:v1';
  * Base58 as Bitcoin orders it: no `0`, `O`, `I` or `l`, and nothing a URL
  * escapes, so a link survives being read aloud and retyped into a path.
  */
-export const SCREEN_OUTPUT_LINK_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+export const SCREEN_OUTPUT_LINK_ALPHABET =
+	'123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 const BASE = 58n;
 const MAC_BYTES = 10;
@@ -55,11 +56,11 @@ export async function createScreenOutputLink(input: {
 	version: number;
 }): Promise<string> {
 	if (
-		!Number.isSafeInteger(input.screenId)
-		|| input.screenId <= 0
-		|| !input.seed
-		|| !Number.isSafeInteger(input.version)
-		|| input.version <= 0
+		!Number.isSafeInteger(input.screenId) ||
+		input.screenId <= 0 ||
+		!input.seed ||
+		!Number.isSafeInteger(input.version) ||
+		input.version <= 0
 	) {
 		throw new Error('Screen Output Link identity is invalid');
 	}
@@ -69,8 +70,7 @@ export async function createScreenOutputLink(input: {
 		value: `${input.seed}\0${input.version}`,
 	});
 	let value = BigInt(input.screenId);
-	for (const byte of mac.subarray(0, MAC_BYTES))
-		value = (value << 8n) | BigInt(byte);
+	for (const byte of mac.subarray(0, MAC_BYTES)) value = (value << 8n) | BigInt(byte);
 	return encode(value);
 }
 
@@ -79,11 +79,9 @@ export async function createScreenOutputLink(input: {
  * textual form. Says nothing about whether the link is that Screen's.
  */
 export function parseScreenOutputLink(link: unknown): { screenId: number } | null {
-	if (typeof link !== 'string' || !LINK_PATTERN.test(link))
-		return null;
+	if (typeof link !== 'string' || !LINK_PATTERN.test(link)) return null;
 	const screenId = decode(link) >> MAC_BITS;
-	if (screenId < 1n || screenId > BigInt(Number.MAX_SAFE_INTEGER))
-		return null;
+	if (screenId < 1n || screenId > BigInt(Number.MAX_SAFE_INTEGER)) return null;
 	return {
 		screenId: Number(screenId),
 	};

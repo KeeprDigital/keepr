@@ -3,7 +3,11 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { defineComponent, effectScope, h, ref } from 'vue';
 import { stubImageLoading } from '~~/test/nuxt/helpers/imageLoading';
-import { provideScreenModeReadiness, useScreenModeReady, useStagedScreenContent } from '~/modules/screen-mode/readiness';
+import {
+	provideScreenModeReadiness,
+	useScreenModeReady,
+	useStagedScreenContent,
+} from '~/modules/screen-mode/readiness';
 
 const images = stubImageLoading();
 
@@ -21,41 +25,34 @@ describe('provideScreenModeReadiness', () => {
 			},
 		});
 		const shown = ref(declarations.map(() => true));
-		const wrapper = mount(defineComponent({
-			setup() {
-				declared = provideScreenModeReadiness().declared;
-				return () => h('div', declarations.map((_, index) => shown.value[index]
-					? h(Child, { index })
-					: null));
-			},
-		}));
+		const wrapper = mount(
+			defineComponent({
+				setup() {
+					declared = provideScreenModeReadiness().declared;
+					return () =>
+						h(
+							'div',
+							declarations.map((_, index) => (shown.value[index] ? h(Child, { index }) : null)),
+						);
+				},
+			}),
+		);
 		return { declared: declared!, shown, wrapper };
 	}
 
 	// A display declares once its async chunk has loaded, so silence is not readiness.
 	it.each([
 		['nothing has declared', [], false],
-		[
-			'every declaration holds',
-			[true, true],
-			true,
-		],
-		[
-			'one declaration does not',
-			[true, false],
-			false,
-		],
+		['every declaration holds', [true, true], true],
+		['one declaration does not', [true, false], false],
 	])('is ready when %s', (_, values, expected) => {
-		const { declared } = hostDeclaring(values.map(value => ref(value)));
+		const { declared } = hostDeclaring(values.map((value) => ref(value)));
 
 		expect(declared.value).toBe(expected);
 	});
 
 	it('forgets a declaration whose component unmounts', async () => {
-		const { declared, shown } = hostDeclaring([
-			ref(true),
-			ref(false),
-		]);
+		const { declared, shown } = hostDeclaring([ref(true), ref(false)]);
 		expect(declared.value).toBe(false);
 
 		shown.value = [true, false];
@@ -72,7 +69,12 @@ describe('useStagedScreenContent', () => {
 		const content = ref<string[]>([]);
 		const scope = effectScope();
 		scopes.push(scope);
-		const result = scope.run(() => useStagedScreenContent(() => content.value, urls => urls))!;
+		const result = scope.run(() =>
+			useStagedScreenContent(
+				() => content.value,
+				(urls) => urls,
+			),
+		)!;
 		return { content, ...result };
 	}
 
@@ -81,8 +83,7 @@ describe('useStagedScreenContent', () => {
 	});
 
 	afterEach(() => {
-		for (const scope of scopes.splice(0))
-			scope.stop();
+		for (const scope of scopes.splice(0)) scope.stop();
 	});
 
 	it('holds what it shows until the images of what replaces it have loaded', async () => {

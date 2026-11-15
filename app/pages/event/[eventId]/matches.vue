@@ -26,24 +26,22 @@ const route = useRoute();
 
 function parseRoundId(value: unknown): number | undefined {
 	const parsed = Number(value);
-	return Number.isFinite(parsed)
-		? parsed
-		: undefined;
+	return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function getMostRecentSyncedRoundId() {
-	const syncedRounds = roundStore.rounds.filter(round => round.lastSyncedAt);
+	const syncedRounds = roundStore.rounds.filter((round) => round.lastSyncedAt);
 	if (syncedRounds.length === 0) {
 		return undefined;
 	}
 
-	return syncedRounds
-		.toSorted((a, b) => new Date(b.lastSyncedAt!).getTime() - new Date(a.lastSyncedAt!).getTime())[0]
-		?.id;
+	return syncedRounds.toSorted(
+		(a, b) => new Date(b.lastSyncedAt!).getTime() - new Date(a.lastSyncedAt!).getTime(),
+	)[0]?.id;
 }
 
 function roundExists(roundId: number | null | undefined): roundId is number {
-	return roundId != null && roundStore.rounds.some(round => round.id === roundId);
+	return roundId != null && roundStore.rounds.some((round) => round.id === roundId);
 }
 
 // Round switcher state. URL query wins, otherwise use the most recently synced/first round.
@@ -54,7 +52,7 @@ function resolvePreferredRoundId() {
 	const preferredRoundIds: Array<number | null | undefined> = [
 		queryRoundId.value,
 		getMostRecentSyncedRoundId(),
-		...roundStore.rounds.map(round => round.id),
+		...roundStore.rounds.map((round) => round.id),
 	];
 
 	return preferredRoundIds.find(roundExists);
@@ -74,11 +72,15 @@ const roundOptions = computed(() =>
 const hasRounds = computed(() => roundStore.rounds.length > 0);
 const hasSelectableRounds = computed(() => roundOptions.value.length > 0);
 const hasMatches = computed(() => matchStore.matches.length > 0);
-const selectedRound = computed(() => viewedRoundId.value
-	? roundStore.getRoundById(viewedRoundId.value)
-	: undefined);
-const canCreateMatches = computed(() => !!selectedRound.value && !isMeleeManagedRound(selectedRound.value));
-const canSyncSelectedRound = computed(() => !!(eventStore.event?.meleeEnabled && selectedRound.value?.externalSource === 'melee'));
+const selectedRound = computed(() =>
+	viewedRoundId.value ? roundStore.getRoundById(viewedRoundId.value) : undefined,
+);
+const canCreateMatches = computed(
+	() => !!selectedRound.value && !isMeleeManagedRound(selectedRound.value),
+);
+const canSyncSelectedRound = computed(
+	() => !!(eventStore.event?.meleeEnabled && selectedRound.value?.externalSource === 'melee'),
+);
 
 const {
 	eventId,
@@ -90,25 +92,25 @@ const {
 		consumes: 'featureMatchSlots',
 		isLoaded: () => featureMatchStore.isLoaded,
 		isLoading: () => featureMatchStore.loading,
-		load: id => featureMatchStore.loadFeatureMatchesByEventId(id, { failure: 'raise' }),
+		load: (id) => featureMatchStore.loadFeatureMatchesByEventId(id, { failure: 'raise' }),
 	},
 	{
 		consumes: 'players',
 		isLoaded: () => playerStore.isLoaded,
 		isLoading: () => playerStore.loading,
-		load: id => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+		load: (id) => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
 	},
 	{
 		consumes: 'phases',
 		isLoaded: () => phaseStore.isLoaded,
 		isLoading: () => phaseStore.loading,
-		load: id => phaseStore.loadPhasesByEventId(id, { failure: 'raise' }),
+		load: (id) => phaseStore.loadPhasesByEventId(id, { failure: 'raise' }),
 	},
 	{
 		consumes: 'rounds',
 		isLoaded: () => roundStore.isLoaded,
 		isLoading: () => roundStore.loading,
-		load: id => roundStore.loadRoundsByEventId(id, { failure: 'raise' }),
+		load: (id) => roundStore.loadRoundsByEventId(id, { failure: 'raise' }),
 	},
 ]);
 
@@ -116,8 +118,8 @@ const {
 useConsumedEventData(['matches']);
 
 // Stays true until rounds AND matches (if a round is selected) have loaded
-const initialLoading = computed(() =>
-	storesLoading.value || (!!viewedRoundId.value && !matchStore.isLoaded),
+const initialLoading = computed(
+	() => storesLoading.value || (!!viewedRoundId.value && !matchStore.isLoaded),
 );
 
 // Search state (debounced for table performance)
@@ -126,49 +128,59 @@ const globalFilter = refDebounced(searchQuery, 200);
 
 // Load matches when viewed round changes and retain only the mounted Round for
 // Reconnect Resync. The collection itself remains cached after release.
-watch([eventId, viewedRoundId], async ([activeEventId, roundId], _, onCleanup) => {
-	if (activeEventId && roundId) {
-		const releaseRound = assignmentStore.consumeRound(activeEventId, roundId);
-		onCleanup(releaseRound);
-		await Promise.all([
-			matchStore.loadMatchesByRoundId(activeEventId, roundId),
-			assignmentStore.loadAssignments(activeEventId, roundId),
-		]);
-	}
-}, { immediate: true });
+watch(
+	[eventId, viewedRoundId],
+	async ([activeEventId, roundId], _, onCleanup) => {
+		if (activeEventId && roundId) {
+			const releaseRound = assignmentStore.consumeRound(activeEventId, roundId);
+			onCleanup(releaseRound);
+			await Promise.all([
+				matchStore.loadMatchesByRoundId(activeEventId, roundId),
+				assignmentStore.loadAssignments(activeEventId, roundId),
+			]);
+		}
+	},
+	{ immediate: true },
+);
 
 // Resolve the viewed Round once the page's stores (Rounds among them) have
 // loaded, so a queried Round is not dropped before the Round store answers.
-watch([
-	queryRoundId,
-	() => roundStore.rounds,
-	storesLoading,
-], async () => {
-	if (storesLoading.value) {
-		return;
-	}
-
-	const currentSelectionExists = roundExists(viewedRoundId.value);
-	const preferredRoundId = resolvePreferredRoundId();
-
-	if (queryRoundId.value !== undefined && queryRoundId.value !== preferredRoundId) {
-		const nextQuery = Object.fromEntries(
-			Object.entries(route.query).filter((entry): entry is [string, string] => entry[0] !== 'roundId' && typeof entry[1] === 'string'),
-		);
-		if (preferredRoundId !== undefined) {
-			nextQuery.roundId = String(preferredRoundId);
-		}
-		else {
-			delete nextQuery.roundId;
+watch(
+	[queryRoundId, () => roundStore.rounds, storesLoading],
+	async () => {
+		if (storesLoading.value) {
+			return;
 		}
 
-		await router.replace({ query: nextQuery });
-	}
+		const currentSelectionExists = roundExists(viewedRoundId.value);
+		const preferredRoundId = resolvePreferredRoundId();
 
-	if (queryRoundId.value !== undefined || viewedRoundId.value === undefined || !currentSelectionExists) {
-		viewedRoundId.value = preferredRoundId;
-	}
-}, { immediate: true, deep: true });
+		if (queryRoundId.value !== undefined && queryRoundId.value !== preferredRoundId) {
+			const nextQuery = Object.fromEntries(
+				Object.entries(route.query).filter(
+					(entry): entry is [string, string] =>
+						entry[0] !== 'roundId' && typeof entry[1] === 'string',
+				),
+			);
+			if (preferredRoundId !== undefined) {
+				nextQuery.roundId = String(preferredRoundId);
+			} else {
+				delete nextQuery.roundId;
+			}
+
+			await router.replace({ query: nextQuery });
+		}
+
+		if (
+			queryRoundId.value !== undefined ||
+			viewedRoundId.value === undefined ||
+			!currentSelectionExists
+		) {
+			viewedRoundId.value = preferredRoundId;
+		}
+	},
+	{ immediate: true, deep: true },
+);
 
 // ── Actions ──
 
@@ -183,8 +195,7 @@ function handleCreateMatch() {
 }
 
 async function handlePromote(featureMatchId: number, matchId: number) {
-	if (!eventId.value || !viewedRoundId.value)
-		return;
+	if (!eventId.value || !viewedRoundId.value) return;
 	await runRequest(
 		async () => {
 			const result = await featureMatchPromotion.promote({
@@ -193,10 +204,8 @@ async function handlePromote(featureMatchId: number, matchId: number) {
 				slotId: featureMatchId,
 				matchId,
 			});
-			if (!result)
-				return true;
-			if (!result.promotedSlot)
-				throw new Error('Failed to promote match');
+			if (!result) return true;
+			if (!result.promotedSlot) throw new Error('Failed to promote match');
 			return true;
 		},
 		{
@@ -207,8 +216,7 @@ async function handlePromote(featureMatchId: number, matchId: number) {
 }
 
 async function handleSyncSelectedRound() {
-	if (!eventId.value || !selectedRound.value)
-		return;
+	if (!eventId.value || !selectedRound.value) return;
 
 	const roundId = selectedRound.value.id;
 	await reportMeleeOperation(() => meleeStore.syncSpecificRound(roundId), {
@@ -222,28 +230,30 @@ async function handleSyncSelectedRound() {
 }
 
 async function handleAssignmentNoteBlur(assignmentId: number, note: string) {
-	if (!eventId.value)
-		return;
-	await assignmentStore.updateAssignment(eventId.value, assignmentId, { note: note.trim() || null });
+	if (!eventId.value) return;
+	await assignmentStore.updateAssignment(eventId.value, assignmentId, {
+		note: note.trim() || null,
+	});
 }
 
 const featureMatchesForList = computed(() =>
-	featureMatchStore.featureMatches.map(fm => ({ id: fm.id, matchId: fm.matchId })),
+	featureMatchStore.featureMatches.map((fm) => ({ id: fm.id, matchId: fm.matchId })),
 );
 
 const pageState = computed(() => {
-	if (storesError.value)
-		return 'ready';
-	if (initialLoading.value)
-		return 'loading';
-	if (hasMatches.value)
-		return 'ready';
+	if (storesError.value) return 'ready';
+	if (initialLoading.value) return 'loading';
+	if (hasMatches.value) return 'ready';
 	return hasSelectableRounds.value ? 'empty-filtered' : 'empty';
 });
-const noMatchesAvailableTitle = computed(() => hasRounds.value ? 'No round selected' : 'No matches yet');
-const noMatchesAvailableDescription = computed(() => hasRounds.value
-	? 'Select a round to review or sync its matches.'
-	: 'Set up rounds before creating matches.');
+const noMatchesAvailableTitle = computed(() =>
+	hasRounds.value ? 'No round selected' : 'No matches yet',
+);
+const noMatchesAvailableDescription = computed(() =>
+	hasRounds.value
+		? 'Select a round to review or sync its matches.'
+		: 'Set up rounds before creating matches.',
+);
 </script>
 
 <template>
@@ -251,8 +261,20 @@ const noMatchesAvailableDescription = computed(() => hasRounds.value
 		:state="pageState"
 		content-width="narrow"
 		empty-icon="i-lucide-swords"
-		:empty-title="hasSelectableRounds ? (canCreateMatches ? 'No matches yet' : 'No matches synced yet') : noMatchesAvailableTitle"
-		:empty-description="hasSelectableRounds ? (canCreateMatches ? 'Create a match to get started.' : 'Sync or refresh this round from Melee to see the current pairings.') : noMatchesAvailableDescription"
+		:empty-title="
+			hasSelectableRounds
+				? canCreateMatches
+					? 'No matches yet'
+					: 'No matches synced yet'
+				: noMatchesAvailableTitle
+		"
+		:empty-description="
+			hasSelectableRounds
+				? canCreateMatches
+					? 'Create a match to get started.'
+					: 'Sync or refresh this round from Melee to see the current pairings.'
+				: noMatchesAvailableDescription
+		"
 	>
 		<template v-if="selectedRound" #actions>
 			<div class="flex items-center gap-2">
@@ -311,8 +333,12 @@ const noMatchesAvailableDescription = computed(() => hasRounds.value
 				:matches="matchStore.matches"
 				:players="playerStore.players"
 				:feature-matches="featureMatchesForList"
-				:feature-match-assignments="viewedRoundId ? assignmentStore.assignmentsForRound(viewedRoundId) : []"
-				:save-assignment-note="eventStore.event?.featureMatchNotesEnabled ? handleAssignmentNoteBlur : undefined"
+				:feature-match-assignments="
+					viewedRoundId ? assignmentStore.assignmentsForRound(viewedRoundId) : []
+				"
+				:save-assignment-note="
+					eventStore.event?.featureMatchNotesEnabled ? handleAssignmentNoteBlur : undefined
+				"
 				:is-assignment-remote-changed="assignmentStore.isRemoteChanged"
 				:loading="initialLoading"
 				:global-filter="globalFilter"
@@ -348,12 +374,7 @@ const noMatchesAvailableDescription = computed(() => hasRounds.value
 			>
 				Add Match
 			</UButton>
-			<UButton
-				v-else
-				color="neutral"
-				variant="ghost"
-				:to="`/event/${eventId}/rounds`"
-			>
+			<UButton v-else color="neutral" variant="ghost" :to="`/event/${eventId}/rounds`">
 				Event Structure
 			</UButton>
 		</template>

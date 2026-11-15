@@ -13,7 +13,10 @@ const bodySchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-	const { id: eventId, unresolvedCardId } = await getValidatedRouterParams(event, paramsSchema.parse);
+	const { id: eventId, unresolvedCardId } = await getValidatedRouterParams(
+		event,
+		paramsSchema.parse,
+	);
 	const body = await readValidatedBody(event, bodySchema.parse);
 
 	return await deckListResolutionModule().resolveUnresolvedDeckCard({

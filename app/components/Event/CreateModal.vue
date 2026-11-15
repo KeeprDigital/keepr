@@ -41,9 +41,7 @@ async function submit() {
 	const payload = {
 		name,
 		game,
-		...(hasVariant.value
-			? { variant }
-			: {}),
+		...(hasVariant.value ? { variant } : {}),
 		featureMatchOrientation,
 		...fromFeatureMatchDefaults(matchDefaults as Partial<FeatureMatchDefaults>),
 	};
@@ -51,8 +49,7 @@ async function submit() {
 	await runRequest(
 		async () => {
 			const newEvent = await eventStore.createEvent(payload);
-			if (!newEvent)
-				throw new Error('Failed to create event');
+			if (!newEvent) throw new Error('Failed to create event');
 			return newEvent;
 		},
 		{
@@ -76,11 +73,7 @@ async function submit() {
 		:dismissible="false"
 	>
 		<template #body>
-			<UForm
-				:id="formId"
-				:state="formData"
-				@submit="submit"
-			>
+			<UForm :id="formId" :state="formData" @submit="submit">
 				<div class="w-full flex flex-col gap-4">
 					<UFormField
 						required
@@ -114,21 +107,8 @@ async function submit() {
 		</template>
 
 		<template #footer>
-			<UButton
-				variant="ghost"
-				color="neutral"
-				@click="emit('close')"
-			>
-				Cancel
-			</UButton>
-			<UButton
-				type="submit"
-				:form="formId"
-				:loading="isCreating"
-				color="primary"
-			>
-				Create
-			</UButton>
+			<UButton variant="ghost" color="neutral" @click="emit('close')"> Cancel </UButton>
+			<UButton type="submit" :form="formId" :loading="isCreating" color="primary"> Create </UButton>
 		</template>
 	</UModal>
 </template>

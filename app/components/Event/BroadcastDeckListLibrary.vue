@@ -33,8 +33,11 @@ interface PresentedFailure {
 }
 
 const COLORS = ['W', 'U', 'B', 'R', 'G'] as const;
-type DeckColor = typeof COLORS[number];
-const COLOR_OPTIONS: Array<{ label: DeckColor; value: DeckColor }> = COLORS.map(color => ({ label: color, value: color }));
+type DeckColor = (typeof COLORS)[number];
+const COLOR_OPTIONS: Array<{ label: DeckColor; value: DeckColor }> = COLORS.map((color) => ({
+	label: color,
+	value: color,
+}));
 const EDITOR_FORM_ID = 'broadcast-deck-list-editor-form';
 
 const deckListStore = useBroadcastDeckListStore();
@@ -64,26 +67,31 @@ const deleteTarget = ref<BroadcastDeckListSummaryResponse | null>(null);
 const deleteOpen = computed({
 	get: () => deleteTarget.value !== null,
 	set: (open: boolean) => {
-		if (!open)
-			closeDelete();
+		if (!open) closeDelete();
 	},
 });
 const deleteSaving = ref(false);
 const deleteFailure = ref<PresentedFailure | null>(null);
 
 const isEditing = computed(() => editingListId.value !== null);
-const editorTitle = computed(() => isEditing.value ? 'Edit Deck List' : 'Add Deck List');
-const editorSaveLabel = computed(() => isEditing.value ? 'Save Changes' : 'Save Deck List');
+const editorTitle = computed(() => (isEditing.value ? 'Edit Deck List' : 'Add Deck List'));
+const editorSaveLabel = computed(() => (isEditing.value ? 'Save Changes' : 'Save Deck List'));
 
-watch(() => props.event.broadcastDeckListsEnabled, (enabled) => {
-	featureEnabled.value = enabled;
-});
+watch(
+	() => props.event.broadcastDeckListsEnabled,
+	(enabled) => {
+		featureEnabled.value = enabled;
+	},
+);
 
-watch(() => props.event.id, async (eventId) => {
-	closeEditor();
-	closeDelete();
-	await loadCollection(eventId);
-});
+watch(
+	() => props.event.id,
+	async (eventId) => {
+		closeEditor();
+		closeDelete();
+		await loadCollection(eventId);
+	},
+);
 
 onMounted(() => loadCollection(props.event.id));
 onBeforeUnmount(() => {
@@ -93,9 +101,7 @@ onBeforeUnmount(() => {
 });
 
 function failureRecord(value: unknown): Record<string, unknown> | null {
-	return typeof value === 'object' && value !== null
-		? value as Record<string, unknown>
-		: null;
+	return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
 }
 
 function presentFailure(cause: unknown, fallback: string): PresentedFailure {
@@ -106,12 +112,10 @@ function presentFailure(cause: unknown, fallback: string): PresentedFailure {
 	while (cursor && !visited.has(cursor)) {
 		visited.add(cursor);
 		const record = failureRecord(cursor);
-		if (!record)
-			break;
+		if (!record) break;
 		const data = failureRecord(record.data);
 		if (data && (typeof data.message === 'string' || failureRecord(data.data))) {
-			if (!isSanitizedFailure(cursor))
-				body = data as FailureBody;
+			if (!isSanitizedFailure(cursor)) body = data as FailureBody;
 			break;
 		}
 		cursor = record.cause;
@@ -121,24 +125,16 @@ function presentFailure(cause: unknown, fallback: string): PresentedFailure {
 	return {
 		message: reportedMessage(cause, fallback),
 		code: details?.code,
-		errors: Array.isArray(details?.errors)
-			? details.errors
-			: [],
+		errors: Array.isArray(details?.errors) ? details.errors : [],
 		current: details?.current,
 		retryable: details?.retryable === true,
-		screens: Array.isArray(details?.screens)
-			? details.screens
-			: [],
+		screens: Array.isArray(details?.screens) ? details.screens : [],
 	};
 }
 
 function formattedImportError(error: BroadcastDeckListImportFailureDetail) {
-	const location = error.lineNumber === undefined
-		? ''
-		: `Line ${error.lineNumber}: `;
-	const source = error.sourceText
-		? ` — ${error.sourceText}`
-		: '';
+	const location = error.lineNumber === undefined ? '' : `Line ${error.lineNumber}: `;
+	const source = error.sourceText ? ` — ${error.sourceText}` : '';
 	return `${location}${error.message}${source}`;
 }
 
@@ -146,21 +142,20 @@ async function loadCollection(eventId: number) {
 	collectionFailure.value = null;
 	try {
 		await deckListStore.loadCollection(eventId);
-	}
-	catch (cause) {
+	} catch (cause) {
 		collectionFailure.value = presentFailure(cause, 'Failed to load Broadcast Deck Lists').message;
 	}
 }
 
 async function toggleFeature(enabled: boolean) {
-	if (featureSaving.value)
-		return;
+	if (featureSaving.value) return;
 	featureSaving.value = true;
 	featureFailure.value = null;
 	try {
 		const updated = await eventStore.updateEvent({ broadcastDeckListsEnabled: enabled });
 		if (!updated) {
-			featureEnabled.value = eventStore.event?.broadcastDeckListsEnabled ?? props.event.broadcastDeckListsEnabled;
+			featureEnabled.value =
+				eventStore.event?.broadcastDeckListsEnabled ?? props.event.broadcastDeckListsEnabled;
 			featureFailure.value = {
 				message: eventStore.error ?? 'Failed to update Broadcast Deck Lists',
 				errors: [],
@@ -170,11 +165,9 @@ async function toggleFeature(enabled: boolean) {
 			return;
 		}
 		featureEnabled.value = updated.broadcastDeckListsEnabled;
-	}
-	catch (cause) {
+	} catch (cause) {
 		featureFailure.value = presentFailure(cause, 'Failed to update Broadcast Deck Lists');
-	}
-	finally {
+	} finally {
 		featureSaving.value = false;
 	}
 }
@@ -193,7 +186,7 @@ function applyDetail(detail: BroadcastDeckListResponse) {
 	draft.name = detail.name;
 	draft.archetypeLabel = detail.archetypeLabel ?? '';
 	draft.sourceText = detail.sourceText;
-	draft.colors = COLORS.filter(color => detail.colors?.includes(color));
+	draft.colors = COLORS.filter((color) => detail.colors?.includes(color));
 	editingRevision.value = detail.revision;
 }
 
@@ -223,14 +216,10 @@ async function startEdit(summary: BroadcastDeckListSummaryResponse) {
 	releaseDetail.value = deckListStore.consumeDetail(props.event.id, summary.id);
 	try {
 		const detail = await deckListStore.loadDetail(props.event.id, summary.id);
-		if (flight.stale)
-			return;
-		if (detail)
-			applyDetail(detail);
-	}
-	catch (cause) {
-		if (flight.stale)
-			return;
+		if (flight.stale) return;
+		if (detail) applyDetail(detail);
+	} catch (cause) {
+		if (flight.stale) return;
 		editorFailure.value = presentFailure(cause, 'Failed to load Broadcast Deck List');
 	}
 }
@@ -246,8 +235,7 @@ function closeEditor() {
 
 function validateDraft(state: Partial<typeof draft>): FormError[] {
 	const errors: FormError[] = [];
-	if (!state.name?.trim())
-		errors.push({ name: 'name', message: 'Name is required' });
+	if (!state.name?.trim()) errors.push({ name: 'name', message: 'Name is required' });
 	if (!state.sourceText?.trim())
 		errors.push({ name: 'sourceText', message: 'Deck List text is required' });
 	return errors;
@@ -259,8 +247,7 @@ async function submitEditor() {
 }
 
 async function saveEditor(expectedRevision: number | null) {
-	if (editorSaving.value)
-		return;
+	if (editorSaving.value) return;
 
 	editorLoads.supersede();
 	const flight = editorActions.begin();
@@ -271,9 +258,7 @@ async function saveEditor(expectedRevision: number | null) {
 	const input = {
 		name: draft.name.trim(),
 		archetypeLabel: draft.archetypeLabel.trim() || null,
-		colors: draft.colors.length
-			? draft.colors.join('')
-			: null,
+		colors: draft.colors.length ? draft.colors.join('') : null,
 		sourceText: draft.sourceText,
 	};
 
@@ -283,49 +268,37 @@ async function saveEditor(expectedRevision: number | null) {
 				...input,
 				expectedRevision,
 			});
-		}
-		else {
+		} else {
 			await deckListStore.createList(eventId, input);
 		}
-		if (flight.stale)
-			return;
+		if (flight.stale) return;
 		closeEditor();
-	}
-	catch (cause) {
-		if (flight.stale)
-			return;
+	} catch (cause) {
+		if (flight.stale) return;
 		editorFailure.value = presentFailure(cause, 'Failed to save Broadcast Deck List');
-	}
-	finally {
-		if (flight.current)
-			editorSaving.value = false;
+	} finally {
+		if (flight.current) editorSaving.value = false;
 	}
 }
 
 async function reloadLatest() {
-	if (editingListId.value === null)
-		return;
+	if (editingListId.value === null) return;
 	editorLoads.supersede();
 	const flight = editorActions.begin();
 	const listId = editingListId.value;
 	editorSaving.value = true;
 	try {
 		const latest = await deckListStore.loadDetail(props.event.id, listId);
-		if (flight.stale)
-			return;
+		if (flight.stale) return;
 		if (latest) {
 			applyDetail(latest);
 			editorFailure.value = null;
 		}
-	}
-	catch (cause) {
-		if (flight.stale)
-			return;
+	} catch (cause) {
+		if (flight.stale) return;
 		editorFailure.value = presentFailure(cause, 'Failed to load the latest Broadcast Deck List');
-	}
-	finally {
-		if (flight.current)
-			editorSaving.value = false;
+	} finally {
+		if (flight.current) editorSaving.value = false;
 	}
 }
 
@@ -356,19 +329,16 @@ function closeDelete() {
 }
 
 async function confirmDelete() {
-	if (!deleteTarget.value || deleteSaving.value)
-		return;
+	if (!deleteTarget.value || deleteSaving.value) return;
 	const expectedRevision = deleteFailure.value?.current?.revision ?? deleteTarget.value.revision;
 	deleteSaving.value = true;
 	deleteFailure.value = null;
 	try {
 		await deckListStore.removeList(props.event.id, deleteTarget.value.id, expectedRevision);
 		closeDelete();
-	}
-	catch (cause) {
+	} catch (cause) {
 		deleteFailure.value = presentFailure(cause, 'Failed to delete Broadcast Deck List');
-	}
-	finally {
+	} finally {
 		deleteSaving.value = false;
 	}
 }
@@ -377,9 +347,7 @@ async function confirmDelete() {
 <template>
 	<section v-if="holdsBroadcastDeckLists(props.event)" class="flex flex-col gap-6">
 		<div class="flex flex-wrap items-center justify-between gap-4">
-			<h2 class="text-xl font-semibold">
-				Broadcast Deck Lists
-			</h2>
+			<h2 class="text-xl font-semibold">Broadcast Deck Lists</h2>
 			<div class="flex items-center gap-3">
 				<span class="text-sm font-medium">Enable for Broadcast</span>
 				<USwitch
@@ -431,20 +399,10 @@ async function confirmDelete() {
 							<p class="text-highlighted truncate font-medium">
 								{{ item.name }}
 							</p>
-							<UBadge
-								v-if="item.archetypeLabel"
-								color="neutral"
-								variant="soft"
-								size="sm"
-							>
+							<UBadge v-if="item.archetypeLabel" color="neutral" variant="soft" size="sm">
 								{{ item.archetypeLabel }}
 							</UBadge>
-							<UBadge
-								v-if="item.colors"
-								color="neutral"
-								variant="outline"
-								size="sm"
-							>
+							<UBadge v-if="item.colors" color="neutral" variant="outline" size="sm">
 								{{ item.colors }}
 							</UBadge>
 						</div>
@@ -495,12 +453,7 @@ async function confirmDelete() {
 					@submit="submitEditor"
 				>
 					<UFormField label="Name" name="name" required>
-						<UInput
-							v-model="draft.name"
-							name="name"
-							autofocus
-							class="w-full"
-						/>
+						<UInput v-model="draft.name" name="name" autofocus class="w-full" />
 					</UFormField>
 					<UFormField label="Archetype label" name="archetypeLabel" hint="Optional">
 						<UInput v-model="draft.archetypeLabel" name="archetypeLabel" class="w-full" />
@@ -538,7 +491,10 @@ async function confirmDelete() {
 						</template>
 						<template v-if="editorFailure.errors.length" #description>
 							<ul class="list-disc space-y-1 pl-5">
-								<li v-for="error in editorFailure.errors" :key="`${error.lineNumber}-${error.code}-${error.sourceText}`">
+								<li
+									v-for="error in editorFailure.errors"
+									:key="`${error.lineNumber}-${error.code}-${error.sourceText}`"
+								>
 									{{ formattedImportError(error) }}
 								</li>
 							</ul>
@@ -593,20 +549,23 @@ async function confirmDelete() {
 		>
 			<template #body>
 				<div class="space-y-4">
-					<p class="text-muted">
-						This permanently deletes the saved Deck List.
-					</p>
+					<p class="text-muted">This permanently deletes the saved Deck List.</p>
 					<UAlert
 						v-if="deleteFailure"
 						color="error"
 						variant="soft"
 						title="Deck List was not deleted"
-						:description="deleteFailure.screens.length ? `${deleteFailure.message} (${deleteFailure.screens.map(screen => screen.name).join(', ')})` : deleteFailure.message"
+						:description="
+							deleteFailure.screens.length
+								? `${deleteFailure.message} (${deleteFailure.screens.map((screen) => screen.name).join(', ')})`
+								: deleteFailure.message
+						"
 						role="alert"
 						aria-live="polite"
 					/>
 					<p v-if="deleteFailure?.current" class="text-sm text-muted">
-						A newer revision {{ deleteFailure.current.revision }} is available. Retry to delete that authoritative revision.
+						A newer revision {{ deleteFailure.current.revision }} is available. Retry to delete that
+						authoritative revision.
 					</p>
 				</div>
 			</template>

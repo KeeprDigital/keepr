@@ -20,7 +20,8 @@ const { rewrapMeleeClientSecret } = await import('~~/server/services/meleeCreden
 afterAll(async () => await harness.close());
 
 async function stageEvent(meleeClientSecret: string) {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({
 			name: 'Event',
 			game: 'mtg',
@@ -32,9 +33,11 @@ async function stageEvent(meleeClientSecret: string) {
 }
 
 async function storedSecret(eventId: number) {
-	return (await db.query.events.findFirst({
-		where: eq(schema.events.id, eventId),
-	}))?.meleeClientSecret;
+	return (
+		await db.query.events.findFirst({
+			where: eq(schema.events.id, eventId),
+		})
+	)?.meleeClientSecret;
 }
 
 describe('rewrapMeleeClientSecret', () => {
@@ -49,7 +52,9 @@ describe('rewrapMeleeClientSecret', () => {
 	it('leaves a credential written since the read, and says so', async () => {
 		const eventId = await stageEvent('newer-envelope');
 
-		await expect(rewrapMeleeClientSecret(eventId, 'old-envelope', 'plaintext')).resolves.toBe(false);
+		await expect(rewrapMeleeClientSecret(eventId, 'old-envelope', 'plaintext')).resolves.toBe(
+			false,
+		);
 
 		expect(await storedSecret(eventId)).toBe('newer-envelope');
 	});

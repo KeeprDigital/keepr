@@ -20,12 +20,10 @@ export interface IntervalProjection {
  * (zero or less) never steps.
  */
 export function projectInterval(anchor: number, periodMs: number, now: number): IntervalProjection {
-	if (!(periodMs > 0))
-		return { step: 0, elapsedInStepMs: 0, nextStepInMs: null };
+	if (!(periodMs > 0)) return { step: 0, elapsedInStepMs: 0, nextStepInMs: null };
 
 	const elapsedMs = now - anchor;
-	if (elapsedMs < 0)
-		return { step: 0, elapsedInStepMs: 0, nextStepInMs: periodMs - elapsedMs };
+	if (elapsedMs < 0) return { step: 0, elapsedInStepMs: 0, nextStepInMs: periodMs - elapsedMs };
 
 	const elapsedInStepMs = elapsedMs % periodMs;
 	return {

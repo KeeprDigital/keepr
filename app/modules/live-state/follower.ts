@@ -63,7 +63,11 @@ export interface LiveStateOfferOutcome<S> {
 	epochEnded: boolean;
 }
 
-export interface LiveStateFollowerOptions<K, S extends LiveStateSnapshot, N extends LiveStateNotification> {
+export interface LiveStateFollowerOptions<
+	K,
+	S extends LiveStateSnapshot,
+	N extends LiveStateNotification,
+> {
 	keyOf: (snapshot: S) => K;
 	/** The snapshot the feature holds for a key. */
 	held: (key: K) => S | undefined;
@@ -89,9 +93,11 @@ export interface LiveStateFollowerOptions<K, S extends LiveStateSnapshot, N exte
 	snapshotOf?: (notification: N) => S;
 }
 
-export function createLiveStateFollower<K, S extends LiveStateSnapshot, N extends LiveStateNotification>(
-	options: LiveStateFollowerOptions<K, S, N>,
-) {
+export function createLiveStateFollower<
+	K,
+	S extends LiveStateSnapshot,
+	N extends LiveStateNotification,
+>(options: LiveStateFollowerOptions<K, S, N>) {
 	/**
 	 * Loads in flight, one key at a time: two keys are two independent orders, and
 	 * superseding across them would drop a load nothing had overtaken.
@@ -122,24 +128,22 @@ export function createLiveStateFollower<K, S extends LiveStateSnapshot, N extend
 		let snapshot: S | null;
 		try {
 			snapshot = await read();
-		}
-		finally {
+		} finally {
 			const remaining = reading.get(key)! - 1;
-			if (remaining > 0)
-				reading.set(key, remaining);
-			else
-				reading.delete(key);
+			if (remaining > 0) reading.set(key, remaining);
+			else reading.delete(key);
 		}
 		const known = options.held(key);
-		if (flight.stale || !snapshot || (known && isBehind(snapshot, known)))
-			return known ?? null;
+		if (flight.stale || !snapshot || (known && isBehind(snapshot, known))) return known ?? null;
 		options.applyState(snapshot);
 		return snapshot;
 	}
 
 	/** Whether a snapshot is behind what is held: from an older epoch, or older in the same one. */
 	function isBehind(snapshot: S, known: S) {
-		return snapshot.id < known.id || (snapshot.id === known.id && snapshot.sequence < known.sequence);
+		return (
+			snapshot.id < known.id || (snapshot.id === known.id && snapshot.sequence < known.sequence)
+		);
 	}
 
 	/**
@@ -171,27 +175,21 @@ export function createLiveStateFollower<K, S extends LiveStateSnapshot, N extend
 
 	function notify(key: K, notification: N): LiveStateNotificationOutcome {
 		const known = options.held(key);
-		if (known && notification.sessionId < known.id)
-			return 'ignored';
+		if (known && notification.sessionId < known.id) return 'ignored';
 		// Nothing held, or a newer epoch: only a snapshot can say what this client
 		// should now be following, so one the notification carries will do.
 		if (!known || known.id !== notification.sessionId) {
-			if (!options.snapshotOf)
-				return 'reload';
+			if (!options.snapshotOf) return 'reload';
 			acceptSnapshot(options.snapshotOf(notification));
 			return 'applied';
 		}
-		if (options.acceptsDifferences && !options.acceptsDifferences(known))
-			return 'reload';
-		if (notification.sequence <= known.sequence)
-			return 'ignored';
-		if (notification.sequence > known.sequence + 1)
-			return 'reload';
+		if (options.acceptsDifferences && !options.acceptsDifferences(known)) return 'reload';
+		if (notification.sequence <= known.sequence) return 'ignored';
+		if (notification.sequence > known.sequence + 1) return 'reload';
 		// No difference is not one to ignore: the order did advance, and this
 		// client cannot say to what.
 		const changed = options.withDifference(known, notification);
-		if (!changed)
-			return 'reload';
+		if (!changed) return 'reload';
 		acceptSnapshot(changed);
 		return 'applied';
 	}
@@ -206,11 +204,9 @@ export function createLiveStateFollower<K, S extends LiveStateSnapshot, N extend
 	 */
 	function end(key: K): Exclude<LiveStateNotificationOutcome, 'applied'> {
 		const known = options.held(key);
-		if (!known && !reading.has(key))
-			return 'ignored';
+		if (!known && !reading.has(key)) return 'ignored';
 		loads.supersede(key);
-		if (known)
-			options.forget(key);
+		if (known) options.forget(key);
 		return 'reload';
 	}
 

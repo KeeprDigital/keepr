@@ -60,7 +60,7 @@ export const FEATURE_MATCH_LAYOUT_VOCABULARIES = [
 	'token',
 ] as const;
 
-export type FeatureMatchLayoutVocabulary = typeof FEATURE_MATCH_LAYOUT_VOCABULARIES[number];
+export type FeatureMatchLayoutVocabulary = (typeof FEATURE_MATCH_LAYOUT_VOCABULARIES)[number];
 
 /**
  * One vocabulary term as a Template Package capability identity.
@@ -79,12 +79,12 @@ export function featureMatchLayoutVocabularyIdentity(
 const TERMS: Record<FeatureMatchLayoutVocabulary, readonly string[]> = {
 	'source-role': FEATURE_MATCH_SOURCE_ROLE_VALUES,
 	'frame-animation-effect': FEATURE_MATCH_OVERLAY_FRAME_ANIMATION_EFFECT_VALUES,
-	'token': FEATURE_MATCH_TOKEN_KEYS,
+	token: FEATURE_MATCH_TOKEN_KEYS,
 };
 
 const SUPPORTED_IDENTITIES = new Set(
-	FEATURE_MATCH_LAYOUT_VOCABULARIES.flatMap(vocabulary =>
-		TERMS[vocabulary].map(term => featureMatchLayoutVocabularyIdentity(vocabulary, term)),
+	FEATURE_MATCH_LAYOUT_VOCABULARIES.flatMap((vocabulary) =>
+		TERMS[vocabulary].map((term) => featureMatchLayoutVocabularyIdentity(vocabulary, term)),
 	),
 );
 
@@ -97,10 +97,6 @@ const SUPPORTED_IDENTITIES = new Set(
  * moment it exists — and a package naming one that does not exist here is refused
  * whether it came from a newer installation or from a hand-edited archive.
  */
-export function supportedFeatureMatchLayoutVocabularyVersion(
-	identity: string,
-): number | undefined {
-	return SUPPORTED_IDENTITIES.has(identity)
-		? FEATURE_MATCH_LAYOUT_FORMAT_VERSION
-		: undefined;
+export function supportedFeatureMatchLayoutVocabularyVersion(identity: string): number | undefined {
+	return SUPPORTED_IDENTITIES.has(identity) ? FEATURE_MATCH_LAYOUT_FORMAT_VERSION : undefined;
 }

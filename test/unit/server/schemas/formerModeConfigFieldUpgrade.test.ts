@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mapScreenToResponse } from '~~/server/mappers/screen';
-import { modeConfigPatchSchemaMap, modeConfigsMapSchema, parseModeConfigPatchResult } from '~~/server/schemas/api/screen';
+import {
+	modeConfigPatchSchemaMap,
+	modeConfigsMapSchema,
+	parseModeConfigPatchResult,
+} from '~~/server/schemas/api/screen';
 import { resolveScreenModeConfig } from '~~/shared/types/screenConfig';
 import { createMockScreen } from '~~/test/helpers/fixtures';
 
@@ -8,14 +12,16 @@ import { createMockScreen } from '~~/test/helpers/fixtures';
 // here its count-up limit was once stored as `limitMinutes`.
 vi.mock('~~/shared/screenModeConfigs/roundClock', async (importOriginal) => {
 	const { defineScreenModeConfigContract } = await import('~~/shared/screenModeConfigs/contract');
-	const { roundClockModeConfigContract: actual } = await importOriginal<typeof import('~~/shared/screenModeConfigs/roundClock')>();
+	const { roundClockModeConfigContract: actual } =
+		await importOriginal<typeof import('~~/shared/screenModeConfigs/roundClock')>();
 	return {
 		roundClockModeConfigContract: defineScreenModeConfigContract(actual.shape, actual.defaults, {
 			groups: actual.groups,
 			formerFields: ['limitMinutes'],
-			upgradeFormerFields: fragment => 'limitMinutes' in fragment && !('countUpLimitMinutes' in fragment)
-				? { ...fragment, countUpLimitMinutes: fragment.limitMinutes }
-				: fragment,
+			upgradeFormerFields: (fragment) =>
+				'limitMinutes' in fragment && !('countUpLimitMinutes' in fragment)
+					? { ...fragment, countUpLimitMinutes: fragment.limitMinutes }
+					: fragment,
 		}),
 	};
 });
@@ -36,7 +42,9 @@ describe('a Screen storing a former field its contract upgrades', () => {
 	it('reads as the current field, everywhere it is read', () => {
 		expect(resolveScreenModeConfig(stored, 'round-clock')).toMatchObject(upgraded['round-clock']);
 		expect(resolveScreenModeConfig(stored, 'round-clock')).not.toHaveProperty('limitMinutes');
-		expect(mapScreenToResponse(createMockScreen({ modeConfigs: stored })).modeConfigs).toEqual(upgraded);
+		expect(mapScreenToResponse(createMockScreen({ modeConfigs: stored })).modeConfigs).toEqual(
+			upgraded,
+		);
 	});
 
 	it('is stored as the current field by a full write still naming the former one', () => {
@@ -67,10 +75,14 @@ describe('a Screen storing a former field its contract upgrades', () => {
 	])('a PATCH $name', ({ patch, patched }) => {
 		const parsed = modeConfigPatchSchemaMap['round-clock'].parse(patch) as Record<string, unknown>;
 
-		expect(parseModeConfigPatchResult(stored, 'round-clock', parsed)).toEqual({ 'round-clock': patched });
+		expect(parseModeConfigPatchResult(stored, 'round-clock', parsed)).toEqual({
+			'round-clock': patched,
+		});
 	});
 
-	it('still refuses an upgraded value outside the current field\'s bounds on a write', () => {
-		expect(modeConfigPatchSchemaMap['round-clock'].safeParse({ limitMinutes: 0 }).success).toBe(false);
+	it("still refuses an upgraded value outside the current field's bounds on a write", () => {
+		expect(modeConfigPatchSchemaMap['round-clock'].safeParse({ limitMinutes: 0 }).success).toBe(
+			false,
+		);
 	});
 });

@@ -21,10 +21,13 @@ const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
 export async function main() {
 	const interrupted = new AbortController();
-	const onSignal = signal => interrupted.abort(new WorkerSmokeFailure('runner', 'interrupted', {
-		expected: 'completed smoke run',
-		actual: signal,
-	}));
+	const onSignal = (signal) =>
+		interrupted.abort(
+			new WorkerSmokeFailure('runner', 'interrupted', {
+				expected: 'completed smoke run',
+				actual: signal,
+			}),
+		);
 	const onInterrupt = () => onSignal('SIGINT');
 	const onTerminate = () => onSignal('SIGTERM');
 	process.once('SIGINT', onInterrupt);
@@ -32,18 +35,13 @@ export async function main() {
 	try {
 		const result = await runWorkerSmoke({ repositoryRoot, signal: interrupted.signal });
 		process.stdout.write(`worker:smoke: passed in ${result.elapsedMs}ms\n`);
-	}
-	catch (error) {
+	} catch (error) {
 		process.stderr.write(formatWorkerSmokeFailure(error));
-		process.exitCode = error?.failureClass === 'interrupted'
-			? 130
-			: 1;
-	}
-	finally {
+		process.exitCode = error?.failureClass === 'interrupted' ? 130 : 1;
+	} finally {
 		process.removeListener('SIGINT', onInterrupt);
 		process.removeListener('SIGTERM', onTerminate);
 	}
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

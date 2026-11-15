@@ -12,19 +12,16 @@ const query = vi.fn();
 vi.mock('~~/server/db', () => ({
 	db: {
 		get $client() {
-			if (!bindingPresent)
-				throw new Error('DB binding not found');
+			if (!bindingPresent) throw new Error('DB binding not found');
 			return { prepare: query, batch: query };
 		},
 	},
 }));
 
-const { graphicsAssetLibraryForBindings, graphicsCatalogueClient } = await import(
-	'~~/server/modules/graphics-asset-library/runtime',
-);
-const { screenOutputAssetDeliveryForEvent } = await import(
-	'~~/server/modules/screen-output-assets/runtime',
-);
+const { graphicsAssetLibraryForBindings, graphicsCatalogueClient } =
+	await import('~~/server/modules/graphics-asset-library/runtime');
+const { screenOutputAssetDeliveryForEvent } =
+	await import('~~/server/modules/screen-output-assets/runtime');
 
 /** 32 zero bytes, base64: enough for the signing key to be well formed. */
 const SIGNING_KEY = `${'A'.repeat(43)}=`;
@@ -41,7 +38,7 @@ describe('a catalogue whose D1 binding is gone', () => {
 		expect(() => graphicsCatalogueClient()).not.toThrow();
 	});
 
-	it('reports itself unavailable in the library\'s own vocabulary when reached', () => {
+	it("reports itself unavailable in the library's own vocabulary when reached", () => {
 		bindingPresent = false;
 		const client = graphicsCatalogueClient();
 

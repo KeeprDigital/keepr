@@ -24,8 +24,9 @@ export default defineEventHandler(async (event) => {
 			message: 'Screen not found',
 		});
 	}
-	const graphic = screen.modeConfigs?.['broadcast-graphics']?.graphics
-		?.find(candidate => candidate.id === graphicId);
+	const graphic = screen.modeConfigs?.['broadcast-graphics']?.graphics?.find(
+		(candidate) => candidate.id === graphicId,
+	);
 	if (!graphic) {
 		throw createError({
 			statusCode: 404,

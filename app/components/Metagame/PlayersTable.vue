@@ -24,12 +24,10 @@ const emit = defineEmits<{
 }>();
 
 const playerStore = usePlayerStore();
-const sorting = ref([
-	{ id: 'position', desc: false },
-]);
+const sorting = ref([{ id: 'position', desc: false }]);
 
 function resolvePlayer(entry: AnyPlayer): Player | null {
-	return playerStore.players.find(player => player.id === entry.id) ?? null;
+	return playerStore.players.find((player) => player.id === entry.id) ?? null;
 }
 
 function viewDeckList(entry: AnyPlayer) {
@@ -107,28 +105,32 @@ const columns = computed<TableColumn<AnyPlayer>[]>(() => [
 			{{ emptyMessage ?? 'No players' }}
 		</div>
 
-		<UTable
-			v-else
-			v-model:sorting="sorting"
-			:data="players"
-			:columns="columns"
-		>
+		<UTable v-else v-model:sorting="sorting" :data="players" :columns="columns">
 			<template #position-cell="{ row }">
 				<span class="text-xs text-muted tabular-nums">{{ row.original.position ?? '—' }}</span>
 			</template>
 			<template #name-cell="{ row }">
-				<PlayerMatchHistoryButton class="font-medium" :player="resolvePlayer(row.original)" :name="row.original.name" />
+				<PlayerMatchHistoryButton
+					class="font-medium"
+					:player="resolvePlayer(row.original)"
+					:name="row.original.name"
+				/>
 			</template>
 			<template #record-cell="{ row }">
 				<span class="tabular-nums text-sm">
-					{{ row.original.wins ?? '-' }}–{{ row.original.losses ?? '-' }}–{{ row.original.draws ?? '-' }}
+					{{ row.original.wins ?? '-' }}–{{ row.original.losses ?? '-' }}–{{
+						row.original.draws ?? '-'
+					}}
 				</span>
 			</template>
 			<template #points-cell="{ row }">
 				<span class="tabular-nums">{{ row.original.points ?? '-' }}</span>
 			</template>
 			<template v-if="showDeckName" #deckName-cell="{ row }">
-				<div v-if="(row.original as ArchetypePlayerEntry).deckName" class="inline-flex items-center gap-1.5 text-sm text-muted">
+				<div
+					v-if="(row.original as ArchetypePlayerEntry).deckName"
+					class="inline-flex items-center gap-1.5 text-sm text-muted"
+				>
 					<span>{{ (row.original as ArchetypePlayerEntry).deckName }}</span>
 					<MtgManaColorDisplay
 						v-if="(row.original as ArchetypePlayerEntry).colors"

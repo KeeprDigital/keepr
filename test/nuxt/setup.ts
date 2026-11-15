@@ -68,8 +68,7 @@ vi.mock('ably', () => {
 		channels = {
 			cache: new Map<string, InertChannel>(),
 			get(name: string) {
-				if (!this.cache.has(name))
-					this.cache.set(name, new InertChannel());
+				if (!this.cache.has(name)) this.cache.set(name, new InertChannel());
 				return this.cache.get(name)!;
 			},
 		};

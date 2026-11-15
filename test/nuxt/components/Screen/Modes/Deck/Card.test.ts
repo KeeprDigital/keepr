@@ -37,7 +37,7 @@ async function mountComponent(props: Record<string, unknown> = {}) {
 }
 
 describe('screenDeckCard', () => {
-	it('shows the card\'s Highlander points in the configured colours', async () => {
+	it("shows the card's Highlander points in the configured colours", async () => {
 		const wrapper = await mountComponent();
 		const badge = wrapper.get('[data-testid="highlander-card-badge"]');
 
@@ -53,9 +53,11 @@ describe('screenDeckCard', () => {
 	])('tags a card $tag', async ({ tag, shown }) => {
 		const wrapper = await mountComponent({ tag });
 
-		expect(wrapper.find('[data-testid="deck-card-tag"]').exists()
-			? wrapper.get('[data-testid="deck-card-tag"]').text()
-			: undefined).toBe(shown);
+		expect(
+			wrapper.find('[data-testid="deck-card-tag"]').exists()
+				? wrapper.get('[data-testid="deck-card-tag"]').text()
+				: undefined,
+		).toBe(shown);
 	});
 
 	// A tag reads as the quantity badge's pair: its text size and its height.

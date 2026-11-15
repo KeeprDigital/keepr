@@ -5,15 +5,12 @@ export function useEventConfigSubmit() {
 	const { runRequest } = useRequestFeedback();
 
 	async function handleSubmit(data: UpdateEventInput) {
-		if (!eventStore.event)
-			return null;
+		if (!eventStore.event) return null;
 
 		return runRequest(
 			async () => {
 				const updated = await eventStore.updateEvent(data);
-				return updated === null
-					? null
-					: updated ?? true;
+				return updated === null ? null : (updated ?? true);
 			},
 			{
 				success: {

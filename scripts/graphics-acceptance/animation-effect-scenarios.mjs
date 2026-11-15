@@ -400,7 +400,7 @@ export function animationEffectProofScenarios() {
 				frameRate,
 				floors: effectFloors,
 			},
-			...entry.extremes.map(extreme => ({
+			...entry.extremes.map((extreme) => ({
 				effect,
 				scenario: extreme.name,
 				params: extreme.params,
@@ -433,8 +433,7 @@ export function animationEffectProofScenarios() {
  */
 export function animationEffectSettleScenarios() {
 	return Object.entries(ANIMATION_EFFECT_PROOF_SCENARIOS).flatMap(([effect, entry]) => {
-		if (!entry.settle)
-			return [];
+		if (!entry.settle) return [];
 		return [
 			{
 				effect,
@@ -442,7 +441,10 @@ export function animationEffectSettleScenarios() {
 				params: entry.settle.params,
 				frameRate: entry.frameRate,
 				durationSeconds: entry.settle.durationSeconds,
-				floors: { minLitFraction: entry.floors?.minLitFraction ?? ANIMATION_EFFECT_PROOF_FLOORS.minLitFraction },
+				floors: {
+					minLitFraction:
+						entry.floors?.minLitFraction ?? ANIMATION_EFFECT_PROOF_FLOORS.minLitFraction,
+				},
 			},
 		];
 	});

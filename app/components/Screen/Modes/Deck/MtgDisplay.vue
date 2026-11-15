@@ -1,13 +1,27 @@
 <script setup lang="ts">
 import type { QuantityPosition } from '~~/shared/types/enums';
 import type { ResolvedDeckBoardLayout } from '~~/shared/types/screenConfig';
-import type { DeckLayoutGridBoard, DeckLayoutStackBoard, SolvedGridBoard, SolvedStackBoard } from '~~/shared/utils/deckLayout';
+import type {
+	DeckLayoutGridBoard,
+	DeckLayoutStackBoard,
+	SolvedGridBoard,
+	SolvedStackBoard,
+} from '~~/shared/utils/deckLayout';
 import type { DeckListCardWithData } from '~/types/card/deckList';
 import { useElementSize } from '@vueuse/core';
-import { DEFAULT_COMPANION_TAG_POSITION, DEFAULT_DECK_TEXT_SIZES, DEFAULT_HIGHLANDER_POINTS_POSITION, DEFAULT_QUANTITY_POSITION, resolveDeckBoards } from '~~/shared/types/screenConfig';
+import {
+	DEFAULT_COMPANION_TAG_POSITION,
+	DEFAULT_DECK_TEXT_SIZES,
+	DEFAULT_HIGHLANDER_POINTS_POSITION,
+	DEFAULT_QUANTITY_POSITION,
+	resolveDeckBoards,
+} from '~~/shared/types/screenConfig';
 import { cardBadgeTextSize, DECK_AUTO_BADGE_RATIOS } from '~~/shared/utils/cardBadgeSize';
 import { solveDeckLayout } from '~~/shared/utils/deckLayout';
-import { formatHighlanderPointedCardNote, formatHighlanderPointsLabel } from '~~/shared/utils/highlander';
+import {
+	formatHighlanderPointedCardNote,
+	formatHighlanderPointsLabel,
+} from '~~/shared/utils/highlander';
 import { getCardTypeDisplayLabel } from '~~/shared/utils/metagame';
 import { ninePointPlacement } from '~~/shared/utils/ninePoints';
 import { foundationTokenVar, foundationTypographyStyle, modeTokenVar } from '~/modules/screen-mode';
@@ -60,17 +74,21 @@ const displayStyle = {
 const showDeckBody = ref(hasDisplayedDeck.value);
 const awaitingSwapCommit = ref(false);
 
-watch(hasDisplayedDeck, async (value) => {
-	if (value && !showDeckBody.value && !awaitingSwapCommit.value) {
-		await nextTick();
-		showDeckBody.value = true;
-		return;
-	}
+watch(
+	hasDisplayedDeck,
+	async (value) => {
+		if (value && !showDeckBody.value && !awaitingSwapCommit.value) {
+			await nextTick();
+			showDeckBody.value = true;
+			return;
+		}
 
-	if (!value && !awaitingSwapCommit.value) {
-		showDeckBody.value = false;
-	}
-}, { immediate: true });
+		if (!value && !awaitingSwapCommit.value) {
+			showDeckBody.value = false;
+		}
+	},
+	{ immediate: true },
+);
 
 /**
  * Commit the pending deck while the body is hidden, then show it. A deck that
@@ -110,20 +128,19 @@ async function handleDeckAfterLeave() {
 }
 
 const resolvedBoards = computed(() => resolveDeckBoards(config.value));
-const board = computed(() => props.followsSeat
-	? 'full'
-	: resolvedBoards.value.board);
+const board = computed(() => (props.followsSeat ? 'full' : resolvedBoards.value.board));
 const showMainboard = computed(() => board.value !== 'sideboard' && mainboard.value.length > 0);
 const showSideboard = computed(() => board.value !== 'mainboard' && sideboard.value.length > 0);
 
 // A sideboard stacks only as the strip beside a mainboard; anywhere else its
 // stack renders as a grid (ADR-0054), keeping the stored view for when it
 // moves back beside.
-const sideboardBeside = computed(() =>
-	board.value === 'full'
-	&& resolvedBoards.value.sideboardPlacement === 'beside'
-	&& showMainboard.value
-	&& showSideboard.value,
+const sideboardBeside = computed(
+	() =>
+		board.value === 'full' &&
+		resolvedBoards.value.sideboardPlacement === 'beside' &&
+		showMainboard.value &&
+		showSideboard.value,
 );
 
 type BoardKey = 'mainboard' | 'sideboard';
@@ -142,18 +159,15 @@ interface VisibleBoard {
 }
 
 /** The companion shows as a card, never in the deck information: first among the sideboard's. */
-const shownCompanion = computed(() => config.value.showCompanion !== false
-	? companionCard.value
-	: null);
+const shownCompanion = computed(() =>
+	config.value.showCompanion !== false ? companionCard.value : null,
+);
 
 /** The sideboard's cards, its companion first and not listed twice. */
 const sideboardCards = computed(() => {
 	const companion = shownCompanion.value;
 	return companion
-		? [
-				companion,
-				...sideboard.value.filter(card => card.name !== companion.name),
-			]
+		? [companion, ...sideboard.value.filter((card) => card.name !== companion.name)]
 		: sideboard.value;
 });
 
@@ -170,9 +184,7 @@ const visibleBoards = computed<VisibleBoard[]>(() => {
 		boards.push({
 			key: 'sideboard',
 			name: 'commanders',
-			label: commanders.value.length === 1
-				? 'Commander'
-				: 'Commanders',
+			label: commanders.value.length === 1 ? 'Commander' : 'Commanders',
 			cards: commanders.value,
 			layout: { ...resolvedBoards.value.sideboard, columns: undefined },
 			view: 'grid',
@@ -198,13 +210,10 @@ const visibleBoards = computed<VisibleBoard[]>(() => {
 			label: 'Sideboard',
 			cards: sideboardCards.value,
 			layout: resolvedBoards.value.sideboard,
-			view: view === 'stack' && !sideboardBeside.value
-				? 'grid'
-				: view,
+			view: view === 'stack' && !sideboardBeside.value ? 'grid' : view,
 			showLabel: true,
 		});
-	}
-	else if (shownCompanion.value) {
+	} else if (shownCompanion.value) {
 		// One card, laid out as the sideboard's cards are, in a column of its own.
 		boards.push({
 			key: 'sideboard',
@@ -220,8 +229,13 @@ const visibleBoards = computed<VisibleBoard[]>(() => {
 });
 
 /** The boards sit side by side: a sideboard beside its mainboard, or the companion alone in its place. */
-const besideActive = computed(() => sideboardBeside.value
-	|| ((companionAlone.value || showCommanders.value) && showMainboard.value && resolvedBoards.value.sideboardPlacement === 'beside'));
+const besideActive = computed(
+	() =>
+		sideboardBeside.value ||
+		((companionAlone.value || showCommanders.value) &&
+			showMainboard.value &&
+			resolvedBoards.value.sideboardPlacement === 'beside'),
+);
 
 // ── The Card Layout: the whole deck at one card size ──
 // A Deck has no pages, so its boards are laid out together from the space
@@ -248,9 +262,7 @@ const boardElements = {
 	sideboard: ref<HTMLElement | null>(null),
 };
 function setBoardElement(key: BoardKey, element: unknown) {
-	boardElements[key].value = element instanceof HTMLElement
-		? element
-		: null;
+	boardElements[key].value = element instanceof HTMLElement ? element : null;
 }
 const boardSpaces = {
 	mainboard: useElementSize(boardElements.mainboard),
@@ -279,10 +291,14 @@ function layoutBoard(section: VisibleBoard): DeckLayoutGridBoard | DeckLayoutSta
 }
 
 /** The boards the layout sizes: every board shown but a list. */
-const laidOutBoards = computed(() => visibleBoards.value.filter(section => section.view !== 'list'));
+const laidOutBoards = computed(() =>
+	visibleBoards.value.filter((section) => section.view !== 'list'),
+);
 
 /** Every board shown is laid out, so they are sized and placed as one group. */
-const placedTogether = computed(() => laidOutBoards.value.length > 0 && laidOutBoards.value.length === visibleBoards.value.length);
+const placedTogether = computed(
+	() => laidOutBoards.value.length > 0 && laidOutBoards.value.length === visibleBoards.value.length,
+);
 
 interface SolvedBoard {
 	cardWidth: number;
@@ -291,36 +307,26 @@ interface SolvedBoard {
 
 const solvedBoards = computed<Partial<Record<BoardKey, SolvedBoard>>>(() => {
 	const solved: Partial<Record<BoardKey, SolvedBoard>> = {};
-	const boardOf = (key: BoardKey) => laidOutBoards.value.find(section => section.key === key);
+	const boardOf = (key: BoardKey) => laidOutBoards.value.find((section) => section.key === key);
 	const solve = (keys: BoardKey[], width: number, height: number) => {
-		const mainboard = keys.includes('mainboard')
-			? boardOf('mainboard')
-			: undefined;
-		const sideboard = keys.includes('sideboard')
-			? boardOf('sideboard')
-			: undefined;
+		const mainboard = keys.includes('mainboard') ? boardOf('mainboard') : undefined;
+		const sideboard = keys.includes('sideboard') ? boardOf('sideboard') : undefined;
 		const layout = solveDeckLayout({
 			width,
 			height,
 			boardGap: BOARD_GAP,
 			placement: besideActive.value ? 'beside' : 'below',
-			mainboard: mainboard
-				? layoutBoard(mainboard) as DeckLayoutGridBoard
-				: null,
-			sideboard: sideboard
-				? layoutBoard(sideboard)
-				: null,
+			mainboard: mainboard ? (layoutBoard(mainboard) as DeckLayoutGridBoard) : null,
+			sideboard: sideboard ? layoutBoard(sideboard) : null,
 		});
 		for (const key of keys) {
 			const board = layout?.[key];
-			if (layout && board)
-				solved[key] = { cardWidth: layout.cardWidth, board };
+			if (layout && board) solved[key] = { cardWidth: layout.cardWidth, board };
 		}
 	};
 	if (placedTogether.value) {
 		solve(['mainboard', 'sideboard'], layoutWidth.value, layoutHeight.value);
-	}
-	else {
+	} else {
 		for (const { key } of laidOutBoards.value)
 			solve([key], boardSpaces[key].width.value, boardSpaces[key].height.value);
 	}
@@ -363,28 +369,24 @@ const solvedPlacement = computed(() => {
 		return besideActive.value ? x : y;
 	};
 	const mainboard = along(showMainboard.value ? 'mainboard' : 'sideboard');
-	const sideboardToEdge = visibleBoards.value.length === 2 && along('sideboard') === 'end' && mainboard !== 'end';
+	const sideboardToEdge =
+		visibleBoards.value.length === 2 && along('sideboard') === 'end' && mainboard !== 'end';
 	return { mainboard, sideboardToEdge };
 });
 
 const solvedLayoutStyle = computed(() => {
-	if (!placedTogether.value || solvedPlacement.value.sideboardToEdge)
-		return undefined;
+	if (!placedTogether.value || solvedPlacement.value.sideboardToEdge) return undefined;
 	return { justifyContent: solvedPlacement.value.mainboard };
 });
 
 /** A laid-out board's label lines up with the edge its board sits at. */
 function labelStyle(section: VisibleBoard) {
-	if (!placedTogether.value)
-		return titleStyle;
+	if (!placedTogether.value) return titleStyle;
 	const { x } = ninePointPlacement(section.layout.alignment);
 	return {
 		...titleStyle,
-		textAlign: x === 'start'
-			? 'left' as const
-			: x === 'end'
-				? 'right' as const
-				: 'center' as const,
+		textAlign:
+			x === 'start' ? ('left' as const) : x === 'end' ? ('right' as const) : ('center' as const),
 	};
 }
 
@@ -410,55 +412,51 @@ function boardFlexStyle(section: VisibleBoard) {
 			width: `${solved.width}px`,
 			height: `${solved.height}px`,
 			alignSelf: besideActive.value ? y : x,
-			...(pushed
-				? { [leading]: 'auto' }
-				: {}),
+			...(pushed ? { [leading]: 'auto' } : {}),
 		};
 	}
 	if (!besideActive.value) {
-		return section.view === 'list'
-			? { flex: 'none' }
-			: { flex: '1 1 0%' };
+		return section.view === 'list' ? { flex: 'none' } : { flex: '1 1 0%' };
 	}
-	const weight = section.view === 'stack'
-		? 1
-		: section.view === 'list'
-			? section.layout.listColumns
-			: section.layout.columns ?? section.layout.listColumns;
+	const weight =
+		section.view === 'stack'
+			? 1
+			: section.view === 'list'
+				? section.layout.listColumns
+				: (section.layout.columns ?? section.layout.listColumns);
 	return { flex: `${weight} 1 0%` };
 }
 
 const showHighlanderPoints = computed(() => config.value.showHighlanderPoints !== false);
-const showHighlanderTotal = computed(() =>
-	config.value.showHighlanderTotal !== false
-	&& !!highlander.value,
+const showHighlanderTotal = computed(
+	() => config.value.showHighlanderTotal !== false && !!highlander.value,
 );
-const showHighlanderPointedCards = computed(() =>
-	config.value.showHighlanderPointedCards !== false
-	&& !!highlander.value
-	&& highlander.value.pointedCards.length > 0,
+const showHighlanderPointedCards = computed(
+	() =>
+		config.value.showHighlanderPointedCards !== false &&
+		!!highlander.value &&
+		highlander.value.pointedCards.length > 0,
 );
 const showDeckMetaPill = computed(() => config.value.showDeckMetaPill !== false);
 const highlanderTotalLabel = computed(() =>
-	highlander.value
-		? formatHighlanderPointsLabel(highlander.value)
-		: '',
+	highlander.value ? formatHighlanderPointsLabel(highlander.value) : '',
 );
 const highlanderPointedCardsList = computed(() => highlander.value?.pointedCards ?? []);
 // The header's two lines, each its own choice: who (the Player, or a list's
 // name) and what (the deck's name, or a list's archetype).
-const showPlayerName = computed(() => config.value.showPlayerName !== false && !!primaryHeader.value);
+const showPlayerName = computed(
+	() => config.value.showPlayerName !== false && !!primaryHeader.value,
+);
 const showDeckName = computed(() => config.value.showDeckName !== false && !!secondaryHeader.value);
 const showDeckColors = computed(() => config.value.showDeckColors !== false && !!deckColors.value);
-const showTopHeader = computed(() => showPlayerName.value || showDeckName.value || showDeckColors.value);
-const showDeckMeta = computed(() =>
-	(config.value.showDeckStats && deckStats.value.length > 0)
-	|| showHighlanderTotal.value,
+const showTopHeader = computed(
+	() => showPlayerName.value || showDeckName.value || showDeckColors.value,
 );
-const showHeader = computed(() =>
-	showTopHeader.value
-	|| showDeckMeta.value
-	|| showHighlanderPointedCards.value,
+const showDeckMeta = computed(
+	() => (config.value.showDeckStats && deckStats.value.length > 0) || showHighlanderTotal.value,
+);
+const showHeader = computed(
+	() => showTopHeader.value || showDeckMeta.value || showHighlanderPointedCards.value,
 );
 
 function listGridStyle(layout: ResolvedDeckBoardLayout) {
@@ -475,13 +473,18 @@ const quantityPositionClass = computed(() => {
 });
 
 const highlanderPointsPositionClass = computed(() => {
-	const pos: QuantityPosition = config.value.highlanderPointsPosition ?? DEFAULT_HIGHLANDER_POINTS_POSITION;
+	const pos: QuantityPosition =
+		config.value.highlanderPointsPosition ?? DEFAULT_HIGHLANDER_POINTS_POSITION;
 	return CARD_BADGE_POSITION_CLASSES[pos];
 });
 
 /** The companion's tag is placed as the other badges are: in a corner, its own edge sits there. */
-const companionTagPositionClass = computed(() =>
-	CARD_BADGE_POSITION_CLASSES[config.value.companionTagPosition ?? DEFAULT_COMPANION_TAG_POSITION]);
+const companionTagPositionClass = computed(
+	() =>
+		CARD_BADGE_POSITION_CLASSES[
+			config.value.companionTagPosition ?? DEFAULT_COMPANION_TAG_POSITION
+		],
+);
 
 // Each badge, pill and chip sizes itself around its text, whose size is the
 // Screen's own config (ADR-0054), keeping the proportions its former medium size had.
@@ -581,9 +584,7 @@ const showQuantities = computed(() => config.value.showQuantities ?? false);
 
 /** The Scryfall image a card draws: its board's, the companion its own, as its deck preloaded them. */
 function cardArt(section: VisibleBoard, card: DeckListCardWithData) {
-	return card === shownCompanion.value
-		? art.value.companion
-		: art.value[section.name];
+	return card === shownCompanion.value ? art.value.companion : art.value[section.name];
 }
 
 /** A board's card badges, sized to its solved card width; until it is measured, its cards have no size. */
@@ -619,33 +620,30 @@ function stackAlignmentStyle(section: VisibleBoard) {
  */
 function stackCardStyle(section: VisibleBoard, index: number) {
 	const solved = solvedBoard(section);
-	const stack = solved?.view === 'stack'
-		? solved
-		: { reveal: resolvedBoards.value.sideboard.stackReveal, width: 0 };
+	const stack =
+		solved?.view === 'stack'
+			? solved
+			: { reveal: resolvedBoards.value.sideboard.stackReveal, width: 0 };
 	return {
-		...(index < section.cards.length - 1
-			? { height: `${stack.reveal}px` }
-			: {}),
+		...(index < section.cards.length - 1 ? { height: `${stack.reveal}px` } : {}),
 		width: `${stack.width}px`,
 	};
 }
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-	>
+	<ScreenModeBase :error="error" :ready="ready">
 		<!-- Deck Content -->
 		<div class="deck-content w-full h-full" :style="displayStyle">
 			<transition mode="out-in" name="deck-swap" @after-leave="handleDeckAfterLeave">
-				<div v-if="showDeckBody && hasDisplayedDeck" :key="displayedDeckVersion" class="deck-body relative flex flex-col w-full h-full">
+				<div
+					v-if="showDeckBody && hasDisplayedDeck"
+					:key="displayedDeckVersion"
+					class="deck-body relative flex flex-col w-full h-full"
+				>
 					<!-- Header -->
 					<div v-if="showHeader" class="deck-header shrink-0 mb-4 text-center">
-						<div
-							v-if="showTopHeader"
-							class="flex flex-wrap items-center justify-center gap-3"
-						>
+						<div v-if="showTopHeader" class="flex flex-wrap items-center justify-center gap-3">
 							<h2
 								v-if="showPlayerName"
 								data-testid="deck-player-name"
@@ -665,7 +663,11 @@ function stackCardStyle(section: VisibleBoard, index: number) {
 							v-if="showDeckMeta"
 							data-testid="deck-meta-pill"
 							class="mt-3 flex flex-wrap items-center justify-center border"
-							:class="showDeckMetaPill ? 'inline-flex rounded-full' : ['gap-x-4 gap-y-1 border-transparent px-0 py-0']"
+							:class="
+								showDeckMetaPill
+									? 'inline-flex rounded-full'
+									: ['gap-x-4 gap-y-1 border-transparent px-0 py-0']
+							"
 							:style="deckMetaPillStyle"
 						>
 							<p
@@ -677,16 +679,17 @@ function stackCardStyle(section: VisibleBoard, index: number) {
 								{{ highlanderTotalLabel }}
 							</p>
 
-							<span
-								v-for="stat in (config.showDeckStats ? deckStats : [])"
-								:key="stat.type"
-							>
+							<span v-for="stat in config.showDeckStats ? deckStats : []" :key="stat.type">
 								<span class="font-medium me-1" :style="deckMetaAccentStyle">{{ stat.count }}</span>
 								<span :style="deckMetaTextStyle">{{ stat.type }}</span>
 							</span>
 						</div>
 
-						<div v-if="showHighlanderPointedCards" class="mt-3 flex flex-wrap justify-center gap-2" data-testid="highlander-pointed-cards">
+						<div
+							v-if="showHighlanderPointedCards"
+							class="mt-3 flex flex-wrap justify-center gap-2"
+							data-testid="highlander-pointed-cards"
+						>
 							<span
 								v-for="card in highlanderPointedCardsList"
 								:key="card.name"
@@ -694,7 +697,9 @@ function stackCardStyle(section: VisibleBoard, index: number) {
 								class="inline-flex items-center gap-1 rounded-full border leading-none"
 								:style="highlanderPointedCardStyle"
 							>
-								<span class="font-semibold" :style="highlanderPointedCardAccentStyle">{{ card.points }}</span>
+								<span class="font-semibold" :style="highlanderPointedCardAccentStyle">{{
+									card.points
+								}}</span>
 								<span>{{ card.name }}</span>
 								<span v-if="formatHighlanderPointedCardNote(card)" class="opacity-70">
 									{{ formatHighlanderPointedCardNote(card) }}
@@ -706,16 +711,11 @@ function stackCardStyle(section: VisibleBoard, index: number) {
 					<!-- Boards: each visible board renders its own layout block -->
 					<!-- A board label as the Theme types it, measured for the layout. -->
 					<div ref="labelProbe" aria-hidden="true" class="invisible absolute pointer-events-none">
-						<h3 class="text-lg pb-2" :style="titleStyle">
-							Sideboard
-						</h3>
+						<h3 class="text-lg pb-2" :style="titleStyle">Sideboard</h3>
 					</div>
 
 					<!-- The space the boards share, and in it the boards. -->
-					<div
-						ref="layoutElement"
-						class="deck-layout-space flex flex-1 min-h-0"
-					>
+					<div ref="layoutElement" class="deck-layout-space flex flex-1 min-h-0">
 						<div
 							class="deck-layout flex flex-1 min-h-0 min-w-0"
 							:class="besideActive ? 'flex-row' : 'flex-col'"
@@ -724,12 +724,16 @@ function stackCardStyle(section: VisibleBoard, index: number) {
 							<div
 								v-for="section in visibleBoards"
 								:key="section.name"
-								:ref="element => setBoardElement(section.key, element)"
+								:ref="(element) => setBoardElement(section.key, element)"
 								:data-testid="`${section.name}-section`"
 								class="flex flex-col min-h-0 min-w-0"
 								:style="boardFlexStyle(section)"
 							>
-								<h3 v-if="section.showLabel" class="text-lg shrink-0 pb-2" :style="labelStyle(section)">
+								<h3
+									v-if="section.showLabel"
+									class="text-lg shrink-0 pb-2"
+									:style="labelStyle(section)"
+								>
 									{{ section.label }}
 								</h3>
 
@@ -747,7 +751,11 @@ function stackCardStyle(section: VisibleBoard, index: number) {
 										:art="cardArt(section, card)"
 										:tag="card === shownCompanion ? 'Companion' : undefined"
 										v-bind="cardBadgeProps[section.key]"
-										:show-quantity="section.name !== 'companion' && section.name !== 'commanders' && showQuantities"
+										:show-quantity="
+											section.name !== 'companion' &&
+											section.name !== 'commanders' &&
+											showQuantities
+										"
 									/>
 								</ScreenCardGrid>
 

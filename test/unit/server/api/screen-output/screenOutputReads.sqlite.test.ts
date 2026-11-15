@@ -26,12 +26,13 @@ vi.doMock('~~/server/utils/ably', () => ({
 let signedIn = false;
 vi.doMock('~~/server/utils/auth', () => ({
 	requireUserId: async () => 'user-1',
-	optionalUserSession: async () => signedIn
-		? {
-				user: { id: 'user-1' },
-				session: { id: 'session-1' },
-			}
-		: null,
+	optionalUserSession: async () =>
+		signedIn
+			? {
+					user: { id: 'user-1' },
+					session: { id: 'session-1' },
+				}
+			: null,
 }));
 
 interface StubEvent {
@@ -42,14 +43,20 @@ interface StubEvent {
 }
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
 vi.stubGlobal('useRuntimeConfig', () => ({ screenOutputCapabilitySigningKey: signingKey }));
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('getValidatedQuery', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.query));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('getValidatedQuery', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.query),
+);
 vi.stubGlobal('getRequestHeader', (event: StubEvent, name: string) => event.headers[name]);
 vi.stubGlobal('setResponseHeader', (event: StubEvent, name: string, value: unknown) => {
 	event.responseHeaders[name] = value;
 });
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 type Handler = (event: H3Event) => Promise<any>;
 async function handler(module: Promise<{ default: unknown }>): Promise<Handler> {
@@ -57,29 +64,72 @@ async function handler(module: Promise<{ default: unknown }>): Promise<Handler> 
 }
 
 const read = {
-	screen: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/index.get')),
-	event: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/event.get')),
-	card: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/card.get')),
-	liveSession: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/broadcast-graphics/live-session.get')),
-	standings: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/standings.get')),
-	metagame: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/metagame.get')),
-	topCards: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/top-cards.get')),
-	archetypeSpotlight: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/archetype-spotlight.get')),
-	broadcastDeckList: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/broadcast-deck-list.get')),
-	slot: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/feature-match-slots/[slotId].get')),
-	slotDeckList: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/feature-match-slots/[slotId]/deck-lists/[deckListId].get')),
-	playerDecks: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/players/[playerId]/decks.get')),
-	opPlayerDeckList: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/players/[playerId]/deck-list.get')),
-	playerHistory: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/player-history.get')),
-	pairings: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/pairings.get')),
-	roundClock: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/round-clock.get')),
-	headToHead: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/head-to-head.get')),
-	talent: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/talent.get')),
-	topCut: await handler(import('~~/server/api/screen-output/events/[id]/screens/[screenId]/top-cut.get')),
+	screen: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/index.get'),
+	),
+	event: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/event.get'),
+	),
+	card: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/card.get'),
+	),
+	liveSession: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/broadcast-graphics/live-session.get'),
+	),
+	standings: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/standings.get'),
+	),
+	metagame: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/metagame.get'),
+	),
+	topCards: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/top-cards.get'),
+	),
+	archetypeSpotlight: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/archetype-spotlight.get'),
+	),
+	broadcastDeckList: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/broadcast-deck-list.get'),
+	),
+	slot: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/feature-match-slots/[slotId].get'),
+	),
+	slotDeckList: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/feature-match-slots/[slotId]/deck-lists/[deckListId].get'),
+	),
+	playerDecks: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/players/[playerId]/decks.get'),
+	),
+	opPlayerDeckList: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/players/[playerId]/deck-list.get'),
+	),
+	playerHistory: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/player-history.get'),
+	),
+	pairings: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/pairings.get'),
+	),
+	roundClock: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/round-clock.get'),
+	),
+	headToHead: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/head-to-head.get'),
+	),
+	talent: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/talent.get'),
+	),
+	topCut: await handler(
+		import('~~/server/api/screen-output/events/[id]/screens/[screenId]/top-cut.get'),
+	),
 };
-const regenerateCapability = await handler(import('~~/server/api/events/[id]/screens/[screenId]/asset-capability.post'));
-const operatorLiveSession = await handler(import('~~/server/api/events/[id]/screens/[screenId]/broadcast-graphics/live-session.get'));
-const { createScreenOutputAssetCapabilityManager } = await import('~~/server/modules/screen-output-assets/manager');
+const regenerateCapability = await handler(
+	import('~~/server/api/events/[id]/screens/[screenId]/asset-capability.post'),
+);
+const operatorLiveSession = await handler(
+	import('~~/server/api/events/[id]/screens/[screenId]/broadcast-graphics/live-session.get'),
+);
+const { createScreenOutputAssetCapabilityManager } =
+	await import('~~/server/modules/screen-output-assets/manager');
 const { screenService } = await import('~~/server/services/screen');
 const { featureMatchDeckListService } = await import('~~/server/services/featureMatchDeckList');
 const { archetypeWriteModule } = await import('~~/server/modules/archetype-write');
@@ -148,7 +198,12 @@ const ids = {
 };
 
 /** A Screen with the capability its outputs hold now, and the one they held before it was regenerated. */
-interface Staged { id: number; eventId: number; capability: string; revoked: string }
+interface Staged {
+	id: number;
+	eventId: number;
+	capability: string;
+	revoked: string;
+}
 let neighbour: Staged;
 let screenSeq = 0;
 
@@ -171,7 +226,8 @@ async function stageScreen(
 ): Promise<Staged> {
 	screenSeq += 1;
 	const former = await manager.prepare();
-	const [row] = await db.insert(schema.screens)
+	const [row] = await db
+		.insert(schema.screens)
 		.values({
 			eventId,
 			name: `Output ${screenSeq}`,
@@ -188,7 +244,11 @@ async function stageScreen(
 }
 
 /** A Screen in `mode`, holding `config` as that mode's saved configuration. */
-async function showing(mode: ScreenMode, config: Record<string, unknown> = {}, columns: Record<string, unknown> = {}) {
+async function showing(
+	mode: ScreenMode,
+	config: Record<string, unknown> = {},
+	columns: Record<string, unknown> = {},
+) {
 	return await stageScreen(mode, { [mode]: config }, columns);
 }
 
@@ -200,34 +260,33 @@ interface Presented {
 }
 
 function outputRequest(screen: Staged, presented: Presented = {}): StubEvent {
-	const credential = presented.credential === undefined
-		? screen.capability
-		: presented.credential;
+	const credential = presented.credential === undefined ? screen.capability : presented.credential;
 	return {
 		params: {
 			id: String(presented.eventId ?? screen.eventId),
 			screenId: String(screen.id),
-			...Object.fromEntries(Object.entries(presented.params ?? {}).map(([name, value]) => [
-				name,
-				String(value),
-			])),
+			...Object.fromEntries(
+				Object.entries(presented.params ?? {}).map(([name, value]) => [name, String(value)]),
+			),
 		},
 		query: {},
-		headers: credential
-			? { authorization: `Bearer ${credential}` }
-			: {},
+		headers: credential ? { authorization: `Bearer ${credential}` } : {},
 		responseHeaders: {},
 	};
 }
 
 async function asOutput(route: Handler, screen: Staged, presented: Presented = {}) {
-	return await route(stubH3Event({
-		...outputRequest(screen, presented),
-	}));
+	return await route(
+		stubH3Event({
+			...outputRequest(screen, presented),
+		}),
+	);
 }
 
 async function refusal(route: Handler, screen: Staged, presented: Presented = {}) {
-	const { statusCode, statusMessage, message, data } = await refusalFrom(asOutput(route, screen, presented)) as {
+	const { statusCode, statusMessage, message, data } = (await refusalFrom(
+		asOutput(route, screen, presented),
+	)) as {
 		statusCode?: number;
 		statusMessage?: string;
 		message?: string;
@@ -242,109 +301,133 @@ async function refusal(route: Handler, screen: Staged, presented: Presented = {}
 }
 
 beforeAll(async () => {
-	const [event, otherEvent, opEvent] = await db.insert(schema.events).values([
-		{
-			name: 'Screen Output Reads',
-			game: 'mtg',
-			featureMatchOrientation: 'vertical',
-			description: 'Operator notes',
-			displayRecordSeparator: '/',
-			meleeEventId: 'melee-event-1',
-			lastSyncError: 'Melee refused the sync',
-			broadcastDeckListsEnabled: true,
-		},
-		{ name: 'Other Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-		{ name: 'One Piece Event', game: 'op', featureMatchOrientation: 'horizontal' },
-	] as never).returning({ id: schema.events.id });
+	const [event, otherEvent, opEvent] = await db
+		.insert(schema.events)
+		.values([
+			{
+				name: 'Screen Output Reads',
+				game: 'mtg',
+				featureMatchOrientation: 'vertical',
+				description: 'Operator notes',
+				displayRecordSeparator: '/',
+				meleeEventId: 'melee-event-1',
+				lastSyncError: 'Melee refused the sync',
+				broadcastDeckListsEnabled: true,
+			},
+			{ name: 'Other Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			{ name: 'One Piece Event', game: 'op', featureMatchOrientation: 'horizontal' },
+		] as never)
+		.returning({ id: schema.events.id });
 	ids.event = event!.id;
 	ids.otherEvent = otherEvent!.id;
 	ids.opEvent = opEvent!.id;
 	const eventId = ids.event;
 
-	const [archetype] = await db.insert(schema.archetypes).values({ eventId, name: 'Mono Red' }).returning({ id: schema.archetypes.id });
+	const [archetype] = await db
+		.insert(schema.archetypes)
+		.values({ eventId, name: 'Mono Red' })
+		.returning({ id: schema.archetypes.id });
 	ids.archetype = archetype!.id;
-	const [alice, bob, carol] = await db.insert(schema.players).values([
-		{ eventId, name: 'Alice', archetypeId: ids.archetype },
-		{ eventId, name: 'Bob' },
-		{ eventId, name: 'Carol' },
-	]).returning({ id: schema.players.id });
+	const [alice, bob, carol] = await db
+		.insert(schema.players)
+		.values([
+			{ eventId, name: 'Alice', archetypeId: ids.archetype },
+			{ eventId, name: 'Bob' },
+			{ eventId, name: 'Carol' },
+		])
+		.returning({ id: schema.players.id });
 	ids.alice = alice!.id;
 	ids.bob = bob!.id;
 	ids.carol = carol!.id;
-	const [opPlayer] = await db.insert(schema.players).values({ eventId: ids.opEvent, name: 'Dee' }).returning({ id: schema.players.id });
+	const [opPlayer] = await db
+		.insert(schema.players)
+		.values({ eventId: ids.opEvent, name: 'Dee' })
+		.returning({ id: schema.players.id });
 	ids.opPlayer = opPlayer!.id;
 
-	const [watchlist] = await db.insert(schema.playerLists).values({ eventId, name: 'Watch' }).returning({ id: schema.playerLists.id });
+	const [watchlist] = await db
+		.insert(schema.playerLists)
+		.values({ eventId, name: 'Watch' })
+		.returning({ id: schema.playerLists.id });
 	ids.watchlist = watchlist!.id;
 	await db.insert(schema.playerListMembers).values({ listId: ids.watchlist, playerId: ids.bob });
 
-	const [swiss, topCut] = await db.insert(schema.phases).values([
-		{ eventId, name: 'Swiss', sortOrder: 0 },
-		{ eventId, name: 'Top 4', sortOrder: 1 },
-	]).returning({ id: schema.phases.id });
+	const [swiss, topCut] = await db
+		.insert(schema.phases)
+		.values([
+			{ eventId, name: 'Swiss', sortOrder: 0 },
+			{ eventId, name: 'Top 4', sortOrder: 1 },
+		])
+		.returning({ id: schema.phases.id });
 	ids.swiss = swiss!.id;
 	ids.topCut = topCut!.id;
-	const [roundOne, roundTwo, semifinals] = await db.insert(schema.rounds).values([
-		{
-			eventId,
-			phaseId: ids.swiss,
-			name: 'Round 1',
-			roundNumber: 1,
-			durationMinutes: 50,
-		},
-		{
-			eventId,
-			phaseId: ids.swiss,
-			name: 'Round 2',
-			roundNumber: 2,
-		},
-		{
-			eventId,
-			phaseId: ids.topCut,
-			name: 'Semifinals',
-			roundNumber: 1,
-		},
-	]).returning({ id: schema.rounds.id });
+	const [roundOne, roundTwo, semifinals] = await db
+		.insert(schema.rounds)
+		.values([
+			{
+				eventId,
+				phaseId: ids.swiss,
+				name: 'Round 1',
+				roundNumber: 1,
+				durationMinutes: 50,
+			},
+			{
+				eventId,
+				phaseId: ids.swiss,
+				name: 'Round 2',
+				roundNumber: 2,
+			},
+			{
+				eventId,
+				phaseId: ids.topCut,
+				name: 'Semifinals',
+				roundNumber: 1,
+			},
+		])
+		.returning({ id: schema.rounds.id });
 	ids.roundOne = roundOne!.id;
 	ids.roundTwo = roundTwo!.id;
 	ids.semifinals = semifinals!.id;
 
 	// Bob beat Alice 2–1 in Round 1; they meet again, unreported, at table 7 of Round 2.
-	const [earlier, upcoming, semifinal] = await db.insert(schema.matches).values([
-		{
-			eventId,
-			roundId: ids.roundOne,
-			tableNumber: 3,
-			player1Id: ids.bob,
-			player2Id: ids.alice,
-			hasResult: true,
-			player1GameWins: 2,
-			player2GameWins: 1,
-		},
-		{
-			eventId,
-			roundId: ids.roundTwo,
-			tableNumber: 7,
-			player1Id: ids.alice,
-			player2Id: ids.bob,
-		},
-		{
-			eventId,
-			roundId: ids.semifinals,
-			tableNumber: 1,
-			player1Data: { name: 'First Seed' },
-			player2Data: { name: 'Fourth Seed' },
-			sortOrder: 0,
-		},
-		{
-			eventId,
-			roundId: ids.semifinals,
-			tableNumber: 2,
-			player1Data: { name: 'Second Seed' },
-			player2Data: { name: 'Third Seed' },
-			sortOrder: 1,
-		},
-	] as never).returning({ id: schema.matches.id });
+	const [earlier, upcoming, semifinal] = await db
+		.insert(schema.matches)
+		.values([
+			{
+				eventId,
+				roundId: ids.roundOne,
+				tableNumber: 3,
+				player1Id: ids.bob,
+				player2Id: ids.alice,
+				hasResult: true,
+				player1GameWins: 2,
+				player2GameWins: 1,
+			},
+			{
+				eventId,
+				roundId: ids.roundTwo,
+				tableNumber: 7,
+				player1Id: ids.alice,
+				player2Id: ids.bob,
+			},
+			{
+				eventId,
+				roundId: ids.semifinals,
+				tableNumber: 1,
+				player1Data: { name: 'First Seed' },
+				player2Data: { name: 'Fourth Seed' },
+				sortOrder: 0,
+			},
+			{
+				eventId,
+				roundId: ids.semifinals,
+				tableNumber: 2,
+				player1Data: { name: 'Second Seed' },
+				player2Data: { name: 'Third Seed' },
+				sortOrder: 1,
+			},
+		] as never)
+		.returning({ id: schema.matches.id });
 	ids.earlierMatch = earlier!.id;
 	ids.upcomingMatch = upcoming!.id;
 	ids.semifinal = semifinal!.id;
@@ -372,27 +455,34 @@ beforeAll(async () => {
 	]);
 
 	// The shown Slot seats Alice and Bob for their Round 2 Match; the hidden one seats nobody.
-	const [shownSlot, hiddenSlot] = await db.insert(schema.featureMatchSlots).values([
-		{
-			eventId,
-			matchId: ids.upcomingMatch,
-			player1Id: ids.alice,
-			player2Id: ids.bob,
-		},
-		{ eventId, sortOrder: 1 },
-	]).returning({ id: schema.featureMatchSlots.id });
+	const [shownSlot, hiddenSlot] = await db
+		.insert(schema.featureMatchSlots)
+		.values([
+			{
+				eventId,
+				matchId: ids.upcomingMatch,
+				player1Id: ids.alice,
+				player2Id: ids.bob,
+			},
+			{ eventId, sortOrder: 1 },
+		])
+		.returning({ id: schema.featureMatchSlots.id });
 	ids.shownSlot = shownSlot!.id;
 	ids.hiddenSlot = hiddenSlot!.id;
-	ids.slotDeckList = await featureMatchDeckListService().create(eventId, ids.shownSlot, '1 OP01-001', {
-		entries: [
-			{ number: 'OP01-001', quantity: 1, card: null },
-		],
-		leaderNumber: null,
-		mainboardCount: 1,
-		warnings: [],
-	});
+	ids.slotDeckList = await featureMatchDeckListService().create(
+		eventId,
+		ids.shownSlot,
+		'1 OP01-001',
+		{
+			entries: [{ number: 'OP01-001', quantity: 1, card: null }],
+			leaderNumber: null,
+			mainboardCount: 1,
+			warnings: [],
+		},
+	);
 
-	const [broadcastDeckList] = await db.insert(schema.broadcastDeckLists)
+	const [broadcastDeckList] = await db
+		.insert(schema.broadcastDeckLists)
 		.values({
 			eventId,
 			name: 'Finalist',
@@ -402,17 +492,20 @@ beforeAll(async () => {
 		.returning({ id: schema.broadcastDeckLists.id });
 	ids.broadcastDeckList = broadcastDeckList!.id;
 
-	const [host, caster] = await db.insert(schema.eventTalents).values([
-		{
-			eventId,
-			name: 'Talent Host',
-			role: 'Host',
-			twitchHandle: 'host',
-			xHandle: 'host_x',
-			blueskyHandle: 'host.bsky.social',
-		},
-		{ eventId, name: 'Talent Caster', youtubeHandle: 'caster' },
-	]).returning({ id: schema.eventTalents.id });
+	const [host, caster] = await db
+		.insert(schema.eventTalents)
+		.values([
+			{
+				eventId,
+				name: 'Talent Host',
+				role: 'Host',
+				twitchHandle: 'host',
+				xHandle: 'host_x',
+				blueskyHandle: 'host.bsky.social',
+			},
+			{ eventId, name: 'Talent Caster', youtubeHandle: 'caster' },
+		])
+		.returning({ id: schema.eventTalents.id });
 	ids.host = host!.id;
 	ids.caster = caster!.id;
 
@@ -427,22 +520,10 @@ afterAll(async () => await harness.close());
 
 describe('admitting a Screen Output read', () => {
 	it.each<[string, () => Presented]>([
-		[
-			'no credential',
-			() => ({ credential: null }),
-		],
-		[
-			'a bearer that is not a capability',
-			() => ({ credential: 'not a capability' }),
-		],
-		[
-			'another Screen\'s capability',
-			() => ({ credential: neighbour.capability }),
-		],
-		[
-			'its capability under another Event',
-			() => ({ eventId: ids.otherEvent }),
-		],
+		['no credential', () => ({ credential: null })],
+		['a bearer that is not a capability', () => ({ credential: 'not a capability' })],
+		["another Screen's capability", () => ({ credential: neighbour.capability })],
+		['its capability under another Event', () => ({ eventId: ids.otherEvent })],
 	])('refuses %s with the one 404, naming nothing', async (_what, presented) => {
 		const screen = await showing('background');
 
@@ -458,7 +539,9 @@ describe('admitting a Screen Output read', () => {
 		const { assetCapability } = await regenerateCapability(operatorRequest(screen));
 
 		expect(await refusal(read.screen, screen)).toEqual(NOT_FOUND);
-		await expect(asOutput(read.screen, screen, { credential: assetCapability })).resolves.toMatchObject({ id: screen.id });
+		await expect(
+			asOutput(read.screen, screen, { credential: assetCapability }),
+		).resolves.toMatchObject({ id: screen.id });
 	});
 
 	it('must not be stored by anything between the output and here', async () => {
@@ -473,30 +556,37 @@ describe('admitting a Screen Output read', () => {
 	it.each<[string, () => Promise<unknown>, () => object]>([
 		[
 			'a Feature Match Slot its Screen has not saved',
-			async () => await asOutput(read.slot, await showing('feature-match-overlay'), {
-				credential: null,
-				params: { slotId: ids.hiddenSlot },
-			}),
+			async () =>
+				await asOutput(read.slot, await showing('feature-match-overlay'), {
+					credential: null,
+					params: { slotId: ids.hiddenSlot },
+				}),
 			() => ({
 				slot: { id: ids.hiddenSlot },
 				match: null,
 			}),
 		],
 		[
-			'a mode\'s data while its Screen is in another mode',
-			async () => await asOutput(read.pairings, await stageScreen('background', {
-				pairings: { roundId: ids.roundTwo },
-			}), { credential: null }),
+			"a mode's data while its Screen is in another mode",
+			async () =>
+				await asOutput(
+					read.pairings,
+					await stageScreen('background', {
+						pairings: { roundId: ids.roundTwo },
+					}),
+					{ credential: null },
+				),
 			() => ({
 				round: { id: ids.roundTwo },
 			}),
 		],
 		[
 			'a Player its Screen does not show',
-			async () => await asOutput(read.playerDecks, await showing('deck'), {
-				credential: null,
-				params: { playerId: ids.carol },
-			}),
+			async () =>
+				await asOutput(read.playerDecks, await showing('deck'), {
+					credential: null,
+					params: { playerId: ids.carol },
+				}),
 			() => ({
 				player: { id: ids.carol },
 			}),
@@ -653,21 +743,36 @@ const READS: OutputRead[] = [
 ];
 
 describe('every Screen Output read', () => {
-	it.each(READS)('$name answers its Screen\'s capability, and refuses another Screen\'s, a regenerated one and none', async (output) => {
-		const screen = await stageScreen(output.mode, { [output.mode]: output.config?.() ?? {} }, output.columns, output.eventId?.());
-		const params = output.params?.();
+	it.each(READS)(
+		"$name answers its Screen's capability, and refuses another Screen's, a regenerated one and none",
+		async (output) => {
+			const screen = await stageScreen(
+				output.mode,
+				{ [output.mode]: output.config?.() ?? {} },
+				output.columns,
+				output.eventId?.(),
+			);
+			const params = output.params?.();
 
-		await expect(asOutput(output.route, screen, { params })).resolves.toBeDefined();
-		for (const credential of [neighbour.capability, screen.revoked, null])
-			expect(await refusal(output.route, screen, { params, credential })).toEqual(NOT_FOUND);
-	});
+			await expect(asOutput(output.route, screen, { params })).resolves.toBeDefined();
+			for (const credential of [neighbour.capability, screen.revoked, null])
+				expect(await refusal(output.route, screen, { params, credential })).toEqual(NOT_FOUND);
+		},
+	);
 
 	// The configuration stays saved, but a Screen in another mode no longer publishes it.
-	it.each(READS.filter(output => output.modeData))('$name is published only while its Screen is in that mode', async (output) => {
-		const parked = await stageScreen('background', { [output.mode]: output.config?.() ?? {} }, output.columns);
+	it.each(READS.filter((output) => output.modeData))(
+		'$name is published only while its Screen is in that mode',
+		async (output) => {
+			const parked = await stageScreen(
+				'background',
+				{ [output.mode]: output.config?.() ?? {} },
+				output.columns,
+			);
 
-		expect(await refusal(output.route, parked)).toEqual(NOT_FOUND);
-	});
+			expect(await refusal(output.route, parked)).toEqual(NOT_FOUND);
+		},
+	);
 });
 
 describe('the Event context', () => {
@@ -712,7 +817,7 @@ describe('the Screen', () => {
 	});
 });
 
-describe('a Screen\'s own live state', () => {
+describe("a Screen's own live state", () => {
 	it('reads the Card on a Card Spotlight Screen with the revision it was read at', async () => {
 		const screen = await showing('card', {}, { activeCard: CARD, activeCardVersion: 3 });
 
@@ -740,7 +845,9 @@ describe('standings', () => {
 	it('reads the whole roster and nothing else while its configuration names nothing', async () => {
 		const answer = await asOutput(read.standings, await showing('standings', { viewMode: 'all' }));
 
-		expect(answer.players.map((player: { id: number }) => player.id)).toEqual(expect.arrayContaining([ids.alice, ids.bob, ids.carol]));
+		expect(answer.players.map((player: { id: number }) => player.id)).toEqual(
+			expect.arrayContaining([ids.alice, ids.bob, ids.carol]),
+		);
 		expect(answer).toMatchObject({
 			round: null,
 			roundStandings: null,
@@ -750,11 +857,14 @@ describe('standings', () => {
 	});
 
 	it('reads the fixed Round with its Round Standings, and the watchlist it filters to', async () => {
-		const answer = await asOutput(read.standings, await showing('standings', {
-			viewMode: 'watchlist',
-			playerListId: ids.watchlist,
-			roundId: ids.roundOne,
-		}));
+		const answer = await asOutput(
+			read.standings,
+			await showing('standings', {
+				viewMode: 'watchlist',
+				playerListId: ids.watchlist,
+				roundId: ids.roundOne,
+			}),
+		);
 
 		expect(answer).toMatchObject({
 			round: { id: ids.roundOne, name: 'Round 1' },
@@ -763,21 +873,23 @@ describe('standings', () => {
 				playerIds: [ids.bob],
 			},
 		});
-		expect(answer.roundStandings).toEqual(expect.arrayContaining([
-			{
-				playerId: ids.bob,
-				wins: 1,
-				losses: 0,
-				draws: 0,
-				position: 1,
-				points: 3,
-			},
-		]));
+		expect(answer.roundStandings).toEqual(
+			expect.arrayContaining([
+				{
+					playerId: ids.bob,
+					wins: 1,
+					losses: 0,
+					draws: 0,
+					position: 1,
+					points: 3,
+				},
+			]),
+		);
 	});
 
 	it.each<[string, () => Record<string, unknown>]>([
 		[
-			'its watchlist\'s list has since been deleted',
+			"its watchlist's list has since been deleted",
 			() => ({ viewMode: 'watchlist', playerListId: 999_999 }),
 		],
 		[
@@ -792,27 +904,32 @@ describe('standings', () => {
 
 	// The previous Round's positions are read only while the Position Change column shows (#755).
 	it.each([
-		[true, 'the previous Round\'s positions'],
+		[true, "the previous Round's positions"],
 		[false, 'none'],
 	])('with its Position Change column visible: %s, reads %s', async (visible) => {
-		const answer = await asOutput(read.standings, await showing('standings', {
-			viewMode: 'all',
-			roundId: ids.roundTwo,
-			columns: [
-				{ key: 'name', visible: true },
-				{ key: 'positionChange', visible },
-			],
-		}));
+		const answer = await asOutput(
+			read.standings,
+			await showing('standings', {
+				viewMode: 'all',
+				roundId: ids.roundTwo,
+				columns: [
+					{ key: 'name', visible: true },
+					{ key: 'positionChange', visible },
+				],
+			}),
+		);
 
-		expect(answer.previousRoundPositions).toEqual(visible
-			? {
-					roundId: ids.roundOne,
-					positions: [
-						{ playerId: ids.bob, position: 1 },
-						{ playerId: ids.alice, position: 2 },
-					],
-				}
-			: null);
+		expect(answer.previousRoundPositions).toEqual(
+			visible
+				? {
+						roundId: ids.roundOne,
+						positions: [
+							{ playerId: ids.bob, position: 1 },
+							{ playerId: ids.alice, position: 2 },
+						],
+					}
+				: null,
+		);
 	});
 });
 
@@ -821,39 +938,33 @@ describe('metagame, Most Played Cards and Archetype Spotlight', () => {
 		[
 			'archetype',
 			{ viewMode: 'archetype', scope: 'all' },
-			[
-				expect.objectContaining({ name: 'Mono Red' }),
-			],
+			[expect.objectContaining({ name: 'Mono Red' })],
 		],
-		[
-			'cards',
-			{ viewMode: 'cards', limit: 7 },
-			[],
-		],
-	])('reads the %s breakdown the saved Metagame view renders', async (viewMode, config, entries) => {
-		const answer = await asOutput(read.metagame, await showing('metagame', config));
+		['cards', { viewMode: 'cards', limit: 7 }, []],
+	])(
+		'reads the %s breakdown the saved Metagame view renders',
+		async (viewMode, config, entries) => {
+			const answer = await asOutput(read.metagame, await showing('metagame', config));
 
-		expect(answer).toMatchObject({
-			viewMode,
-			breakdown: { scope: 'all', entries },
-		});
-	});
+			expect(answer).toMatchObject({
+				viewMode,
+				breakdown: { scope: 'all', entries },
+			});
+		},
+	);
 
 	it('reads the card breakdown the saved Most Played Cards configuration renders', async () => {
-		const answer = await asOutput(read.topCards, await showing('top-cards', { scope: 'all', limit: 5 }));
+		const answer = await asOutput(
+			read.topCards,
+			await showing('top-cards', { scope: 'all', limit: 5 }),
+		);
 
 		expect(answer).toMatchObject({ scope: 'all', entries: [] });
 	});
 
 	// The filter names its Archetype by id (ADR-0038), so a rename neither empties nor misnames it.
 	it.each([
-		[
-			'Most Played Cards',
-			'top-cards',
-			read.topCards,
-			{},
-			(answer: any) => answer,
-		],
+		['Most Played Cards', 'top-cards', read.topCards, {}, (answer: any) => answer],
 		[
 			'Metagame cards view',
 			'metagame',
@@ -861,94 +972,119 @@ describe('metagame, Most Played Cards and Archetype Spotlight', () => {
 			{ viewMode: 'cards' },
 			(answer: any) => answer.breakdown,
 		],
-	] as const)('reads a %s Screen filtered to an Archetype as that Archetype\'s cards, before and after it is renamed', async (_name, mode, route, config, breakdownOf) => {
-		const [event] = await db.insert(schema.events)
-			.values({ name: `Filtered ${mode}`, game: 'mtg', featureMatchOrientation: 'horizontal' })
-			.returning({ id: schema.events.id });
-		const eventId = event!.id;
-		const [monoRed] = await db.insert(schema.archetypes).values({ eventId, name: 'Mono Red' }).returning({ id: schema.archetypes.id });
-		const pilots = await db.insert(schema.players).values([
-			{ eventId, name: 'Red Pilot', archetypeId: monoRed!.id },
-			{ eventId, name: 'Blue Pilot' },
-		]).returning({ id: schema.players.id });
-		const cards = await db.insert(schema.cards).values([
-			{ game: 'mtg', name: `Lightning Bolt (${mode})`, cardType: 'Instant' },
-			{ game: 'mtg', name: `Negate (${mode})`, cardType: 'Instant' },
-		]).returning({ id: schema.cards.id });
-		for (const [index, pilot] of pilots.entries()) {
-			const [deck] = await db.insert(schema.playerDecks).values({
+	] as const)(
+		"reads a %s Screen filtered to an Archetype as that Archetype's cards, before and after it is renamed",
+		async (_name, mode, route, config, breakdownOf) => {
+			const [event] = await db
+				.insert(schema.events)
+				.values({ name: `Filtered ${mode}`, game: 'mtg', featureMatchOrientation: 'horizontal' })
+				.returning({ id: schema.events.id });
+			const eventId = event!.id;
+			const [monoRed] = await db
+				.insert(schema.archetypes)
+				.values({ eventId, name: 'Mono Red' })
+				.returning({ id: schema.archetypes.id });
+			const pilots = await db
+				.insert(schema.players)
+				.values([
+					{ eventId, name: 'Red Pilot', archetypeId: monoRed!.id },
+					{ eventId, name: 'Blue Pilot' },
+				])
+				.returning({ id: schema.players.id });
+			const cards = await db
+				.insert(schema.cards)
+				.values([
+					{ game: 'mtg', name: `Lightning Bolt (${mode})`, cardType: 'Instant' },
+					{ game: 'mtg', name: `Negate (${mode})`, cardType: 'Instant' },
+				])
+				.returning({ id: schema.cards.id });
+			for (const [index, pilot] of pilots.entries()) {
+				const [deck] = await db
+					.insert(schema.playerDecks)
+					.values({
+						eventId,
+						playerId: pilot.id,
+						externalId: `filtered-${mode}-${index}`,
+						externalSource: 'melee',
+						formatExternalId: 'format',
+						name: 'Deck',
+						isPrimary: true,
+					})
+					.returning({ id: schema.playerDecks.id });
+				await db.insert(schema.playerDeckCards).values({
+					deckId: deck!.id,
+					cardId: cards[index]!.id,
+					quantity: 4,
+					compartment: 'mainboard',
+					sortOrder: 0,
+				});
+			}
+			const screen = await stageScreen(
+				mode,
+				{
+					[mode]: { ...config, archetypeId: monoRed!.id },
+				},
+				{},
 				eventId,
-				playerId: pilot.id,
-				externalId: `filtered-${mode}-${index}`,
-				externalSource: 'melee',
-				formatExternalId: 'format',
-				name: 'Deck',
-				isPrimary: true,
-			}).returning({ id: schema.playerDecks.id });
-			await db.insert(schema.playerDeckCards).values({
-				deckId: deck!.id,
-				cardId: cards[index]!.id,
-				quantity: 4,
-				compartment: 'mainboard',
-				sortOrder: 0,
+			);
+			const filtered = (name: string) => ({
+				totalDecks: 1,
+				archetype: { id: monoRed!.id, name },
+				entries: [{ name: `Lightning Bolt (${mode})` }],
 			});
-		}
-		const screen = await stageScreen(mode, {
-			[mode]: { ...config, archetypeId: monoRed!.id },
-		}, {}, eventId);
-		const filtered = (name: string) => ({
-			totalDecks: 1,
-			archetype: { id: monoRed!.id, name },
-			entries: [
-				{ name: `Lightning Bolt (${mode})` },
-			],
-		});
 
-		expect(breakdownOf(await asOutput(route, screen))).toMatchObject(filtered('Mono Red'));
+			expect(breakdownOf(await asOutput(route, screen))).toMatchObject(filtered('Mono Red'));
 
-		await archetypeWriteModule().updateArchetype({
-			eventId,
-			archetypeId: monoRed!.id,
-			input: { name: 'Red Deck Wins' },
-		});
+			await archetypeWriteModule().updateArchetype({
+				eventId,
+				archetypeId: monoRed!.id,
+				input: { name: 'Red Deck Wins' },
+			});
 
-		expect(breakdownOf(await asOutput(route, screen))).toMatchObject(filtered('Red Deck Wins'));
-	});
+			expect(breakdownOf(await asOutput(route, screen))).toMatchObject(filtered('Red Deck Wins'));
+		},
+	);
 
 	it('reads the Archetype the saved Archetype Spotlight configuration names', async () => {
-		const answer = await asOutput(read.archetypeSpotlight, await showing('archetype-spotlight', { archetypeId: ids.archetype }));
+		const answer = await asOutput(
+			read.archetypeSpotlight,
+			await showing('archetype-spotlight', { archetypeId: ids.archetype }),
+		);
 
 		expect(answer).toMatchObject({
 			archetype: { id: ids.archetype, name: 'Mono Red' },
-			pilots: [
-				{ id: ids.alice, name: 'Alice' },
-			],
+			pilots: [{ id: ids.alice, name: 'Alice' }],
 		});
 	});
 });
 
 describe('feature Match Slots and the Players a Screen shows', () => {
-	it.each(['feature-match', 'feature-match-overlay'] as const)('reads the Slot a %s Screen shows, with the Match, Round and Phase it follows', async (mode) => {
-		const screen = await showing(mode, { featureMatchId: ids.shownSlot });
+	it.each(['feature-match', 'feature-match-overlay'] as const)(
+		'reads the Slot a %s Screen shows, with the Match, Round and Phase it follows',
+		async (mode) => {
+			const screen = await showing(mode, { featureMatchId: ids.shownSlot });
 
-		const answer = await asOutput(read.slot, screen, {
-			params: { slotId: ids.shownSlot },
-		});
+			const answer = await asOutput(read.slot, screen, {
+				params: { slotId: ids.shownSlot },
+			});
 
-		expect(answer).toMatchObject({
-			slot: { id: ids.shownSlot, player1Id: ids.alice, player2Id: ids.bob },
-			match: { id: ids.upcomingMatch },
-			round: { id: ids.roundTwo, name: 'Round 2' },
-			phase: { id: ids.swiss, name: 'Swiss' },
-		});
-	});
+			expect(answer).toMatchObject({
+				slot: { id: ids.shownSlot, player1Id: ids.alice, player2Id: ids.bob },
+				match: { id: ids.upcomingMatch },
+				round: { id: ids.roundTwo, name: 'Round 2' },
+				phase: { id: ids.swiss, name: 'Swiss' },
+			});
+		},
+	);
 
 	it('reads a Slot following no Match with none', async () => {
 		const screen = await showing('feature-match', { featureMatchId: ids.hiddenSlot });
 
-		await expect(asOutput(read.slot, screen, {
-			params: { slotId: ids.hiddenSlot },
-		})).resolves.toMatchObject({
+		await expect(
+			asOutput(read.slot, screen, {
+				params: { slotId: ids.hiddenSlot },
+			}),
+		).resolves.toMatchObject({
 			slot: { id: ids.hiddenSlot },
 			match: null,
 			round: null,
@@ -959,9 +1095,11 @@ describe('feature Match Slots and the Players a Screen shows', () => {
 	it('reads the decks of a Player the shown Slot seats', async () => {
 		const screen = await showing('feature-match', { featureMatchId: ids.shownSlot });
 
-		await expect(asOutput(read.playerDecks, screen, {
-			params: { playerId: ids.bob },
-		})).resolves.toMatchObject({
+		await expect(
+			asOutput(read.playerDecks, screen, {
+				params: { playerId: ids.bob },
+			}),
+		).resolves.toMatchObject({
 			player: { id: ids.bob, name: 'Bob' },
 			decks: { decks: [] },
 		});
@@ -972,9 +1110,11 @@ describe('feature Match Slots and the Players a Screen shows', () => {
 			deckSource: { type: 'player', playerId: ids.alice },
 		});
 
-		await expect(asOutput(read.playerDecks, screen, {
-			params: { playerId: ids.alice },
-		})).resolves.toMatchObject({
+		await expect(
+			asOutput(read.playerDecks, screen, {
+				params: { playerId: ids.alice },
+			}),
+		).resolves.toMatchObject({
 			player: { id: ids.alice, name: 'Alice' },
 		});
 	});
@@ -1007,15 +1147,18 @@ describe('feature Match Slots and the Players a Screen shows', () => {
 		[
 			'a Player the Deck List Screen does not select',
 			read.playerDecks,
-			async () => await showing('deck', {
-				deckSource: { type: 'player', playerId: ids.alice },
-			}),
+			async () =>
+				await showing('deck', {
+					deckSource: { type: 'player', playerId: ids.alice },
+				}),
 			() => ({ playerId: ids.bob }),
 		],
 	])('reaches nothing else: %s', async (_what, route, stage, params) => {
-		expect(await refusal(route, await stage(), {
-			params: params(),
-		})).toEqual(NOT_FOUND);
+		expect(
+			await refusal(route, await stage(), {
+				params: params(),
+			}),
+		).toEqual(NOT_FOUND);
 	});
 });
 
@@ -1034,7 +1177,10 @@ describe('a Deck List Screen showing a Broadcast Deck List', () => {
 
 describe('a mode reading what its saved configuration names', () => {
 	it('reads the history of the Player a Player History Screen names', async () => {
-		const answer = await asOutput(read.playerHistory, await showing('player-history', { playerId: ids.alice }));
+		const answer = await asOutput(
+			read.playerHistory,
+			await showing('player-history', { playerId: ids.alice }),
+		);
 
 		expect(answer.player).toMatchObject({ id: ids.alice, name: 'Alice' });
 		expect(answer.history).toEqual([
@@ -1044,7 +1190,10 @@ describe('a mode reading what its saved configuration names', () => {
 	});
 
 	it('reads the Matches of the Round a Pairings Screen names', async () => {
-		const answer = await asOutput(read.pairings, await showing('pairings', { roundId: ids.roundTwo }));
+		const answer = await asOutput(
+			read.pairings,
+			await showing('pairings', { roundId: ids.roundTwo }),
+		);
 
 		expect(answer.round).toMatchObject({ id: ids.roundTwo, name: 'Round 2' });
 		expect(answer.matches).toEqual([
@@ -1059,7 +1208,9 @@ describe('a mode reading what its saved configuration names', () => {
 	});
 
 	it('reads the Round a Round Clock Screen picks, with its timing', async () => {
-		await expect(asOutput(read.roundClock, await showing('round-clock', { roundId: ids.roundOne }))).resolves.toEqual({
+		await expect(
+			asOutput(read.roundClock, await showing('round-clock', { roundId: ids.roundOne })),
+		).resolves.toEqual({
 			round: {
 				id: ids.roundOne,
 				name: 'Round 1',
@@ -1069,11 +1220,14 @@ describe('a mode reading what its saved configuration names', () => {
 		});
 	});
 
-	it('reads the two Players a Head-to-Head Screen\'s Feature Match Slot seats, with their earlier Matches', async () => {
-		const answer = await asOutput(read.headToHead, await showing('head-to-head', {
-			playerSource: 'featureMatchSlot',
-			featureMatchId: ids.shownSlot,
-		}));
+	it("reads the two Players a Head-to-Head Screen's Feature Match Slot seats, with their earlier Matches", async () => {
+		const answer = await asOutput(
+			read.headToHead,
+			await showing('head-to-head', {
+				playerSource: 'featureMatchSlot',
+				featureMatchId: ids.shownSlot,
+			}),
+		);
 
 		expect(answer.player1).toMatchObject({ id: ids.alice, name: 'Alice' });
 		expect(answer.player2).toMatchObject({ id: ids.bob, name: 'Bob' });
@@ -1088,12 +1242,15 @@ describe('a mode reading what its saved configuration names', () => {
 	});
 
 	// A Talent since deleted leaves the lineup; each Social Profile shows only on a chosen network.
-	it('reads a Talent Screen\'s lineup in its order, with each role and the Social Profiles on the networks it shows', async () => {
-		const answer = await asOutput(read.talent, await showing('talent', {
-			selection: 'lineup',
-			talentIds: [ids.caster, 999_999, ids.host],
-			socialNetworks: ['bluesky', 'twitch'],
-		}));
+	it("reads a Talent Screen's lineup in its order, with each role and the Social Profiles on the networks it shows", async () => {
+		const answer = await asOutput(
+			read.talent,
+			await showing('talent', {
+				selection: 'lineup',
+				talentIds: [ids.caster, 999_999, ids.host],
+				socialNetworks: ['bluesky', 'twitch'],
+			}),
+		);
 
 		expect(answer).toEqual({
 			talents: [
@@ -1130,10 +1287,21 @@ describe('a mode reading what its saved configuration names', () => {
 
 	// Seeds are carried only while the Screen shows them (#759): the saved configuration reaches the bracket.
 	it('reads the bracket of the Phase a Top Cut Bracket Screen names, as its configuration shows it', async () => {
-		const answer = await asOutput(read.topCut, await showing('top-cut', { phaseId: ids.topCut, showSeeds: true }));
+		const answer = await asOutput(
+			read.topCut,
+			await showing('top-cut', { phaseId: ids.topCut, showSeeds: true }),
+		);
 
 		expect(answer.phase).toMatchObject({ id: ids.topCut, name: 'Top 4' });
-		expect(answer.bracket.columns.map((column: { roundId: number | null; name: string; positions: unknown[] }) => [column.roundId, column.name, column.positions.length])).toEqual([
+		expect(
+			answer.bracket.columns.map(
+				(column: { roundId: number | null; name: string; positions: unknown[] }) => [
+					column.roundId,
+					column.name,
+					column.positions.length,
+				],
+			),
+		).toEqual([
 			[ids.semifinals, 'Semifinals', 2],
 			[null, 'Final', 1],
 		]);
@@ -1169,35 +1337,20 @@ describe('a mode reading what its saved configuration names', () => {
 			'head-to-head',
 			{ player1: null, player2: null, earlierMatches: [] },
 		],
-		[
-			'a Talent Screen naming no Talent',
-			read.talent,
-			'talent',
-			{ talents: [] },
-		],
+		['a Talent Screen naming no Talent', read.talent, 'talent', { talents: [] }],
 	])('answers empty, rather than refusing, for %s', async (_what, route, mode, empty) => {
 		await expect(asOutput(route, await showing(mode))).resolves.toEqual(empty);
 	});
 
 	it.each<[string, Handler, ScreenMode, Record<string, unknown>]>([
-		[
-			'a Player History Screen naming no Player',
-			read.playerHistory,
-			'player-history',
-			{},
-		],
+		['a Player History Screen naming no Player', read.playerHistory, 'player-history', {}],
 		[
 			'a Player History Screen naming a Player the Event does not hold',
 			read.playerHistory,
 			'player-history',
 			{ playerId: 999_999 },
 		],
-		[
-			'a Pairings Screen naming no Round',
-			read.pairings,
-			'pairings',
-			{},
-		],
+		['a Pairings Screen naming no Round', read.pairings, 'pairings', {}],
 		[
 			'a Pairings Screen naming a Round the Event does not hold',
 			read.pairings,

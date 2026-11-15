@@ -195,8 +195,8 @@ export class AcceptanceFailure extends Error {
 
 const MAX_DETAIL_LENGTH = 120;
 const URL_PATTERN = /[a-z][a-z0-9+.-]*:\/\//i;
-const FILENAME_PATTERN
-	= /\.(?:png|jpe?g|webp|gif|mp4|webm|mov|woff2?|ttf|otf|eot|zip|sklayout|skgraphic|json|html?|txt)\b/i;
+const FILENAME_PATTERN =
+	/\.(?:png|jpe?g|webp|gif|mp4|webm|mov|woff2?|ttf|otf|eot|zip|sklayout|skgraphic|json|html?|txt)\b/i;
 /**
  * Object keys, capability tokens, digests, and representation tags are all
  * long unbroken runs of token characters. Domain vocabulary is not: real
@@ -219,9 +219,10 @@ const TOKEN_RUN_PATTERN = /\w{16,}/g;
 const CONFIGURATION_NAME_PATTERN = /^[A-Z0-9]+(?:_[A-Z0-9]+)+$/;
 
 function carriesOpaqueToken(value) {
-	return (value.match(TOKEN_RUN_PATTERN) ?? []).some(run =>
-		!CONFIGURATION_NAME_PATTERN.test(run)
-		|| run.split('_').some(word => word.length >= 16));
+	return (value.match(TOKEN_RUN_PATTERN) ?? []).some(
+		(run) =>
+			!CONFIGURATION_NAME_PATTERN.test(run) || run.split('_').some((word) => word.length >= 16),
+	);
 }
 
 /**
@@ -285,43 +286,37 @@ const ROUTE_WORDS = new Set([
  * the half that must not travel.
  */
 export function deliveryRouteLabel(value) {
-	const pathname = URL_PATTERN.test(value)
-		? new URL(value).pathname
-		: value;
+	const pathname = URL_PATTERN.test(value) ? new URL(value).pathname : value;
 	const segments = pathname.split('/').filter(Boolean);
 	const labelled = segments.map((segment, index) => {
-		if (ROUTE_WORDS.has(segment))
-			return segment;
+		if (ROUTE_WORDS.has(segment)) return segment;
 		// Name the identity after whatever collection it belongs to, so the label
 		// still says which route ran.
-		return {
-			'screens': ':screenId',
-			'assets': ':assetId',
-			'revisions': ':revisionId',
-			'ingestion-operations': ':operationId',
-			'events': ':eventId',
-			'event': ':eventId',
-			'graphics-assets': ':assetId',
-			'installed-templates': ':templateId',
-			'screen': ':screenSlug',
-		}[segments[index - 1]] ?? ':id';
+		return (
+			{
+				screens: ':screenId',
+				assets: ':assetId',
+				revisions: ':revisionId',
+				'ingestion-operations': ':operationId',
+				events: ':eventId',
+				event: ':eventId',
+				'graphics-assets': ':assetId',
+				'installed-templates': ':templateId',
+				screen: ':screenSlug',
+			}[segments[index - 1]] ?? ':id'
+		);
 	});
 	return `/${labelled.join('/')}`;
 }
 
 function leakCode(value, secrets) {
 	for (const secret of secrets) {
-		if (secret && value.includes(secret))
-			return 'evidence-secret-leak';
+		if (secret && value.includes(secret)) return 'evidence-secret-leak';
 	}
-	if (value.length > MAX_DETAIL_LENGTH)
-		return 'evidence-detail-too-long';
-	if (URL_PATTERN.test(value))
-		return 'evidence-url-leak';
-	if (FILENAME_PATTERN.test(value))
-		return 'evidence-filename-leak';
-	if (carriesOpaqueToken(value))
-		return 'evidence-opaque-token-leak';
+	if (value.length > MAX_DETAIL_LENGTH) return 'evidence-detail-too-long';
+	if (URL_PATTERN.test(value)) return 'evidence-url-leak';
+	if (FILENAME_PATTERN.test(value)) return 'evidence-filename-leak';
+	if (carriesOpaqueToken(value)) return 'evidence-opaque-token-leak';
 	return undefined;
 }
 
@@ -343,15 +338,15 @@ const FILENAME_RUN_PATTERN = new RegExp(`\\S*${FILENAME_PATTERN.source}`, 'gi');
  * @param {unknown} text
  */
 export function pageTextEvidence(text) {
-	const firstLine = String(text ?? '').trim().split('\n', 1)[0].trim();
-	if (!firstLine)
-		return '<none>';
+	const firstLine = String(text ?? '')
+		.trim()
+		.split('\n', 1)[0]
+		.trim();
+	if (!firstLine) return '<none>';
 	const reduced = firstLine
 		.replace(URL_RUN_PATTERN, '<url>')
 		.replace(FILENAME_RUN_PATTERN, '<file>')
-		.replace(TOKEN_RUN_PATTERN, run => carriesOpaqueToken(run)
-			? '<token>'
-			: run)
+		.replace(TOKEN_RUN_PATTERN, (run) => (carriesOpaqueToken(run) ? '<token>' : run))
 		.replace(/\s+/g, ' ');
 	return reduced.length <= PAGE_TEXT_LENGTH
 		? reduced
@@ -374,13 +369,12 @@ export function pageDiagnosticsEvidence(diagnostics) {
 	const logged = (diagnostics?.console ?? []).slice(-PRINTED_CONSOLE_MESSAGES);
 	return {
 		uncaught: pageTextEvidence(uncaught.at(-1)),
-		...Object.fromEntries((logged.length > 0
-			? logged
-			: [undefined])
-			.map((text, index) => [
+		...Object.fromEntries(
+			(logged.length > 0 ? logged : [undefined]).map((text, index) => [
 				`console${index + 1}`,
 				pageTextEvidence(text),
-			])),
+			]),
+		),
 	};
 }
 
@@ -395,8 +389,7 @@ export function createAcceptanceEvidence({ harness, secrets = [] }) {
 		for (const [field, raw] of Object.entries(detail ?? {})) {
 			const value = String(raw);
 			const leak = leakCode(value, registered);
-			if (leak)
-				throw new Error(`${harness} ${leak} field=${field}`);
+			if (leak) throw new Error(`${harness} ${leak} field=${field}`);
 			parts.push(`${field}=${value}`);
 		}
 		return parts.join(' ');
@@ -405,15 +398,15 @@ export function createAcceptanceEvidence({ harness, secrets = [] }) {
 	return {
 		/** Values added here are refused everywhere the harness prints. */
 		addSecret(value) {
-			if (value)
-				registered.add(String(value));
+			if (value) registered.add(String(value));
 		},
 		report(failures) {
-			return failures.map(({ code, detail }) => {
-				if (!FAILURE_CODES.has(code))
-					throw new Error(`${harness} evidence-unknown-code`);
-				return line(code, detail);
-			}).join('\n');
+			return failures
+				.map(({ code, detail }) => {
+					if (!FAILURE_CODES.has(code)) throw new Error(`${harness} evidence-unknown-code`);
+					return line(code, detail);
+				})
+				.join('\n');
 		},
 		passed(detail) {
 			return line('acceptance passed', detail);

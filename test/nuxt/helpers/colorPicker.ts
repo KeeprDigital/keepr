@@ -13,7 +13,12 @@ interface Scope {
  * makes one edit, and closes it again, which is when a `commit="close"` picker
  * emits. Mount with `nuxtUiStubs`, whose UPopover toggles on a trigger click.
  */
-export async function editColorPicker(scope: Scope, trigger: string, part: ColorPickerPart, value: string | number) {
+export async function editColorPicker(
+	scope: Scope,
+	trigger: string,
+	part: ColorPickerPart,
+	value: string | number,
+) {
 	await scope.get(trigger).trigger('click');
 	await scope.get(`[data-color-part="${part}"]`).setValue(value);
 	await scope.get(trigger).trigger('click');

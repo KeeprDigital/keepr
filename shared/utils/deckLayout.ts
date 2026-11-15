@@ -1,5 +1,13 @@
 import type { GapTerms } from './cardGrid';
-import { CARD_ASPECT, GAP_AS_WIDE_AS_ITS_CARD, gapAt, gapTerms, layoutScore, widestAcross, widestDown } from './cardGrid';
+import {
+	CARD_ASPECT,
+	GAP_AS_WIDE_AS_ITS_CARD,
+	gapAt,
+	gapTerms,
+	layoutScore,
+	widestAcross,
+	widestDown,
+} from './cardGrid';
 
 /** A Deck board's Auto gap, as a share of the solved card width: 8 px beside a 144 px card. */
 export const DECK_AUTO_GAP_RATIO = 8 / 144;
@@ -69,16 +77,16 @@ export interface DeckLayout {
 type Board = DeckLayoutGridBoard | DeckLayoutStackBoard;
 
 function columnChoices(board: Board | null): (number | null)[] {
-	if (!board || board.view === 'stack')
-		return [null];
+	if (!board || board.view === 'stack') return [null];
 	if (board.columns !== null) {
-		return [
-			Math.max(1, Math.floor(board.columns)),
-		];
+		return [Math.max(1, Math.floor(board.columns))];
 	}
-	return Array.from({
-		length: Math.max(1, board.count),
-	}, (_, index) => index + 1);
+	return Array.from(
+		{
+			length: Math.max(1, board.count),
+		},
+		(_, index) => index + 1,
+	);
 }
 
 function rowsOf(board: DeckLayoutGridBoard, columns: number): number {
@@ -88,8 +96,7 @@ function rowsOf(board: DeckLayoutGridBoard, columns: number): number {
 /** The widest card a stack fits down `height`, its reveal shrinking to its name bar first. */
 function stackWidthBound(board: DeckLayoutStackBoard, height: number): number {
 	const room = height - board.labelHeight;
-	if (board.count <= 1)
-		return room * CARD_ASPECT;
+	if (board.count <= 1) return room * CARD_ASPECT;
 	const atShare = (room / (1 + (board.count - 1) * MIN_STACK_REVEAL_SHARE)) * CARD_ASPECT;
 	// While the name bar is less than the reveal set, the set reveal binds instead.
 	return MIN_STACK_REVEAL_SHARE * (atShare / CARD_ASPECT) <= board.reveal
@@ -106,29 +113,30 @@ interface BoardGaps {
 const NO_GAP: GapTerms = { fixed: 0, ratio: 0 };
 
 function boardGap(board: Board | null): GapTerms {
-	return board?.view === 'grid'
-		? gapTerms(board.gap, DECK_AUTO_GAP_RATIO)
-		: NO_GAP;
+	return board?.view === 'grid' ? gapTerms(board.gap, DECK_AUTO_GAP_RATIO) : NO_GAP;
 }
 
 /** The least max card size any board sets, the stacked strip's with them. */
 function maxCardWidthOf(input: DeckLayoutInput): number {
-	return Math.min(...[input.mainboard, input.sideboard].map(board => board?.maxCardWidth ?? Infinity));
+	return Math.min(
+		...[input.mainboard, input.sideboard].map((board) => board?.maxCardWidth ?? Infinity),
+	);
 }
 
 /** The widest card at which every board, laid out with these columns and gaps, fits the space. */
-function widestCard(input: DeckLayoutInput, mainColumns: number | null, sideColumns: number | null, gaps: BoardGaps): number {
+function widestCard(
+	input: DeckLayoutInput,
+	mainColumns: number | null,
+	sideColumns: number | null,
+	gaps: BoardGaps,
+): number {
 	const boards: { board: Board; columns: number | null; gap: GapTerms }[] = [];
 	if (input.mainboard)
 		boards.push({ board: input.mainboard, columns: mainColumns, gap: gaps.mainboard });
 	if (input.sideboard)
 		boards.push({ board: input.sideboard, columns: sideColumns, gap: gaps.sideboard });
-	const between = boards.length > 1
-		? input.boardGap
-		: 0;
-	const bounds: number[] = [
-		maxCardWidthOf(input),
-	];
+	const between = boards.length > 1 ? input.boardGap : 0;
+	const bounds: number[] = [maxCardWidthOf(input)];
 
 	if (input.placement === 'beside' || boards.length === 1) {
 		// Across: every board's columns side by side; a stack is one card wide.
@@ -136,9 +144,7 @@ function widestCard(input: DeckLayoutInput, mainColumns: number | null, sideColu
 		let fixedGaps = between;
 		let gapRatios = 0;
 		for (const { board, columns, gap } of boards) {
-			const span = board.view === 'grid'
-				? columns!
-				: 1;
+			const span = board.view === 'grid' ? columns! : 1;
 			spans += span;
 			fixedGaps += (span - 1) * gap.fixed;
 			gapRatios += (span - 1) * gap.ratio;
@@ -152,15 +158,13 @@ function widestCard(input: DeckLayoutInput, mainColumns: number | null, sideColu
 			}
 			bounds.push(widestDown(input.height - board.labelHeight, rowsOf(board, columns!), gap, 0));
 		}
-	}
-	else {
+	} else {
 		// Across: each board alone. Down: the boards one under the other.
 		let rowsTotal = 0;
 		let fixedHeight = between;
 		let gapRatios = 0;
 		for (const { board, columns, gap } of boards) {
-			if (board.view === 'stack')
-				return 0;
+			if (board.view === 'stack') return 0;
 			bounds.push(widestAcross(input.width, columns!, gap));
 			const rows = rowsOf(board, columns!);
 			rowsTotal += rows;
@@ -176,7 +180,11 @@ function widestCard(input: DeckLayoutInput, mainColumns: number | null, sideColu
  * The widest card that fits, and the gaps it fits with: a board's set gap
  * gives way to its card's width once it would be wider than the card.
  */
-function sized(input: DeckLayoutInput, mainColumns: number | null, sideColumns: number | null): { cardWidth: number; gaps: BoardGaps } {
+function sized(
+	input: DeckLayoutInput,
+	mainColumns: number | null,
+	sideColumns: number | null,
+): { cardWidth: number; gaps: BoardGaps } {
 	const gaps: BoardGaps = {
 		mainboard: boardGap(input.mainboard),
 		sideboard: boardGap(input.sideboard),
@@ -203,28 +211,32 @@ function slotFillOf(input: DeckLayoutInput, layout: DeckLayout): number {
 		cards += input.sideboard.count;
 		places += layout.sideboard.columns * layout.sideboard.rows;
 	}
-	return places > 0
-		? cards / places
-		: 1;
+	return places > 0 ? cards / places : 1;
 }
 
 /** The share of the space's width and of its height the boards span together. */
-function sharesOf(input: DeckLayoutInput, layout: DeckLayout): { widthShare: number; heightShare: number } {
-	const boards = [layout.mainboard, layout.sideboard].filter(board => board !== null);
-	const between = boards.length > 1
-		? input.boardGap
-		: 0;
+function sharesOf(
+	input: DeckLayoutInput,
+	layout: DeckLayout,
+): { widthShare: number; heightShare: number } {
+	const boards = [layout.mainboard, layout.sideboard].filter((board) => board !== null);
+	const between = boards.length > 1 ? input.boardGap : 0;
 	const beside = input.placement === 'beside' || boards.length === 1;
 	const width = beside
 		? boards.reduce((sum, board) => sum + board.width, 0) + between
-		: Math.max(...boards.map(board => board.width));
+		: Math.max(...boards.map((board) => board.width));
 	const height = beside
-		? Math.max(...boards.map(board => board.height))
+		? Math.max(...boards.map((board) => board.height))
 		: boards.reduce((sum, board) => sum + board.height, 0) + between;
 	return { widthShare: width / input.width, heightShare: height / input.height };
 }
 
-function solvedGrid(board: DeckLayoutGridBoard, columns: number, cardWidth: number, terms: GapTerms): SolvedGridBoard {
+function solvedGrid(
+	board: DeckLayoutGridBoard,
+	columns: number,
+	cardWidth: number,
+	terms: GapTerms,
+): SolvedGridBoard {
 	const rows = rowsOf(board, columns);
 	const gap = gapAt(terms, cardWidth);
 	return {
@@ -237,12 +249,18 @@ function solvedGrid(board: DeckLayoutGridBoard, columns: number, cardWidth: numb
 	};
 }
 
-function solvedStack(board: DeckLayoutStackBoard, cardWidth: number, height: number): SolvedStackBoard {
+function solvedStack(
+	board: DeckLayoutStackBoard,
+	cardWidth: number,
+	height: number,
+): SolvedStackBoard {
 	const cardHeight = cardWidth / CARD_ASPECT;
-	const fits = board.count > 1
-		? (height - board.labelHeight - cardHeight) / (board.count - 1)
-		: board.reveal;
-	const reveal = Math.max(Math.min(MIN_STACK_REVEAL_SHARE * cardHeight, board.reveal), Math.min(board.reveal, fits));
+	const fits =
+		board.count > 1 ? (height - board.labelHeight - cardHeight) / (board.count - 1) : board.reveal;
+	const reveal = Math.max(
+		Math.min(MIN_STACK_REVEAL_SHARE * cardHeight, board.reveal),
+		Math.min(board.reveal, fits),
+	);
 	return {
 		view: 'stack',
 		reveal,
@@ -264,27 +282,23 @@ function solvedStack(board: DeckLayoutStackBoard, cardWidth: number, height: num
  * the mainboard's width, so the deck reads as one block.
  */
 export function solveDeckLayout(input: DeckLayoutInput): DeckLayout | null {
-	if ((!input.mainboard && !input.sideboard) || input.width <= 0 || input.height <= 0)
-		return null;
+	if ((!input.mainboard && !input.sideboard) || input.width <= 0 || input.height <= 0) return null;
 
-	const sideboardWrapsUnderMainboard = input.placement === 'below'
-		&& !!input.mainboard
-		&& input.sideboard?.view === 'grid'
-		&& input.sideboard.columns === null;
+	const sideboardWrapsUnderMainboard =
+		input.placement === 'below' &&
+		!!input.mainboard &&
+		input.sideboard?.view === 'grid' &&
+		input.sideboard.columns === null;
 
 	const layouts: DeckLayout[] = [];
 	for (const main of columnChoices(input.mainboard)) {
 		const sides = sideboardWrapsUnderMainboard
-			? [
-					Math.min(main!, Math.max(1, input.sideboard!.count)),
-				]
+			? [Math.min(main!, Math.max(1, input.sideboard!.count))]
 			: columnChoices(input.sideboard);
-		for (const side of sides)
-			layouts.push(laidOut(input, main, side));
+		for (const side of sides) layouts.push(laidOut(input, main, side));
 	}
-	const largestCardWidth = Math.max(...layouts.map(layout => layout.cardWidth));
-	if (largestCardWidth <= 0)
-		return null;
+	const largestCardWidth = Math.max(...layouts.map((layout) => layout.cardWidth));
+	if (largestCardWidth <= 0) return null;
 
 	let best = layouts[0]!;
 	let bestScore = -Infinity;
@@ -352,15 +366,21 @@ interface ScoredDeckGroups extends DeckGroups {
 }
 
 function groupsAt(input: DeckGroupsInput, columns: number): ScoredDeckGroups {
-	const rows = input.counts.map(count => Math.max(1, Math.ceil(count / columns)));
+	const rows = input.counts.map((count) => Math.max(1, Math.ceil(count / columns)));
 	const rowsTotal = rows.reduce((sum, groupRows) => sum + groupRows, 0);
 	const gapsDown = rowsTotal - rows.length;
-	const fixedHeight = rows.length * input.labelHeight + Math.max(0, rows.length - 1) * input.groupGap;
-	const widest = (terms: GapTerms) => Math.max(0, Math.min(
-		widestAcross(input.width, columns, terms),
-		(input.height - fixedHeight - gapsDown * terms.fixed) / (rowsTotal / CARD_ASPECT + gapsDown * terms.ratio),
-		input.maxCardWidth ?? Infinity,
-	));
+	const fixedHeight =
+		rows.length * input.labelHeight + Math.max(0, rows.length - 1) * input.groupGap;
+	const widest = (terms: GapTerms) =>
+		Math.max(
+			0,
+			Math.min(
+				widestAcross(input.width, columns, terms),
+				(input.height - fixedHeight - gapsDown * terms.fixed) /
+					(rowsTotal / CARD_ASPECT + gapsDown * terms.ratio),
+				input.maxCardWidth ?? Infinity,
+			),
+		);
 	let terms = gapTerms(input.gap, DECK_AUTO_GAP_RATIO);
 	let cardWidth = widest(terms);
 	if (cardWidth < terms.fixed) {
@@ -375,10 +395,9 @@ function groupsAt(input: DeckGroupsInput, columns: number): ScoredDeckGroups {
 		cardWidth,
 		gap,
 		widthShare: (columns * cardWidth + (columns - 1) * gap) / input.width,
-		heightShare: (fixedHeight + rowsTotal * (cardWidth / CARD_ASPECT) + gapsDown * gap) / input.height,
-		slotFill: cards > 0
-			? cards / (columns * rowsTotal)
-			: 1,
+		heightShare:
+			(fixedHeight + rowsTotal * (cardWidth / CARD_ASPECT) + gapsDown * gap) / input.height,
+		slotFill: cards > 0 ? cards / (columns * rowsTotal) : 1,
 	};
 }
 
@@ -391,15 +410,17 @@ function groupsAt(input: DeckGroupsInput, columns: number): ScoredDeckGroups {
  * wider than a set max card size, and a gap is sized as a Deck board's is.
  */
 export function solveDeckGroups(input: DeckGroupsInput): DeckGroups {
-	const choices = typeof input.columns === 'number'
-		? [
-				Math.max(1, Math.floor(input.columns)),
-			]
-		: Array.from({
-				length: Math.max(1, ...input.counts),
-			}, (_, index) => index + 1);
-	const layouts = choices.map(columns => groupsAt(input, columns));
-	const largestCardWidth = Math.max(...layouts.map(layout => layout.cardWidth));
+	const choices =
+		typeof input.columns === 'number'
+			? [Math.max(1, Math.floor(input.columns))]
+			: Array.from(
+					{
+						length: Math.max(1, ...input.counts),
+					},
+					(_, index) => index + 1,
+				);
+	const layouts = choices.map((columns) => groupsAt(input, columns));
+	const largestCardWidth = Math.max(...layouts.map((layout) => layout.cardWidth));
 	let best = layouts[0]!;
 	let bestScore = -Infinity;
 	for (const layout of layouts) {

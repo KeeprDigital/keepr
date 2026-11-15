@@ -1,4 +1,7 @@
-import type { GraphicAnimationRecipe, GraphicOnScreenAnimationRecipe } from '~~/shared/types/graphics';
+import type {
+	GraphicAnimationRecipe,
+	GraphicOnScreenAnimationRecipe,
+} from '~~/shared/types/graphics';
 import { describe, expect, it } from 'vitest';
 import {
 	graphicAnimationExcursion,
@@ -64,72 +67,88 @@ describe('graphicAnimationLinearProgress', () => {
 
 describe('graphicAnimationExcursion', () => {
 	it('enters from the excursion and settles at the Graphic Resting State', () => {
-		expect(graphicAnimationExcursion({
-			recipe: LINEAR,
-			phase: 'enter',
-			elapsed: 0,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(1);
-		expect(graphicAnimationExcursion({
-			recipe: LINEAR,
-			phase: 'enter',
-			elapsed: 200,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(0.5);
-		expect(graphicAnimationExcursion({
-			recipe: LINEAR,
-			phase: 'enter',
-			elapsed: 400,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(0);
+		expect(
+			graphicAnimationExcursion({
+				recipe: LINEAR,
+				phase: 'enter',
+				elapsed: 0,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(1);
+		expect(
+			graphicAnimationExcursion({
+				recipe: LINEAR,
+				phase: 'enter',
+				elapsed: 200,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(0.5);
+		expect(
+			graphicAnimationExcursion({
+				recipe: LINEAR,
+				phase: 'enter',
+				elapsed: 400,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(0);
 	});
 
 	it('exits away from the Graphic Resting State', () => {
-		expect(graphicAnimationExcursion({
-			recipe: LINEAR,
-			phase: 'exit',
-			elapsed: 0,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(0);
-		expect(graphicAnimationExcursion({
-			recipe: LINEAR,
-			phase: 'exit',
-			elapsed: 400,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(1);
+		expect(
+			graphicAnimationExcursion({
+				recipe: LINEAR,
+				phase: 'exit',
+				elapsed: 0,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(0);
+		expect(
+			graphicAnimationExcursion({
+				recipe: LINEAR,
+				phase: 'exit',
+				elapsed: 400,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(1);
 	});
 
 	it('projects an update like an incoming rendering, from the excursion to rest', () => {
-		expect(graphicAnimationExcursion({
-			recipe: LINEAR,
-			phase: 'update',
-			elapsed: 0,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(1);
-		expect(graphicAnimationExcursion({
-			recipe: LINEAR,
-			phase: 'update',
-			elapsed: 400,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(0);
+		expect(
+			graphicAnimationExcursion({
+				recipe: LINEAR,
+				phase: 'update',
+				elapsed: 0,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(1);
+		expect(
+			graphicAnimationExcursion({
+				recipe: LINEAR,
+				phase: 'update',
+				elapsed: 400,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(0);
 	});
 
 	it('settles anything with no recipe immediately, in every phase', () => {
 		for (const phase of ['enter', 'on-screen', 'update', 'exit'] as const) {
-			expect(graphicAnimationExcursion({
-				recipe: undefined,
-				phase,
-				elapsed: 0,
-				rect: RECT,
-				parent: CANVAS,
-			})).toBe(0);
+			expect(
+				graphicAnimationExcursion({
+					recipe: undefined,
+					phase,
+					elapsed: 0,
+					rect: RECT,
+					parent: CANVAS,
+				}),
+			).toBe(0);
 		}
 	});
 });
@@ -246,37 +265,45 @@ describe('on-screen cycling', () => {
 
 	it('cycles from the Graphic Resting State to the excursion and back', () => {
 		expect(project(cycle, 'on-screen', 0).opacity).toBeUndefined();
-		expect(graphicAnimationExcursion({
-			recipe: cycle,
-			phase: 'on-screen',
-			elapsed: 0,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(0);
-		expect(graphicAnimationExcursion({
-			recipe: cycle,
-			phase: 'on-screen',
-			elapsed: 500,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(1);
-		expect(graphicAnimationExcursion({
-			recipe: cycle,
-			phase: 'on-screen',
-			elapsed: 999,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBeCloseTo(0.002, 3);
+		expect(
+			graphicAnimationExcursion({
+				recipe: cycle,
+				phase: 'on-screen',
+				elapsed: 0,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(0);
+		expect(
+			graphicAnimationExcursion({
+				recipe: cycle,
+				phase: 'on-screen',
+				elapsed: 500,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(1);
+		expect(
+			graphicAnimationExcursion({
+				recipe: cycle,
+				phase: 'on-screen',
+				elapsed: 999,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBeCloseTo(0.002, 3);
 	});
 
 	it('rests through the pause between cycles', () => {
-		expect(graphicAnimationExcursion({
-			recipe: cycle,
-			phase: 'on-screen',
-			elapsed: 1200,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(0);
+		expect(
+			graphicAnimationExcursion({
+				recipe: cycle,
+				phase: 'on-screen',
+				elapsed: 1200,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(0);
 	});
 
 	it('never accumulates motion across cycles', () => {
@@ -290,7 +317,7 @@ describe('on-screen cycling', () => {
 		const fourth = graphicAnimationExcursion({
 			recipe: cycle,
 			phase: 'on-screen',
-			elapsed: (3 * 1500) + 500,
+			elapsed: 3 * 1500 + 500,
 			rect: RECT,
 			parent: CANVAS,
 		});
@@ -301,37 +328,45 @@ describe('on-screen cycling', () => {
 	it('stops at the Graphic Resting State once a finite repetition is exhausted', () => {
 		const twice = { ...cycle, repeat: 2 };
 
-		expect(graphicAnimationExcursion({
-			recipe: twice,
-			phase: 'on-screen',
-			elapsed: 1500 + 500,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(1);
-		expect(graphicAnimationExcursion({
-			recipe: twice,
-			phase: 'on-screen',
-			elapsed: 3000 + 500,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(0);
-		expect(graphicAnimationExcursion({
-			recipe: twice,
-			phase: 'on-screen',
-			elapsed: 900_000,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(0);
+		expect(
+			graphicAnimationExcursion({
+				recipe: twice,
+				phase: 'on-screen',
+				elapsed: 1500 + 500,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(1);
+		expect(
+			graphicAnimationExcursion({
+				recipe: twice,
+				phase: 'on-screen',
+				elapsed: 3000 + 500,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(0);
+		expect(
+			graphicAnimationExcursion({
+				recipe: twice,
+				phase: 'on-screen',
+				elapsed: 900_000,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(0);
 	});
 
 	it('keeps an indefinite recipe cycling for as long as it is asked', () => {
-		expect(graphicAnimationExcursion({
-			recipe: cycle,
-			phase: 'on-screen',
-			elapsed: (600 * 1500) + 500,
-			rect: RECT,
-			parent: CANVAS,
-		})).toBe(1);
+		expect(
+			graphicAnimationExcursion({
+				recipe: cycle,
+				phase: 'on-screen',
+				elapsed: 600 * 1500 + 500,
+				rect: RECT,
+				parent: CANVAS,
+			}),
+		).toBe(1);
 	});
 });
 
@@ -494,19 +529,36 @@ describe('graphicClearParentDistance', () => {
 
 describe('graphicSlideDistanceReference', () => {
 	it('measures a horizontal slide against the parent width', () => {
-		expect(graphicSlideDistanceReference(CANVAS, 'east')).toEqual({ dimension: 'width', span: 1920 });
-		expect(graphicSlideDistanceReference(CANVAS, 'west')).toEqual({ dimension: 'width', span: 1920 });
+		expect(graphicSlideDistanceReference(CANVAS, 'east')).toEqual({
+			dimension: 'width',
+			span: 1920,
+		});
+		expect(graphicSlideDistanceReference(CANVAS, 'west')).toEqual({
+			dimension: 'width',
+			span: 1920,
+		});
 	});
 
 	it('measures a vertical slide against the parent height', () => {
-		expect(graphicSlideDistanceReference(CANVAS, 'north')).toEqual({ dimension: 'height', span: 1080 });
-		expect(graphicSlideDistanceReference(CANVAS, 'south')).toEqual({ dimension: 'height', span: 1080 });
+		expect(graphicSlideDistanceReference(CANVAS, 'north')).toEqual({
+			dimension: 'height',
+			span: 1080,
+		});
+		expect(graphicSlideDistanceReference(CANVAS, 'south')).toEqual({
+			dimension: 'height',
+			span: 1080,
+		});
 	});
 
-	it('measures a diagonal slide against the parent\'s shorter side', () => {
-		expect(graphicSlideDistanceReference(CANVAS, 'north-east')).toEqual({ dimension: 'shorter-side', span: 1080 });
-		expect(graphicSlideDistanceReference({ width: 300, height: 800 }, 'south-west'))
-			.toEqual({ dimension: 'shorter-side', span: 300 });
+	it("measures a diagonal slide against the parent's shorter side", () => {
+		expect(graphicSlideDistanceReference(CANVAS, 'north-east')).toEqual({
+			dimension: 'shorter-side',
+			span: 1080,
+		});
+		expect(graphicSlideDistanceReference({ width: 300, height: 800 }, 'south-west')).toEqual({
+			dimension: 'shorter-side',
+			span: 300,
+		});
 	});
 });
 
@@ -595,8 +647,10 @@ describe('on-screen easing', () => {
 	it('applies the same easing every author can choose, not just some', () => {
 		// The bug this guards was invisible because every on-screen fixture used
 		// `linear`: the easing was read, validated and stored, and then discarded.
-		const eased = GRAPHIC_ANIMATION_EASING_VALUES.map(easing => excursion({ ...easeIn, easing }, 250));
+		const eased = GRAPHIC_ANIMATION_EASING_VALUES.map((easing) =>
+			excursion({ ...easeIn, easing }, 250),
+		);
 
-		expect(new Set(eased.map(value => Math.round(value * 1000))).size).toBeGreaterThan(1);
+		expect(new Set(eased.map((value) => Math.round(value * 1000))).size).toBeGreaterThan(1);
 	});
 });

@@ -132,17 +132,14 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 	 * one place an author reads them.
 	 */
 	async function attempt(templateId: string, work: () => Promise<void>): Promise<void> {
-		if (!authorises())
-			return;
+		if (!authorises()) return;
 		busyTemplateId.value = templateId;
 		try {
 			await work();
 			error.value = null;
-		}
-		catch (caught) {
+		} catch (caught) {
 			error.value = failureMessage(caught);
-		}
-		finally {
+		} finally {
 			busyTemplateId.value = null;
 		}
 	}
@@ -158,19 +155,16 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 		template: GraphicsTemplateSummary,
 		patch: { name?: string; description?: string | null },
 	): Promise<void> {
-		if (!authorises())
-			return;
+		if (!authorises()) return;
 		busyTemplateId.value = template.id;
 		try {
 			await repository.update(template.id, { ...patch, revision: template.revision });
 			error.value = null;
 			await refresh();
-		}
-		catch (caught) {
+		} catch (caught) {
 			error.value = failureMessage(caught);
 			await refresh(true);
-		}
-		finally {
+		} finally {
 			busyTemplateId.value = null;
 		}
 	}
@@ -180,11 +174,8 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 	 * the second one does it.
 	 */
 	function askToRemove(templateId: string) {
-		if (!authorises())
-			return;
-		pendingDeleteId.value = pendingDeleteId.value === templateId
-			? null
-			: templateId;
+		if (!authorises()) return;
+		pendingDeleteId.value = pendingDeleteId.value === templateId ? null : templateId;
 	}
 
 	function cancelRemove() {
@@ -192,8 +183,7 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 	}
 
 	async function remove(templateId: string): Promise<void> {
-		if (!authorises())
-			return;
+		if (!authorises()) return;
 		busyTemplateId.value = templateId;
 		try {
 			await repository.remove(templateId);
@@ -202,11 +192,9 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 			// Last, so a library that then fails to re-read says so rather than being
 			// overwritten by this write's own success.
 			await refresh();
-		}
-		catch (caught) {
+		} catch (caught) {
 			error.value = failureMessage(caught);
-		}
-		finally {
+		} finally {
 			busyTemplateId.value = null;
 		}
 	}
@@ -219,11 +207,11 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 	const pendingImport = ref<GraphicsIngestionOperation | null>(null);
 
 	const importIssues = computed(() => pendingImport.value?.templatePackagePreflight?.issues ?? []);
-	const importRejected = computed(() =>
-		pendingImport.value?.templatePackagePreflight?.outcome === 'rejected',
+	const importRejected = computed(
+		() => pendingImport.value?.templatePackagePreflight?.outcome === 'rejected',
 	);
-	const importAwaitingConfirmation = computed(() =>
-		pendingImport.value?.stage === 'awaiting-confirmation',
+	const importAwaitingConfirmation = computed(
+		() => pendingImport.value?.stage === 'awaiting-confirmation',
 	);
 
 	function dismissImport() {
@@ -233,15 +221,12 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 	/** Finish an operation that has nothing left to ask, and show what it produced. */
 	async function installReceivedPackage(operationId: string) {
 		const installed = await repository.installPackage(operationId);
-		pendingImport.value = installed.stage === 'completed'
-			? null
-			: installed;
+		pendingImport.value = installed.stage === 'completed' ? null : installed;
 		await refresh();
 	}
 
 	async function importPackage(file: File): Promise<void> {
-		if (!authorises())
-			return;
+		if (!authorises()) return;
 		importing.value = true;
 		pendingImport.value = null;
 		try {
@@ -253,11 +238,9 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 			}
 			// Rejected, or paused for the one confirmation it is entitled to ask for.
 			pendingImport.value = received;
-		}
-		catch (caught) {
+		} catch (caught) {
 			error.value = failureMessage(caught);
-		}
-		finally {
+		} finally {
 			importing.value = false;
 		}
 	}
@@ -265,18 +248,15 @@ export function useGraphicsTemplateLibrary<Entry extends GraphicsTemplateSummary
 	async function confirmImport(): Promise<void> {
 		const operation = pendingImport.value;
 		const fingerprint = operation?.templatePackagePreflight?.fingerprint;
-		if (!authorises() || !operation || !fingerprint)
-			return;
+		if (!authorises() || !operation || !fingerprint) return;
 		importing.value = true;
 		try {
 			await repository.confirmPackage(operation.id, fingerprint);
 			await installReceivedPackage(operation.id);
 			error.value = null;
-		}
-		catch (caught) {
+		} catch (caught) {
 			error.value = failureMessage(caught);
-		}
-		finally {
+		} finally {
 			importing.value = false;
 		}
 	}

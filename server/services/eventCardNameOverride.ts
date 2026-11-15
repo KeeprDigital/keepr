@@ -38,7 +38,7 @@ export function eventCardNameOverrideService() {
 			.innerJoin(cards, eq(eventCardNameOverrides.resolvedCardId, cards.id))
 			.where(eq(eventCardNameOverrides.eventId, eventId));
 
-		return rows.map(row => ({
+		return rows.map((row) => ({
 			id: row.id,
 			eventId: row.eventId,
 			inputName: row.inputName,

@@ -41,7 +41,7 @@ describe('the database client', () => {
 		expect(() => db.$client).toThrowError('DB binding not found');
 	});
 
-	it('wraps the Worker\'s DB binding', async () => {
+	it("wraps the Worker's DB binding", async () => {
 		const database = binding();
 		(globalThis as { __env__?: unknown }).__env__ = { DB: database };
 		const { db } = await freshModule();

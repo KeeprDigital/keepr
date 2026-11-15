@@ -9,7 +9,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // injected into the loser's read-to-write window.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -28,17 +29,23 @@ afterAll(async () => {
 	await harness.close();
 });
 
-const [event] = await db.insert(schema.events).values({
-	name: 'Write Integrity Open',
-	game: 'mtg',
-	featureMatchOrientation: 'horizontal',
-}).returning();
+const [event] = await db
+	.insert(schema.events)
+	.values({
+		name: 'Write Integrity Open',
+		game: 'mtg',
+		featureMatchOrientation: 'horizontal',
+	})
+	.returning();
 const eventId = event!.id;
 
-const seededPlayers = await db.insert(schema.players).values([
-	{ eventId, name: 'Player One' },
-	{ eventId, name: 'Player Two' },
-]).returning();
+const seededPlayers = await db
+	.insert(schema.players)
+	.values([
+		{ eventId, name: 'Player One' },
+		{ eventId, name: 'Player Two' },
+	])
+	.returning();
 const playerOneId = seededPlayers[0]!.id;
 const playerTwoId = seededPlayers[1]!.id;
 
@@ -65,7 +72,8 @@ slotReads.findFirst = (async (config?: unknown) => {
 
 async function activeSessionCountForSlot(slotId: number): Promise<number> {
 	const rows = await db.query.featureMatchSessions.findMany({
-		where: (sessions, { and, eq }) => and(eq(sessions.slotId, slotId), eq(sessions.status, 'active')),
+		where: (sessions, { and, eq }) =>
+			and(eq(sessions.slotId, slotId), eq(sessions.status, 'active')),
 	});
 	return rows.length;
 }
@@ -78,7 +86,8 @@ describe('featureMatchService concurrent slot update integrity', () => {
 		expect(sessionBeforeRace).not.toBeNull();
 
 		// The winner's entire update runs inside the loser's read-to-write window.
-		interleave = () => service.update(slot.id, eventId, { player1Id: playerOneId } as UpdateFeatureMatchInput);
+		interleave = () =>
+			service.update(slot.id, eventId, { player1Id: playerOneId } as UpdateFeatureMatchInput);
 
 		await expect(
 			service.update(slot.id, eventId, { player2Id: playerTwoId } as UpdateFeatureMatchInput),
@@ -100,12 +109,15 @@ describe('featureMatchService concurrent slot update integrity', () => {
 		const service = featureMatchService();
 		const slot = await service.create(eventId, {});
 
-		interleave = () => service.update(slot.id, eventId, { player1Id: playerOneId } as UpdateFeatureMatchInput);
+		interleave = () =>
+			service.update(slot.id, eventId, { player1Id: playerOneId } as UpdateFeatureMatchInput);
 		await expect(
 			service.update(slot.id, eventId, { player2Id: playerTwoId } as UpdateFeatureMatchInput),
 		).rejects.toMatchObject({ statusCode: 409 });
 
-		const retried = await service.update(slot.id, eventId, { player2Id: playerTwoId } as UpdateFeatureMatchInput);
+		const retried = await service.update(slot.id, eventId, {
+			player2Id: playerTwoId,
+		} as UpdateFeatureMatchInput);
 
 		expect(retried?.player1Id).toBe(playerOneId);
 		expect(retried?.player2Id).toBe(playerTwoId);
@@ -118,7 +130,9 @@ describe('featureMatchService concurrent slot update integrity', () => {
 
 		interleave = () => service.remove(slot.id, eventId);
 
-		const result = await service.update(slot.id, eventId, { player1Id: playerOneId } as UpdateFeatureMatchInput);
+		const result = await service.update(slot.id, eventId, {
+			player1Id: playerOneId,
+		} as UpdateFeatureMatchInput);
 
 		expect(result).toBeUndefined();
 	});

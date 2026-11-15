@@ -120,8 +120,7 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 		state.loading.value = true;
 		try {
 			return await request();
-		}
-		finally {
+		} finally {
 			if (flight.current) {
 				requestsOut--;
 				state.loading.value = requestsOut > 0;
@@ -133,7 +132,9 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 	function stillSelected(flight: Flight, eventId: number, screenId: number) {
 		// The ids are checked too, because the Card page's Screen picker writes
 		// `activeScreenId` before its watcher selects the Screen.
-		return flight.current && currentEventId() === eventId && state.activeScreenId.value === screenId;
+		return (
+			flight.current && currentEventId() === eventId && state.activeScreenId.value === screenId
+		);
 	}
 
 	/** Whether a Card state at `revision` is at least as new as the one held. */
@@ -146,8 +147,7 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 	 * held, superseding any read still out; answers whether it was held (#734).
 	 */
 	function acceptIfNewer(next: ScreenCardState) {
-		if (!isAtLeastAsNew(next.revision))
-			return false;
+		if (!isAtLeastAsNew(next.revision)) return false;
 		reads.supersede();
 		heldRevision = next.revision;
 		lastAcceptance = acceptances.begin();
@@ -161,8 +161,7 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 		if (card && !isExpired(card)) {
 			state.activeCard.value = card;
 			updateTimeout(card);
-		}
-		else {
+		} else {
 			state.activeCard.value = null;
 			state.timeout.reset();
 		}
@@ -180,8 +179,7 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 	function readAsScreenOutput(read: () => Promise<ScreenCardState>) {
 		screenOutputRead = read;
 		return () => {
-			if (screenOutputRead === read)
-				screenOutputRead = null;
+			if (screenOutputRead === read) screenOutputRead = null;
 		};
 	}
 
@@ -220,9 +218,10 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 	}
 
 	function isMessageForActiveScreen(messageData?: { screenId?: number }) {
-		if (!messageData)
-			return false;
-		return state.activeScreenId.value !== null && messageData.screenId === state.activeScreenId.value;
+		if (!messageData) return false;
+		return (
+			state.activeScreenId.value !== null && messageData.screenId === state.activeScreenId.value
+		);
 	}
 
 	function updateTimeout(cardData: ScreenCard) {
@@ -237,23 +236,25 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 	 * Whether the held Card's Card Timeout has run out, on the shared clock. A
 	 * holder yet to sync times it on its own clock, and again as the sync lands.
 	 */
-	const heldCardExpired = useClockProjection((serverTime) => {
-		const held = state.activeCard.value;
-		const remaining = held
-			? cardTimeoutRemainingMs(held.timeoutData, serverTime)
-			: Infinity;
-		return {
-			value: remaining <= 0,
-			nextChangeInMs: remaining > 0 && Number.isFinite(remaining)
-				? remaining
-				: null,
-		};
-	}, { whileServerTimeUnknown: 'device-time' });
+	const heldCardExpired = useClockProjection(
+		(serverTime) => {
+			const held = state.activeCard.value;
+			const remaining = held ? cardTimeoutRemainingMs(held.timeoutData, serverTime) : Infinity;
+			return {
+				value: remaining <= 0,
+				nextChangeInMs: remaining > 0 && Number.isFinite(remaining) ? remaining : null,
+			};
+		},
+		{ whileServerTimeUnknown: 'device-time' },
+	);
 	// Hidden in the same turn the timeout runs out, not a render later.
-	watch(heldCardExpired, (expired) => {
-		if (expired)
-			expireCard();
-	}, { flush: 'sync' });
+	watch(
+		heldCardExpired,
+		(expired) => {
+			if (expired) expireCard();
+		},
+		{ flush: 'sync' },
+	);
 
 	/**
 	 * Read the selected Screen's Card. The answer says whether the read landed:
@@ -276,16 +277,13 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 		const flight = reads.begin();
 		const outcome = await state.executeAction(
 			async (): Promise<CardReadOutcome> => {
-				const answer = await whileLoading(async () => screenOutputRead
-					? await screenOutputRead()
-					: await getScreenCard(eventId, screenId));
+				const answer = await whileLoading(async () =>
+					screenOutputRead ? await screenOutputRead() : await getScreenCard(eventId, screenId),
+				);
 				// Something newer reached the Card while this read was out, or is held
 				// already: it lands nothing.
-				if (!stillSelected(flight, eventId, screenId))
-					return 'superseded';
-				return acceptIfNewer(answer)
-					? 'landed'
-					: 'superseded';
+				if (!stillSelected(flight, eventId, screenId)) return 'superseded';
+				return acceptIfNewer(answer) ? 'landed' : 'superseded';
 			},
 			// A superseded read's failure describes nothing still held.
 			{ errorRef: state.error, flight },
@@ -307,10 +305,11 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 		const flight = selection;
 		return state.executeAction(
 			async () => {
-				const { revision } = await whileLoading(async () => saveScreenCard(eventId, screenId, cardData));
+				const { revision } = await whileLoading(async () =>
+					saveScreenCard(eventId, screenId, cardData),
+				);
 				// A newer Card state that reached the store first stays shown (#734).
-				if (stillSelected(flight, eventId, screenId))
-					acceptIfNewer({ card: cardData, revision });
+				if (stillSelected(flight, eventId, screenId)) acceptIfNewer({ card: cardData, revision });
 				return cardData;
 			},
 			// A failure from an ended selection describes nothing still held.
@@ -336,8 +335,7 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 		return state.executeAction(
 			async () => {
 				const { revision } = await deleteScreenCard(eventId, screenId);
-				if (stillSelected(flight, eventId, screenId))
-					acceptIfNewer({ card: null, revision });
+				if (stillSelected(flight, eventId, screenId)) acceptIfNewer({ card: null, revision });
 			},
 			{ errorRef: state.error, flight },
 		);
@@ -353,8 +351,7 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 	 */
 	async function controlActiveCardDisplay(field: keyof MtgCardDisplayData) {
 		const held = state.activeCard.value;
-		if (!held || isOpScreenCard(held))
-			return null;
+		if (!held || isOpScreenCard(held)) return null;
 		const before = held.displayData[field];
 		const acceptedBefore = lastAcceptance;
 		const flight = selection;
@@ -366,10 +363,12 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 		const shown = state.activeCard.value;
 		const ownsField = acceptedBefore.current && flight.current && control.current;
 		if (saved === null && shown && !isOpScreenCard(shown) && ownsField) {
-			const accepted = isOpScreenCard(acceptedCard)
-				? null
-				: acceptedCard;
-			state.activeCard.value = withDisplayField(shown, field, accepted?.displayData[field] ?? before);
+			const accepted = isOpScreenCard(acceptedCard) ? null : acceptedCard;
+			state.activeCard.value = withDisplayField(
+				shown,
+				field,
+				accepted?.displayData[field] ?? before,
+			);
 		}
 		return saved;
 	}

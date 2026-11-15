@@ -29,7 +29,7 @@ function sameName(a: string, b: string): boolean {
 
 function hasFace(card: FakeScryfallCard, name: string): boolean {
 	const faces = card.name.split(' // ');
-	return faces.length > 1 && faces.some(face => sameName(face, name));
+	return faces.length > 1 && faces.some((face) => sameName(face, name));
 }
 
 function json(body: unknown, status = 200): Response {
@@ -50,17 +50,16 @@ function toScryfallJson(card: FakeScryfallCard) {
 		cmc: 1,
 		color_identity: card.color_identity ?? [],
 		type_line: card.type_line ?? 'Sorcery',
-		...(card.flavor_name
-			? { flavor_name: card.flavor_name }
-			: {}),
-		...(card.printed_name
-			? { printed_name: card.printed_name }
-			: {}),
+		...(card.flavor_name ? { flavor_name: card.flavor_name } : {}),
+		...(card.printed_name ? { printed_name: card.printed_name } : {}),
 	};
 }
 
 /** `searchPageSize`: the cards a search page holds, 175 as on Scryfall unless a test pages sooner. */
-export function createScryfallFake(catalogue: readonly FakeScryfallCard[], options: { searchPageSize?: number } = {}) {
+export function createScryfallFake(
+	catalogue: readonly FakeScryfallCard[],
+	options: { searchPageSize?: number } = {},
+) {
 	const searchPageSize = options.searchPageSize ?? 175;
 	const namedLookups: string[] = [];
 	const collectionBatches: string[][] = [];
@@ -70,17 +69,21 @@ export function createScryfallFake(catalogue: readonly FakeScryfallCard[], optio
 		!set || sameName(card.set, set);
 
 	const findByName = (name: string, set?: string | null) =>
-		catalogue.find(card => inSet(card, set) && sameName(card.name, name))
-		?? catalogue.find(card => inSet(card, set) && hasFace(card, name))
-		?? null;
+		catalogue.find((card) => inSet(card, set) && sameName(card.name, name)) ??
+		catalogue.find((card) => inSet(card, set) && hasFace(card, name)) ??
+		null;
 
 	const findPrinting = (set: string, collectorNumber: string) =>
-		catalogue.find(card => sameName(card.set, set) && sameName(card.collector_number ?? '1', collectorNumber)) ?? null;
+		catalogue.find(
+			(card) => sameName(card.set, set) && sameName(card.collector_number ?? '1', collectorNumber),
+		) ?? null;
 
 	const collection = (identifiers: FakeIdentifier[]) => {
-		collectionBatches.push(identifiers.map(identifier => 'name' in identifier
-			? identifier.name
-			: `${identifier.set}/${identifier.collector_number}`));
+		collectionBatches.push(
+			identifiers.map((identifier) =>
+				'name' in identifier ? identifier.name : `${identifier.set}/${identifier.collector_number}`,
+			),
+		);
 		const data: FakeScryfallCard[] = [];
 		const notFound: FakeIdentifier[] = [];
 		for (const identifier of identifiers) {
@@ -88,12 +91,11 @@ export function createScryfallFake(catalogue: readonly FakeScryfallCard[], optio
 				? findPrinting(identifier.set, identifier.collector_number)
 				: identifier.name.includes(' // ')
 					? null
-					: data.find(earlier => inSet(earlier, identifier.set) && hasFace(earlier, identifier.name))
-						?? findByName(identifier.name, identifier.set);
-			if (card)
-				data.push(card);
-			else
-				notFound.push(identifier);
+					: (data.find(
+							(earlier) => inSet(earlier, identifier.set) && hasFace(earlier, identifier.name),
+						) ?? findByName(identifier.name, identifier.set));
+			if (card) data.push(card);
+			else notFound.push(identifier);
 		}
 		return json({
 			object: 'list',
@@ -106,23 +108,25 @@ export function createScryfallFake(catalogue: readonly FakeScryfallCard[], optio
 		const name = url.searchParams.get('exact') ?? url.searchParams.get('fuzzy') ?? '';
 		namedLookups.push(name);
 		const card = findByName(name, url.searchParams.get('set'));
-		return card
-			? json(toScryfallJson(card))
-			: json({ object: 'error', status: 404 }, 404);
+		return card ? json(toScryfallJson(card)) : json({ object: 'error', status: 404 }, 404);
 	};
 
 	// `!"name"` or `!'name'`, alone or `set:` narrowed, joined by `or`, paged by `next_page`.
 	const search = (url: URL) => {
 		const query = url.searchParams.get('q') ?? '';
 		searches.push(query);
-		const terms = [
-			...query.matchAll(/!(?:"([^"]+)"|'([^']+)')(?: set:([a-z0-9]+))?/g),
-		]
-			.map(([, doubleQuoted, singleQuoted, set]) => ({ name: (doubleQuoted ?? singleQuoted)!, set }));
-		const printedWith = (card: FakeScryfallCard, name: string) => sameName(card.name, name)
-			|| hasFace(card, name)
-			|| [card.flavor_name, card.printed_name].some(printed => printed !== undefined && sameName(printed, name));
-		const data = catalogue.filter(card => terms.some(term => inSet(card, term.set) && printedWith(card, term.name)));
+		const terms = [...query.matchAll(/!(?:"([^"]+)"|'([^']+)')(?: set:([a-z0-9]+))?/g)].map(
+			([, doubleQuoted, singleQuoted, set]) => ({ name: (doubleQuoted ?? singleQuoted)!, set }),
+		);
+		const printedWith = (card: FakeScryfallCard, name: string) =>
+			sameName(card.name, name) ||
+			hasFace(card, name) ||
+			[card.flavor_name, card.printed_name].some(
+				(printed) => printed !== undefined && sameName(printed, name),
+			);
+		const data = catalogue.filter((card) =>
+			terms.some((term) => inSet(card, term.set) && printedWith(card, term.name)),
+		);
 		const page = Number(url.searchParams.get('page') ?? '1');
 		const hasMore = page * searchPageSize < data.length;
 		const nextPage = new URL(url);
@@ -142,15 +146,11 @@ export function createScryfallFake(catalogue: readonly FakeScryfallCard[], optio
 	};
 
 	const fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
-		const url = new URL(typeof input === 'string' || input instanceof URL
-			? input
-			: input.url);
+		const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
 		if (url.pathname === '/cards/collection')
 			return collection(JSON.parse(String(init?.body)).identifiers);
-		if (url.pathname === '/cards/named')
-			return named(url);
-		if (url.pathname === '/cards/search')
-			return search(url);
+		if (url.pathname === '/cards/named') return named(url);
+		if (url.pathname === '/cards/search') return search(url);
 		throw new Error(`Unexpected Scryfall request: ${url}`);
 	};
 

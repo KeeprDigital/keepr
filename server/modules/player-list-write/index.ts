@@ -1,4 +1,8 @@
-import type { CreatePlayerListInput, PlayerListResponse, UpdatePlayerListInput } from '~~/shared/api';
+import type {
+	CreatePlayerListInput,
+	PlayerListResponse,
+	UpdatePlayerListInput,
+} from '~~/shared/api';
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
 import { playerListService } from '~~/server/services/playerList';
 

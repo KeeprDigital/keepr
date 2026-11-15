@@ -15,7 +15,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -27,8 +28,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 	publishScreenCommand: async () => {},
 	getOriginConnectionId: () => undefined,
 }));
-vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	refreshBroadcastGraphicsBindings: async () => {},
 }));
 
@@ -45,7 +46,8 @@ afterAll(async () => {
 });
 
 async function stageFeaturedMatch() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({
 			name: 'Slot setup edits',
 			game: 'mtg',
@@ -54,8 +56,12 @@ async function stageFeaturedMatch() {
 		})
 		.returning();
 	const eventId = event!.id;
-	const [phase] = await db.insert(schema.phases).values({ eventId, name: 'Swiss', sortOrder: 0 }).returning();
-	const [round] = await db.insert(schema.rounds)
+	const [phase] = await db
+		.insert(schema.phases)
+		.values({ eventId, name: 'Swiss', sortOrder: 0 })
+		.returning();
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: phase!.id,
@@ -63,13 +69,15 @@ async function stageFeaturedMatch() {
 			roundNumber: 1,
 		})
 		.returning();
-	const [player1, player2] = await db.insert(schema.players)
+	const [player1, player2] = await db
+		.insert(schema.players)
 		.values([
 			{ eventId, name: 'Mia', wins: 2 },
 			{ eventId, name: 'Rei', lgs: 'The Battered Sleeve' },
 		])
 		.returning();
-	const [match] = await db.insert(schema.matches)
+	const [match] = await db
+		.insert(schema.matches)
 		.values({
 			eventId,
 			roundId: round!.id,
@@ -80,7 +88,11 @@ async function stageFeaturedMatch() {
 		})
 		.returning();
 	const slot = await featureMatchService().create(eventId, {});
-	await featureMatchPromotionModule().promoteMatchToSlot({ eventId, slotId: slot.id, matchId: match!.id });
+	await featureMatchPromotionModule().promoteMatchToSlot({
+		eventId,
+		slotId: slot.id,
+		matchId: match!.id,
+	});
 	const promoted = await featureMatchService().findById(slot.id, eventId);
 	return {
 		eventId,
@@ -124,7 +136,10 @@ describe('a Slot setup edit to a seated Player', () => {
 		expect((await playerById(player1Id))?.lgs).toBe('Northgate Games');
 
 		// What a round "Sync Matches" does once its Player reconcile commits.
-		await playerFeatureMatchSyncService().syncMatchesFromPlayersAfterCommit(eventId, [player1Id, player2Id]);
+		await playerFeatureMatchSyncService().syncMatchesFromPlayersAfterCommit(eventId, [
+			player1Id,
+			player2Id,
+		]);
 
 		expect((await slotById(slotId, eventId))?.player1Data?.lgs).toBe('Northgate Games');
 		expect((await activeSourceSnapshot(slotId, eventId)).player1.data?.lgs).toBe('Northgate Games');
@@ -144,7 +159,10 @@ describe('a Slot setup edit to a seated Player', () => {
 		});
 
 		expect(await playerById(player1Id)).toMatchObject({ name: 'Mia K.', pronouns: 'she/her' });
-		expect((await slotById(other.id, eventId))?.player1Data).toMatchObject({ name: 'Mia K.', pronouns: 'she/her' });
+		expect((await slotById(other.id, eventId))?.player1Data).toMatchObject({
+			name: 'Mia K.',
+			pronouns: 'she/her',
+		});
 	});
 
 	it('writes the Player a setup edit seats, not the one it replaces', async () => {
@@ -164,7 +182,7 @@ describe('a Slot setup edit to a seated Player', () => {
 		expect((await playerById(player1Id))?.pronouns).toBeNull();
 	});
 
-	it('clears the Player\'s LGS when setup clears it', async () => {
+	it("clears the Player's LGS when setup clears it", async () => {
 		const { eventId, slotId, player2Id, player2Data } = await stageFeaturedMatch();
 		expect(player2Data.lgs).toBe('The Battered Sleeve');
 
@@ -192,7 +210,10 @@ describe('a Slot setup edit to a seated Player', () => {
 		});
 
 		expect(await playerById(player1Id)).toMatchObject({ lgs: 'Northgate Games', wins: 2 });
-		expect((await slotById(slotId, eventId))?.player1Data).toMatchObject({ lgs: 'Northgate Games', wins: 5 });
+		expect((await slotById(slotId, eventId))?.player1Data).toMatchObject({
+			lgs: 'Northgate Games',
+			wins: 5,
+		});
 	});
 
 	it('writes no Player for a side no Player is seated in', async () => {
@@ -210,22 +231,34 @@ describe('a Slot setup edit to a seated Player', () => {
 			},
 		});
 
-		expect(await db.query.players.findMany({
-			where: eq(schema.players.eventId, eventId),
-		})).toEqual(before);
-		expect((await slotById(unseated.id, eventId))?.player1Data).toMatchObject({ name: 'Walk-in', lgs: 'Northgate Games' });
+		expect(
+			await db.query.players.findMany({
+				where: eq(schema.players.eventId, eventId),
+			}),
+		).toEqual(before);
+		expect((await slotById(unseated.id, eventId))?.player1Data).toMatchObject({
+			name: 'Walk-in',
+			lgs: 'Northgate Games',
+		});
 	});
 });
 
 /** A One Piece Card Game Event's Slot with an unlinked side holding its own Leader, and a Player to link into it. */
 async function stageOpSlot(player: { name: string; nickname: string | null }) {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'OP Regionals', game: 'op', featureMatchOrientation: 'horizontal' })
 		.returning();
 	const eventId = event!.id;
-	const [seated] = await db.insert(schema.players).values({ eventId, ...player }).returning();
+	const [seated] = await db
+		.insert(schema.players)
+		.values({ eventId, ...player })
+		.returning();
 	// Every Leader is catalogued already, so no Deck List write looks one up (ADR-0074).
-	await db.insert(schema.cards).values([LUFFY, ZORO, NAMI].map(opLeaderCatalogueRow)).onConflictDoNothing();
+	await db
+		.insert(schema.cards)
+		.values([LUFFY, ZORO, NAMI].map(opLeaderCatalogueRow))
+		.onConflictDoNothing();
 	const slot = await featureMatchService().create(eventId, {});
 	const sideData = {
 		name: '',
@@ -250,7 +283,10 @@ function writePlayerDeckList(eventId: number, playerId: number, text: string) {
 
 describe('linking a One Piece Card Game Player into a Slot side', () => {
 	it('seats the Player, shown by their Nickname, through a Player write', async () => {
-		const { eventId, slotId, playerId, sideData } = await stageOpSlot({ name: '', nickname: 'linlin_88' });
+		const { eventId, slotId, playerId, sideData } = await stageOpSlot({
+			name: '',
+			nickname: 'linlin_88',
+		});
 
 		await featureMatchSlotWriteModule().updateSetup({
 			eventId,
@@ -275,7 +311,7 @@ describe('linking a One Piece Card Game Player into a Slot side', () => {
 		});
 	});
 
-	it('shows the Player\'s Leader and Deck List, and releases the Feature Match Deck List the side held', async () => {
+	it("shows the Player's Leader and Deck List, and releases the Feature Match Deck List the side held", async () => {
 		const { eventId, slotId, playerId } = await stageOpSlot({ name: '', nickname: 'linlin_88' });
 		const { deckList: pasted } = await opDeckListWriteModule().write({
 			eventId,
@@ -303,9 +339,15 @@ describe('linking a One Piece Card Game Player into a Slot side', () => {
 
 	it.each([
 		{ edit: 'a Player Deck List write', save: false },
-		{ edit: 'a Player Deck List write, then a setup save from a form holding the side as it was', save: true },
-	])('shows the Player\'s new Leader after $edit', async ({ save }) => {
-		const { eventId, slotId, playerId, sideData } = await stageOpSlot({ name: '', nickname: 'linlin_88' });
+		{
+			edit: 'a Player Deck List write, then a setup save from a form holding the side as it was',
+			save: true,
+		},
+	])("shows the Player's new Leader after $edit", async ({ save }) => {
+		const { eventId, slotId, playerId, sideData } = await stageOpSlot({
+			name: '',
+			nickname: 'linlin_88',
+		});
 		await writePlayerDeckList(eventId, playerId, '1x OP01-001');
 		await featureMatchSlotWriteModule().updateSetup({
 			eventId,
@@ -334,8 +376,11 @@ describe('linking a One Piece Card Game Player into a Slot side', () => {
 		expect((await activeSourceSnapshot(slotId, eventId)).player1.data?.gameData).toEqual(expected);
 	});
 
-	it('leaves an unlinked side the Leader it showed, and none of the Player\'s Deck List', async () => {
-		const { eventId, slotId, playerId, sideData } = await stageOpSlot({ name: '', nickname: 'linlin_88' });
+	it("leaves an unlinked side the Leader it showed, and none of the Player's Deck List", async () => {
+		const { eventId, slotId, playerId, sideData } = await stageOpSlot({
+			name: '',
+			nickname: 'linlin_88',
+		});
 		await writePlayerDeckList(eventId, playerId, '1x OP01-001');
 		await featureMatchSlotWriteModule().updateSetup({
 			eventId,
@@ -350,7 +395,10 @@ describe('linking a One Piece Card Game Player into a Slot side', () => {
 			input: { player1Id: null, player1Data: formSide },
 		});
 
-		expect((await slotById(slotId, eventId))?.player1Data?.gameData).toEqual({ type: 'op', leader: ZORO });
+		expect((await slotById(slotId, eventId))?.player1Data?.gameData).toEqual({
+			type: 'op',
+			leader: ZORO,
+		});
 	});
 
 	// A cleared name is a Player write only where a Nickname is there to fall back to.
@@ -370,24 +418,27 @@ describe('linking a One Piece Card Game Player into a Slot side', () => {
 			edited: '',
 			stored: 'Big Mom',
 		},
-	])('writes a setup name of $edited to a linked Player holding $held', async ({ held, edited, stored }) => {
-		const { eventId, slotId, playerId, sideData } = await stageOpSlot(held);
-		await featureMatchService().update(slotId, eventId, {
-			player1Id: playerId,
-			player1Data: {
-				...sideData,
-				...held,
-			},
-		});
+	])(
+		'writes a setup name of $edited to a linked Player holding $held',
+		async ({ held, edited, stored }) => {
+			const { eventId, slotId, playerId, sideData } = await stageOpSlot(held);
+			await featureMatchService().update(slotId, eventId, {
+				player1Id: playerId,
+				player1Data: {
+					...sideData,
+					...held,
+				},
+			});
 
-		await featureMatchSlotWriteModule().updateSetup({
-			eventId,
-			slotId,
-			input: {
-				player1Data: { ...sideData, nickname: held.nickname, name: edited },
-			},
-		});
+			await featureMatchSlotWriteModule().updateSetup({
+				eventId,
+				slotId,
+				input: {
+					player1Data: { ...sideData, nickname: held.nickname, name: edited },
+				},
+			});
 
-		expect((await playerById(playerId))?.name).toBe(stored);
-	});
+			expect((await playerById(playerId))?.name).toBe(stored);
+		},
+	);
 });

@@ -57,9 +57,7 @@ export class DeployVerifyFailure extends Error {
 
 function excerpt(text) {
 	const flat = text.replace(/\s+/g, ' ').trim();
-	return JSON.stringify(flat.length > 120
-		? `${flat.slice(0, 120)}…`
-		: flat);
+	return JSON.stringify(flat.length > 120 ? `${flat.slice(0, 120)}…` : flat);
 }
 
 /**
@@ -71,13 +69,19 @@ function healthUrl(baseUrl) {
 	let parsed;
 	try {
 		parsed = new URL(baseUrl);
-	}
-	catch {
+	} catch {
 		parsed = undefined;
 	}
-	if (!parsed || (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') || !parsed.host
-		|| baseUrl.includes('?') || baseUrl.includes('#')) {
-		throw new DeployVerifyFailure(`target ${JSON.stringify(baseUrl)} (STREAM_KEEPR_DEPLOY_HEALTH_URL) is not an http(s) URL without query or fragment.`);
+	if (
+		!parsed ||
+		(parsed.protocol !== 'http:' && parsed.protocol !== 'https:') ||
+		!parsed.host ||
+		baseUrl.includes('?') ||
+		baseUrl.includes('#')
+	) {
+		throw new DeployVerifyFailure(
+			`target ${JSON.stringify(baseUrl)} (STREAM_KEEPR_DEPLOY_HEALTH_URL) is not an http(s) URL without query or fragment.`,
+		);
 	}
 	parsed.pathname = `${parsed.pathname.replace(/\/+$/, '')}/api/time`;
 	return parsed.href;
@@ -89,43 +93,51 @@ async function probe(url, { fetchRequest, timeoutMs, signal }) {
 		const timeout = AbortSignal.timeout(timeoutMs);
 		response = await fetchRequest(url, {
 			redirect: 'manual',
-			signal: signal
-				? AbortSignal.any([signal, timeout])
-				: timeout,
+			signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
 		});
-	}
-	catch (error) {
-		if (signal?.aborted)
-			throw signal.reason;
+	} catch (error) {
+		if (signal?.aborted) throw signal.reason;
 		const reason = error?.cause?.code ?? error?.name ?? 'error';
-		throw new DeployVerifyFailure(`${url} could not be reached (${reason}).`, { retryable: true, cause: error });
+		throw new DeployVerifyFailure(`${url} could not be reached (${reason}).`, {
+			retryable: true,
+			cause: error,
+		});
 	}
 	const { status } = response;
 	if (status >= 300 && status < 400) {
 		const location = response.headers.get('location') ?? '(no location)';
-		throw new DeployVerifyFailure(`${url} answered ${status} redirecting to ${location}; a redirect is never the Worker's clock reading, and is not followed.`);
+		throw new DeployVerifyFailure(
+			`${url} answered ${status} redirecting to ${location}; a redirect is never the Worker's clock reading, and is not followed.`,
+		);
 	}
 	if (status !== 200) {
-		throw new DeployVerifyFailure(`${url} answered ${status}, not 200: ${excerpt(await response.text())}`, {
-			retryable: status >= 500 || status === 429,
-		});
+		throw new DeployVerifyFailure(
+			`${url} answered ${status}, not 200: ${excerpt(await response.text())}`,
+			{
+				retryable: status >= 500 || status === 429,
+			},
+		);
 	}
 	const contentType = response.headers.get('content-type') ?? '';
 	if (contentType.split(';')[0].trim().toLowerCase() !== 'application/json')
-		throw new DeployVerifyFailure(`${url} answered ${status} with content-type "${contentType || '(none)'}", not application/json.`);
+		throw new DeployVerifyFailure(
+			`${url} answered ${status} with content-type "${contentType || '(none)'}", not application/json.`,
+		);
 	const text = await response.text();
 	let body;
 	try {
 		body = JSON.parse(text);
+	} catch {
+		throw new DeployVerifyFailure(
+			`${url} answered ${status} with a body that is not valid JSON: ${excerpt(text)}`,
+		);
 	}
-	catch {
-		throw new DeployVerifyFailure(`${url} answered ${status} with a body that is not valid JSON: ${excerpt(text)}`);
-	}
-	const serverTime = body !== null && typeof body === 'object' && !Array.isArray(body)
-		? body.serverTime
-		: undefined;
+	const serverTime =
+		body !== null && typeof body === 'object' && !Array.isArray(body) ? body.serverTime : undefined;
 	if (!Number.isSafeInteger(serverTime) || serverTime <= 0)
-		throw new DeployVerifyFailure(`${url} answered ${status} with JSON that is not { serverTime: <epoch milliseconds> }: ${excerpt(text)}`);
+		throw new DeployVerifyFailure(
+			`${url} answered ${status} with JSON that is not { serverTime: <epoch milliseconds> }: ${excerpt(text)}`,
+		);
 	return { url, serverTime };
 }
 
@@ -158,12 +170,11 @@ export async function verifyDeployment({
 	for (let attempt = 1; ; attempt += 1) {
 		try {
 			return await probe(url, { fetchRequest, timeoutMs, signal });
-		}
-		catch (error) {
+		} catch (error) {
 			if (!(error instanceof DeployVerifyFailure) || !error.retryable || attempt >= attempts)
 				throw error;
 			console.error(`deploy:verify: attempt ${attempt}/${attempts}: ${error.message} Retrying.`);
-			await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+			await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
 		}
 	}
 }
@@ -183,18 +194,17 @@ export async function main({ env = process.env, fetchRequest = fetch } = {}) {
 	const baseUrl = env.STREAM_KEEPR_DEPLOY_HEALTH_URL || DEFAULT_BASE_URL;
 	try {
 		const { url } = await verifyDeployment({ baseUrl, fetchRequest });
-		console.log(`deploy:verify: ${url} answered the Worker's clock reading: liveness only. `
-			+ 'Not proven: which release is serving, or D1, auth, R2, KV, Ably and validator readiness '
-			+ '(the deployed acceptance gates cover those).');
+		console.log(
+			`deploy:verify: ${url} answered the Worker's clock reading: liveness only. ` +
+				'Not proven: which release is serving, or D1, auth, R2, KV, Ably and validator readiness ' +
+				'(the deployed acceptance gates cover those).',
+		);
 		return 0;
-	}
-	catch (error) {
-		if (!(error instanceof DeployVerifyFailure))
-			throw error;
+	} catch (error) {
+		if (!(error instanceof DeployVerifyFailure)) throw error;
 		console.error(`deploy:verify: FAILED: ${error.message}`);
 		return 1;
 	}
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href)
-	process.exitCode = await main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) process.exitCode = await main();

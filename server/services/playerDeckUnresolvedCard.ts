@@ -2,7 +2,13 @@ import type { DbPlayerDeckUnresolvedCard, DeckListCompartment } from '~~/server/
 import type { UnresolvedDeckEntryType } from '~~/shared/types/enums';
 import { and, asc, eq, getTableColumns } from 'drizzle-orm';
 import { db } from '~~/server/db';
-import { archetypes, phases, playerDecks, playerDeckUnresolvedCards, players } from '~~/server/db/schema';
+import {
+	archetypes,
+	phases,
+	playerDecks,
+	playerDeckUnresolvedCards,
+	players,
+} from '~~/server/db/schema';
 import { hasReviewedPlayerDeckDetails } from '~~/server/mappers/playerDeck';
 
 export interface UnresolvedDeckCardListEntry {
@@ -76,12 +82,12 @@ export function playerDeckUnresolvedCardService() {
 		}
 
 		return rows.map((row) => {
-			const reviewed = row.archetypeName != null && hasReviewedPlayerDeckDetails(
-				{ archetypeId: row.deckArchetypeId, reviewedAt: row.reviewedAt },
-				row.archetypeId == null
-					? null
-					: { id: row.archetypeId },
-			);
+			const reviewed =
+				row.archetypeName != null &&
+				hasReviewedPlayerDeckDetails(
+					{ archetypeId: row.deckArchetypeId, reviewedAt: row.reviewedAt },
+					row.archetypeId == null ? null : { id: row.archetypeId },
+				);
 			const {
 				deckArchetypeId: _deckArchetypeId,
 				reviewedAt: _reviewedAt,
@@ -97,15 +103,15 @@ export function playerDeckUnresolvedCardService() {
 		});
 	};
 
-	const findById = async (id: number, eventId: number): Promise<DbPlayerDeckUnresolvedCard | undefined> => {
+	const findById = async (
+		id: number,
+		eventId: number,
+	): Promise<DbPlayerDeckUnresolvedCard | undefined> => {
 		const [row] = await db
 			.select(getTableColumns(playerDeckUnresolvedCards))
 			.from(playerDeckUnresolvedCards)
 			.innerJoin(playerDecks, eq(playerDeckUnresolvedCards.deckId, playerDecks.id))
-			.where(and(
-				eq(playerDeckUnresolvedCards.id, id),
-				eq(playerDecks.eventId, eventId),
-			))
+			.where(and(eq(playerDeckUnresolvedCards.id, id), eq(playerDecks.eventId, eventId)))
 			.limit(1);
 
 		return row;
@@ -121,16 +127,15 @@ export function playerDeckUnresolvedCardService() {
 			.select(getTableColumns(playerDeckUnresolvedCards))
 			.from(playerDeckUnresolvedCards)
 			.innerJoin(playerDecks, eq(playerDeckUnresolvedCards.deckId, playerDecks.id))
-			.where(and(
-				eq(playerDecks.eventId, eventId),
-				eq(playerDeckUnresolvedCards.normalizedOriginalName, normalizedOriginalName),
-				eq(playerDeckUnresolvedCards.normalizedSetCode, normalizedSetCode),
-				eq(playerDeckUnresolvedCards.entryType, entryType),
-			))
-			.orderBy(
-				asc(playerDecks.sortOrder),
-				asc(playerDeckUnresolvedCards.sortOrder),
-			);
+			.where(
+				and(
+					eq(playerDecks.eventId, eventId),
+					eq(playerDeckUnresolvedCards.normalizedOriginalName, normalizedOriginalName),
+					eq(playerDeckUnresolvedCards.normalizedSetCode, normalizedSetCode),
+					eq(playerDeckUnresolvedCards.entryType, entryType),
+				),
+			)
+			.orderBy(asc(playerDecks.sortOrder), asc(playerDeckUnresolvedCards.sortOrder));
 	};
 
 	return {

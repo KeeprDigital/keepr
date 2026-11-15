@@ -18,13 +18,13 @@ vi.mock('../../../scripts/graphics-acceptance/harness.mjs', () => ({
 // Only what opens sockets or drives a browser is replaced; the pure helpers
 // (`authoredPageRequest` among them) stay real, so these tests observe what the
 // run actually hands the browser rather than which helper assembled it.
-vi.mock('../../../scripts/graphics-acceptance/chromium.mjs', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.mock('../../../scripts/graphics-acceptance/chromium.mjs', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	observeChromiumVerdict: vi.fn(),
 	serveAcceptanceRoutes: vi.fn(),
 }));
-vi.mock('../../../scripts/graphics-acceptance/installation.mjs', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.mock('../../../scripts/graphics-acceptance/installation.mjs', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	acceptanceOrigin: vi.fn(),
 	openInstallation: vi.fn(),
 	stageFontIngestion: vi.fn(),
@@ -101,8 +101,9 @@ describe('the font acceptance run', () => {
 		// Registered before the ingestion is staged: from the staging call on the
 		// cookie is in flight, so a failure there must already print it masked.
 		expect(evidence.addSecret).toHaveBeenCalledWith(SESSION_COOKIE);
-		expect(evidence.addSecret.mock.invocationCallOrder[0]!)
-			.toBeLessThan(vi.mocked(stageFontIngestion).mock.invocationCallOrder[0]!);
+		expect(evidence.addSecret.mock.invocationCallOrder[0]!).toBeLessThan(
+			vi.mocked(stageFontIngestion).mock.invocationCallOrder[0]!,
+		);
 
 		// One object: the staged operation is a 404 to every user but this one
 		// (ADR-0010) and every library route is a 401 without a session (#396), so

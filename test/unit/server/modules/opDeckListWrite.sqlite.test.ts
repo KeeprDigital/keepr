@@ -9,7 +9,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // its seam. bandai-keepr is faked at its bulk lookup port, Ably at publish.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 const runtimeConfig = { bandaiKeeprApiKey: 'test-key', bandaiKeeprApiUrl: 'https://op-api.test' };
 vi.stubGlobal('useRuntimeConfig', () => runtimeConfig);
 
@@ -54,14 +55,7 @@ const BLUE = knownOpCard({
 	colors: ['Blue'],
 	cost: 2,
 });
-const KNOWN = [
-	ZORO,
-	LUFFY,
-	LUFFY_BLUE,
-	NAMI,
-	RED,
-	BLUE,
-];
+const KNOWN = [ZORO, LUFFY, LUFFY_BLUE, NAMI, RED, BLUE];
 let upstream = fakeOpCardBulkLookup(KNOWN);
 const { published } = mockOpWriteBoundaries(db, () => upstream);
 
@@ -84,14 +78,16 @@ afterAll(async () => {
 });
 
 async function stageEvent(game: 'op' | 'mtg' = 'op') {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'One Piece Regional', game, featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	return event!.id;
 }
 
 async function stagePlayer(eventId: number, nickname = 'ana') {
-	const [player] = await db.insert(schema.players)
+	const [player] = await db
+		.insert(schema.players)
 		.values({ eventId, name: '', nickname })
 		.returning();
 	return player!;
@@ -99,7 +95,12 @@ async function stagePlayer(eventId: number, nickname = 'ana') {
 
 type Input = Parameters<ReturnType<typeof opDeckListWriteModule>['write']>[0]['input'];
 
-function write(eventId: number, playerId: number, input: Input, source: 'hand' | 'import' = 'hand') {
+function write(
+	eventId: number,
+	playerId: number,
+	input: Input,
+	source: 'hand' | 'import' = 'hand',
+) {
 	return opDeckListWriteModule().write({
 		eventId,
 		owner: { kind: 'player', playerId },
@@ -115,11 +116,12 @@ async function playerRow(playerId: number) {
 }
 
 async function eventArchetypes(eventId: number) {
-	const rows = await db.select({
-		name: schema.archetypes.name,
-		colors: schema.archetypes.colors,
-		leaderCardNumber: schema.archetypes.leaderCardNumber,
-	})
+	const rows = await db
+		.select({
+			name: schema.archetypes.name,
+			colors: schema.archetypes.colors,
+			leaderCardNumber: schema.archetypes.leaderCardNumber,
+		})
 		.from(schema.archetypes)
 		.where(eq(schema.archetypes.eventId, eventId));
 	return rows.toSorted((left, right) => left.name.localeCompare(right.name));
@@ -127,18 +129,20 @@ async function eventArchetypes(eventId: number) {
 
 async function archetypeOf(playerId: number) {
 	const player = await playerRow(playerId);
-	if (player.archetypeId === null)
-		return null;
+	if (player.archetypeId === null) return null;
 	return (await db.query.archetypes.findFirst({
 		where: eq(schema.archetypes.id, player.archetypeId),
 	}))!;
 }
 
 async function deckRows(playerId: number) {
-	return await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.playerId, playerId));
+	return await db
+		.select()
+		.from(schema.playerDecks)
+		.where(eq(schema.playerDecks.playerId, playerId));
 }
 
-describe('a Player\'s Deck List', () => {
+describe("a Player's Deck List", () => {
 	it('is saved with each number resolved once, an unknown one kept as an Unresolved Deck Card, and reads back the same', async () => {
 		const eventId = await stageEvent();
 		const player = await stagePlayer(eventId);
@@ -164,12 +168,19 @@ describe('a Player\'s Deck List', () => {
 			],
 			sourceText: '1x OP01-001 Roronoa Zoro\n6x OP01-025 Roronoa Zoro\n4x OP99-999',
 		});
-		expect(deckList.warnings.map(warning => warning.code)).toEqual(['MAINBOARD_COUNT', 'TOO_MANY_COPIES', 'UNKNOWN_CARD']);
-		expect(upstream.batches()).toEqual([
-			['OP01-001', 'OP01-025', 'OP99-999'],
+		expect(deckList.warnings.map((warning) => warning.code)).toEqual([
+			'MAINBOARD_COUNT',
+			'TOO_MANY_COPIES',
+			'UNKNOWN_CARD',
 		]);
-		expect(await opDeckListWriteModule().readPlayer({ eventId, playerId: player.id })).toEqual(deckList);
-		const [unresolved] = await db.select().from(schema.playerDeckUnresolvedCards).where(eq(schema.playerDeckUnresolvedCards.deckId, deckList.id));
+		expect(upstream.batches()).toEqual([['OP01-001', 'OP01-025', 'OP99-999']]);
+		expect(await opDeckListWriteModule().readPlayer({ eventId, playerId: player.id })).toEqual(
+			deckList,
+		);
+		const [unresolved] = await db
+			.select()
+			.from(schema.playerDeckUnresolvedCards)
+			.where(eq(schema.playerDeckUnresolvedCards.deckId, deckList.id));
 		expect(unresolved).toMatchObject({ originalName: 'OP99-999', quantity: 4, entryType: 'card' });
 	});
 
@@ -180,52 +191,53 @@ describe('a Player\'s Deck List', () => {
 
 		await write(eventId, ben.id, { text: '1x OP01-001\n4x OP01-025\n4x OP01-040' });
 
-		expect(upstream.batches()).toEqual([
-			['OP01-001', 'OP01-025', 'OP99-999'],
-			['OP01-040'],
-		]);
+		expect(upstream.batches()).toEqual([['OP01-001', 'OP01-025', 'OP99-999'], ['OP01-040']]);
 	});
 
 	it.each([
 		[
 			'import',
 			{
-				entries: [
-					{ number: 'OP99-999', quantity: 4 },
-				],
+				entries: [{ number: 'OP99-999', quantity: 4 }],
 				leaderNumber: 'OP01-001',
 			},
 		],
-		[
-			'paste',
-			{ text: '1x OP01-001\n4x OP99-999' },
-		],
-	] as const)('retries a number bandai-keepr did not know when an %s sees it again', async (_input, input) => {
-		const eventId = await stageEvent();
-		const [ana, ben] = [await stagePlayer(eventId, 'ana'), await stagePlayer(eventId, 'ben')];
-		await write(eventId, ana.id, { text: ZORO_DECK });
-		upstream.know(knownOpCard({
-			number: 'OP99-999',
-			name: 'Late Card',
-			category: 'event',
-			colors: ['Red'],
-		}));
-		upstream.reset();
+		['paste', { text: '1x OP01-001\n4x OP99-999' }],
+	] as const)(
+		'retries a number bandai-keepr did not know when an %s sees it again',
+		async (_input, input) => {
+			const eventId = await stageEvent();
+			const [ana, ben] = [await stagePlayer(eventId, 'ana'), await stagePlayer(eventId, 'ben')];
+			await write(eventId, ana.id, { text: ZORO_DECK });
+			upstream.know(
+				knownOpCard({
+					number: 'OP99-999',
+					name: 'Late Card',
+					category: 'event',
+					colors: ['Red'],
+				}),
+			);
+			upstream.reset();
 
-		const { deckList } = await write(eventId, ben.id, input, 'import');
+			const { deckList } = await write(eventId, ben.id, input, 'import');
 
-		expect(upstream.batches()).toEqual([
-			['OP99-999'],
-		]);
-		expect(deckList.entries.find(entry => entry.number === 'OP99-999')?.card?.name).toBe('Late Card');
-	});
+			expect(upstream.batches()).toEqual([['OP99-999']]);
+			expect(deckList.entries.find((entry) => entry.number === 'OP99-999')?.card?.name).toBe(
+				'Late Card',
+			);
+		},
+	);
 
 	it('saves nothing when the lookup fails', async () => {
 		const eventId = await stageEvent();
 		const player = await stagePlayer(eventId);
-		upstream.fail(Object.assign(new Error('bandai-keepr down'), { code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' }));
+		upstream.fail(
+			Object.assign(new Error('bandai-keepr down'), { code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' }),
+		);
 
-		await expect(write(eventId, player.id, { text: ZORO_DECK })).rejects.toMatchObject({ code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' });
+		await expect(write(eventId, player.id, { text: ZORO_DECK })).rejects.toMatchObject({
+			code: 'BANDAI_KEEPR_UPSTREAM_FAILURE',
+		});
 
 		expect(await deckRows(player.id)).toEqual([]);
 		expect(await playerRow(player.id)).toEqual(player);
@@ -254,7 +266,7 @@ describe('a Player\'s Deck List', () => {
 		const second = await write(eventId, player.id, { text: ZORO_DECK });
 
 		expect(second.deckList.id).not.toBe(first.deckList.id);
-		expect((await deckRows(player.id)).map(deck => deck.id)).toEqual([second.deckList.id]);
+		expect((await deckRows(player.id)).map((deck) => deck.id)).toEqual([second.deckList.id]);
 		const after = await playerRow(player.id);
 		expect(after.gameData).toEqual({
 			type: 'op',
@@ -277,12 +289,7 @@ describe('a Player\'s Deck List', () => {
 			'OP01-016',
 			4,
 		],
-		[
-			'no Leader, for a paste with none and none picked',
-			{ text: '4x OP01-025' },
-			null,
-			4,
-		],
+		['no Leader, for a paste with none and none picked', { text: '4x OP01-025' }, null, 4],
 		[
 			'the Leader an import marks, known or not',
 			{
@@ -302,33 +309,42 @@ describe('a Player\'s Deck List', () => {
 		const { deckList } = await write(eventId, player.id, input);
 
 		expect(deckList).toMatchObject({ leaderNumber, mainboardCount });
-		expect(deckList.entries.filter(entry => entry.number === leaderNumber)).toHaveLength(leaderNumber === null
-			? 0
-			: 1);
+		expect(deckList.entries.filter((entry) => entry.number === leaderNumber)).toHaveLength(
+			leaderNumber === null ? 0 : 1,
+		);
 	});
 
-	it.each([
-		['a Magic Event', 'mtg', 404],
-	] as const)('is refused on %s', async (_label, game, statusCode) => {
-		const eventId = await stageEvent(game);
-		const player = await stagePlayer(eventId);
+	it.each([['a Magic Event', 'mtg', 404]] as const)(
+		'is refused on %s',
+		async (_label, game, statusCode) => {
+			const eventId = await stageEvent(game);
+			const player = await stagePlayer(eventId);
 
-		await expect(write(eventId, player.id, { text: ZORO_DECK })).rejects.toMatchObject({ statusCode });
-	});
+			await expect(write(eventId, player.id, { text: ZORO_DECK })).rejects.toMatchObject({
+				statusCode,
+			});
+		},
+	);
 
-	it('is refused for another Event\'s Player', async () => {
+	it("is refused for another Event's Player", async () => {
 		const eventId = await stageEvent();
 		const other = await stagePlayer(await stageEvent());
 
-		await expect(write(eventId, other.id, { text: ZORO_DECK })).rejects.toMatchObject({ statusCode: 404 });
+		await expect(write(eventId, other.id, { text: ZORO_DECK })).rejects.toMatchObject({
+			statusCode: 404,
+		});
 		expect(upstream.batches()).toEqual([]);
 	});
 });
 
-describe('a Player\'s Archetype', () => {
-	it('is their Leader\'s, one per Leader, named and coloured by it', async () => {
+describe("a Player's Archetype", () => {
+	it("is their Leader's, one per Leader, named and coloured by it", async () => {
 		const eventId = await stageEvent();
-		const [ana, ben, cal] = [await stagePlayer(eventId, 'ana'), await stagePlayer(eventId, 'ben'), await stagePlayer(eventId, 'cal')];
+		const [ana, ben, cal] = [
+			await stagePlayer(eventId, 'ana'),
+			await stagePlayer(eventId, 'ben'),
+			await stagePlayer(eventId, 'cal'),
+		];
 
 		await write(eventId, ana.id, { text: '1x OP01-003\n4x OP01-025' });
 		await write(eventId, ben.id, { text: '1x OP01-003\n4x OP01-025' });
@@ -355,15 +371,18 @@ describe('a Player\'s Archetype', () => {
 			{ name: 'Monkey.D.Luffy (OP01-003)', colors: 'Red/Green', leaderCardNumber: 'OP01-003' },
 			{ name: 'Nami', colors: 'Blue', leaderCardNumber: 'OP01-016' },
 		]);
-		expect(published.filter(message => message.type === 'archetype:updated').map(message => message.payload))
-			.toEqual([
-				{
-					archetype: expect.objectContaining({ name: 'Monkey.D.Luffy (OP01-003)' }),
-				},
-			]);
+		expect(
+			published
+				.filter((message) => message.type === 'archetype:updated')
+				.map((message) => message.payload),
+		).toEqual([
+			{
+				archetype: expect.objectContaining({ name: 'Monkey.D.Luffy (OP01-003)' }),
+			},
+		]);
 	});
 
-	it('leaves a customised Archetype\'s name alone in a clash', async () => {
+	it("leaves a customised Archetype's name alone in a clash", async () => {
 		const eventId = await stageEvent();
 		const [ana, ben] = [await stagePlayer(eventId, 'ana'), await stagePlayer(eventId, 'ben')];
 		await write(eventId, ana.id, { text: '1x OP01-003' });
@@ -375,7 +394,7 @@ describe('a Player\'s Archetype', () => {
 
 		await write(eventId, ben.id, { text: '1x OP05-060' });
 
-		expect((await eventArchetypes(eventId)).map(archetype => archetype.name)).toEqual([
+		expect((await eventArchetypes(eventId)).map((archetype) => archetype.name)).toEqual([
 			'Monkey.D.Luffy',
 			'Monkey.D.Luffy (OP05-060)',
 		]);
@@ -389,22 +408,28 @@ describe('a Player\'s Archetype', () => {
 		const player = await stagePlayer(eventId);
 		await write(eventId, player.id, { text: '1x OP01-001' });
 
-		await write(eventId, player.id, text === '4x OP01-025'
-			? {
-					entries: [
-						{ number: 'OP09-001', quantity: 1 },
-					],
-					leaderNumber: 'OP09-001',
-				}
-			: { text });
+		await write(
+			eventId,
+			player.id,
+			text === '4x OP01-025'
+				? {
+						entries: [{ number: 'OP09-001', quantity: 1 }],
+						leaderNumber: 'OP09-001',
+					}
+				: { text },
+		);
 
 		expect((await archetypeOf(player.id))?.name ?? null).toBe(archetypeName);
-		expect((await deckRows(player.id))[0]!.archetypeId).toBe((await playerRow(player.id)).archetypeId);
+		expect((await deckRows(player.id))[0]!.archetypeId).toBe(
+			(await playerRow(player.id)).archetypeId,
+		);
 	});
 
 	const emptyings = {
-		'by a new Leader': (eventId: number, playerId: number) => write(eventId, playerId, { text: '1x OP01-016' }),
-		'by deleting its Player': (eventId: number, playerId: number) => playerUpdateModule().deletePlayer({ eventId, playerId }),
+		'by a new Leader': (eventId: number, playerId: number) =>
+			write(eventId, playerId, { text: '1x OP01-016' }),
+		'by deleting its Player': (eventId: number, playerId: number) =>
+			playerUpdateModule().deletePlayer({ eventId, playerId }),
 	};
 	it.each([
 		[
@@ -419,32 +444,22 @@ describe('a Player\'s Archetype', () => {
 			null,
 			false,
 		],
-		[
-			'is kept when an operator renamed it',
-			'by a new Leader',
-			{ name: 'Zoro Aggro' },
-			true,
-		],
-		[
-			'is kept when an operator renamed it',
-			'by deleting its Player',
-			{ name: 'Zoro Aggro' },
-			true,
-		],
-		[
-			'is kept when an operator pinned its series',
-			'by a new Leader',
-			{ chartSeries: 3 },
-			true,
-		],
+		['is kept when an operator renamed it', 'by a new Leader', { name: 'Zoro Aggro' }, true],
+		['is kept when an operator renamed it', 'by deleting its Player', { name: 'Zoro Aggro' }, true],
+		['is kept when an operator pinned its series', 'by a new Leader', { chartSeries: 3 }, true],
 	] as const)('derived and emptied, %s (%s)', async (_label, emptying, customisation, kept) => {
 		const eventId = await stageEvent();
 		const player = await stagePlayer(eventId);
 		await write(eventId, player.id, { text: '1x OP01-001' });
 		const zoro = (await archetypeOf(player.id))!;
 		if (customisation)
-			await archetypeWriteModule().updateArchetype({ eventId, archetypeId: zoro.id, input: customisation });
-		const [screen] = await db.insert(schema.screens)
+			await archetypeWriteModule().updateArchetype({
+				eventId,
+				archetypeId: zoro.id,
+				input: customisation,
+			});
+		const [screen] = await db
+			.insert(schema.screens)
 			.values({
 				eventId,
 				name: 'Spotlight',
@@ -465,13 +480,15 @@ describe('a Player\'s Archetype', () => {
 			where: eq(schema.archetypes.id, zoro.id),
 		});
 		expect(held !== undefined).toBe(kept);
-		const types = published.map(message => message.type);
+		const types = published.map((message) => message.type);
 		expect(types.includes('archetype:deleted')).toBe(!kept);
 		const stored = await db.query.screens.findFirst({
 			where: eq(schema.screens.id, screen!.id),
 		});
-		expect((stored!.modeConfigs as Record<string, { archetypeId?: number }>)['archetype-spotlight']?.archetypeId)
-			.toBe(kept ? zoro.id : undefined);
+		expect(
+			(stored!.modeConfigs as Record<string, { archetypeId?: number }>)['archetype-spotlight']
+				?.archetypeId,
+		).toBe(kept ? zoro.id : undefined);
 	});
 
 	it('is kept while another Player holds it', async () => {
@@ -500,7 +517,7 @@ describe('a Player\'s Archetype', () => {
 	});
 });
 
-describe('a Player\'s Deck List write announces', () => {
+describe("a Player's Deck List write announces", () => {
 	it('a new Archetype before the Player, then the Archetype it emptied', async () => {
 		const eventId = await stageEvent();
 		const player = await stagePlayer(eventId);
@@ -509,7 +526,11 @@ describe('a Player\'s Deck List write announces', () => {
 
 		const { deckList } = await write(eventId, player.id, { text: '1x OP01-016' });
 
-		expect(published.map(message => message.type)).toEqual(['archetype:created', 'player:updated', 'archetype:deleted']);
+		expect(published.map((message) => message.type)).toEqual([
+			'archetype:created',
+			'player:updated',
+			'archetype:deleted',
+		]);
 		expect(published[1]!.payload).toMatchObject({
 			player: {
 				id: player.id,
@@ -524,7 +545,8 @@ describe('a Player\'s Deck List write announces', () => {
 	it('to every Session showing the Player, through its corrected snapshot', async () => {
 		const eventId = await stageEvent();
 		const player = await stagePlayer(eventId);
-		const slots = await db.insert(schema.featureMatches)
+		const slots = await db
+			.insert(schema.featureMatches)
 			.values([
 				{
 					eventId,
@@ -540,19 +562,25 @@ describe('a Player\'s Deck List write announces', () => {
 				},
 			])
 			.returning();
-		const sessions = await Promise.all(slots.map(async slot =>
-			(await featureMatchStateService().createSessionForSlot(slot.id, eventId))!));
+		const sessions = await Promise.all(
+			slots.map(
+				async (slot) => (await featureMatchStateService().createSessionForSlot(slot.id, eventId))!,
+			),
+		);
 
 		const { deckList } = await write(eventId, player.id, { text: ZORO_DECK });
 
-		const shown = await Promise.all(sessions.map(async (session, index) => {
-			const active = await db.query.featureMatchSessions.findFirst({
-				where: and(eq(schema.featureMatchSessions.id, session.id), eq(schema.featureMatchSessions.status, 'active')),
-			});
-			return active!.sourceSnapshot[index === 0
-				? 'player1'
-				: 'player2'].data?.gameData;
-		}));
+		const shown = await Promise.all(
+			sessions.map(async (session, index) => {
+				const active = await db.query.featureMatchSessions.findFirst({
+					where: and(
+						eq(schema.featureMatchSessions.id, session.id),
+						eq(schema.featureMatchSessions.status, 'active'),
+					),
+				});
+				return active!.sourceSnapshot[index === 0 ? 'player1' : 'player2'].data?.gameData;
+			}),
+		);
 		const expected = {
 			type: 'op',
 			leader: {
@@ -564,6 +592,6 @@ describe('a Player\'s Deck List write announces', () => {
 			deckList: { id: deckList.id, mainboardCount: 8, leaderNumber: 'OP01-001' },
 		};
 		expect(shown).toEqual([expected, expected]);
-		expect(published.filter(message => message.type === 'featureMatch:updated')).toHaveLength(2);
+		expect(published.filter((message) => message.type === 'featureMatch:updated')).toHaveLength(2);
 	});
 });

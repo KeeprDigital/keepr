@@ -35,7 +35,9 @@ function tile(gallery: VueWrapper, mode: string) {
 
 /** The sample lower third's name, as the compositor paints it. */
 function lowerThirdName(gallery: VueWrapper) {
-	return tile(gallery, 'broadcast-graphics').findAll('p').find(text => text.text() === 'Alexandra Whitfield-Moreau');
+	return tile(gallery, 'broadcast-graphics')
+		.findAll('p')
+		.find((text) => text.text() === 'Alexandra Whitfield-Moreau');
 }
 
 describe('the Theme preview gallery', () => {
@@ -44,34 +46,50 @@ describe('the Theme preview gallery', () => {
 		{ game: 'mtg', pick: false },
 		{ game: 'mtg', pick: true },
 		{ game: 'op', pick: true },
-	] as const)('shows every $game Screen Mode a Theme preview shows, in Screen Mode order (picked: $pick)', async ({ game, pick }) => {
-		const gallery = mountGallery();
-		if (pick)
-			await gallery.get(`[data-testid="tab-${game}"]`).trigger('click');
+	] as const)(
+		'shows every $game Screen Mode a Theme preview shows, in Screen Mode order (picked: $pick)',
+		async ({ game, pick }) => {
+			const gallery = mountGallery();
+			if (pick) await gallery.get(`[data-testid="tab-${game}"]`).trigger('click');
 
-		const tiles = gallery.findAll('[data-preview-mode]');
+			const tiles = gallery.findAll('[data-preview-mode]');
 
-		expect(tiles.map(tile => tile.attributes('data-preview-mode')))
-			.toEqual(THEME_PREVIEW_SCREEN_MODES.filter(mode => isOfferedToEvent(SCREEN_MODES[mode].offeredTo, eventKind({ game }))));
-		expect(new Set(tiles.map(tile => tile.attributes('data-preview-game')))).toEqual(new Set([game]));
-	});
+			expect(tiles.map((tile) => tile.attributes('data-preview-mode'))).toEqual(
+				THEME_PREVIEW_SCREEN_MODES.filter((mode) =>
+					isOfferedToEvent(SCREEN_MODES[mode].offeredTo, eventKind({ game })),
+				),
+			);
+			expect(new Set(tiles.map((tile) => tile.attributes('data-preview-game')))).toEqual(
+				new Set([game]),
+			);
+		},
+	);
 
 	// A Commander Event is a pick beside the Card Games: its Feature Match Overlay seats four,
 	// and its Deck List shows a Seat's Commanders apart from its Mainboard (ADR-0087).
-	it('shows a Commander Event\'s Screen Modes, against the Commander sample', async () => {
+	it("shows a Commander Event's Screen Modes, against the Commander sample", async () => {
 		const gallery = mountGallery();
 		await gallery.get('[data-testid="tab-commander"]').trigger('click');
 
-		expect(gallery.findAll('[data-preview-mode]').map(found => found.attributes('data-preview-mode')))
-			.toEqual(THEME_PREVIEW_SCREEN_MODES.filter(mode => isOfferedToEvent(SCREEN_MODES[mode].offeredTo, 'mtg-commander')));
+		expect(
+			gallery.findAll('[data-preview-mode]').map((found) => found.attributes('data-preview-mode')),
+		).toEqual(
+			THEME_PREVIEW_SCREEN_MODES.filter((mode) =>
+				isOfferedToEvent(SCREEN_MODES[mode].offeredTo, 'mtg-commander'),
+			),
+		);
 		const { player1Name, player4Name } = featureMatchSampleDataset('mtg-commander').tokenValues;
 		await settleUntil(() => {
 			loadDrawnImages(gallery);
-			return tile(gallery, 'feature-match-overlay').text().includes(String(player4Name))
-				&& tile(gallery, 'deck').find('[data-testid="commanders-section"]').exists();
+			return (
+				tile(gallery, 'feature-match-overlay').text().includes(String(player4Name)) &&
+				tile(gallery, 'deck').find('[data-testid="commanders-section"]').exists()
+			);
 		});
 		expect(tile(gallery, 'feature-match-overlay').text()).toContain(String(player1Name));
-		expect(tile(gallery, 'deck').get('[data-testid="deck-player-name"]').text()).toBe(String(player1Name));
+		expect(tile(gallery, 'deck').get('[data-testid="deck-player-name"]').text()).toBe(
+			String(player1Name),
+		);
 	});
 
 	it.each([
@@ -79,26 +97,31 @@ describe('the Theme preview gallery', () => {
 			mode: 'standings',
 			tokens: { surface: 'rgb(9, 8, 7)' },
 			shown: (gallery: VueWrapper) => gallery.find('.standings-table').exists(),
-			painted: (gallery: VueWrapper) => getComputedStyle(gallery.get('.standings-table').element).backgroundColor,
+			painted: (gallery: VueWrapper) =>
+				getComputedStyle(gallery.get('.standings-table').element).backgroundColor,
 			value: 'rgb(9, 8, 7)',
 		},
 		{
 			mode: 'broadcast-graphics',
 			tokens: { 'text-primary': 'rgb(1, 2, 3)' },
 			shown: (gallery: VueWrapper) => lowerThirdName(gallery) !== undefined,
-			painted: (gallery: VueWrapper) => (lowerThirdName(gallery)!.element as HTMLElement).style.color,
+			painted: (gallery: VueWrapper) =>
+				(lowerThirdName(gallery)!.element as HTMLElement).style.color,
 			value: 'rgb(1, 2, 3)',
 		},
-	])('shows $mode from the sample and repaints it as the Theme\'s tokens change', async ({ tokens, shown, painted, value }) => {
-		const gallery = mountGallery();
-		await settleUntil(() => {
-			loadDrawnImages(gallery);
-			return shown(gallery);
-		});
+	])(
+		"shows $mode from the sample and repaints it as the Theme's tokens change",
+		async ({ tokens, shown, painted, value }) => {
+			const gallery = mountGallery();
+			await settleUntil(() => {
+				loadDrawnImages(gallery);
+				return shown(gallery);
+			});
 
-		await gallery.setProps({ tokens });
+			await gallery.setProps({ tokens });
 
-		expect(shown(gallery)).toBe(true);
-		expect(painted(gallery)).toBe(value);
-	});
+			expect(shown(gallery)).toBe(true);
+			expect(painted(gallery)).toBe(value);
+		},
+	);
 });

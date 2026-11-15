@@ -21,8 +21,9 @@ describe('the link an administrator hands over', () => {
 	});
 
 	it('round-trips a token through the fragment it writes', () => {
-		expect(passwordResetTokenFromHash(new URL(passwordResetLinkPath(TOKEN), 'https://s.example').hash))
-			.toBe(TOKEN);
+		expect(
+			passwordResetTokenFromHash(new URL(passwordResetLinkPath(TOKEN), 'https://s.example').hash),
+		).toBe(TOKEN);
 	});
 
 	it('reads a fragment with or without its leading hash', () => {

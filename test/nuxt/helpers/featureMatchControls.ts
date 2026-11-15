@@ -12,6 +12,10 @@ export function matchStatePart(name: string) {
 /** The parts of match state a mounted control surface offers, by name, sorted. */
 export function offeredMatchStateParts(wrapper: Pick<VueWrapper, 'findAll'>): string[] {
 	return [
-		...new Set(wrapper.findAll('[data-match-state-part]').map(node => node.attributes('data-match-state-part')!)),
+		...new Set(
+			wrapper
+				.findAll('[data-match-state-part]')
+				.map((node) => node.attributes('data-match-state-part')!),
+		),
 	].sort();
 }

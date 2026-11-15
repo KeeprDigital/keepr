@@ -1,4 +1,8 @@
-import type { ScreenModeConfigField, ScreenSettingsContext, ScreenSettingsGroupDeclaration } from '~~/shared/screenModeConfigs/fields';
+import type {
+	ScreenModeConfigField,
+	ScreenSettingsContext,
+	ScreenSettingsGroupDeclaration,
+} from '~~/shared/screenModeConfigs/fields';
 import type { ScreenMode } from '~~/shared/types/enums';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -16,8 +20,7 @@ function everyField(mode: ScreenMode): Map<string, ScreenModeConfigField> {
 	const visit = (fields: Readonly<Record<string, ScreenModeConfigField>>, path: string[]) => {
 		for (const field of Object.values(fields)) {
 			found.set([...path, field.key].join('.'), field);
-			if (field.fields)
-				visit(field.fields, [...path, field.key]);
+			if (field.fields) visit(field.fields, [...path, field.key]);
 		}
 	};
 	visit(screenModeConfigContract(mode).fields as Record<string, ScreenModeConfigField>, []);
@@ -28,7 +31,11 @@ function everyField(mode: ScreenMode): Map<string, ScreenModeConfigField> {
  * Every field path a mode's shape declares, through each block it edits by its
  * own fields; a slot's widget edits its object whole.
  */
-function everyShapePath(shape: z.ZodRawShape, fields: Readonly<Record<string, ScreenModeConfigField>>, path: string[] = []): string[] {
+function everyShapePath(
+	shape: z.ZodRawShape,
+	fields: Readonly<Record<string, ScreenModeConfigField>>,
+	path: string[] = [],
+): string[] {
 	return Object.entries(shape).flatMap(([key, field]) => {
 		const inner = unwrapOptionalField(field as z.ZodType);
 		const nested = fields[key]?.fields;
@@ -42,29 +49,35 @@ function everyShapePath(shape: z.ZodRawShape, fields: Readonly<Record<string, Sc
 }
 
 describe.each(SCREEN_MODE_VALUES)('the %s config contract', (mode) => {
-	it('describes every field, nested blocks\' included, with its settings card', () => {
+	it("describes every field, nested blocks' included, with its settings card", () => {
 		const fields = everyField(mode);
 		const contract = screenModeConfigContract(mode);
 
-		expect([
-			...fields.keys(),
-		]).toEqual(everyShapePath(contract.shape, contract.fields as Record<string, ScreenModeConfigField>));
-		for (const [path, field] of fields)
-			expect(SCREEN_SETTINGS_CARDS, path).toContain(field.card);
+		expect([...fields.keys()]).toEqual(
+			everyShapePath(contract.shape, contract.fields as Record<string, ScreenModeConfigField>),
+		);
+		for (const [path, field] of fields) expect(SCREEN_SETTINGS_CARDS, path).toContain(field.card);
 	});
 
 	it('qualifies a label it repeats by a different group heading on each', () => {
 		const placed = new Map<string, string>();
 		for (const [path, field] of everyField(mode)) {
 			const where = `${field.card}/${field.group ?? ''}/${field.label}`;
-			expect(placed.get(where), `${path} repeats ${placed.get(where)}'s label in one place`).toBeUndefined();
+			expect(
+				placed.get(where),
+				`${path} repeats ${placed.get(where)}'s label in one place`,
+			).toBeUndefined();
 			placed.set(where, path);
 		}
 	});
 });
 
 /** A settings context for an Event of `game` with `flags`. */
-function context(config: Record<string, unknown>, event: ScreenSettingsContext['event'] = { game: 'mtg' }, extra: Partial<ScreenSettingsContext> = {}): ScreenSettingsContext {
+function context(
+	config: Record<string, unknown>,
+	event: ScreenSettingsContext['event'] = { game: 'mtg' },
+	extra: Partial<ScreenSettingsContext> = {},
+): ScreenSettingsContext {
 	return { config, event, ...extra };
 }
 
@@ -72,30 +85,19 @@ function context(config: Record<string, unknown>, event: ScreenSettingsContext['
 function shows(mode: ScreenMode, path: string, settings: ScreenSettingsContext): boolean {
 	const field = everyField(mode).get(path);
 	expect(field, `${mode} declares ${path}`).toBeDefined();
-	const groups = screenModeConfigContract(mode).groups as Record<string, ScreenSettingsGroupDeclaration>;
-	const group = field!.group === undefined
-		? undefined
-		: groups[field!.group];
+	const groups = screenModeConfigContract(mode).groups as Record<
+		string,
+		ScreenSettingsGroupDeclaration
+	>;
+	const group = field!.group === undefined ? undefined : groups[field!.group];
 	return (group?.showWhen?.(settings) ?? true) && (field!.showWhen?.(settings) ?? true);
 }
 
 // A control that cannot have an effect is hidden, on the field that cannot.
 describe('when a settings field shows', () => {
 	it.each([
-		[
-			'standings',
-			'rangeEnd',
-			'in the range view',
-			context({ viewMode: 'range' }),
-			true,
-		],
-		[
-			'standings',
-			'rangeEnd',
-			'outside the range view',
-			context({ viewMode: 'all' }),
-			false,
-		],
+		['standings', 'rangeEnd', 'in the range view', context({ viewMode: 'range' }), true],
+		['standings', 'rangeEnd', 'outside the range view', context({ viewMode: 'all' }), false],
 		[
 			'standings',
 			'playerListId',
@@ -103,21 +105,13 @@ describe('when a settings field shows', () => {
 			context({ viewMode: 'watchlist' }),
 			true,
 		],
-		[
-			'standings',
-			'revealOrder',
-			'outside the reveal view',
-			context({ viewMode: 'range' }),
-			false,
-		],
+		['standings', 'revealOrder', 'outside the reveal view', context({ viewMode: 'range' }), false],
 		[
 			'standings',
 			'showArchetypeColors',
 			'beside a shown deck column',
 			context({
-				columns: [
-					{ key: 'deck', visible: true },
-				],
+				columns: [{ key: 'deck', visible: true }],
 			}),
 			true,
 		],
@@ -126,33 +120,13 @@ describe('when a settings field shows', () => {
 			'showArchetypeColors',
 			'without the deck column',
 			context({
-				columns: [
-					{ key: 'deck', visible: false },
-				],
+				columns: [{ key: 'deck', visible: false }],
 			}),
 			false,
 		],
-		[
-			'metagame',
-			'archetypeId',
-			'in the cards view',
-			context({ viewMode: 'cards' }),
-			true,
-		],
-		[
-			'metagame',
-			'archetypeId',
-			'in the archetype view',
-			context({ viewMode: 'archetype' }),
-			false,
-		],
-		[
-			'metagame',
-			'pageSize',
-			'in the chart view',
-			context({ viewMode: 'chart' }),
-			false,
-		],
+		['metagame', 'archetypeId', 'in the cards view', context({ viewMode: 'cards' }), true],
+		['metagame', 'archetypeId', 'in the archetype view', context({ viewMode: 'archetype' }), false],
+		['metagame', 'pageSize', 'in the chart view', context({ viewMode: 'chart' }), false],
 		[
 			'top-cards',
 			'minPoints',
@@ -209,13 +183,7 @@ describe('when a settings field shows', () => {
 			context({ playerSource: 'players' }),
 			false,
 		],
-		[
-			'top-cut',
-			'bracketSource',
-			'for a Magic Event',
-			context({}),
-			true,
-		],
+		['top-cut', 'bracketSource', 'for a Magic Event', context({}), true],
 		[
 			'top-cut',
 			'bracketSource',
@@ -223,13 +191,7 @@ describe('when a settings field shows', () => {
 			context({}, { game: 'op' }),
 			false,
 		],
-		[
-			'top-cut',
-			'playerNameShown',
-			'for a One Piece Event',
-			context({}, { game: 'op' }),
-			true,
-		],
+		['top-cut', 'playerNameShown', 'for a One Piece Event', context({}, { game: 'op' }), true],
 		[
 			'top-cut',
 			'phaseId',
@@ -251,20 +213,8 @@ describe('when a settings field shows', () => {
 			context({ countUpAfterEnd: false }),
 			false,
 		],
-		[
-			'talent',
-			'talentIds',
-			'for a lineup',
-			context({ selection: 'lineup' }),
-			true,
-		],
-		[
-			'talent',
-			'talentId',
-			'for a lineup',
-			context({ selection: 'lineup' }),
-			false,
-		],
+		['talent', 'talentIds', 'for a lineup', context({ selection: 'lineup' }), true],
+		['talent', 'talentId', 'for a lineup', context({ selection: 'lineup' }), false],
 		[
 			'feature-match',
 			'showLgs',
@@ -290,36 +240,51 @@ describe('when a settings field shows', () => {
 			'deck',
 			'mainboard.listColumns',
 			'for a list board',
-			context({}, { game: 'mtg' }, {
-				block: { view: 'list' },
-			}),
+			context(
+				{},
+				{ game: 'mtg' },
+				{
+					block: { view: 'list' },
+				},
+			),
 			true,
 		],
 		[
 			'deck',
 			'mainboard.columns',
 			'for a list board',
-			context({}, { game: 'mtg' }, {
-				block: { view: 'list' },
-			}),
+			context(
+				{},
+				{ game: 'mtg' },
+				{
+					block: { view: 'list' },
+				},
+			),
 			false,
 		],
 		[
 			'deck',
 			'sideboard.stackReveal',
 			'for a stacked board',
-			context({}, { game: 'mtg' }, {
-				block: { view: 'stack' },
-			}),
+			context(
+				{},
+				{ game: 'mtg' },
+				{
+					block: { view: 'stack' },
+				},
+			),
 			true,
 		],
 		[
 			'deck',
 			'showHighlanderTotal',
 			'for a Broadcast Deck List',
-			context({
-				deckSource: { type: 'broadcast', broadcastDeckListId: 1 },
-			}, { game: 'mtg', pointsSystem: '7ph' }),
+			context(
+				{
+					deckSource: { type: 'broadcast', broadcastDeckListId: 1 },
+				},
+				{ game: 'mtg', pointsSystem: '7ph' },
+			),
 			false,
 		],
 		[
@@ -336,13 +301,7 @@ describe('when a settings field shows', () => {
 			context({}, { game: 'mtg', pointsSystem: null }),
 			false,
 		],
-		[
-			'deck',
-			'sideboard',
-			'while the Screen shows both boards',
-			context({ board: 'full' }),
-			true,
-		],
+		['deck', 'sideboard', 'while the Screen shows both boards', context({ board: 'full' }), true],
 		// A Commander deck has no Sideboard, so no Board Selection (ADR-0087).
 		[
 			'deck',
@@ -372,13 +331,7 @@ describe('when a settings field shows', () => {
 			context({ board: 'mainboard' }),
 			false,
 		],
-		[
-			'deck',
-			'mainboard',
-			'while the Screen shows both boards',
-			context({ board: 'full' }),
-			true,
-		],
+		['deck', 'mainboard', 'while the Screen shows both boards', context({ board: 'full' }), true],
 		[
 			'deck',
 			'mainboard',
@@ -390,34 +343,30 @@ describe('when a settings field shows', () => {
 			'deck',
 			'sideboard.columns',
 			'for a sideboard storing its own layout',
-			context({}, { game: 'mtg' }, {
-				block: { view: 'grid', columns: 3 },
-			}),
+			context(
+				{},
+				{ game: 'mtg' },
+				{
+					block: { view: 'grid', columns: 3 },
+				},
+			),
 			true,
 		],
 		[
 			'deck',
 			'sideboard.columns',
-			'for a sideboard following the mainboard\'s',
-			context({}, { game: 'mtg' }, {
-				block: { view: 'grid' },
-			}),
+			"for a sideboard following the mainboard's",
+			context(
+				{},
+				{ game: 'mtg' },
+				{
+					block: { view: 'grid' },
+				},
+			),
 			false,
 		],
-		[
-			'pairings',
-			'headerText',
-			'while the header shows',
-			context({ showHeader: true }),
-			true,
-		],
-		[
-			'pairings',
-			'headerText',
-			'while the header is hidden',
-			context({ showHeader: false }),
-			false,
-		],
+		['pairings', 'headerText', 'while the header shows', context({ showHeader: true }), true],
+		['pairings', 'headerText', 'while the header is hidden', context({ showHeader: false }), false],
 		[
 			'pairings',
 			'autoPageIntervalMs',
@@ -435,14 +384,14 @@ describe('when a settings field shows', () => {
 		[
 			'head-to-head',
 			'featureMatchId',
-			'when the Players are a Slot\'s',
+			"when the Players are a Slot's",
 			context({ playerSource: 'featureMatchSlot' }),
 			true,
 		],
 		[
 			'head-to-head',
 			'player1Id',
-			'when the Players are a Slot\'s',
+			"when the Players are a Slot's",
 			context({ playerSource: 'featureMatchSlot' }),
 			false,
 		],
@@ -456,7 +405,7 @@ describe('when a settings field shows', () => {
 		[
 			'head-to-head',
 			'player2Id',
-			'when the Players are a Slot\'s',
+			"when the Players are a Slot's",
 			context({ playerSource: 'featureMatchSlot' }),
 			false,
 		],
@@ -499,7 +448,10 @@ describe('when a settings field shows', () => {
 			'feature-match',
 			'showOvertime',
 			'on a Commander Event, whatever the Event says',
-			context({}, { game: 'mtg', variant: 'commander', featureMatchDefaultExtraTurnsEnabled: true }),
+			context(
+				{},
+				{ game: 'mtg', variant: 'commander', featureMatchDefaultExtraTurnsEnabled: true },
+			),
 			false,
 		],
 		[
@@ -534,22 +486,28 @@ describe('when a settings field shows', () => {
 			'feature-match',
 			'showTurnControls',
 			'for an Event tracking the active player alone',
-			context({}, {
-				game: 'mtg',
-				featureMatchDefaultTurnTrackingEnabled: false,
-				featureMatchDefaultActivePlayerTrackingEnabled: true,
-			}),
+			context(
+				{},
+				{
+					game: 'mtg',
+					featureMatchDefaultTurnTrackingEnabled: false,
+					featureMatchDefaultActivePlayerTrackingEnabled: true,
+				},
+			),
 			true,
 		],
 		[
 			'feature-match',
 			'showTurnControls',
 			'for an Event tracking neither turns nor the active player',
-			context({}, {
-				game: 'mtg',
-				featureMatchDefaultTurnTrackingEnabled: false,
-				featureMatchDefaultActivePlayerTrackingEnabled: false,
-			}),
+			context(
+				{},
+				{
+					game: 'mtg',
+					featureMatchDefaultTurnTrackingEnabled: false,
+					featureMatchDefaultActivePlayerTrackingEnabled: false,
+				},
+			),
 			false,
 		],
 		[
@@ -587,20 +545,8 @@ describe('when a settings field shows', () => {
 			context({}, { game: 'mtg', featureMatchDefaultMulliganTrackingEnabled: false }),
 			false,
 		],
-		[
-			'talent',
-			'talentId',
-			'for one Talent',
-			context({ selection: 'one' }),
-			true,
-		],
-		[
-			'talent',
-			'talentIds',
-			'for one Talent',
-			context({ selection: 'one' }),
-			false,
-		],
+		['talent', 'talentId', 'for one Talent', context({ selection: 'one' }), true],
+		['talent', 'talentIds', 'for one Talent', context({ selection: 'one' }), false],
 		[
 			'talent',
 			'socialProfileDwellMs',

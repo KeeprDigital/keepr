@@ -27,7 +27,9 @@
 function shortSubtableLength(view, offset) {
 	const format = view.getUint16(offset);
 	if (![0, 2, 4, 6].includes(format))
-		throw new Error(`cmap subtable format ${format} is not read here: only formats 0, 2, 4 and 6 keep a 16-bit length and language`);
+		throw new Error(
+			`cmap subtable format ${format} is not read here: only formats 0, 2, 4 and 6 keep a 16-bit length and language`,
+		);
 	return view.getUint16(offset + 2);
 }
 
@@ -57,8 +59,7 @@ export function withSeparateCmapSubtables(source) {
 		if (String.fromCharCode(...source.subarray(candidate, candidate + 4)) === 'cmap')
 			entry = candidate;
 	}
-	if (entry === undefined)
-		throw new Error('Expected a cmap table');
+	if (entry === undefined) throw new Error('Expected a cmap table');
 
 	const cmap = view.getUint32(entry + 8);
 	const count = view.getUint16(cmap + 2);
@@ -118,21 +119,23 @@ export function cmapRecords(source) {
 		if (String.fromCharCode(...source.subarray(candidate, candidate + 4)) === 'cmap')
 			cmap = view.getUint32(candidate + 8);
 	}
-	if (cmap === undefined)
-		throw new Error('Expected a cmap table');
-	return Array.from({
-		length: view.getUint16(cmap + 2),
-	}, (_, index) => {
-		const record = cmap + 4 + index * 8;
-		const offset = view.getUint32(record + 4);
-		shortSubtableLength(view, cmap + offset);
-		return {
-			platformId: view.getUint16(record),
-			encodingId: view.getUint16(record + 2),
-			offset,
-			language: view.getUint16(cmap + offset + 4),
-		};
-	});
+	if (cmap === undefined) throw new Error('Expected a cmap table');
+	return Array.from(
+		{
+			length: view.getUint16(cmap + 2),
+		},
+		(_, index) => {
+			const record = cmap + 4 + index * 8;
+			const offset = view.getUint32(record + 4);
+			shortSubtableLength(view, cmap + offset);
+			return {
+				platformId: view.getUint16(record),
+				encodingId: view.getUint16(record + 2),
+				offset,
+				language: view.getUint16(cmap + offset + 4),
+			};
+		},
+	);
 }
 
 /**
@@ -159,8 +162,7 @@ export function withCmapLanguages(source, languageForPlatform) {
 		if (String.fromCharCode(...bytes.subarray(candidate, candidate + 4)) === 'cmap')
 			entry = candidate;
 	}
-	if (entry === undefined)
-		throw new Error('Expected a cmap table');
+	if (entry === undefined) throw new Error('Expected a cmap table');
 
 	const cmap = view.getUint32(entry + 8);
 	const length = view.getUint32(entry + 12);
@@ -188,9 +190,7 @@ export function withCmapLanguages(source, languageForPlatform) {
  * establish, since a rule with or without the exemption rejects that.
  */
 export function macintoshCmapLanguage(platformId) {
-	return platformId === 1
-		? 1
-		: 0;
+	return platformId === 1 ? 1 : 0;
 }
 
 /**
@@ -201,7 +201,5 @@ export function macintoshCmapLanguage(platformId) {
  * drift apart.
  */
 export function refusedCmapLanguage(platformId) {
-	return platformId === 0
-		? 0
-		: 1;
+	return platformId === 0 ? 0 : 1;
 }

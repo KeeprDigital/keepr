@@ -51,16 +51,18 @@ const packageFile = new File(['package-bytes'], 'template.zip');
 
 function mountLibrary() {
 	let library!: ReturnType<typeof useGraphicsTemplateLibrary<GraphicsTemplateSummary>>;
-	const wrapper = mount(defineComponent({
-		setup() {
-			library = useGraphicsTemplateLibrary<GraphicsTemplateSummary>({
-				repository,
-				canAuthor,
-				unavailable: 'The Template library could not be read.',
-			});
-			return () => h('div');
-		},
-	}));
+	const wrapper = mount(
+		defineComponent({
+			setup() {
+				library = useGraphicsTemplateLibrary<GraphicsTemplateSummary>({
+					repository,
+					canAuthor,
+					unavailable: 'The Template library could not be read.',
+				});
+				return () => h('div');
+			},
+		}),
+	);
 
 	return { wrapper, library };
 }
@@ -73,11 +75,8 @@ async function mountedLibrary() {
 
 describe('useGraphicsTemplateLibrary', () => {
 	beforeEach(() => {
-		for (const method of Object.values(repository))
-			method.mockReset();
-		repository.list.mockResolvedValue([
-			template(),
-		]);
+		for (const method of Object.values(repository)) method.mockReset();
+		repository.list.mockResolvedValue([template()]);
 		canAuthor.value = true;
 	});
 
@@ -85,9 +84,7 @@ describe('useGraphicsTemplateLibrary', () => {
 		const library = await mountedLibrary();
 
 		expect(repository.list).toHaveBeenCalledTimes(1);
-		expect(library.entries.value).toEqual([
-			template(),
-		]);
+		expect(library.entries.value).toEqual([template()]);
 	});
 
 	describe('fail-closed authoring', () => {
@@ -128,9 +125,13 @@ describe('useGraphicsTemplateLibrary', () => {
 		it('holds the entry busy while its write is in flight', async () => {
 			const library = await mountedLibrary();
 			let resolveWork!: () => void;
-			const settled = library.attempt('template-1', () => new Promise((resolve) => {
-				resolveWork = resolve;
-			}));
+			const settled = library.attempt(
+				'template-1',
+				() =>
+					new Promise((resolve) => {
+						resolveWork = resolve;
+					}),
+			);
 
 			expect(library.busyTemplateId.value).toBe('template-1');
 
@@ -141,7 +142,7 @@ describe('useGraphicsTemplateLibrary', () => {
 			expect(library.error.value).toBeNull();
 		});
 
-		it('reports a refused write in the library\'s one message', async () => {
+		it("reports a refused write in the library's one message", async () => {
 			const library = await mountedLibrary();
 
 			await library.attempt('template-1', async () => {
@@ -163,16 +164,21 @@ describe('useGraphicsTemplateLibrary', () => {
 
 			await library.revise(template(), { name: 'Renamed' });
 
-			expect(repository.update).toHaveBeenCalledWith('template-1', { name: 'Renamed', revision: 4 });
+			expect(repository.update).toHaveBeenCalledWith('template-1', {
+				name: 'Renamed',
+				revision: 4,
+			});
 			expect(repository.list).toHaveBeenCalledTimes(2);
 			expect(library.error.value).toBeNull();
 		});
 
 		it('keeps the refusal message through the re-read that follows it', async () => {
-			repository.update.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'The template has moved on.' },
-			}));
+			repository.update.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'The template has moved on.' },
+				}),
+			);
 			const library = await mountedLibrary();
 
 			await library.revise(template(), { name: 'Renamed' });
@@ -212,10 +218,12 @@ describe('useGraphicsTemplateLibrary', () => {
 		});
 
 		it('keeps the pending confirmation when the deletion is refused', async () => {
-			repository.remove.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'The template is in use.' },
-			}));
+			repository.remove.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'The template is in use.' },
+				}),
+			);
 			const library = await mountedLibrary();
 			library.askToRemove('template-1');
 
@@ -241,15 +249,15 @@ describe('useGraphicsTemplateLibrary', () => {
 		});
 
 		it('holds a rejected report for the author to read', async () => {
-			repository.receivePackage.mockResolvedValue(operation({
-				stage: 'rejected',
-				templatePackagePreflight: {
-					outcome: 'rejected',
-					issues: [
-						{ code: 'unreadable-archive' },
-					],
-				},
-			}));
+			repository.receivePackage.mockResolvedValue(
+				operation({
+					stage: 'rejected',
+					templatePackagePreflight: {
+						outcome: 'rejected',
+						issues: [{ code: 'unreadable-archive' }],
+					},
+				}),
+			);
 			const library = await mountedLibrary();
 
 			await library.packageImport.receive(packageFile);
@@ -258,9 +266,7 @@ describe('useGraphicsTemplateLibrary', () => {
 			expect(library.packageImport.reported).toBe(true);
 			expect(library.packageImport.rejected).toBe(true);
 			expect(library.packageImport.awaitingConfirmation).toBe(false);
-			expect(library.packageImport.issues).toEqual([
-				{ code: 'unreadable-archive' },
-			]);
+			expect(library.packageImport.issues).toEqual([{ code: 'unreadable-archive' }]);
 
 			library.packageImport.dismiss();
 
@@ -268,16 +274,16 @@ describe('useGraphicsTemplateLibrary', () => {
 		});
 
 		it('pauses on a report with warnings and installs on the confirmation bound to it', async () => {
-			repository.receivePackage.mockResolvedValue(operation({
-				stage: 'awaiting-confirmation',
-				templatePackagePreflight: {
-					outcome: 'accepted-with-warnings',
-					issues: [
-						{ code: 'duplicate-content' },
-					],
-					fingerprint: 'fingerprint-1',
-				},
-			}));
+			repository.receivePackage.mockResolvedValue(
+				operation({
+					stage: 'awaiting-confirmation',
+					templatePackagePreflight: {
+						outcome: 'accepted-with-warnings',
+						issues: [{ code: 'duplicate-content' }],
+						fingerprint: 'fingerprint-1',
+					},
+				}),
+			);
 			repository.confirmPackage.mockResolvedValue(undefined);
 			repository.installPackage.mockResolvedValue(operation({ stage: 'completed' }));
 			const library = await mountedLibrary();
@@ -295,20 +301,22 @@ describe('useGraphicsTemplateLibrary', () => {
 		});
 
 		it('keeps the paused report and says why when the confirmation is refused', async () => {
-			repository.receivePackage.mockResolvedValue(operation({
-				stage: 'awaiting-confirmation',
-				templatePackagePreflight: {
-					outcome: 'accepted-with-warnings',
-					issues: [
-						{ code: 'duplicate-content' },
-					],
-					fingerprint: 'fingerprint-1',
-				},
-			}));
-			repository.confirmPackage.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'The report has expired.' },
-			}));
+			repository.receivePackage.mockResolvedValue(
+				operation({
+					stage: 'awaiting-confirmation',
+					templatePackagePreflight: {
+						outcome: 'accepted-with-warnings',
+						issues: [{ code: 'duplicate-content' }],
+						fingerprint: 'fingerprint-1',
+					},
+				}),
+			);
+			repository.confirmPackage.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'The report has expired.' },
+				}),
+			);
 			const library = await mountedLibrary();
 			await library.packageImport.receive(packageFile);
 
@@ -321,10 +329,12 @@ describe('useGraphicsTemplateLibrary', () => {
 		});
 
 		it('does not confirm a report that carries no fingerprint', async () => {
-			repository.receivePackage.mockResolvedValue(operation({
-				stage: 'awaiting-confirmation',
-				templatePackagePreflight: { outcome: 'accepted-with-warnings', issues: [] },
-			}));
+			repository.receivePackage.mockResolvedValue(
+				operation({
+					stage: 'awaiting-confirmation',
+					templatePackagePreflight: { outcome: 'accepted-with-warnings', issues: [] },
+				}),
+			);
 			const library = await mountedLibrary();
 			await library.packageImport.receive(packageFile);
 
@@ -343,11 +353,13 @@ describe('useGraphicsTemplateLibrary', () => {
 			expect(library.packageImport.reported).toBe(true);
 		});
 
-		it('reports a refused package in the library\'s one message', async () => {
-			repository.receivePackage.mockRejectedValue(transportFailure({
-				status: 507,
-				body: { message: 'The byte store is exhausted.' },
-			}));
+		it("reports a refused package in the library's one message", async () => {
+			repository.receivePackage.mockRejectedValue(
+				transportFailure({
+					status: 507,
+					body: { message: 'The byte store is exhausted.' },
+				}),
+			);
 			const library = await mountedLibrary();
 
 			await library.packageImport.receive(packageFile);
@@ -358,18 +370,22 @@ describe('useGraphicsTemplateLibrary', () => {
 
 		it('is busy while a package is being received', async () => {
 			let resolveReceive!: (value: unknown) => void;
-			repository.receivePackage.mockReturnValue(new Promise((resolve) => {
-				resolveReceive = resolve;
-			}));
+			repository.receivePackage.mockReturnValue(
+				new Promise((resolve) => {
+					resolveReceive = resolve;
+				}),
+			);
 			const library = await mountedLibrary();
 
 			const settled = library.packageImport.receive(packageFile);
 			expect(library.packageImport.busy).toBe(true);
 
-			resolveReceive(operation({
-				stage: 'rejected',
-				templatePackagePreflight: { outcome: 'rejected', issues: [] },
-			}));
+			resolveReceive(
+				operation({
+					stage: 'rejected',
+					templatePackagePreflight: { outcome: 'rejected', issues: [] },
+				}),
+			);
 			await settled;
 
 			expect(library.packageImport.busy).toBe(false);

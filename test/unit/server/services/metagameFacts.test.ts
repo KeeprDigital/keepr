@@ -133,9 +133,7 @@ describe('buildMetagameFacts', () => {
 			totalPlayers: 8,
 			classifiedPlayers: 8,
 			totalDecks: 0,
-			archetypes: [
-				makeArchetype({ count: 8, metaShare: 100, winRate: 60 }),
-			],
+			archetypes: [makeArchetype({ count: 8, metaShare: 100, winRate: 60 })],
 			cards: [],
 		});
 

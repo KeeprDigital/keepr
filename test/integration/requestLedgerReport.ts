@@ -29,7 +29,9 @@ import { getIntegrationWranglerPersistDir } from './state';
 const SERVER_LOG_QUIET_MILLISECONDS = 200;
 const SERVER_LOG_SETTLE_LIMIT_MILLISECONDS = 3_000;
 
-const serverLog = createServerLogWindow(integrationServerLogPath(getIntegrationWranglerPersistDir()));
+const serverLog = createServerLogWindow(
+	integrationServerLogPath(getIntegrationWranglerPersistDir()),
+);
 
 /**
  * This test worker's own stalls (#633), the newest ten. A request the worker
@@ -44,14 +46,13 @@ monitorEventLoopStalls((gap) => {
 });
 
 async function settledServerLog(): Promise<string[]> {
-	const sleep = () => new Promise(resolve => setTimeout(resolve, SERVER_LOG_QUIET_MILLISECONDS));
+	const sleep = () => new Promise((resolve) => setTimeout(resolve, SERVER_LOG_QUIET_MILLISECONDS));
 	const deadline = Date.now() + SERVER_LOG_SETTLE_LIMIT_MILLISECONDS;
 	let logged = serverLog.since();
 	while (Date.now() < deadline) {
 		await sleep();
 		const next = serverLog.since();
-		if (next.join('\n') === logged.join('\n'))
-			break;
+		if (next.join('\n') === logged.join('\n')) break;
 		logged = next;
 	}
 	return logged;
@@ -63,14 +64,18 @@ beforeEach((context) => {
 	testWorkerStalls = [];
 	context.onTestFailed(async () => {
 		const logged = await settledServerLog();
-		console.error([
-			`[integration] requests during "${context.task.name}":`,
-			...requestLedger.report().map(line => `  ${line}`),
-			logged.length
-				? `[integration] server log during "${context.task.name}":`
-				: `[integration] server log during "${context.task.name}": no line reached its file`,
-			...logged.map(line => `  ${line}`),
-			...testWorkerStalls.map(gap => `[integration] this test worker's event loop stalled for ${gap}ms`),
-		].join('\n'));
+		console.error(
+			[
+				`[integration] requests during "${context.task.name}":`,
+				...requestLedger.report().map((line) => `  ${line}`),
+				logged.length
+					? `[integration] server log during "${context.task.name}":`
+					: `[integration] server log during "${context.task.name}": no line reached its file`,
+				...logged.map((line) => `  ${line}`),
+				...testWorkerStalls.map(
+					(gap) => `[integration] this test worker's event loop stalled for ${gap}ms`,
+				),
+			].join('\n'),
+		);
 	});
 });

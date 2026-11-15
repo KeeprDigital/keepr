@@ -4,7 +4,13 @@ import type { PageRotationMode } from '~~/shared/screenModes';
 import type { ModeConfigTypeMap, ScreenModeConfigPatch } from '~~/shared/types/screenConfig';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
 import { computed } from 'vue';
-import { msUntilNextRotationFlip, projectRotationPage, rotationAnchorForPage, rotationPageCount, rotationPageSize } from '~~/shared/modules/page-rotation';
+import {
+	msUntilNextRotationFlip,
+	projectRotationPage,
+	rotationAnchorForPage,
+	rotationPageCount,
+	rotationPageSize,
+} from '~~/shared/modules/page-rotation';
 import { screenModePageRotation } from '~~/shared/screenModes';
 
 export interface ScreenModePaginationOptions<TRow> {
@@ -40,27 +46,29 @@ export interface ProjectedRotationPageOptions {
  * Null while auto-page is off; the first page while server time is unsynced,
  * rather than projecting on an unknown clock.
  */
-export function useProjectedRotationPage(options: ProjectedRotationPageOptions): ComputedRef<number | null> {
-	return useClockProjection<number | null>((serverTime) => {
-		if (!options.autoPageEnabled.value)
-			return { value: null, nextChangeInMs: null };
-		const rotation = {
-			rotationAnchor: options.rotationAnchor.value,
-			pageDurationMs: options.autoPageIntervalMs.value,
-			totalPages: options.totalPages.value,
-			now: serverTime,
-		};
-		return {
-			value: projectRotationPage(rotation),
-			nextChangeInMs: msUntilNextRotationFlip(rotation),
-		};
-	}, {
-		whileServerTimeUnknown: {
-			show: () => options.autoPageEnabled.value
-				? 1
-				: null,
+export function useProjectedRotationPage(
+	options: ProjectedRotationPageOptions,
+): ComputedRef<number | null> {
+	return useClockProjection<number | null>(
+		(serverTime) => {
+			if (!options.autoPageEnabled.value) return { value: null, nextChangeInMs: null };
+			const rotation = {
+				rotationAnchor: options.rotationAnchor.value,
+				pageDurationMs: options.autoPageIntervalMs.value,
+				totalPages: options.totalPages.value,
+				now: serverTime,
+			};
+			return {
+				value: projectRotationPage(rotation),
+				nextChangeInMs: msUntilNextRotationFlip(rotation),
+			};
 		},
-	});
+		{
+			whileServerTimeUnknown: {
+				show: () => (options.autoPageEnabled.value ? 1 : null),
+			},
+		},
+	);
 }
 
 /**
@@ -73,7 +81,9 @@ export function useProjectedRotationPage(options: ProjectedRotationPageOptions):
 export function useScreenModePagination<TRow>(options: ScreenModePaginationOptions<TRow>) {
 	const { getServerTime } = useServerTime();
 
-	const totalPages = computed(() => rotationPageCount(options.rows.value.length, options.pageSize.value));
+	const totalPages = computed(() =>
+		rotationPageCount(options.rows.value.length, options.pageSize.value),
+	);
 	/** An Auto page holds every row. */
 	const pageSize = computed(() => options.pageSize.value ?? options.rows.value.length);
 
@@ -97,27 +107,24 @@ export function useScreenModePagination<TRow>(options: ScreenModePaginationOptio
 	function setPage(page: number) {
 		const target = Math.max(1, Math.min(page, totalPages.value));
 		if (options.autoPageEnabled.value) {
-			options.persistRotationAnchor?.(rotationAnchorForPage({
-				page: target,
-				pageDurationMs: options.autoPageIntervalMs.value,
-				now: getServerTime(),
-			}));
-		}
-		else {
+			options.persistRotationAnchor?.(
+				rotationAnchorForPage({
+					page: target,
+					pageDurationMs: options.autoPageIntervalMs.value,
+					now: getServerTime(),
+				}),
+			);
+		} else {
 			options.persistPage(target);
 		}
 	}
 
 	function nextPage() {
-		setPage(currentPage.value < totalPages.value
-			? currentPage.value + 1
-			: 1);
+		setPage(currentPage.value < totalPages.value ? currentPage.value + 1 : 1);
 	}
 
 	function prevPage() {
-		setPage(currentPage.value > 1
-			? currentPage.value - 1
-			: totalPages.value);
+		setPage(currentPage.value > 1 ? currentPage.value - 1 : totalPages.value);
 	}
 
 	return {
@@ -152,7 +159,10 @@ export interface PaginatedScreenModeOptions<M extends PageRotationMode, TRow> {
  * Program monitor; a Screen Output never writes, so it cannot move the
  * Rotation Anchor (ADR-0009).
  */
-export function usePaginatedScreenMode<M extends PageRotationMode, TRow>(context: ScreenContext, options: PaginatedScreenModeOptions<M, TRow>) {
+export function usePaginatedScreenMode<M extends PageRotationMode, TRow>(
+	context: ScreenContext,
+	options: PaginatedScreenModeOptions<M, TRow>,
+) {
 	const { screen, eventId, interactive } = context;
 	const screenStore = useScreenStore();
 	const declaration = screenModePageRotation(options.mode);
@@ -162,7 +172,12 @@ export function usePaginatedScreenMode<M extends PageRotationMode, TRow>(context
 		if (interactive.value && screen.value && eventId.value) {
 			void Promise.resolve(
 				// Every paginated mode's config carries the rotation fields, so a patch of them is a patch of it.
-				screenStore.updateModeConfig(eventId.value, screen.value.id, options.mode, patch as ScreenModeConfigPatch<M>),
+				screenStore.updateModeConfig(
+					eventId.value,
+					screen.value.id,
+					options.mode,
+					patch as ScreenModeConfigPatch<M>,
+				),
 			).catch(() => {});
 		}
 	}
@@ -174,7 +189,7 @@ export function usePaginatedScreenMode<M extends PageRotationMode, TRow>(context
 		autoPageEnabled: computed(() => rotation.value.autoPageEnabled),
 		autoPageIntervalMs: computed(() => rotation.value.autoPageIntervalMs),
 		rotationAnchor: computed(() => rotation.value.rotationAnchor),
-		persistPage: page => persist({ currentPage: page }),
-		persistRotationAnchor: anchor => persist({ rotationAnchor: anchor }),
+		persistPage: (page) => persist({ currentPage: page }),
+		persistRotationAnchor: (anchor) => persist({ rotationAnchor: anchor }),
 	});
 }

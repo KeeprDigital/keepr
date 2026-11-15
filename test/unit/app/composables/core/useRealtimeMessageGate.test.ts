@@ -18,14 +18,20 @@ describe('useRealtimeMessageGate', () => {
 
 	it('skips self-origin messages and forwards accepted messages', () => {
 		const handler = vi.fn();
-		const accepted = useRealtimeMessageGate(ref('connection-1')).accept('player:updated', handler as never);
+		const accepted = useRealtimeMessageGate(ref('connection-1')).accept(
+			'player:updated',
+			handler as never,
+		);
 
 		accepted({ eventId: 1, originConnectionId: 'connection-1' } as never, undefined);
-		accepted({
-			eventId: 1,
-			originConnectionId: 'connection-2',
-			player: { id: 2 },
-		} as never, undefined);
+		accepted(
+			{
+				eventId: 1,
+				originConnectionId: 'connection-2',
+				player: { id: 2 },
+			} as never,
+			undefined,
+		);
 
 		expect(handler).toHaveBeenCalledOnce();
 		expect(handler).toHaveBeenCalledWith({
@@ -52,11 +58,13 @@ describe('useRealtimeMessageGate', () => {
 	])('logs a handler that %s, and hands it the next message', async (_, fail) => {
 		const logged = vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const handled: unknown[] = [];
-		const accepted = useRealtimeMessageGate(ref('connection-1')).accept('player:updated', (data) => {
-			handled.push(data);
-			if (handled.length === 1)
-				return fail();
-		});
+		const accepted = useRealtimeMessageGate(ref('connection-1')).accept(
+			'player:updated',
+			(data) => {
+				handled.push(data);
+				if (handled.length === 1) return fail();
+			},
+		);
 		const first = { eventId: 1, originConnectionId: 'connection-2' } as never;
 		const second = { eventId: 2, originConnectionId: 'connection-2' } as never;
 
@@ -65,10 +73,7 @@ describe('useRealtimeMessageGate', () => {
 		accepted(second, undefined);
 
 		expect(logged.mock.calls).toEqual([
-			[
-				'Failed to handle realtime message "player:updated":',
-				expect.any(Error),
-			],
+			['Failed to handle realtime message "player:updated":', expect.any(Error)],
 		]);
 		expect(handled).toEqual([first, second]);
 	});

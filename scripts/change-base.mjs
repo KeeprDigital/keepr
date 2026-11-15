@@ -15,11 +15,12 @@ const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 const MAIN_REFS = ['origin/main', 'main'];
 
 function gitIn(cwd) {
-	return args => execFileSync('git', args, {
-		cwd,
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'ignore'],
-	});
+	return (args) =>
+		execFileSync('git', args, {
+			cwd,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		});
 }
 
 /**
@@ -36,8 +37,7 @@ export function changeBase({ cwd = repositoryRoot, git = gitIn(cwd) } = {}) {
 				ref,
 				commit: git(['merge-base', 'HEAD', ref]).trim(),
 			};
-		}
-		catch {
+		} catch {
 			// No such ref, or no history in common: try the next.
 		}
 	}

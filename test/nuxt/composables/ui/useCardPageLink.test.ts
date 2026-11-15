@@ -3,7 +3,9 @@ import type { CardMatchup, CardPageMode } from '~/types/card/page';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, ref } from 'vue';
 
-function cardView(held: { mode?: CardPageMode; roundId?: number; matchup?: CardMatchup; playerId?: number } = {}) {
+function cardView(
+	held: { mode?: CardPageMode; roundId?: number; matchup?: CardMatchup; playerId?: number } = {},
+) {
 	return {
 		mode: ref<CardPageMode>(held.mode ?? 'search'),
 		roundId: ref<number | null>(held.roundId ?? null),
@@ -34,12 +36,12 @@ describe('useCardPageLink', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
 	it.each([
 		[
-			'a Player\'s deck',
+			"a Player's deck",
 			{ mode: 'player-decklist', playerId: '12' },
 			{
 				mode: 'player-decklist',
@@ -50,7 +52,7 @@ describe('useCardPageLink', () => {
 			true,
 		],
 		[
-			'a Round\'s Match',
+			"a Round's Match",
 			{ mode: 'match-decklist', roundId: '3', matchId: '40' },
 			{
 				mode: 'match-decklist',
@@ -111,12 +113,14 @@ describe('useCardPageLink', () => {
 			matchup: null,
 			playerId: 5,
 		});
-		await vi.waitFor(() => expect(useRoute().query).toEqual({ mode: 'player-decklist', playerId: '5' }));
+		await vi.waitFor(() =>
+			expect(useRoute().query).toEqual({ mode: 'player-decklist', playerId: '5' }),
+		);
 	});
 
 	it.each([
 		[
-			'a Player\'s deck',
+			"a Player's deck",
 			(view: ReturnType<typeof cardView>) => {
 				view.mode.value = 'player-decklist';
 				view.playerId.value = 8;
@@ -124,7 +128,7 @@ describe('useCardPageLink', () => {
 			{ tab: 'x', mode: 'player-decklist', playerId: '8' },
 		],
 		[
-			'a Round\'s Match',
+			"a Round's Match",
 			(view: ReturnType<typeof cardView>) => {
 				view.mode.value = 'match-decklist';
 				view.roundId.value = 2;

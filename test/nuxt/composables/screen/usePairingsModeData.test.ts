@@ -1,5 +1,8 @@
 import type { EffectScope } from 'vue';
-import type { ScreenOutputPairingsResponse, ScreenOutputRoundMatch } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputPairingsResponse,
+	ScreenOutputRoundMatch,
+} from '~~/shared/types/screenOutputReads';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -62,7 +65,10 @@ const round = {
 	roundNumber: 4,
 };
 
-function answer(matches: ScreenOutputRoundMatch[], overrides: Partial<ScreenOutputPairingsResponse['round']> = {}) {
+function answer(
+	matches: ScreenOutputRoundMatch[],
+	overrides: Partial<ScreenOutputPairingsResponse['round']> = {},
+) {
 	return {
 		round: {
 			...round,
@@ -93,21 +99,22 @@ describe('usePairingsModeData', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
-	it('reads the configured Round\'s pairings through the Screen', async () => {
+	it("reads the configured Round's pairings through the Screen", async () => {
 		mutableConfig.roundId = 31;
-		mockFetch.mockResolvedValue(answer([
-			pairing(),
-		]));
+		mockFetch.mockResolvedValue(answer([pairing()]));
 
 		const { round: held, pageData, isEmpty, error } = makePairingsModeData();
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/pairings', expect.anything());
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/pairings',
+			expect.anything(),
+		);
 		expect(held.value?.name).toBe('Round 4');
-		expect(pageData.value.map(row => row.matchId)).toEqual([1]);
+		expect(pageData.value.map((row) => row.matchId)).toEqual([1]);
 		expect(isEmpty.value).toBe(false);
 		expect(error.value).toBeNull();
 	});
@@ -137,9 +144,12 @@ describe('usePairingsModeData', () => {
 		await flushPromises();
 
 		let release!: () => void;
-		mockFetch.mockImplementationOnce(() => new Promise((resolve) => {
-			release = () => resolve(answer([]));
-		}));
+		mockFetch.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					release = () => resolve(answer([]));
+				}),
+		);
 		deliver('melee:pairingsSynced', { roundId: 31 });
 		await flushPromises();
 		expect(mockFetch).toHaveBeenCalledTimes(2);
@@ -152,9 +162,7 @@ describe('usePairingsModeData', () => {
 
 	it('re-reads when the selected Round changes', async () => {
 		mutableConfig.roundId = 31;
-		mockFetch.mockResolvedValue(answer([
-			pairing(),
-		]));
+		mockFetch.mockResolvedValue(answer([pairing()]));
 		makePairingsModeData();
 		await flushPromises();
 
@@ -168,9 +176,7 @@ describe('usePairingsModeData', () => {
 		it('prefers the configured header', async () => {
 			mutableConfig.roundId = 31;
 			mutableConfig.headerText = 'Top Tables';
-			mockFetch.mockResolvedValue(answer([
-				pairing(),
-			]));
+			mockFetch.mockResolvedValue(answer([pairing()]));
 
 			const { headerText } = makePairingsModeData();
 			await flushPromises();
@@ -180,9 +186,7 @@ describe('usePairingsModeData', () => {
 
 		it('names the loaded Round when no header is configured', async () => {
 			mutableConfig.roundId = 31;
-			mockFetch.mockResolvedValue(answer([
-				pairing(),
-			]));
+			mockFetch.mockResolvedValue(answer([pairing()]));
 
 			const { headerText } = makePairingsModeData();
 			await flushPromises();
@@ -208,11 +212,7 @@ describe('usePairingsModeData', () => {
 				}),
 				'BYE',
 			],
-			[
-				'pending Match',
-				pairing(),
-				'Pending',
-			],
+			['pending Match', pairing(), 'Pending'],
 			[
 				'reported Match',
 				pairing({
@@ -230,11 +230,7 @@ describe('usePairingsModeData', () => {
 
 	describe('winner', () => {
 		it.each([
-			[
-				'the first Player',
-				pairing({ hasResult: true, player1GameWins: 2, player2GameWins: 1 }),
-				1,
-			],
+			['the first Player', pairing({ hasResult: true, player1GameWins: 2, player2GameWins: 1 }), 1],
 			[
 				'the second Player',
 				pairing({ hasResult: true, player1GameWins: 0, player2GameWins: 2 }),
@@ -245,21 +241,9 @@ describe('usePairingsModeData', () => {
 				pairing({ hasResult: true, player1GameWins: 1, player2GameWins: 1 }),
 				null,
 			],
-			[
-				'nobody while pending',
-				pairing(),
-				null,
-			],
-			[
-				'the Player with the bye',
-				pairing({ isBye: true, player2: null }),
-				1,
-			],
-			[
-				'the Player with the bye, seated second',
-				pairing({ isBye: true, player1: null }),
-				2,
-			],
+			['nobody while pending', pairing(), null],
+			['the Player with the bye', pairing({ isBye: true, player2: null }), 1],
+			['the Player with the bye, seated second', pairing({ isBye: true, player1: null }), 2],
 		])('is %s', (_name, row, expected) => {
 			expect(makePairingsModeData().winner(row)).toBe(expected);
 		});
@@ -269,16 +253,18 @@ describe('usePairingsModeData', () => {
 		mutableConfig.roundId = 31;
 		mutableConfig.rowsPerPage = 2;
 		mutableConfig.currentPage = 2;
-		mockFetch.mockResolvedValue(answer([
-			pairing({ matchId: 1, tableNumber: 1 }),
-			pairing({ matchId: 2, tableNumber: 2 }),
-			pairing({ matchId: 3, tableNumber: 3 }),
-		]));
+		mockFetch.mockResolvedValue(
+			answer([
+				pairing({ matchId: 1, tableNumber: 1 }),
+				pairing({ matchId: 2, tableNumber: 2 }),
+				pairing({ matchId: 3, tableNumber: 3 }),
+			]),
+		);
 
 		const { pageData } = makePairingsModeData();
 		await flushPromises();
 
-		expect(pageData.value.map(row => row.tableNumber)).toEqual([3]);
+		expect(pageData.value.map((row) => row.tableNumber)).toEqual([3]);
 	});
 
 	describe('freshness', () => {
@@ -288,9 +274,7 @@ describe('usePairingsModeData', () => {
 
 		async function showingPendingPairings() {
 			mutableConfig.roundId = 31;
-			mockFetch.mockResolvedValue(answer([
-				pairing(),
-			]));
+			mockFetch.mockResolvedValue(answer([pairing()]));
 			const data = makePairingsModeData();
 			await flushPromises();
 			expect(data.formatResult(data.pageData.value[0]!)).toBe('Pending');

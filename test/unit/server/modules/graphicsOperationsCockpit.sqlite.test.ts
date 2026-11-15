@@ -1,5 +1,8 @@
 import type { GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
-import type { TestGraphicsLibrary, TestGraphicsLibraryOptions } from '~~/test/helpers/graphicsLibrary';
+import type {
+	TestGraphicsLibrary,
+	TestGraphicsLibraryOptions,
+} from '~~/test/helpers/graphicsLibrary';
 import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
@@ -37,10 +40,14 @@ function createCockpitLibrary(dependencies: Partial<TestGraphicsLibraryOptions> 
 	});
 }
 
-function ingestImage(context: TestGraphicsLibrary, options: { idempotencyKey: string; name: string }) {
+function ingestImage(
+	context: TestGraphicsLibrary,
+	options: { idempotencyKey: string; name: string },
+) {
 	return ingestSharedImage(context, { initiatedBy: 'cockpit-author', ...options });
 }
-const publishedAssetId = (operation: GraphicsIngestionOperation) => publishedRevision(operation).assetId;
+const publishedAssetId = (operation: GraphicsIngestionOperation) =>
+	publishedRevision(operation).assetId;
 
 describe('the Operations Cockpit against a real catalogue', () => {
 	it('reports a settled library as safe, with the exact canonical quota boundaries', async () => {
@@ -49,8 +56,7 @@ describe('the Operations Cockpit against a real catalogue', () => {
 		const cockpit = await library.getOperationsCockpit();
 
 		expect(cockpit.outcome).toBe('complete');
-		if (cockpit.outcome !== 'complete')
-			return;
+		if (cockpit.outcome !== 'complete') return;
 
 		expect(cockpit.condition).toEqual({
 			status: 'healthy',
@@ -80,9 +86,9 @@ describe('the Operations Cockpit against a real catalogue', () => {
 		expect(cockpit.capacity.staging).not.toHaveProperty('pressure');
 
 		expect(cockpit.ingestion.counts).toEqual({
-			'active': 0,
+			active: 0,
 			'awaiting-confirmation': 0,
-			'retryable': 0,
+			retryable: 0,
 			'input-expired': 0,
 		});
 		expect(cockpit.ingestion.operations).toEqual([]);
@@ -93,8 +99,7 @@ describe('the Operations Cockpit against a real catalogue', () => {
 			'unexpected-object': 0,
 			'critical-integrity-incident': 0,
 		});
-		expect(cockpit.reconciliation.countsBySeverity)
-			.toEqual({ critical: 0, warning: 0, info: 0 });
+		expect(cockpit.reconciliation.countsBySeverity).toEqual({ critical: 0, warning: 0, info: 0 });
 		expect(cockpit.reconciliation.isolatedIncidentCount).toBe(0);
 		expect(cockpit.reconciliation.authority).toEqual({
 			expectedReachability: 'catalogue',
@@ -186,20 +191,22 @@ describe('the Operations Cockpit against a real catalogue', () => {
 		});
 
 		const cockpit = await context.library.getOperationsCockpit();
-		if (cockpit.outcome !== 'complete')
-			throw new Error('The cockpit could not read the catalogue');
+		if (cockpit.outcome !== 'complete') throw new Error('The cockpit could not read the catalogue');
 
 		expect(cockpit.ingestion.counts).toEqual({
 			'input-expired': 1,
 			'awaiting-confirmation': 1,
-			'active': 1,
-			'retryable': 0,
+			active: 1,
+			retryable: 0,
 		});
 
 		// Risk order: what has already lost its guarantee comes first, and work
 		// that is blocking nobody comes last.
-		expect(cockpit.ingestion.operations.map(item => item.operationId))
-			.toEqual([abandoned.id, copied.id, active.id]);
+		expect(cockpit.ingestion.operations.map((item) => item.operationId)).toEqual([
+			abandoned.id,
+			copied.id,
+			active.id,
+		]);
 
 		expect(cockpit.ingestion.operations[0]).toEqual({
 			operationId: abandoned.id,
@@ -212,9 +219,7 @@ describe('the Operations Cockpit against a real catalogue', () => {
 			declaredByteLength: pixelPng.byteLength,
 			transferComplete: false,
 			stagingBytes: expect.any(Number),
-			inputExpiresAt: new Date(
-				new Date(abandoned.updatedAt).getTime() + DAY,
-			).toISOString(),
+			inputExpiresAt: new Date(new Date(abandoned.updatedAt).getTime() + DAY).toISOString(),
 			updatedAt: abandoned.updatedAt,
 		});
 
@@ -226,9 +231,7 @@ describe('the Operations Cockpit against a real catalogue', () => {
 			source: 'remote-copy',
 			initiatedBy: 'other-author',
 			transferComplete: true,
-			inputExpiresAt: new Date(
-				new Date(copied.updatedAt).getTime() + 7 * DAY,
-			).toISOString(),
+			inputExpiresAt: new Date(new Date(copied.updatedAt).getTime() + 7 * DAY).toISOString(),
 		});
 
 		expect(cockpit.alerts.open).toContainEqual({
@@ -261,16 +264,18 @@ describe('the Operations Cockpit against a real catalogue', () => {
 			persistent: true,
 		});
 
-		await expect(context.library.releaseStrandedStagedInput({
-			operationId: stranded.id,
-			actor: 'graphics-admin',
-		})).resolves.toMatchObject({ outcome: 'completed' });
+		await expect(
+			context.library.releaseStrandedStagedInput({
+				operationId: stranded.id,
+				actor: 'graphics-admin',
+			}),
+		).resolves.toMatchObject({ outcome: 'completed' });
 		const cleared = await context.library.getOperationsCockpit();
-		expect(cleared.outcome === 'complete' && cleared.alerts.open)
-			.not
-			.toContainEqual(expect.objectContaining({
+		expect(cleared.outcome === 'complete' && cleared.alerts.open).not.toContainEqual(
+			expect.objectContaining({
 				code: 'graphics-staged-input-unreleased',
-			}));
+			}),
+		);
 	});
 
 	it('counts each lifecycle group against the distinct deadline it is held to', async () => {
@@ -288,8 +293,7 @@ describe('the Operations Cockpit against a real catalogue', () => {
 		await context.library.trashGraphicAsset({ assetId: trashedAsset });
 
 		const cockpit = await context.library.getOperationsCockpit();
-		if (cockpit.outcome !== 'complete')
-			throw new Error('The cockpit could not read the catalogue');
+		if (cockpit.outcome !== 'complete') throw new Error('The cockpit could not read the catalogue');
 
 		expect(cockpit.lifecycle.retired).toEqual({
 			count: 1,
@@ -349,14 +353,11 @@ describe('the Operations Cockpit against a real catalogue', () => {
 			const context = await loseCanonicalContent();
 
 			const first = await context.library.getOperationsCockpit();
-			if (first.outcome !== 'complete')
-				throw new Error('The cockpit could not read the catalogue');
+			if (first.outcome !== 'complete') throw new Error('The cockpit could not read the catalogue');
 
 			expect(first.reconciliation.openCounts['unavailable-content']).toBe(1);
-			expect(first.reconciliation.countsBySeverity)
-				.toEqual({ critical: 0, warning: 1, info: 0 });
-			expect(first.alerts.countsBySeverity)
-				.toEqual({ critical: 0, warning: 1, info: 0 });
+			expect(first.reconciliation.countsBySeverity).toEqual({ critical: 0, warning: 1, info: 0 });
+			expect(first.alerts.countsBySeverity).toEqual({ critical: 0, warning: 1, info: 0 });
 			expect(first.alerts.open).toEqual([
 				{
 					code: 'unavailable-content-open',

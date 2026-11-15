@@ -16,17 +16,18 @@ export function applySavedFeatureMatchAssignment(
 	assignments: FeatureMatchAssignment[],
 	saved: FeatureMatchAssignment,
 ): FeatureMatchAssignment[] {
-	const filtered = assignments.filter(existing =>
-		existing.id === saved.id
-		|| existing.roundId !== saved.roundId
-		|| (existing.matchId !== saved.matchId && !sameRoundSlot(existing, saved)),
+	const filtered = assignments.filter(
+		(existing) =>
+			existing.id === saved.id ||
+			existing.roundId !== saved.roundId ||
+			(existing.matchId !== saved.matchId && !sameRoundSlot(existing, saved)),
 	);
 
-	const index = filtered.findIndex(existing => existing.id === saved.id || sameRoundSlot(existing, saved));
+	const index = filtered.findIndex(
+		(existing) => existing.id === saved.id || sameRoundSlot(existing, saved),
+	);
 	if (index >= 0) {
-		return filtered.map((existing, existingIndex) => existingIndex === index
-			? saved
-			: existing);
+		return filtered.map((existing, existingIndex) => (existingIndex === index ? saved : existing));
 	}
 
 	return [...filtered, saved];
@@ -38,7 +39,7 @@ export function applyUpdatedFeatureMatchAssignment(
 	updated: FeatureMatchAssignment,
 ): FeatureMatchAssignment[] {
 	return applySavedFeatureMatchAssignment(
-		assignments.filter(existing => existing.id !== assignmentId || existing.id === updated.id),
+		assignments.filter((existing) => existing.id !== assignmentId || existing.id === updated.id),
 		updated,
 	);
 }

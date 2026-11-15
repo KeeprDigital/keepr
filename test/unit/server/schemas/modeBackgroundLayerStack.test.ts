@@ -24,10 +24,18 @@ const STACK = [
 
 // The two steps `PATCH …/config/:mode` takes before storage. A mode whose schema
 // dropped the stack would index nothing, and its asset layer would be blank on air.
-it.each(MODES_WITH_A_BACKGROUND_LAYER_STACK)('keeps a Background Layer stack through a %s PATCH into storage', (mode) => {
-	const patch = modeConfigPatchSchemaMap[mode].parse({ backgroundLayers: STACK }) as Record<string, unknown>;
-	const stored = parseModeConfigPatchResult({}, mode, patch);
+it.each(MODES_WITH_A_BACKGROUND_LAYER_STACK)(
+	'keeps a Background Layer stack through a %s PATCH into storage',
+	(mode) => {
+		const patch = modeConfigPatchSchemaMap[mode].parse({ backgroundLayers: STACK }) as Record<
+			string,
+			unknown
+		>;
+		const stored = parseModeConfigPatchResult({}, mode, patch);
 
-	expect(patch).toEqual({ backgroundLayers: STACK });
-	expect((resolveScreenModeConfig(stored, mode) as { backgroundLayers?: unknown }).backgroundLayers).toEqual(STACK);
-});
+		expect(patch).toEqual({ backgroundLayers: STACK });
+		expect(
+			(resolveScreenModeConfig(stored, mode) as { backgroundLayers?: unknown }).backgroundLayers,
+		).toEqual(STACK);
+	},
+);

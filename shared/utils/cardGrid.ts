@@ -21,13 +21,20 @@ export interface LayoutScoreInput {
  * counts more than height: space left under a layout reads as a margin, space
  * left beside it as a gap.
  */
-export function layoutScore({ cardWidth, largestCardWidth, widthShare, heightShare, slotFill }: LayoutScoreInput): number {
-	if (largestCardWidth <= 0 || cardWidth <= 0)
-		return 0;
-	return (cardWidth / largestCardWidth)
-		* Math.min(1, widthShare)
-		* Math.sqrt(Math.min(1, heightShare))
-		* slotFill;
+export function layoutScore({
+	cardWidth,
+	largestCardWidth,
+	widthShare,
+	heightShare,
+	slotFill,
+}: LayoutScoreInput): number {
+	if (largestCardWidth <= 0 || cardWidth <= 0) return 0;
+	return (
+		(cardWidth / largestCardWidth) *
+		Math.min(1, widthShare) *
+		Math.sqrt(Math.min(1, heightShare)) *
+		slotFill
+	);
 }
 
 /** An Auto gap, as a share of the solved card width: 12 px beside a 160 px card. */
@@ -42,7 +49,10 @@ export interface GapTerms {
 	ratio: number;
 }
 
-export function gapTerms(gap: number | null | undefined, autoRatio: number = AUTO_GAP_RATIO): GapTerms {
+export function gapTerms(
+	gap: number | null | undefined,
+	autoRatio: number = AUTO_GAP_RATIO,
+): GapTerms {
 	return typeof gap === 'number'
 		? {
 				fixed: Math.max(0, gap),
@@ -67,8 +77,16 @@ export function widestAcross(extent: number, spans: number, gap: GapTerms): numb
 }
 
 /** The widest card at which `rows` rows, each `labelHeight` taller than its card, fit down `extent`. */
-export function widestDown(extent: number, rows: number, gap: GapTerms, labelHeight: number): number {
-	return (extent - rows * labelHeight - (rows - 1) * gap.fixed) / (rows / CARD_ASPECT + (rows - 1) * gap.ratio);
+export function widestDown(
+	extent: number,
+	rows: number,
+	gap: GapTerms,
+	labelHeight: number,
+): number {
+	return (
+		(extent - rows * labelHeight - (rows - 1) * gap.fixed) /
+		(rows / CARD_ASPECT + (rows - 1) * gap.ratio)
+	);
 }
 
 export interface CardGridInput {
@@ -105,11 +123,15 @@ interface ScoredCardGrid extends CardGrid {
 function gridAt(input: CardGridInput, columns: number): ScoredCardGrid {
 	const { count, width, height, maxRows = Infinity, labelHeight = 0 } = input;
 	const rows = Math.max(1, Math.min(Math.ceil(count / columns), maxRows));
-	const widest = (terms: GapTerms) => Math.max(0, Math.min(
-		widestAcross(width, columns, terms),
-		widestDown(height, rows, terms, labelHeight),
-		input.maxCardWidth ?? Infinity,
-	));
+	const widest = (terms: GapTerms) =>
+		Math.max(
+			0,
+			Math.min(
+				widestAcross(width, columns, terms),
+				widestDown(height, rows, terms, labelHeight),
+				input.maxCardWidth ?? Infinity,
+			),
+		);
 	let terms = gapTerms(input.gap);
 	let cardWidth = widest(terms);
 	if (cardWidth < terms.fixed) {
@@ -130,10 +152,13 @@ function gridAt(input: CardGridInput, columns: number): ScoredCardGrid {
 
 /** The best of 1 to `most` columns by `layoutScore`; of equal scores, the fewest. */
 function bestGrid(input: CardGridInput, most: number): ScoredCardGrid {
-	const grids = Array.from({
-		length: Math.max(1, most),
-	}, (_, index) => gridAt(input, index + 1));
-	const largestCardWidth = Math.max(...grids.map(grid => grid.cardWidth));
+	const grids = Array.from(
+		{
+			length: Math.max(1, most),
+		},
+		(_, index) => gridAt(input, index + 1),
+	);
+	const largestCardWidth = Math.max(...grids.map((grid) => grid.cardWidth));
 	let best = grids[0]!;
 	let bestScore = -Infinity;
 	for (const grid of grids) {
@@ -156,9 +181,10 @@ function bestGrid(input: CardGridInput, most: number): ScoredCardGrid {
  * width.
  */
 export function solveCardGrid(input: CardGridInput): CardGrid {
-	const { columns, rows, cardWidth, gap } = typeof input.columns === 'number'
-		? gridAt(input, Math.max(1, Math.floor(input.columns)))
-		: bestGrid(input, input.count);
+	const { columns, rows, cardWidth, gap } =
+		typeof input.columns === 'number'
+			? gridAt(input, Math.max(1, Math.floor(input.columns)))
+			: bestGrid(input, input.count);
 	return {
 		columns,
 		rows,

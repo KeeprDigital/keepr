@@ -15,7 +15,7 @@ export class GraphicAssetValidationError extends Error {
 	constructor(readonly issues: readonly GraphicAssetValidationIssue[]) {
 		if (issues.length === 0)
 			throw new Error('Graphic Asset validation errors require at least one issue');
-		super(issues.map(issue => issue.message).join(' '));
+		super(issues.map((issue) => issue.message).join(' '));
 		this.issue = issues[0]!;
 	}
 }
@@ -27,19 +27,16 @@ export function validationIssue(
 	return { severity: 'error', code, message };
 }
 
-export function validationError(
-	code: GraphicAssetValidationIssue['code'],
-	message: string,
-): never {
-	throw new GraphicAssetValidationError([
-		validationIssue(code, message),
-	]);
+export function validationError(code: GraphicAssetValidationIssue['code'], message: string): never {
+	throw new GraphicAssetValidationError([validationIssue(code, message)]);
 }
 
 export function rejectedValidationReport(
 	error: GraphicAssetValidationError,
-	profile: typeof STILL_IMAGE_COMPATIBILITY_PROFILE | typeof SILENT_VIDEO_COMPATIBILITY_PROFILE | typeof STATIC_FONT_COMPATIBILITY_PROFILE
-		= STILL_IMAGE_PROFILE,
+	profile:
+		| typeof STILL_IMAGE_COMPATIBILITY_PROFILE
+		| typeof SILENT_VIDEO_COMPATIBILITY_PROFILE
+		| typeof STATIC_FONT_COMPATIBILITY_PROFILE = STILL_IMAGE_PROFILE,
 ): GraphicAssetValidationReport {
 	return {
 		outcome: 'rejected',

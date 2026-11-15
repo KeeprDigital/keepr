@@ -2,18 +2,18 @@ import { onScopeDispose } from 'vue';
 import { useMeleeDataRefresh } from '~/composables/workflows/useMeleeDataRefresh';
 
 /** The authoritative Event Data a client-side consumer can name as what it reads. */
-export type ConsumedEventData
-	= | 'event'
-		| 'players'
-		| 'phases'
-		| 'rounds'
-		| 'matches'
-		| 'featureMatchSlots'
-		| 'archetypes'
-		| 'playerLists'
-		| 'playerDecks'
-		| 'screens'
-		| 'card';
+export type ConsumedEventData =
+	| 'event'
+	| 'players'
+	| 'phases'
+	| 'rounds'
+	| 'matches'
+	| 'featureMatchSlots'
+	| 'archetypes'
+	| 'playerLists'
+	| 'playerDecks'
+	| 'screens'
+	| 'card';
 
 /**
  * How one dataset is re-read in place. A reloader re-reads only what its store
@@ -47,12 +47,10 @@ export function createEventDataResync(reloaders: EventDataReloaders) {
 	async function reload(datasets: Iterable<ConsumedEventData>) {
 		const named = [...datasets];
 		const began = lifetime;
-		const outcomes = await Promise.allSettled(named.map(async dataset => reloaders[dataset]()));
-		if (began !== lifetime)
-			return;
+		const outcomes = await Promise.allSettled(named.map(async (dataset) => reloaders[dataset]()));
+		if (began !== lifetime) return;
 		outcomes.forEach((outcome, index) => {
-			if (outcome.status === 'rejected' || outcome.value === false)
-				behind.add(named[index]!);
+			if (outcome.status === 'rejected' || outcome.value === false) behind.add(named[index]!);
 		});
 	}
 
@@ -62,41 +60,32 @@ export function createEventDataResync(reloaders: EventDataReloaders) {
 	 * It dies with the consumer, so it is never behind.
 	 */
 	function consume(datasets: readonly ConsumedEventData[], reread?: () => unknown) {
-		const named = [
-			...new Set(datasets),
-		];
-		if (reread)
-			ownRereads.add(reread);
-		const caughtUp = named.filter(dataset => behind.delete(dataset));
-		for (const dataset of named)
-			consumers.set(dataset, (consumers.get(dataset) ?? 0) + 1);
+		const named = [...new Set(datasets)];
+		if (reread) ownRereads.add(reread);
+		const caughtUp = named.filter((dataset) => behind.delete(dataset));
+		for (const dataset of named) consumers.set(dataset, (consumers.get(dataset) ?? 0) + 1);
 		void reload(caughtUp);
 
 		let released = false;
 		return () => {
-			if (released)
-				return;
+			if (released) return;
 			released = true;
-			if (reread)
-				ownRereads.delete(reread);
+			if (reread) ownRereads.delete(reread);
 			for (const dataset of named) {
 				const remaining = (consumers.get(dataset) ?? 1) - 1;
-				if (remaining > 0)
-					consumers.set(dataset, remaining);
-				else
-					consumers.delete(dataset);
+				if (remaining > 0) consumers.set(dataset, remaining);
+				else consumers.delete(dataset);
 			}
 		};
 	}
 
 	async function resync() {
 		for (const dataset of Object.keys(reloaders) as ConsumedEventData[]) {
-			if (!consumers.has(dataset))
-				behind.add(dataset);
+			if (!consumers.has(dataset)) behind.add(dataset);
 		}
 		await Promise.all([
 			reload(consumers.keys()),
-			Promise.allSettled([...ownRereads].map(async reread => reread())),
+			Promise.allSettled([...ownRereads].map(async (reread) => reread())),
 		]);
 	}
 
@@ -117,12 +106,14 @@ export function createEventDataResync(reloaders: EventDataReloaders) {
  */
 export function storeReloaders(): EventDataReloaders {
 	/** A collection load answers `null` when it did not land. */
-	function forLoaded<S extends { isLoaded: boolean }>(useStore: () => S, load: (store: S, eventId: number) => Promise<unknown>) {
+	function forLoaded<S extends { isLoaded: boolean }>(
+		useStore: () => S,
+		load: (store: S, eventId: number) => Promise<unknown>,
+	) {
 		return async () => {
 			const eventId = useEventStore().eventId;
 			const store = useStore();
-			if (eventId && store.isLoaded)
-				return await load(store, eventId) !== null;
+			if (eventId && store.isLoaded) return (await load(store, eventId)) !== null;
 		};
 	}
 
@@ -139,10 +130,11 @@ export function storeReloaders(): EventDataReloaders {
 		// Whichever scope is held — one Round's Matches or the Event's.
 		matches: async () => {
 			const eventId = useEventStore().eventId;
-			if (eventId)
-				return await useMeleeDataRefresh().refreshCurrentMatchScope(eventId) !== null;
+			if (eventId) return (await useMeleeDataRefresh().refreshCurrentMatchScope(eventId)) !== null;
 		},
-		featureMatchSlots: forLoaded(useFeatureMatchStore, (store, eventId) => store.loadFeatureMatchesByEventId(eventId)),
+		featureMatchSlots: forLoaded(useFeatureMatchStore, (store, eventId) =>
+			store.loadFeatureMatchesByEventId(eventId),
+		),
 		archetypes: forLoaded(useArchetypeStore, (store, eventId) => store.loadByEventId(eventId)),
 		playerLists: forLoaded(usePlayerListStore, (store, eventId) => store.loadByEventId(eventId)),
 		playerDecks: forLoaded(usePlayerDeckStore, (store, eventId) => store.loadByEventId(eventId)),
@@ -151,8 +143,7 @@ export function storeReloaders(): EventDataReloaders {
 		// of no Card lands; a failed or superseded one does not (#726).
 		card: async () => {
 			const cardStore = useCardStore();
-			if (cardStore.activeScreenId !== null)
-				return await cardStore.loadActiveCard() === 'landed';
+			if (cardStore.activeScreenId !== null) return (await cardStore.loadActiveCard()) === 'landed';
 		},
 	};
 }
@@ -164,6 +155,9 @@ export const eventDataResync = createEventDataResync(storeReloaders());
  * Name the Event Data this consumer reads until its scope is disposed, and its
  * own re-read of anything it reads outside the stores.
  */
-export function useConsumedEventData(datasets: readonly ConsumedEventData[], reread?: () => unknown) {
+export function useConsumedEventData(
+	datasets: readonly ConsumedEventData[],
+	reread?: () => unknown,
+) {
 	onScopeDispose(eventDataResync.consume(datasets, reread));
 }

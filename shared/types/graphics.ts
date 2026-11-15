@@ -31,12 +31,12 @@ export const GRAPHIC_ANCHOR_POINT_VALUES = [
 	'bottom-right',
 ] as const;
 
-export type GraphicAnchorPoint = typeof GRAPHIC_ANCHOR_POINT_VALUES[number];
+export type GraphicAnchorPoint = (typeof GRAPHIC_ANCHOR_POINT_VALUES)[number];
 
 /** The bounded behaviour when rendered text exceeds a Text Graphic Item's authored bounds. */
 export const TEXT_OVERFLOW_POLICY_VALUES = ['clip', 'ellipsis', 'shrink'] as const;
 
-export type TextOverflowPolicy = typeof TEXT_OVERFLOW_POLICY_VALUES[number];
+export type TextOverflowPolicy = (typeof TEXT_OVERFLOW_POLICY_VALUES)[number];
 
 /**
  * The operator-visible lifecycle status of a placed Broadcast Graphic.
@@ -55,7 +55,7 @@ export const GRAPHIC_PLAYOUT_STATE_VALUES = [
 	'exiting',
 ] as const;
 
-export type GraphicPlayoutState = typeof GRAPHIC_PLAYOUT_STATE_VALUES[number];
+export type GraphicPlayoutState = (typeof GRAPHIC_PLAYOUT_STATE_VALUES)[number];
 
 /**
  * The per-Graphic Channel rule for replacing its selected Broadcast Graphic.
@@ -65,7 +65,7 @@ export type GraphicPlayoutState = typeof GRAPHIC_PLAYOUT_STATE_VALUES[number];
  */
 export const GRAPHIC_CHANNEL_HANDOFF_POLICY_VALUES = ['overlap', 'out-then-in'] as const;
 
-export type GraphicChannelHandoffPolicy = typeof GRAPHIC_CHANNEL_HANDOFF_POLICY_VALUES[number];
+export type GraphicChannelHandoffPolicy = (typeof GRAPHIC_CHANNEL_HANDOFF_POLICY_VALUES)[number];
 
 /**
  * The policy a Graphic Channel has when it does not state one.
@@ -82,7 +82,7 @@ export const DEFAULT_GRAPHIC_CHANNEL_HANDOFF_POLICY: GraphicChannelHandoffPolicy
  */
 export const GEOMETRY_UNIT_VALUES = ['px', 'percent', 'grid'] as const;
 
-export type GeometryUnit = typeof GEOMETRY_UNIT_VALUES[number];
+export type GeometryUnit = (typeof GEOMETRY_UNIT_VALUES)[number];
 
 /**
  * Which font a Graphic Item's typography paints with: one of the application
@@ -97,15 +97,18 @@ export type GeometryUnit = typeof GEOMETRY_UNIT_VALUES[number];
  * Output Asset Capability, and a Template Package all reach it through the one
  * discovery walk rather than through a font-shaped exception.
  */
-export type GraphicFontSelection
-	= | { kind: 'application'; fontId: GraphicApplicationFontId }
-		| { kind: 'asset'; reference: GraphicAssetReference };
+export type GraphicFontSelection =
+	| { kind: 'application'; fontId: GraphicApplicationFontId }
+	| { kind: 'asset'; reference: GraphicAssetReference };
 
 /**
  * A Graphic Font Selection narrowed to the application arm: what a newly
  * authored item names before an author picks a library font.
  */
-export type GraphicApplicationFontSelection = Extract<GraphicFontSelection, { kind: 'application' }>;
+export type GraphicApplicationFontSelection = Extract<
+	GraphicFontSelection,
+	{ kind: 'application' }
+>;
 
 /**
  * Which arm a font control is on, which is one answer wider than the selection it
@@ -125,7 +128,9 @@ export type GraphicApplicationFontSelection = Extract<GraphicFontSelection, { ki
 export type GraphicFontSource = 'base' | GraphicFontSelection['kind'];
 
 /** An application font selection, which is what a newly authored item gets. */
-export function applicationGraphicFont(fontId: GraphicApplicationFontId): GraphicApplicationFontSelection {
+export function applicationGraphicFont(
+	fontId: GraphicApplicationFontId,
+): GraphicApplicationFontSelection {
 	return { kind: 'application', fontId };
 }
 
@@ -135,13 +140,13 @@ export const GRAPHIC_TEXT_TRANSFORM_VALUES = [
 	'lowercase',
 	'capitalize',
 ] as const;
-export type GraphicTextTransform = typeof GRAPHIC_TEXT_TRANSFORM_VALUES[number];
+export type GraphicTextTransform = (typeof GRAPHIC_TEXT_TRANSFORM_VALUES)[number];
 
 export const GRAPHIC_TEXT_ALIGN_VALUES = ['left', 'center', 'right'] as const;
-export type GraphicTextAlign = typeof GRAPHIC_TEXT_ALIGN_VALUES[number];
+export type GraphicTextAlign = (typeof GRAPHIC_TEXT_ALIGN_VALUES)[number];
 
 export const GRAPHIC_FONT_STYLE_VALUES = ['normal', 'italic'] as const;
-export type GraphicFontStyle = typeof GRAPHIC_FONT_STYLE_VALUES[number];
+export type GraphicFontStyle = (typeof GRAPHIC_FONT_STYLE_VALUES)[number];
 
 /** Stored geometry is always a top-left rectangle in canvas pixels. */
 export interface GraphicRect {
@@ -187,7 +192,7 @@ export const MAX_GRAPHIC_LINE_HEIGHT = 10;
  * ──────────────────────────────────────────────── */
 
 export const GRAPHIC_FILL_KIND_VALUES = ['solid', 'linear-gradient'] as const;
-export type GraphicFillKind = typeof GRAPHIC_FILL_KIND_VALUES[number];
+export type GraphicFillKind = (typeof GRAPHIC_FILL_KIND_VALUES)[number];
 
 /** One positioned colour stop of a linear-gradient Graphic Fill. */
 export interface GraphicFillStop {
@@ -229,9 +234,9 @@ export const MAX_GRAPHIC_FILL_STOPS = 4;
  * positioned colour stops. Complex or procedural surfaces are Media Graphic
  * Items rather than Graphic Fills.
  */
-export type GraphicFill
-	=	| { type: 'solid'; color: string }
-		| { type: 'linear-gradient'; angle: number; stops: GraphicFillStop[] };
+export type GraphicFill =
+	| { type: 'solid'; color: string }
+	| { type: 'linear-gradient'; angle: number; stops: GraphicFillStop[] };
 
 /** The gradient form of a Graphic Fill, which a gradient Background Layer holds. */
 export type GraphicLinearGradientFill = Extract<GraphicFill, { type: 'linear-gradient' }>;
@@ -270,7 +275,7 @@ export interface GraphicSurfaceStyle {
  * ──────────────────────────────────────────────── */
 
 export const SHAPE_CORNER_TREATMENT_VALUES = ['square', 'rounded', 'cut'] as const;
-export type ShapeCornerTreatment = typeof SHAPE_CORNER_TREATMENT_VALUES[number];
+export type ShapeCornerTreatment = (typeof SHAPE_CORNER_TREATMENT_VALUES)[number];
 
 /** One independently configured corner. `size` is ignored while square. */
 export interface ShapeCorner {
@@ -278,13 +283,8 @@ export interface ShapeCorner {
 	size: number;
 }
 
-export const SHAPE_CORNER_KEYS = [
-	'topLeft',
-	'topRight',
-	'bottomRight',
-	'bottomLeft',
-] as const;
-export type ShapeCornerKey = typeof SHAPE_CORNER_KEYS[number];
+export const SHAPE_CORNER_KEYS = ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const;
+export type ShapeCornerKey = (typeof SHAPE_CORNER_KEYS)[number];
 
 /**
  * The largest pixel length a saved Screen value accepts, either way: sizes,
@@ -328,7 +328,7 @@ export interface ShapeGeometry {
  */
 export const GRAPHIC_ANIMATION_PHASE_VALUES = ['enter', 'on-screen', 'update', 'exit'] as const;
 
-export type GraphicAnimationPhase = typeof GRAPHIC_ANIMATION_PHASE_VALUES[number];
+export type GraphicAnimationPhase = (typeof GRAPHIC_ANIMATION_PHASE_VALUES)[number];
 
 /** Bounded easing rather than an author-defined curve. */
 export const GRAPHIC_ANIMATION_EASING_VALUES = [
@@ -341,7 +341,7 @@ export const GRAPHIC_ANIMATION_EASING_VALUES = [
 	'back-in-out',
 ] as const;
 
-export type GraphicAnimationEasing = typeof GRAPHIC_ANIMATION_EASING_VALUES[number];
+export type GraphicAnimationEasing = (typeof GRAPHIC_ANIMATION_EASING_VALUES)[number];
 
 /**
  * One of nine points that determines the apparent origin of scale motion. It
@@ -360,7 +360,7 @@ export const GRAPHIC_ANIMATION_ORIGIN_VALUES = [
 	'bottom-right',
 ] as const;
 
-export type GraphicAnimationOrigin = typeof GRAPHIC_ANIMATION_ORIGIN_VALUES[number];
+export type GraphicAnimationOrigin = (typeof GRAPHIC_ANIMATION_ORIGIN_VALUES)[number];
 
 /** The eight compass directions a slide channel travels. */
 export const GRAPHIC_SLIDE_DIRECTION_VALUES = [
@@ -374,22 +374,22 @@ export const GRAPHIC_SLIDE_DIRECTION_VALUES = [
 	'north-west',
 ] as const;
 
-export type GraphicSlideDirection = typeof GRAPHIC_SLIDE_DIRECTION_VALUES[number];
+export type GraphicSlideDirection = (typeof GRAPHIC_SLIDE_DIRECTION_VALUES)[number];
 
 /** A fixed canonical pixel offset, or the distance required to clear the owner's parent. */
 export const GRAPHIC_SLIDE_DISTANCE_MODE_VALUES = ['fixed', 'clear-parent'] as const;
 
-export type GraphicSlideDistanceMode = typeof GRAPHIC_SLIDE_DISTANCE_MODE_VALUES[number];
+export type GraphicSlideDistanceMode = (typeof GRAPHIC_SLIDE_DISTANCE_MODE_VALUES)[number];
 
 /** The edge a reveal channel wipes from, across the owner's rectangular bounds. */
 export const GRAPHIC_REVEAL_EDGE_VALUES = ['left', 'right', 'top', 'bottom'] as const;
 
-export type GraphicRevealEdge = typeof GRAPHIC_REVEAL_EDGE_VALUES[number];
+export type GraphicRevealEdge = (typeof GRAPHIC_REVEAL_EDGE_VALUES)[number];
 
 /** The order a container walks its direct Graphic Items in while staggering them. */
 export const GRAPHIC_ANIMATION_STAGGER_ORDER_VALUES = ['list', 'reverse-list'] as const;
 
-export type GraphicAnimationStaggerOrder = typeof GRAPHIC_ANIMATION_STAGGER_ORDER_VALUES[number];
+export type GraphicAnimationStaggerOrder = (typeof GRAPHIC_ANIMATION_STAGGER_ORDER_VALUES)[number];
 
 /**
  * The settled bounds every Graphic Animation Recipe is authored within.
@@ -497,10 +497,10 @@ export interface GraphicAnimationStagger {
  * template author enables them — an absent phase changes its owner immediately.
  */
 export interface GraphicAnimation {
-	'enter'?: GraphicAnimationRecipe;
+	enter?: GraphicAnimationRecipe;
 	'on-screen'?: GraphicOnScreenAnimationRecipe;
-	'update'?: GraphicAnimationRecipe;
-	'exit'?: GraphicAnimationRecipe;
+	update?: GraphicAnimationRecipe;
+	exit?: GraphicAnimationRecipe;
 }
 
 /**
@@ -510,10 +510,10 @@ export interface GraphicAnimation {
  */
 export interface GraphicContainerAnimation extends GraphicAnimation {
 	stagger?: {
-		'enter'?: GraphicAnimationStagger;
+		enter?: GraphicAnimationStagger;
 		'on-screen'?: GraphicAnimationStagger;
-		'update'?: GraphicAnimationStagger;
-		'exit'?: GraphicAnimationStagger;
+		update?: GraphicAnimationStagger;
+		exit?: GraphicAnimationStagger;
 	};
 }
 
@@ -531,7 +531,7 @@ export const GRAPHIC_INPUT_TYPE_VALUES = [
 	'media',
 ] as const;
 
-export type GraphicInputType = typeof GRAPHIC_INPUT_TYPE_VALUES[number];
+export type GraphicInputType = (typeof GRAPHIC_INPUT_TYPE_VALUES)[number];
 
 /**
  * Whether a Graphic Input change is staged for operator confirmation or applied
@@ -540,7 +540,7 @@ export type GraphicInputType = typeof GRAPHIC_INPUT_TYPE_VALUES[number];
  */
 export const ON_AIR_UPDATE_POLICY_VALUES = ['staged', 'live'] as const;
 
-export type OnAirUpdatePolicy = typeof ON_AIR_UPDATE_POLICY_VALUES[number];
+export type OnAirUpdatePolicy = (typeof ON_AIR_UPDATE_POLICY_VALUES)[number];
 
 export const DEFAULT_ON_AIR_UPDATE_POLICY: OnAirUpdatePolicy = 'staged';
 
@@ -672,13 +672,13 @@ export interface MediaGraphicInputDeclaration extends GraphicInputDeclarationBas
 	mediaKind: GraphicMediaKind;
 }
 
-export type GraphicInputDeclaration
-	= | TextGraphicInputDeclaration
-		| NumberGraphicInputDeclaration
-		| ToggleGraphicInputDeclaration
-		| ChoiceGraphicInputDeclaration
-		| ColorGraphicInputDeclaration
-		| MediaGraphicInputDeclaration;
+export type GraphicInputDeclaration =
+	| TextGraphicInputDeclaration
+	| NumberGraphicInputDeclaration
+	| ToggleGraphicInputDeclaration
+	| ChoiceGraphicInputDeclaration
+	| ColorGraphicInputDeclaration
+	| MediaGraphicInputDeclaration;
 
 /**
  * One Graphic Input's value, in the shape its declared type takes.
@@ -697,7 +697,7 @@ export type GraphicInputValue = string | number | boolean | MediaGraphicInputVal
  */
 export const GRAPHIC_MEDIA_KIND_VALUES = ['image', 'silent-video'] as const;
 
-export type GraphicMediaKind = typeof GRAPHIC_MEDIA_KIND_VALUES[number];
+export type GraphicMediaKind = (typeof GRAPHIC_MEDIA_KIND_VALUES)[number];
 
 /** The single-entity Event Data kinds a Graphic Source Selection may select. */
 export const GRAPHIC_SOURCE_SELECTION_KIND_VALUES = [
@@ -711,7 +711,7 @@ export const GRAPHIC_SOURCE_SELECTION_KIND_VALUES = [
 	'archetype',
 ] as const;
 
-export type GraphicSourceSelectionKind = typeof GRAPHIC_SOURCE_SELECTION_KIND_VALUES[number];
+export type GraphicSourceSelectionKind = (typeof GRAPHIC_SOURCE_SELECTION_KIND_VALUES)[number];
 
 /**
  * The fixed relationships one Graphic Source Selection may follow from another.
@@ -736,7 +736,7 @@ export const GRAPHIC_SOURCE_RELATION_VALUES = [
 	'commentator2',
 ] as const;
 
-export type GraphicSourceRelation = typeof GRAPHIC_SOURCE_RELATION_VALUES[number];
+export type GraphicSourceRelation = (typeof GRAPHIC_SOURCE_RELATION_VALUES)[number];
 
 /** One Graphic Source Selection derived from another rather than picked. */
 export interface GraphicSourceDerivation {
@@ -770,7 +770,7 @@ export const SOCIAL_PROFILE_TRANSITION_VALUES = [
 	'slide-down',
 ] as const;
 
-export type SocialProfileTransition = typeof SOCIAL_PROFILE_TRANSITION_VALUES[number];
+export type SocialProfileTransition = (typeof SOCIAL_PROFILE_TRANSITION_VALUES)[number];
 
 export const MIN_SOCIAL_PROFILE_DWELL_MS = 2_000;
 export const MAX_SOCIAL_PROFILE_DWELL_MS = 60_000;
@@ -828,8 +828,8 @@ export const SOCIAL_PROFILE_PROJECTED_TEXT_VALUE_VALUES = [
 	'profileUrl',
 ] as const;
 
-export type SocialProfileProjectedTextValue
-	= typeof SOCIAL_PROFILE_PROJECTED_TEXT_VALUE_VALUES[number];
+export type SocialProfileProjectedTextValue =
+	(typeof SOCIAL_PROFILE_PROJECTED_TEXT_VALUE_VALUES)[number];
 
 /**
  * An Event-specific, type-compatible mapping from a Graphic Input to one
@@ -855,10 +855,12 @@ export interface GraphicInputBinding {
  * item's base typography. Literal text always uses that base typography, and a
  * placeholder style adds no fills, outlines, or other surface styling.
  */
-export type GraphicPlaceholderStyle = Partial<Pick<
-	GraphicTypography,
-	'font' | 'fontSize' | 'fontWeight' | 'fontStyle' | 'textTransform' | 'letterSpacing' | 'color'
->>;
+export type GraphicPlaceholderStyle = Partial<
+	Pick<
+		GraphicTypography,
+		'font' | 'fontSize' | 'fontWeight' | 'fontStyle' | 'textTransform' | 'letterSpacing' | 'color'
+	>
+>;
 
 /* ────────────────────────────────────────────────
  * Graphic Items
@@ -996,35 +998,30 @@ export interface SocialNetworkIconGraphicItemConfig extends GraphicItemConfigBas
 }
 
 export const GRAPHIC_GROUP_ARRANGEMENT_VALUES = ['row', 'column', 'canvas'] as const;
-export type GraphicGroupArrangement = typeof GRAPHIC_GROUP_ARRANGEMENT_VALUES[number];
+export type GraphicGroupArrangement = (typeof GRAPHIC_GROUP_ARRANGEMENT_VALUES)[number];
 
 export const GRAPHIC_GROUP_ALIGN_VALUES = ['start', 'center', 'end', 'stretch'] as const;
-export type GraphicGroupAlign = typeof GRAPHIC_GROUP_ALIGN_VALUES[number];
+export type GraphicGroupAlign = (typeof GRAPHIC_GROUP_ALIGN_VALUES)[number];
 
-export const GRAPHIC_GROUP_JUSTIFY_VALUES = [
-	'start',
-	'center',
-	'end',
-	'space-between',
-] as const;
-export type GraphicGroupJustify = typeof GRAPHIC_GROUP_JUSTIFY_VALUES[number];
+export const GRAPHIC_GROUP_JUSTIFY_VALUES = ['start', 'center', 'end', 'space-between'] as const;
+export type GraphicGroupJustify = (typeof GRAPHIC_GROUP_JUSTIFY_VALUES)[number];
 
 /**
  * A Graphic Group child. Groups are not nested in the initial Shared Graphics
  * Foundation vocabulary, which this union states structurally: no Graphic Group
  * can appear in another group's children.
  */
-export type GraphicGroupChildConfig
-	= TextGraphicItemConfig
-		| ShapeGraphicItemConfig
-		| MediaGraphicItemConfig
-		| SocialNetworkIconGraphicItemConfig
-		| ClockGraphicItemConfig
-		| PlayerLifeGraphicItemConfig
-		| GameWinsGraphicItemConfig
-		| DeckListGraphicItemConfig
-		| CommanderDamageGraphicItemConfig
-		| SeatIndicatorGraphicItemConfig;
+export type GraphicGroupChildConfig =
+	| TextGraphicItemConfig
+	| ShapeGraphicItemConfig
+	| MediaGraphicItemConfig
+	| SocialNetworkIconGraphicItemConfig
+	| ClockGraphicItemConfig
+	| PlayerLifeGraphicItemConfig
+	| GameWinsGraphicItemConfig
+	| DeckListGraphicItemConfig
+	| CommanderDamageGraphicItemConfig
+	| SeatIndicatorGraphicItemConfig;
 
 /**
  * A structural Graphic Item that arranges its direct children as a row, column,
@@ -1080,7 +1077,7 @@ export interface GraphicGroupItemConfig extends GraphicItemConfigBase {
  * phase, which is not a thing the shared animation vocabulary expresses.
  */
 export const PLAYER_LIFE_ANIMATION_VALUES = ['none', 'fade', 'pop', 'slide', 'glow'] as const;
-export type PlayerLifeAnimation = typeof PLAYER_LIFE_ANIMATION_VALUES[number];
+export type PlayerLifeAnimation = (typeof PLAYER_LIFE_ANIMATION_VALUES)[number];
 
 export const MIN_PLAYER_LIFE_ANIMATION_DURATION_MS = 100;
 export const MAX_PLAYER_LIFE_ANIMATION_DURATION_MS = 3000;
@@ -1110,10 +1107,10 @@ export interface PlayerLifeGraphicItemConfig extends GraphicItemConfigBase {
 }
 
 export const GAME_WINS_DISPLAY_MODE_VALUES = ['boxes', 'number'] as const;
-export type GameWinsDisplayMode = typeof GAME_WINS_DISPLAY_MODE_VALUES[number];
+export type GameWinsDisplayMode = (typeof GAME_WINS_DISPLAY_MODE_VALUES)[number];
 
 export const GAME_WINS_BOX_ORIENTATION_VALUES = ['horizontal', 'vertical'] as const;
-export type GameWinsBoxOrientation = typeof GAME_WINS_BOX_ORIENTATION_VALUES[number];
+export type GameWinsBoxOrientation = (typeof GAME_WINS_BOX_ORIENTATION_VALUES)[number];
 
 /**
  * A Graphic Item that renders one Player's game-win indicators.
@@ -1143,7 +1140,7 @@ export interface GameWinsGraphicItemConfig extends GraphicItemConfigBase {
 }
 
 export const DECK_LIST_VIEW_VALUES = ['grid', 'list'] as const;
-export type DeckListView = typeof DECK_LIST_VIEW_VALUES[number];
+export type DeckListView = (typeof DECK_LIST_VIEW_VALUES)[number];
 
 /**
  * A Graphic Item that renders one Player's sideboard from the live Feature Match
@@ -1189,7 +1186,7 @@ export interface CommanderDamageGraphicItemConfig extends GraphicItemConfigBase 
 
 /** The states of a Seat a Seat Indicator Graphic Item can mark: its turn, or out of the game. */
 export const SEAT_INDICATOR_STATE_VALUES = ['active', 'eliminated'] as const;
-export type SeatIndicatorState = typeof SEAT_INDICATOR_STATE_VALUES[number];
+export type SeatIndicatorState = (typeof SEAT_INDICATOR_STATE_VALUES)[number];
 
 /**
  * A Graphic Item shown only while its Seat is in the state its author picked,
@@ -1204,18 +1201,18 @@ export interface SeatIndicatorGraphicItemConfig extends GraphicItemConfigBase {
 	surfaceStyle?: GraphicSurfaceStyle;
 }
 
-export type GraphicItemConfig
-	= TextGraphicItemConfig
-		| ShapeGraphicItemConfig
-		| MediaGraphicItemConfig
-		| SocialNetworkIconGraphicItemConfig
-		| GraphicGroupItemConfig
-		| ClockGraphicItemConfig
-		| PlayerLifeGraphicItemConfig
-		| GameWinsGraphicItemConfig
-		| DeckListGraphicItemConfig
-		| CommanderDamageGraphicItemConfig
-		| SeatIndicatorGraphicItemConfig;
+export type GraphicItemConfig =
+	| TextGraphicItemConfig
+	| ShapeGraphicItemConfig
+	| MediaGraphicItemConfig
+	| SocialNetworkIconGraphicItemConfig
+	| GraphicGroupItemConfig
+	| ClockGraphicItemConfig
+	| PlayerLifeGraphicItemConfig
+	| GameWinsGraphicItemConfig
+	| DeckListGraphicItemConfig
+	| CommanderDamageGraphicItemConfig
+	| SeatIndicatorGraphicItemConfig;
 
 export type GraphicItemKind = GraphicItemConfig['type'];
 

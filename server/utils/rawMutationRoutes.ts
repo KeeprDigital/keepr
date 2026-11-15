@@ -7,8 +7,7 @@ interface BoundedRawMutationRouteRules {
 function assertPolicy(policy: BoundedRawMutationPolicy): void {
 	if (!Number.isSafeInteger(policy.maxBytes) || policy.maxBytes <= 0)
 		throw new TypeError('boundedRawMutations maxBytes must be a positive safe integer');
-	if (!policy.label.trim())
-		throw new TypeError('boundedRawMutations label must not be empty');
+	if (!policy.label.trim()) throw new TypeError('boundedRawMutations label must not be empty');
 }
 
 /**
@@ -21,8 +20,7 @@ export function boundedRawMutationPolicy(
 	method: string,
 ): BoundedRawMutationPolicy | undefined {
 	const policy = routeRules.boundedRawMutations?.[method.toUpperCase()];
-	if (!policy)
-		return;
+	if (!policy) return;
 
 	assertPolicy(policy);
 	return policy;

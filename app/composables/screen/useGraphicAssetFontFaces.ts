@@ -50,16 +50,21 @@ export function useGraphicAssetFontFaces(
 	let loadedSources = '';
 
 	function discard(faces: readonly FontFace[]) {
-		for (const face of faces)
-			document.fonts.delete(face);
+		for (const face of faces) document.fonts.delete(face);
 	}
 
 	function familyKey(entries: readonly GraphicAssetFontSource[]) {
-		return entries.map(({ family }) => family).sort().join('\0');
+		return entries
+			.map(({ family }) => family)
+			.sort()
+			.join('\0');
 	}
 
 	function sourceKey(entries: readonly GraphicAssetFontSource[]) {
-		return entries.map(({ family, url }) => `${family}\0${url}`).sort().join('');
+		return entries
+			.map(({ family, url }) => `${family}\0${url}`)
+			.sort()
+			.join('');
 	}
 
 	/**
@@ -68,21 +73,21 @@ export function useGraphicAssetFontFaces(
 	 * the second copy in `document.fonts` after the first is discarded.
 	 */
 	const sources = computed<GraphicAssetFontSource[]>(() => {
-		const byFamily = new Map(toValue(references)
-			.filter(item => item.kind === 'font')
-			.map(({ reference }) => {
-				const family = graphicAssetFontFaceFamily(reference);
-				return [
-					family,
-					{
+		const byFamily = new Map(
+			toValue(references)
+				.filter((item) => item.kind === 'font')
+				.map(({ reference }) => {
+					const family = graphicAssetFontFaceFamily(reference);
+					return [
 						family,
-						url: contentUrl(reference),
-					},
-				] as const;
-			}));
-		return [
-			...byFamily.values(),
-		];
+						{
+							family,
+							url: contentUrl(reference),
+						},
+					] as const;
+				}),
+		);
+		return [...byFamily.values()];
 	});
 
 	/**
@@ -104,92 +109,89 @@ export function useGraphicAssetFontFaces(
 	 * enough to fire on. What makes the window a no-op is the body comparing against the
 	 * faces actually registered.
 	 */
-	const loadKey = computed(() =>
-		// Sorted, over one entry per family: which faces are required is a set, so
-		// reordering a stack is not a change. The URL is part of the key because the
-		// same family resolved through a different Screen Output Asset Capability is
-		// different bytes to fetch.
-		`${toValue(contentUrlsSettled)
-			? 'settled'
-			: 'unsettled'}${sourceKey(sources.value)}`);
+	const loadKey = computed(
+		() =>
+			// Sorted, over one entry per family: which faces are required is a set, so
+			// reordering a stack is not a change. The URL is part of the key because the
+			// same family resolved through a different Screen Output Asset Capability is
+			// different bytes to fetch.
+			`${toValue(contentUrlsSettled) ? 'settled' : 'unsettled'}${sourceKey(sources.value)}`,
+	);
 
-	watch(loadKey, async () => {
-		const settled = toValue(contentUrlsSettled);
-		const pending = sources.value;
+	watch(
+		loadKey,
+		async () => {
+			const settled = toValue(contentUrlsSettled);
+			const pending = sources.value;
 
-		/*
-		 * An unsettled window is the absence of an answer rather than a different one.
-		 * `useScreenGraphicAssetContentUrls` goes unsettled whenever the Screen's *asset
-		 * reference set* changes — for any asset kind, not just fonts — and clears its
-		 * URL map when the Screen or capability changes, so a Take that brings on an
-		 * image drives this composable through one of those windows with every font
-		 * reference untouched. Both legs of it have to be sat through: the faces
-		 * required are still the faces loaded, and the map settles holding the same URLs.
-		 *
-		 * Families rather than URLs on the way down, because the URLs are exactly what
-		 * is missing there; the family is derived from the pinned revision and says what
-		 * is required without needing to know where it lives yet. On the way back the
-		 * full source key is comparable again, and it is compared against what is
-		 * actually registered rather than against the previous key — which is what makes
-		 * an unchanged round trip a no-op instead of a discard and a reload.
-		 */
-		if (!settled && familyKey(pending) === loadedFamilies)
-			return;
-		if (settled && fontsReady.value && sourceKey(pending) === loadedSources)
-			return;
+			/*
+			 * An unsettled window is the absence of an answer rather than a different one.
+			 * `useScreenGraphicAssetContentUrls` goes unsettled whenever the Screen's *asset
+			 * reference set* changes — for any asset kind, not just fonts — and clears its
+			 * URL map when the Screen or capability changes, so a Take that brings on an
+			 * image drives this composable through one of those windows with every font
+			 * reference untouched. Both legs of it have to be sat through: the faces
+			 * required are still the faces loaded, and the map settles holding the same URLs.
+			 *
+			 * Families rather than URLs on the way down, because the URLs are exactly what
+			 * is missing there; the family is derived from the pinned revision and says what
+			 * is required without needing to know where it lives yet. On the way back the
+			 * full source key is comparable again, and it is compared against what is
+			 * actually registered rather than against the previous key — which is what makes
+			 * an unchanged round trip a no-op instead of a discard and a reload.
+			 */
+			if (!settled && familyKey(pending) === loadedFamilies) return;
+			if (settled && fontsReady.value && sourceKey(pending) === loadedSources) return;
 
-		const flight = loads.begin();
-		fontsReady.value = pending.length === 0;
-		fontsFailed.value = false;
-		if (!import.meta.client)
-			return;
-		discard(loadedFontFaces);
-		loadedFontFaces = [];
-		loadedFamilies = '';
-		loadedSources = '';
-		if (pending.length === 0 || !settled)
-			return;
+			const flight = loads.begin();
+			fontsReady.value = pending.length === 0;
+			fontsFailed.value = false;
+			if (!import.meta.client) return;
+			discard(loadedFontFaces);
+			loadedFontFaces = [];
+			loadedFamilies = '';
+			loadedSources = '';
+			if (pending.length === 0 || !settled) return;
 
-		const faces: FontFace[] = [];
-		try {
-			for (const { family, url } of pending) {
-				if (!url)
-					throw new Error('Exact font revision content is unavailable.');
-				const face = new FontFace(family, `url("${url.replaceAll('"', '%22')}")`);
-				faces.push(face);
-				document.fonts.add(face);
-				await face.load();
+			const faces: FontFace[] = [];
+			try {
+				for (const { family, url } of pending) {
+					if (!url) throw new Error('Exact font revision content is unavailable.');
+					const face = new FontFace(family, `url("${url.replaceAll('"', '%22')}")`);
+					faces.push(face);
+					document.fonts.add(face);
+					await face.load();
+					if (flight.stale) {
+						discard(faces);
+						return;
+					}
+					// Asking the document as well as the face: a face that loaded is not yet a
+					// face the renderer will use, and the sample covers the digits and letters
+					// a scoreboard actually paints.
+					await document.fonts.load(`48px "${family}"`, 'Aa 012 Player Name');
+					if (flight.stale) {
+						discard(faces);
+						return;
+					}
+					if (!document.fonts.check(`48px "${family}"`, 'Aa 012 Player Name'))
+						throw new Error('Exact font revision is not ready.');
+				}
+				await document.fonts.ready;
 				if (flight.stale) {
 					discard(faces);
 					return;
 				}
-				// Asking the document as well as the face: a face that loaded is not yet a
-				// face the renderer will use, and the sample covers the digits and letters
-				// a scoreboard actually paints.
-				await document.fonts.load(`48px "${family}"`, 'Aa 012 Player Name');
-				if (flight.stale) {
-					discard(faces);
-					return;
-				}
-				if (!document.fonts.check(`48px "${family}"`, 'Aa 012 Player Name'))
-					throw new Error('Exact font revision is not ready.');
-			}
-			await document.fonts.ready;
-			if (flight.stale) {
+				loadedFontFaces = faces;
+				loadedFamilies = familyKey(pending);
+				loadedSources = sourceKey(pending);
+				fontsReady.value = true;
+			} catch {
 				discard(faces);
-				return;
+				if (flight.current) fontsFailed.value = true;
 			}
-			loadedFontFaces = faces;
-			loadedFamilies = familyKey(pending);
-			loadedSources = sourceKey(pending);
-			fontsReady.value = true;
-		}
-		catch {
-			discard(faces);
-			if (flight.current)
-				fontsFailed.value = true;
-		}
-	}, { immediate: true });
+		},
+		{ immediate: true },
+	);
 
 	onBeforeUnmount(() => {
 		loads.supersede();

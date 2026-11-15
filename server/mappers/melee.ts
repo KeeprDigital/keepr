@@ -174,9 +174,7 @@ export function normalizeMeleePlayerName(name: string): string {
  * 0 = mainboard, 99 = sideboard, 4 = companion
  */
 function mapCompartment(compartmentCode: number): DeckListCompartment {
-	return compartmentCode === 99
-		? 'sideboard'
-		: 'mainboard';
+	return compartmentCode === 99 ? 'sideboard' : 'mainboard';
 }
 
 function isCompanionRecord(compartmentCode: number): boolean {
@@ -233,14 +231,16 @@ function getBasicLandOrder(cardName: string): number | null {
  * Basic lands are always last, sorted in WUBRG order (Plains, Island, Swamp, Mountain, Forest)
  * Cards are returned without Scryfall IDs - those are added during sync
  */
-export function parseDeckListRecords(records: MeleeDecklistRecordParsed[] | undefined): DeckListCard[] {
+export function parseDeckListRecords(
+	records: MeleeDecklistRecordParsed[] | undefined,
+): DeckListCard[] {
 	if (!records || records.length === 0) {
 		return [];
 	}
 
 	return records
-		.filter(record => !isCompanionRecord(record.c))
-		.map(record => ({
+		.filter((record) => !isCompanionRecord(record.c))
+		.map((record) => ({
 			name: record.n,
 			setCode: record.s ?? null,
 			quantity: record.q,
@@ -276,12 +276,14 @@ export function parseDeckListRecords(records: MeleeDecklistRecordParsed[] | unde
 		});
 }
 
-export function parseDeckListCompanion(records: MeleeDecklistRecordParsed[] | undefined): ParsedDeckCompanion | null {
+export function parseDeckListCompanion(
+	records: MeleeDecklistRecordParsed[] | undefined,
+): ParsedDeckCompanion | null {
 	if (!records || records.length === 0) {
 		return null;
 	}
 
-	const companionRecord = records.find(record => isCompanionRecord(record.c));
+	const companionRecord = records.find((record) => isCompanionRecord(record.c));
 	if (!companionRecord) {
 		return null;
 	}
@@ -311,7 +313,9 @@ function parseMeleeDecklist(decklist: MeleePlayerDecklistParsed): ParsedDeckList
 /**
  * Parses all Melee Decklists for a player into ParsedDeckList array
  */
-export function parseAllDecklists(decklists: MeleePlayerDecklistParsed[] | undefined): ParsedDeckList[] | undefined {
+export function parseAllDecklists(
+	decklists: MeleePlayerDecklistParsed[] | undefined,
+): ParsedDeckList[] | undefined {
 	if (!decklists || decklists.length === 0) {
 		return undefined;
 	}
@@ -324,14 +328,17 @@ export function parseAllDecklists(decklists: MeleePlayerDecklistParsed[] | undef
  * Looks for COLOR_* attributes with value "True" and combines them (e.g., "WUB")
  * Returns "C" for colourless if no colors are found
  */
-function extractDeckColors(decklist: { Attributes?: Array<{ k: string; v: string }> } | undefined): string | undefined {
+function extractDeckColors(
+	decklist: { Attributes?: Array<{ k: string; v: string }> } | undefined,
+): string | undefined {
 	if (!decklist?.Attributes) {
 		return undefined;
 	}
 
-	const colors = decklist.Attributes
-		.filter(attr => attr.k in MELEE_COLOR_MAP && attr.v === 'True')
-		.map(attr => MELEE_COLOR_MAP[attr.k]!)
+	const colors = decklist.Attributes.filter(
+		(attr) => attr.k in MELEE_COLOR_MAP && attr.v === 'True',
+	)
+		.map((attr) => MELEE_COLOR_MAP[attr.k]!)
 		.sort((a, b) => COLOR_ORDER.indexOf(a) - COLOR_ORDER.indexOf(b));
 
 	// Return "C" for colourless if no colors found
@@ -391,12 +398,10 @@ export function mapMeleePlayersToDb(
 		standingTeamIds.add(standing.TeamId);
 	}
 
-	const standingsMap = new Map(
-		standings.map(standing => [standing.TeamId, standing]),
-	);
+	const standingsMap = new Map(standings.map((standing) => [standing.TeamId, standing]));
 
 	return players
-		.map(player => mapMeleePlayerToDb(player, standingsMap.get(player.TeamId)))
+		.map((player) => mapMeleePlayerToDb(player, standingsMap.get(player.TeamId)))
 		.sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity));
 }
 
@@ -410,7 +415,9 @@ export class UnsupportedMeleeTeamPayloadError extends Error {
 	readonly statusMessage = 'Unsupported Melee team tournament';
 
 	constructor() {
-		super('Unsupported Melee team tournament: multiple players share a TeamId. Stream Keepr currently supports individual-player tournaments only.');
+		super(
+			'Unsupported Melee team tournament: multiple players share a TeamId. Stream Keepr currently supports individual-player tournaments only.',
+		);
 		this.name = 'UnsupportedMeleeTeamPayloadError';
 	}
 }
@@ -444,13 +451,14 @@ function mapCompetitorToPlayerData(
 
 	// A format or primary fallback must never attach a deck owned by another
 	// source merely because it belongs to the same canonical Player.
-	const playerDecks = (context.playerDecksByPlayerId.get(player.id) ?? [])
-		.filter(deck => deck.externalSource === 'melee');
-	const referencedDeckIds = competitor.Decklists.map(deck => deck.DecklistId);
+	const playerDecks = (context.playerDecksByPlayerId.get(player.id) ?? []).filter(
+		(deck) => deck.externalSource === 'melee',
+	);
+	const referencedDeckIds = competitor.Decklists.map((deck) => deck.DecklistId);
 	const resolvedDeck = selectMatchDeck(playerDecks, {
 		externalIds: referencedDeckIds,
 		formatExternalIds: [
-			...competitor.Decklists.map(deck => deck.FormatId),
+			...competitor.Decklists.map((deck) => deck.FormatId),
 			matchFormatExternalId,
 			context.roundFormatExternalId,
 		],
@@ -480,8 +488,13 @@ function mapCompetitorToPlayerData(
 			`Match ${matchExternalId}: multiple ${resolvedDeck.strategy} decks matched ${player.name}; selected deterministically by sort order`,
 		);
 	}
-	if (!resolvedDeck.deck && (referencedDeckIds.length > 0 || playerDecks.length > 0 || player.gameData?.type === 'mtg')) {
-		context.warnings.push(`Match ${matchExternalId}: no submitted deck could be selected for ${player.name}`);
+	if (
+		!resolvedDeck.deck &&
+		(referencedDeckIds.length > 0 || playerDecks.length > 0 || player.gameData?.type === 'mtg')
+	) {
+		context.warnings.push(
+			`Match ${matchExternalId}: no submitted deck could be selected for ${player.name}`,
+		);
 	}
 
 	const playerData = applyMatchDeckSnapshot(
@@ -557,7 +570,10 @@ function validateMeleeMatchSnapshot(
 }
 
 /** Whether a Melee Match holds a result, and whether it is a bye, as its stored Match records them. */
-export function meleeMatchResultState(meleeMatch: MeleeMatchParsed): { hasResult: boolean; isBye: boolean } {
+export function meleeMatchResultState(meleeMatch: MeleeMatchParsed): {
+	hasResult: boolean;
+	isBye: boolean;
+} {
 	return {
 		hasResult: meleeMatch.HasResult ?? false,
 		isBye: meleeMatch.Competitors.length < 2 || meleeMatch.ByeReason != null,
@@ -575,8 +591,18 @@ function mapMeleeMatchToDbRow(
 ): Omit<MatchUpsertInput, 'eventId'> & { externalId: string; externalSource: 'melee' } {
 	const competitors = meleeMatch.Competitors.slice().sort((a, b) => a.SortOrder - b.SortOrder);
 	const matchFormatExternalId = meleeMatch.FormatId ?? null;
-	const p1 = mapCompetitorToPlayerData(competitors[0], context, meleeMatch.Guid, matchFormatExternalId);
-	const p2 = mapCompetitorToPlayerData(competitors[1], context, meleeMatch.Guid, matchFormatExternalId);
+	const p1 = mapCompetitorToPlayerData(
+		competitors[0],
+		context,
+		meleeMatch.Guid,
+		matchFormatExternalId,
+	);
+	const p2 = mapCompetitorToPlayerData(
+		competitors[1],
+		context,
+		meleeMatch.Guid,
+		matchFormatExternalId,
+	);
 
 	const { hasResult, isBye } = meleeMatchResultState(meleeMatch);
 	// Melee leaves a side's GameWins, and the Match's GameDraws, null rather
@@ -594,15 +620,9 @@ function mapMeleeMatchToDbRow(
 		player1Data: p1.playerData,
 		player2Data: p2.playerData,
 		hasResult,
-		player1GameWins: holdsGameScore
-			? competitors[0]?.GameWins ?? 0
-			: null,
-		player2GameWins: holdsGameScore
-			? competitors[1]?.GameWins ?? 0
-			: null,
-		gameDraws: holdsGameScore
-			? meleeMatch.GameDraws ?? 0
-			: null,
+		player1GameWins: holdsGameScore ? (competitors[0]?.GameWins ?? 0) : null,
+		player2GameWins: holdsGameScore ? (competitors[1]?.GameWins ?? 0) : null,
+		gameDraws: holdsGameScore ? (meleeMatch.GameDraws ?? 0) : null,
 		isBye,
 		sortOrder,
 	};

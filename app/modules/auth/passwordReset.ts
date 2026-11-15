@@ -23,8 +23,8 @@ export type PasswordResetAttempt = { ok: true } | { ok: false; message: string }
  * likeliest reason a redemption fails is that this one is spent or stale, and
  * nobody following an invite can tell those apart from a network blip.
  */
-export const PASSWORD_RESET_FAILED_MESSAGE
-	= 'This link could not be used. It may have expired or already been used — ask your administrator for a new one.';
+export const PASSWORD_RESET_FAILED_MESSAGE =
+	'This link could not be used. It may have expired or already been used — ask your administrator for a new one.';
 
 /**
  * Exchange a reset token for a new password on the account it was minted for.
@@ -44,8 +44,7 @@ export async function redeemPasswordReset(
 			return { ok: false, message: answer.error.message ?? PASSWORD_RESET_FAILED_MESSAGE };
 
 		return { ok: true };
-	}
-	catch {
+	} catch {
 		// Better Auth's client answers a refused request with an `error` rather
 		// than a rejection, so reaching here means the request never happened.
 		return { ok: false, message: PASSWORD_RESET_FAILED_MESSAGE };

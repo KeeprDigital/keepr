@@ -1,7 +1,10 @@
 import type { ScreenOutputMetagameResponse } from '~~/shared/types/screenOutputReads';
 import { readEventConversionTarget } from '~~/server/modules/metagame/conversionTarget';
 import { metagameReadModel } from '~~/server/modules/metagame/readModel';
-import { metagameArchetypesQuerySchema, metagameCardsQuerySchema } from '~~/server/schemas/api/metagame';
+import {
+	metagameArchetypesQuerySchema,
+	metagameCardsQuerySchema,
+} from '~~/server/schemas/api/metagame';
 import { requireScreenOutputModeRead } from '~~/server/utils/screenOutputRead';
 import { metagameScreenQuery } from '~~/shared/utils/metagameQuery';
 
@@ -12,6 +15,18 @@ export default defineEventHandler(async (event): Promise<ScreenOutputMetagameRes
 	const readModel = metagameReadModel();
 
 	return request.viewMode === 'cards'
-		? { viewMode: 'cards', breakdown: await readModel.getCardBreakdown(eventId, metagameCardsQuerySchema.parse(request.query)) }
-		: { viewMode: 'archetype', breakdown: await readModel.getArchetypeBreakdown(eventId, metagameArchetypesQuerySchema.parse(request.query)) };
+		? {
+				viewMode: 'cards',
+				breakdown: await readModel.getCardBreakdown(
+					eventId,
+					metagameCardsQuerySchema.parse(request.query),
+				),
+			}
+		: {
+				viewMode: 'archetype',
+				breakdown: await readModel.getArchetypeBreakdown(
+					eventId,
+					metagameArchetypesQuerySchema.parse(request.query),
+				),
+			};
 });

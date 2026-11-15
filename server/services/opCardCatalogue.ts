@@ -21,11 +21,8 @@ function isOpCardColor(value: unknown): value is OpCardColor {
 export function decodeOpCatalogueColors(stored: string | null): OpCardColor[] {
 	try {
 		const parsed: unknown = JSON.parse(stored ?? '[]');
-		return Array.isArray(parsed)
-			? parsed.filter(isOpCardColor)
-			: [];
-	}
-	catch {
+		return Array.isArray(parsed) ? parsed.filter(isOpCardColor) : [];
+	} catch {
 		return [];
 	}
 }
@@ -58,8 +55,7 @@ interface OpCatalogueColumns {
 
 /** The card a joined row names, or `null` when the catalogue has none for the number. */
 export function toOpCatalogueCard(row: OpCatalogueColumns): OpCatalogueCard | null {
-	if (row.catalogueName === null || row.category === null || row.imageUrl === null)
-		return null;
+	if (row.catalogueName === null || row.category === null || row.imageUrl === null) return null;
 	return {
 		name: row.catalogueName,
 		category: row.category,
@@ -73,24 +69,25 @@ export function toOpCatalogueCard(row: OpCatalogueColumns): OpCatalogueCard | nu
 
 export function opCardCatalogueService() {
 	/** The catalogue's cards among `numbers`, by number; a number it lacks is absent. */
-	const findByNumbers = async (numbers: readonly string[]): Promise<Map<string, OpCatalogueCard>> => {
-		if (numbers.length === 0)
-			return new Map();
-		const rows = await db.select({ number: cards.cardNumber, ...opCatalogueCardColumns })
+	const findByNumbers = async (
+		numbers: readonly string[],
+	): Promise<Map<string, OpCatalogueCard>> => {
+		if (numbers.length === 0) return new Map();
+		const rows = await db
+			.select({ number: cards.cardNumber, ...opCatalogueCardColumns })
 			.from(cards)
 			.where(and(eq(cards.game, 'op'), inJsonArray(cards.cardNumber, [...numbers])));
 		const found = new Map<string, OpCatalogueCard>();
 		for (const row of rows) {
 			const card = toOpCatalogueCard(row);
-			if (row.number && card)
-				found.set(row.number, card);
+			if (row.number && card) found.set(row.number, card);
 		}
 		return found;
 	};
 
 	/** Adds the cards bandai-keepr answered; a number the catalogue already holds keeps its row. */
 	const add = async (answered: readonly OpCardSummary[]): Promise<void> => {
-		const rows = answered.map(card => ({
+		const rows = answered.map((card) => ({
 			name: card.name,
 			number: card.number,
 			category: card.category,
@@ -101,32 +98,39 @@ export function opCardCatalogueService() {
 			imageUrl: card.imageUrl,
 		}));
 		const writeAtMs = Date.now();
-		const [first, ...rest] = chunkJsonRows(rows).map(payload => db
-			.insert(cards)
-			.select(selectForInsert(cards, {
-				id: sql`null`,
-				name: sql`json_extract(value, '$.name')`,
-				game: sql`'op'`,
-				scryfallId: sql`null`,
-				oracleId: sql`null`,
-				cardType: sql`null`,
-				colors: sql`json_extract(value, '$.colors')`,
-				cmc: sql`null`,
-				manaCost: sql`null`,
-				deckCounterTypes: sql`'[]'`,
-				deckTokens: sql`'[]'`,
-				cardNumber: sql`json_extract(value, '$.number')`,
-				category: sql`json_extract(value, '$.category')`,
-				cost: sql`json_extract(value, '$.cost')`,
-				power: sql`json_extract(value, '$.power')`,
-				counter: sql`json_extract(value, '$.counter')`,
-				imageUrl: sql`json_extract(value, '$.imageUrl')`,
-				createdAt: sql`${writeAtMs}`,
-				updatedAt: sql`${writeAtMs}`,
-			}, sql`from json_each(${payload}) where true`))
-			.onConflictDoNothing());
-		if (first)
-			await db.batch([first, ...rest]);
+		const [first, ...rest] = chunkJsonRows(rows).map((payload) =>
+			db
+				.insert(cards)
+				.select(
+					selectForInsert(
+						cards,
+						{
+							id: sql`null`,
+							name: sql`json_extract(value, '$.name')`,
+							game: sql`'op'`,
+							scryfallId: sql`null`,
+							oracleId: sql`null`,
+							cardType: sql`null`,
+							colors: sql`json_extract(value, '$.colors')`,
+							cmc: sql`null`,
+							manaCost: sql`null`,
+							deckCounterTypes: sql`'[]'`,
+							deckTokens: sql`'[]'`,
+							cardNumber: sql`json_extract(value, '$.number')`,
+							category: sql`json_extract(value, '$.category')`,
+							cost: sql`json_extract(value, '$.cost')`,
+							power: sql`json_extract(value, '$.power')`,
+							counter: sql`json_extract(value, '$.counter')`,
+							imageUrl: sql`json_extract(value, '$.imageUrl')`,
+							createdAt: sql`${writeAtMs}`,
+							updatedAt: sql`${writeAtMs}`,
+						},
+						sql`from json_each(${payload}) where true`,
+					),
+				)
+				.onConflictDoNothing(),
+		);
+		if (first) await db.batch([first, ...rest]);
 	};
 
 	return { findByNumbers, add };

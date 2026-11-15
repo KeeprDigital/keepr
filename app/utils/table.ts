@@ -16,11 +16,12 @@ import { MtgManaColorDisplay, UButton } from '#components';
 export function createSortableHeader(label: string) {
 	return ({ column }: { column: any }) => {
 		const sortDirection = column.getIsSorted();
-		const trailingIcon = sortDirection === 'asc'
-			? 'i-lucide-arrow-up'
-			: sortDirection === 'desc'
-				? 'i-lucide-arrow-down'
-				: 'i-lucide-arrow-up-down';
+		const trailingIcon =
+			sortDirection === 'asc'
+				? 'i-lucide-arrow-up'
+				: sortDirection === 'desc'
+					? 'i-lucide-arrow-down'
+					: 'i-lucide-arrow-up-down';
 
 		return h(UButton, {
 			label,
@@ -50,15 +51,18 @@ export function createNameColumn<T extends { name: string }>(label = 'Card'): Ta
 }
 
 /** Mana cost column — renders `MtgManaColorDisplay` or an em dash for null. */
-export function createManaCostColumn<T extends { manaCost: string | null; cmc?: number | null; colors?: string | null }>(): TableColumn<T> {
+export function createManaCostColumn<
+	T extends { manaCost: string | null; cmc?: number | null; colors?: string | null },
+>(): TableColumn<T> {
 	return {
 		accessorKey: 'manaCost' as keyof T & string,
 		header: createSortableHeader('Cost'),
 		enableSorting: true,
-		sortingFn: (rowA, rowB) => sortByManaCost(
-			rowA.original as { cmc?: number | null; colors?: string | null },
-			rowB.original as { cmc?: number | null; colors?: string | null },
-		),
+		sortingFn: (rowA, rowB) =>
+			sortByManaCost(
+				rowA.original as { cmc?: number | null; colors?: string | null },
+				rowB.original as { cmc?: number | null; colors?: string | null },
+			),
 		cell: ({ row }: { row: { original: T } }) => {
 			const cost = row.original.manaCost;
 			return cost
@@ -71,12 +75,16 @@ export function createManaCostColumn<T extends { manaCost: string | null; cmc?: 
 /** Card type column — renders in `text-sm text-muted`, falls back to '-'. */
 export function createCardTypeColumn<T extends { cardType: string | null }>(): TableColumn<T> {
 	return {
-		accessorFn: row => getCardTypeDisplayLabel(row.cardType, { nonbasicLandLabel: true }),
+		accessorFn: (row) => getCardTypeDisplayLabel(row.cardType, { nonbasicLandLabel: true }),
 		id: 'cardType',
 		header: createSortableHeader('Type'),
 		enableSorting: true,
 		cell: ({ row }: { row: { original: T } }) =>
-			h('span', { class: 'text-sm text-muted' }, getCardTypeDisplayLabel(row.original.cardType, { nonbasicLandLabel: true })),
+			h(
+				'span',
+				{ class: 'text-sm text-muted' },
+				getCardTypeDisplayLabel(row.original.cardType, { nonbasicLandLabel: true }),
+			),
 	};
 }
 

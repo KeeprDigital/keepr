@@ -25,7 +25,13 @@ mockNuxtImport('useToast', () => () => mockToast);
 
 enableAutoUnmount(afterEach);
 
-type LiveResultsFields = Pick<Event, 'meleeLiveResultsEnabled' | 'meleeLiveResultsError' | 'meleeLiveResultsStopReason' | 'meleeLiveResultsLastCheckedAt'>;
+type LiveResultsFields = Pick<
+	Event,
+	| 'meleeLiveResultsEnabled'
+	| 'meleeLiveResultsError'
+	| 'meleeLiveResultsStopReason'
+	| 'meleeLiveResultsLastCheckedAt'
+>;
 
 function wireEvent(fields: Partial<LiveResultsFields> = {}): Event {
 	return {
@@ -35,7 +41,9 @@ function wireEvent(fields: Partial<LiveResultsFields> = {}): Event {
 	} as unknown as Event;
 }
 
-function status(overrides: Partial<MeleeLiveResultsStatusResponse> = {}): MeleeLiveResultsStatusResponse {
+function status(
+	overrides: Partial<MeleeLiveResultsStatusResponse> = {},
+): MeleeLiveResultsStatusResponse {
 	return {
 		enabled: true,
 		currentRound: {
@@ -120,10 +128,8 @@ describe('live Results card', () => {
 		expect(card(wrapper).attributes('data-live-results')).toBe(state);
 		expect(liveResultsSwitch(wrapper).attributes('aria-checked')).toBe(checked);
 		expect(liveResultsSwitch(wrapper).text()).toBe('Live Results');
-		for (const text of shows)
-			expect(wrapper.text()).toContain(text);
-		for (const text of hides)
-			expect(wrapper.text()).not.toContain(text);
+		for (const text of shows) expect(wrapper.text()).toContain(text);
+		for (const text of hides) expect(wrapper.text()).not.toContain(text);
 	});
 
 	it.each([
@@ -145,22 +151,25 @@ describe('live Results card', () => {
 			enabled: true,
 			pending: 'on',
 		},
-	] as const)('switches Live Results from $from while the request is pending', async ({ fields, enabled, pending }) => {
-		const request = deferred<Event>();
-		mockEventRepo.setMeleeLiveResults.mockReturnValue(request.promise);
-		const wrapper = await mountCard(fields);
+	] as const)(
+		'switches Live Results from $from while the request is pending',
+		async ({ fields, enabled, pending }) => {
+			const request = deferred<Event>();
+			mockEventRepo.setMeleeLiveResults.mockReturnValue(request.promise);
+			const wrapper = await mountCard(fields);
 
-		await liveResultsSwitch(wrapper).trigger('click');
+			await liveResultsSwitch(wrapper).trigger('click');
 
-		expect(mockEventRepo.setMeleeLiveResults).toHaveBeenCalledWith(1, enabled);
-		expect(card(wrapper).attributes('data-live-results')).toBe(pending);
-		expect(liveResultsSwitch(wrapper).attributes('aria-checked')).toBe(String(enabled));
+			expect(mockEventRepo.setMeleeLiveResults).toHaveBeenCalledWith(1, enabled);
+			expect(card(wrapper).attributes('data-live-results')).toBe(pending);
+			expect(liveResultsSwitch(wrapper).attributes('aria-checked')).toBe(String(enabled));
 
-		request.resolve(wireEvent({ meleeLiveResultsEnabled: enabled }));
-		await flushPromises();
+			request.resolve(wireEvent({ meleeLiveResultsEnabled: enabled }));
+			await flushPromises();
 
-		expect(card(wrapper).attributes('data-live-results')).toBe(pending);
-	});
+			expect(card(wrapper).attributes('data-live-results')).toBe(pending);
+		},
+	);
 
 	it.each([
 		{ from: 'off', fields: {}, state: 'off' },
@@ -170,15 +179,17 @@ describe('live Results card', () => {
 			state: 'stopped',
 		},
 	] as const)('reverts a refused switch from $from and says why', async ({ fields, state }) => {
-		mockEventRepo.setMeleeLiveResults.mockRejectedValue(transportFailure({
-			status: 400,
-			request: '[PUT] "/api/events/1/melee/live-results"',
-			body: {
-				statusCode: 400,
-				message: 'Turn Melee Sync on before turning Live Results on',
-				data: { code: 'MELEE_SYNC_DISABLED' },
-			},
-		}));
+		mockEventRepo.setMeleeLiveResults.mockRejectedValue(
+			transportFailure({
+				status: 400,
+				request: '[PUT] "/api/events/1/melee/live-results"',
+				body: {
+					statusCode: 400,
+					message: 'Turn Melee Sync on before turning Live Results on',
+					data: { code: 'MELEE_SYNC_DISABLED' },
+				},
+			}),
+		);
 		const wrapper = await mountCard(fields);
 
 		await liveResultsSwitch(wrapper).trigger('click');
@@ -186,23 +197,27 @@ describe('live Results card', () => {
 
 		expect(card(wrapper).attributes('data-live-results')).toBe(state);
 		expect(liveResultsSwitch(wrapper).attributes('aria-checked')).toBe('false');
-		expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({
-			color: 'error',
-			description: 'Turn Melee Sync on before turning Live Results on',
-		}));
+		expect(mockToast.add).toHaveBeenCalledWith(
+			expect.objectContaining({
+				color: 'error',
+				description: 'Turn Melee Sync on before turning Live Results on',
+			}),
+		);
 	});
 
 	it('re-reads the status every 30 seconds while on', async () => {
 		const wrapper = await mountCard({ meleeLiveResultsEnabled: true });
-		mockEventRepo.getMeleeLiveResultsStatus.mockResolvedValue(status({
-			currentRound: {
-				id: 5,
-				name: 'Quarterfinals',
-				phaseId: 2,
-				phaseName: null,
-			},
-			lastCheckedAt: NOW,
-		}));
+		mockEventRepo.getMeleeLiveResultsStatus.mockResolvedValue(
+			status({
+				currentRound: {
+					id: 5,
+					name: 'Quarterfinals',
+					phaseId: 2,
+					phaseName: null,
+				},
+				lastCheckedAt: NOW,
+			}),
+		);
 
 		await vi.advanceTimersByTimeAsync(29_000);
 		expect(wrapper.text()).toContain('Swiss - Round 4');

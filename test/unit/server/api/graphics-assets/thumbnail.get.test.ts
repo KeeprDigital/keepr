@@ -24,15 +24,17 @@ vi.mock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	}),
 }));
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getRouterParam', mockRouterParam);
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage?: string; message: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message), input),
+);
 
 const routePath = '../../../../../server/api/graphics-assets/[assetId]/thumbnail.get';
 
@@ -54,7 +56,7 @@ describe('graphic Asset thumbnail delivery', () => {
 		});
 		const handler = (await import(routePath)).default;
 
-		const response = await handler(stubH3Event()) as Response;
+		const response = (await handler(stubH3Event())) as Response;
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get('content-type')).toBe('image/png');

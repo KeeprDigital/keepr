@@ -1,6 +1,15 @@
-import type { FeatureMatchResponse, PhaseResponse, PlayerResponse, PlayerSlotData, RoundResponse } from '~~/shared/api';
+import type {
+	FeatureMatchResponse,
+	PhaseResponse,
+	PlayerResponse,
+	PlayerSlotData,
+	RoundResponse,
+} from '~~/shared/api';
 import type { EventKind } from '~~/shared/config/games';
-import type { CommanderFeatureMatchSampleSeat, OpFeatureMatchSampleSide } from '~~/shared/featureMatchSampleDataset';
+import type {
+	CommanderFeatureMatchSampleSeat,
+	OpFeatureMatchSampleSide,
+} from '~~/shared/featureMatchSampleDataset';
 import type { FoundationTokenName } from '~~/shared/modules/theme';
 import type { BracketEntrant, BracketMatchInput } from '~~/shared/modules/top-cut-bracket';
 import type { BroadcastGraphicsLiveSessionResponse } from '~~/shared/types/broadcastGraphicsLiveSession';
@@ -8,18 +17,38 @@ import type { MtgCard } from '~~/shared/types/card/mtg';
 import type { OpScreenCard } from '~~/shared/types/card/op';
 import type { Game, ScreenMode, Variant } from '~~/shared/types/enums';
 import type { CommanderDeckListEntry } from '~~/shared/types/featureMatchDeckList';
-import type { BroadcastGraphicConfig, GraphicItemConfig, TextGraphicItemConfig } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicItemConfig,
+	TextGraphicItemConfig,
+} from '~~/shared/types/graphics';
 import type { GraphicThemeSlot } from '~~/shared/types/graphicThemeBindings';
 import type { CardBreakdownEntry } from '~~/shared/types/metagame';
 import type { ModeConfigsMap } from '~~/shared/types/screenConfig';
-import type { ScreenOutputCommanderDeckListResponse, ScreenOutputFeatureMatchDeckListResponse, ScreenOutputFeatureMatchResponse, ScreenOutputTalentResponse } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputCommanderDeckListResponse,
+	ScreenOutputFeatureMatchDeckListResponse,
+	ScreenOutputFeatureMatchResponse,
+	ScreenOutputTalentResponse,
+} from '~~/shared/types/screenOutputReads';
 import type { ScryfallCardFetchResult } from '~/composables/data/useScryfallBatch';
-import type { ScreenOutputReadScope, useScreenOutputReadRepository } from '~/composables/repositories/useScreenOutputReadRepository';
+import type {
+	ScreenOutputReadScope,
+	useScreenOutputReadRepository,
+} from '~/composables/repositories/useScreenOutputReadRepository';
 import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { eventKind } from '~~/shared/config/games';
 import { DEFAULT_EVENT_CANVAS } from '~~/shared/eventCanvas';
-import { COMMANDER_FEATURE_MATCH_SAMPLE_SEATS, OP_FEATURE_MATCH_SAMPLE_ROUND, OP_FEATURE_MATCH_SAMPLE_SIDES } from '~~/shared/featureMatchSampleDataset';
-import { bindGraphicThemeOwner, DEFAULT_GRAPHIC_THEME_TOKENS, getGraphicItemDefinition } from '~~/shared/modules/graphics';
+import {
+	COMMANDER_FEATURE_MATCH_SAMPLE_SEATS,
+	OP_FEATURE_MATCH_SAMPLE_ROUND,
+	OP_FEATURE_MATCH_SAMPLE_SIDES,
+} from '~~/shared/featureMatchSampleDataset';
+import {
+	bindGraphicThemeOwner,
+	DEFAULT_GRAPHIC_THEME_TOKENS,
+	getGraphicItemDefinition,
+} from '~~/shared/modules/graphics';
 import { deriveManualTopCutBracket, deriveTopCutBracket } from '~~/shared/modules/top-cut-bracket';
 import { socialProfileValues } from '~~/shared/socialProfiles';
 import { formatOpColors, opPrintingImageUrl } from '~~/shared/utils/card/op';
@@ -63,7 +92,7 @@ interface SamplePlayer {
 	losses: number;
 	draws: number;
 	/** Their deck is their Archetype's. */
-	archetypeId: typeof ARCHETYPES[number]['id'];
+	archetypeId: (typeof ARCHETYPES)[number]['id'];
 	/** Their position a Round earlier, which Standings' Position Change measures against. */
 	previousPosition: number;
 }
@@ -153,7 +182,9 @@ const PLAYERS: readonly SamplePlayer[] = [
 
 /** A sample Player's deck, as a broadcast names it: their Archetype's name and colours. */
 function deckOf(index: number) {
-	const { name, colors } = ARCHETYPES.find(archetype => archetype.id === PLAYERS[index]!.archetypeId)!;
+	const { name, colors } = ARCHETYPES.find(
+		(archetype) => archetype.id === PLAYERS[index]!.archetypeId,
+	)!;
 	return { name, colors };
 }
 
@@ -234,7 +265,12 @@ function entrant(index: number): BracketEntrant {
 	};
 }
 
-function bracketMatch(matchId: number, table: number, sides: [number, number], gameWins: [number, number] | null): BracketMatchInput {
+function bracketMatch(
+	matchId: number,
+	table: number,
+	sides: [number, number],
+	gameWins: [number, number] | null,
+): BracketMatchInput {
 	return {
 		matchId,
 		tableNumber: table,
@@ -263,14 +299,19 @@ const SAMPLE_BRACKET = deriveTopCutBracket([
 	{
 		roundId: SEMIFINALS.id,
 		name: SEMIFINALS.name,
-		matches: [
-			bracketMatch(101, 1, [0, 4], [2, 0]),
-			bracketMatch(102, 2, [1, 5], null),
-		],
+		matches: [bracketMatch(101, 1, [0, 4], [2, 0]), bracketMatch(102, 2, [1, 5], null)],
 	},
 ]);
 
-function card(id: number, name: string, cardType: string, colors: string | null, manaCost: string | null, deckCount: number, avgCopies: number): CardBreakdownEntry {
+function card(
+	id: number,
+	name: string,
+	cardType: string,
+	colors: string | null,
+	manaCost: string | null,
+	deckCount: number,
+	avgCopies: number,
+): CardBreakdownEntry {
 	const totalCopies = Math.round(deckCount * avgCopies);
 	return {
 		id,
@@ -279,9 +320,7 @@ function card(id: number, name: string, cardType: string, colors: string | null,
 		// No Scryfall id, so it draws no art: the sample is about type and colour.
 		scryfallId: null,
 		colors,
-		cmc: manaCost
-			? manaCost.split('}').length - 1
-			: 0,
+		cmc: manaCost ? manaCost.split('}').length - 1 : 0,
 		manaCost,
 		cardNumber: null,
 		imageUrl: null,
@@ -306,65 +345,16 @@ const SAMPLE_TOP_CARDS: CardBreakdownEntry[] = [
 ];
 
 const SPOTLIT = ARCHETYPES[0];
-const spotlitPilots = SAMPLE_PLAYERS.filter(pilot => pilot.archetypeId === SPOTLIT.id);
+const spotlitPilots = SAMPLE_PLAYERS.filter((pilot) => pilot.archetypeId === SPOTLIT.id);
 
 const SAMPLE_DECK_CARDS = [
-	[
-		'Lightning Helix',
-		'Instant',
-		'RW',
-		'{R}{W}',
-		4,
-		'mainboard',
-	],
-	[
-		'Gleeful Demolition',
-		'Sorcery',
-		'R',
-		'{R}',
-		4,
-		'mainboard',
-	],
-	[
-		'Voldaren Epicure',
-		'Creature',
-		'R',
-		'{R}',
-		4,
-		'mainboard',
-	],
-	[
-		'Venerated Loxodon',
-		'Creature',
-		'W',
-		'{4}{W}',
-		4,
-		'mainboard',
-	],
-	[
-		'Sacred Foundry',
-		'Land',
-		null,
-		null,
-		4,
-		'mainboard',
-	],
-	[
-		'Plains',
-		'Basic Land',
-		null,
-		null,
-		8,
-		'mainboard',
-	],
-	[
-		'Rest in Peace',
-		'Enchantment',
-		'W',
-		'{1}{W}',
-		2,
-		'sideboard',
-	],
+	['Lightning Helix', 'Instant', 'RW', '{R}{W}', 4, 'mainboard'],
+	['Gleeful Demolition', 'Sorcery', 'R', '{R}', 4, 'mainboard'],
+	['Voldaren Epicure', 'Creature', 'R', '{R}', 4, 'mainboard'],
+	['Venerated Loxodon', 'Creature', 'W', '{4}{W}', 4, 'mainboard'],
+	['Sacred Foundry', 'Land', null, null, 4, 'mainboard'],
+	['Plains', 'Basic Land', null, null, 8, 'mainboard'],
+	['Rest in Peace', 'Enchantment', 'W', '{1}{W}', 2, 'sideboard'],
 ] as const;
 
 /** A frame colour per colour identity; gold for several, grey for none. */
@@ -379,11 +369,8 @@ const FRAME_COLORS: Readonly<Record<string, string>> = {
 const COLORLESS_FRAME = '#9ca3af';
 
 function frameColor(colors: string | null): string {
-	if (!colors)
-		return COLORLESS_FRAME;
-	return colors.length > 1
-		? '#c9a54a'
-		: FRAME_COLORS[colors] ?? COLORLESS_FRAME;
+	if (!colors) return COLORLESS_FRAME;
+	return colors.length > 1 ? '#c9a54a' : (FRAME_COLORS[colors] ?? COLORLESS_FRAME);
 }
 
 /**
@@ -410,7 +397,12 @@ function cardFace(name: string, cardType: string, colors: string | null): string
 const sampleCardId = (name: string) => `sample-${name.toLowerCase().replace(/\W+/g, '-')}`;
 
 /** A sample card as a Scryfall read gives one, with its face drawn rather than fetched. */
-function sampleCard(name: string, cardType: string, colors: string | null, id = sampleCardId(name)): MtgCard {
+function sampleCard(
+	name: string,
+	cardType: string,
+	colors: string | null,
+	id = sampleCardId(name),
+): MtgCard {
 	const face = cardFace(name, cardType, colors);
 	return {
 		id,
@@ -451,9 +443,12 @@ const SAMPLE_SCREEN_CARD = sampleCard('Lightning Helix', 'Instant', 'RW');
  * printings its Seat holds, and a Mainboard drawn as the other samples' cards
  * are. A basic land's copies show its quantity, as a pasted list's do.
  */
-const [COMMANDER_DECK_SEAT] = COMMANDER_FEATURE_MATCH_SAMPLE_SEATS as readonly [CommanderFeatureMatchSampleSeat, ...CommanderFeatureMatchSampleSeat[]];
+const [COMMANDER_DECK_SEAT] = COMMANDER_FEATURE_MATCH_SAMPLE_SEATS as readonly [
+	CommanderFeatureMatchSampleSeat,
+	...CommanderFeatureMatchSampleSeat[],
+];
 const COMMANDER_DECK_CARDS: readonly CommanderDeckListEntry[] = [
-	...COMMANDER_DECK_SEAT.commanders.map(commander => ({
+	...COMMANDER_DECK_SEAT.commanders.map((commander) => ({
 		quantity: 1,
 		scryfallId: commander.scryfallId,
 		name: commander.name,
@@ -464,65 +459,18 @@ const COMMANDER_DECK_CARDS: readonly CommanderDeckListEntry[] = [
 		manaCost: null,
 		manaValue: null,
 	})),
-	...([
+	...(
 		[
-			'Sol Ring',
-			'Artifact',
-			'',
-			'{1}',
-			1,
-			1,
-		],
-		[
-			'Arcane Signet',
-			'Artifact',
-			'',
-			'{2}',
-			2,
-			1,
-		],
-		[
-			'Swords to Plowshares',
-			'Instant',
-			'W',
-			'{W}',
-			1,
-			1,
-		],
-		[
-			'Counterspell',
-			'Instant',
-			'U',
-			'{U}{U}',
-			2,
-			1,
-		],
-		[
-			'Lightning Bolt',
-			'Instant',
-			'R',
-			'{R}',
-			1,
-			1,
-		],
-		[
-			'Demonic Tutor',
-			'Sorcery',
-			'B',
-			'{1}{B}',
-			2,
-			1,
-		],
-		[
-			'Command Tower',
-			'Land',
-			'',
-			null,
-			0,
-			1,
-		],
-		['Island', 'Basic Land', '', null, 0, 3],
-	] as const).map(([name, cardType, colorIdentity, manaCost, manaValue, quantity]) => ({
+			['Sol Ring', 'Artifact', '', '{1}', 1, 1],
+			['Arcane Signet', 'Artifact', '', '{2}', 2, 1],
+			['Swords to Plowshares', 'Instant', 'W', '{W}', 1, 1],
+			['Counterspell', 'Instant', 'U', '{U}{U}', 2, 1],
+			['Lightning Bolt', 'Instant', 'R', '{R}', 1, 1],
+			['Demonic Tutor', 'Sorcery', 'B', '{1}{B}', 2, 1],
+			['Command Tower', 'Land', '', null, 0, 1],
+			['Island', 'Basic Land', '', null, 0, 3],
+		] as const
+	).map(([name, cardType, colorIdentity, manaCost, manaValue, quantity]) => ({
 		quantity,
 		scryfallId: sampleCardId(name),
 		name,
@@ -540,16 +488,14 @@ const COMMANDER_DECK_CARDS: readonly CommanderDeckListEntry[] = [
  * Scryfall name lookup keys it, and a Commander Seat's by the printing it holds.
  */
 const SAMPLE_DECK_CARD_DATA = new Map<string, MtgCard>([
-	...SAMPLE_DECK_CARDS.map(([name, cardType, colors]) =>
-		[
-			scryfallNameKey(name),
-			sampleCard(name, cardType, colors),
-		] as const),
-	...COMMANDER_DECK_CARDS.map(({ name, cardType, colorIdentity, scryfallId }) =>
-		[
-			scryfallId,
-			sampleCard(name, cardType ?? '', colorIdentity || null, scryfallId),
-		] as const),
+	...SAMPLE_DECK_CARDS.map(
+		([name, cardType, colors]) =>
+			[scryfallNameKey(name), sampleCard(name, cardType, colors)] as const,
+	),
+	...COMMANDER_DECK_CARDS.map(
+		({ name, cardType, colorIdentity, scryfallId }) =>
+			[scryfallId, sampleCard(name, cardType ?? '', colorIdentity || null, scryfallId)] as const,
+	),
 ]);
 
 /**
@@ -557,19 +503,23 @@ const SAMPLE_DECK_CARD_DATA = new Map<string, MtgCard>([
  * Scryfall's: by Scryfall id, or else by name. It is fixed, so the preview
  * fetches nothing.
  */
-export async function sampleDeckCardData(cards: ReadonlyArray<{ name: string; scryfallId?: string | null }>): Promise<ScryfallCardFetchResult> {
+export async function sampleDeckCardData(
+	cards: ReadonlyArray<{ name: string; scryfallId?: string | null }>,
+): Promise<ScryfallCardFetchResult> {
 	const found = new Map<string, MtgCard>();
 	for (const { name, scryfallId } of cards) {
 		const key = scryfallId ?? scryfallNameKey(name);
 		const card = SAMPLE_DECK_CARD_DATA.get(key);
-		if (card)
-			found.set(key, structuredClone(card));
+		if (card) found.set(key, structuredClone(card));
 	}
 	return { cards: found, degraded: false };
 }
 
 /** The sample graphic is authored in the default Event Canvas (ADR-0051). */
-const SAMPLE_CANVAS = { canvasWidth: DEFAULT_EVENT_CANVAS.width, canvasHeight: DEFAULT_EVENT_CANVAS.height };
+const SAMPLE_CANVAS = {
+	canvasWidth: DEFAULT_EVENT_CANVAS.width,
+	canvasHeight: DEFAULT_EVENT_CANVAS.height,
+};
 
 interface SampleRect {
 	x: number;
@@ -579,7 +529,10 @@ interface SampleRect {
 }
 
 /** `owner` with each slot bound to its Foundation Token, painted from the Default Theme. */
-function withThemeBindings<T extends GraphicItemConfig | BroadcastGraphicConfig>(owner: T, bindings: Partial<Record<GraphicThemeSlot, FoundationTokenName>>): T {
+function withThemeBindings<T extends GraphicItemConfig | BroadcastGraphicConfig>(
+	owner: T,
+	bindings: Partial<Record<GraphicThemeSlot, FoundationTokenName>>,
+): T {
 	return (Object.entries(bindings) as [GraphicThemeSlot, FoundationTokenName][]).reduce(
 		(next, [slot, token]) => bindGraphicThemeOwner(next, slot, token, DEFAULT_GRAPHIC_THEME_TOKENS),
 		owner,
@@ -593,8 +546,17 @@ function sampleShape(id: string, rect: SampleRect): GraphicItemConfig {
 	};
 }
 
-function sampleText(id: string, text: string, fontSize: number, rect: SampleRect): TextGraphicItemConfig {
-	const item = getGraphicItemDefinition('text').createDefault({ id, label: id, ...SAMPLE_CANVAS }) as TextGraphicItemConfig;
+function sampleText(
+	id: string,
+	text: string,
+	fontSize: number,
+	rect: SampleRect,
+): TextGraphicItemConfig {
+	const item = getGraphicItemDefinition('text').createDefault({
+		id,
+		label: id,
+		...SAMPLE_CANVAS,
+	}) as TextGraphicItemConfig;
 	return {
 		...item,
 		...rect,
@@ -612,43 +574,62 @@ const LEADER = PLAYERS[0]!;
  * library: only a Theme preview's Screen holds it.
  */
 function sampleLowerThird(name: string, detail: string): BroadcastGraphicConfig {
-	return withThemeBindings({
-		id: 'sample-lower-third',
-		name: 'Sample lower third',
-		items: [
-			withThemeBindings(sampleShape('sample-panel', {
-				x: 96,
-				y: 828,
-				width: 960,
-				height: 156,
-			}), { surfaceStyle: 'panel', geometry: 'panel-shape' }),
-			withThemeBindings(sampleShape('sample-accent', {
-				x: 96,
-				y: 828,
-				width: 14,
-				height: 156,
-			}), { 'surfaceStyle.fill': 'accent-fill' }),
-			withThemeBindings(sampleText('sample-name', name, 56, {
-				x: 140,
-				y: 846,
-				width: 880,
-				height: 72,
-			}), { 'typography': 'heading', 'typography.color': 'text-primary' }),
-			withThemeBindings(
-				sampleText('sample-deck', detail, 34, {
-					x: 140,
-					y: 920,
-					width: 880,
-					height: 48,
-				}),
-				{ 'typography': 'body', 'typography.color': 'text-secondary' },
-			),
-		],
-	}, { 'animation.enter': 'motion-enter', 'animation.update': 'motion-update', 'animation.exit': 'motion-exit' });
+	return withThemeBindings(
+		{
+			id: 'sample-lower-third',
+			name: 'Sample lower third',
+			items: [
+				withThemeBindings(
+					sampleShape('sample-panel', {
+						x: 96,
+						y: 828,
+						width: 960,
+						height: 156,
+					}),
+					{ surfaceStyle: 'panel', geometry: 'panel-shape' },
+				),
+				withThemeBindings(
+					sampleShape('sample-accent', {
+						x: 96,
+						y: 828,
+						width: 14,
+						height: 156,
+					}),
+					{ 'surfaceStyle.fill': 'accent-fill' },
+				),
+				withThemeBindings(
+					sampleText('sample-name', name, 56, {
+						x: 140,
+						y: 846,
+						width: 880,
+						height: 72,
+					}),
+					{ typography: 'heading', 'typography.color': 'text-primary' },
+				),
+				withThemeBindings(
+					sampleText('sample-deck', detail, 34, {
+						x: 140,
+						y: 920,
+						width: 880,
+						height: 48,
+					}),
+					{ typography: 'body', 'typography.color': 'text-secondary' },
+				),
+			],
+		},
+		{
+			'animation.enter': 'motion-enter',
+			'animation.update': 'motion-update',
+			'animation.exit': 'motion-exit',
+		},
+	);
 }
 
 /** The leading Player, by their deck and record. */
-const SAMPLE_LOWER_THIRD = sampleLowerThird(LEADER.name, `${deckOf(0).name} · ${LEADER.wins}-${LEADER.losses}-${LEADER.draws}`);
+const SAMPLE_LOWER_THIRD = sampleLowerThird(
+	LEADER.name,
+	`${deckOf(0).name} · ${LEADER.wins}-${LEADER.losses}-${LEADER.draws}`,
+);
 
 /** A sample Live Session: `graphic` on air, long since settled at rest. */
 function sampleLiveSession(graphic: BroadcastGraphicConfig): BroadcastGraphicsLiveSessionResponse {
@@ -740,29 +721,26 @@ const ANSWERS = {
 	},
 	playerHistory: {
 		player: player(0),
-		history: [1, 3, 5, 7].map((opponent, index) => ({
-			id: 70 + index,
-			roundId: index + 1,
-			roundName: `Round ${index + 1}`,
-			roundNumber: index + 1,
-			phaseName: SWISS.name,
-			tableNumber: index + 3,
-			opponentId: player(opponent).id,
-			opponentName: player(opponent).name,
-			opponentDeckName: deckOf(opponent).name,
-			opponentDeckColors: deckOf(opponent).colors,
-			outcome: index === 2
-				? 'draw'
-				: 'win',
-			playerGameWins: index === 2
-				? 1
-				: 2,
-			opponentGameWins: 1,
-			gameDraws: index === 2
-				? 1
-				: 0,
-			hasResult: true,
-		} as const)),
+		history: [1, 3, 5, 7].map(
+			(opponent, index) =>
+				({
+					id: 70 + index,
+					roundId: index + 1,
+					roundName: `Round ${index + 1}`,
+					roundNumber: index + 1,
+					phaseName: SWISS.name,
+					tableNumber: index + 3,
+					opponentId: player(opponent).id,
+					opponentName: player(opponent).name,
+					opponentDeckName: deckOf(opponent).name,
+					opponentDeckColors: deckOf(opponent).colors,
+					outcome: index === 2 ? 'draw' : 'win',
+					playerGameWins: index === 2 ? 1 : 2,
+					opponentGameWins: 1,
+					gameDraws: index === 2 ? 1 : 0,
+					hasResult: true,
+				}) as const,
+		),
 	},
 	headToHead: {
 		player1: {
@@ -791,7 +769,7 @@ const ANSWERS = {
 		viewMode: 'archetype' as const,
 		breakdown: {
 			entries: ARCHETYPES.map((archetype, index) => {
-				const pilots = SAMPLE_PLAYERS.filter(pilot => pilot.archetypeId === archetype.id);
+				const pilots = SAMPLE_PLAYERS.filter((pilot) => pilot.archetypeId === archetype.id);
 				return {
 					...archetype,
 					chartSeries: null,
@@ -856,20 +834,22 @@ const ANSWERS = {
 					isPrimary: true,
 					archetypeId: SPOTLIT.id,
 					reviewedAt: null,
-					cards: SAMPLE_DECK_CARDS.map(([name, cardType, colors, manaCost, quantity, compartment], index) => ({
-						cardId: index + 1,
-						name,
-						scryfallId: null,
-						cardType,
-						colors,
-						cmc: null,
-						manaCost,
-						deckCounterTypes: [],
-						deckTokens: [],
-						quantity,
-						compartment,
-						sortOrder: index,
-					})),
+					cards: SAMPLE_DECK_CARDS.map(
+						([name, cardType, colors, manaCost, quantity, compartment], index) => ({
+							cardId: index + 1,
+							name,
+							scryfallId: null,
+							cardType,
+							colors,
+							cmc: null,
+							manaCost,
+							deckCounterTypes: [],
+							deckTokens: [],
+							quantity,
+							compartment,
+							sortOrder: index,
+						}),
+					),
 				},
 			],
 		},
@@ -890,7 +870,7 @@ const [OP_DECK_SIDE] = OP_FEATURE_MATCH_SAMPLE_SIDES;
 /** Every card of a side's Deck List but its Leader. */
 function mainboardCount(side: OpFeatureMatchSampleSide): number {
 	return side.deckList
-		.filter(entry => entry.card?.category !== 'leader')
+		.filter((entry) => entry.card?.category !== 'leader')
 		.reduce((sum, entry) => sum + entry.quantity, 0);
 }
 
@@ -903,12 +883,13 @@ function opSlotData(side: OpFeatureMatchSampleSide) {
 		gameData: {
 			type: 'op' as const,
 			leader: side.leader,
-			featureMatchDeckList: side.deckList.length > 0
-				? {
-						id: OP_SAMPLE_DECK_LIST_ID,
-						mainboardCount: mainboardCount(side),
-					}
-				: null,
+			featureMatchDeckList:
+				side.deckList.length > 0
+					? {
+							id: OP_SAMPLE_DECK_LIST_ID,
+							mainboardCount: mainboardCount(side),
+						}
+					: null,
 		},
 	};
 }
@@ -967,7 +948,7 @@ const OP_ARCHETYPES = [
 		id: 2,
 		name: OP_FEATURE_MATCH_SAMPLE_SIDES[1].leader.name,
 		colors: formatOpColors(OP_FEATURE_MATCH_SAMPLE_SIDES[1].leader.colors),
-		pilots: ['Mei Tanaka', 'Liam O\'Connell'],
+		pilots: ['Mei Tanaka', "Liam O'Connell"],
 	},
 	{
 		id: 3,
@@ -987,7 +968,7 @@ const [OP_SPOTLIT] = OP_ARCHETYPES;
 
 /** A card of the sample's Deck List, counted across the field's Deck Lists. */
 function opCardEntry(id: number, number: string, deckCount: number): CardBreakdownEntry {
-	const entry = OP_DECK_SIDE.deckList.find(item => item.number === number)!;
+	const entry = OP_DECK_SIDE.deckList.find((item) => item.number === number)!;
 	const totalCopies = deckCount * entry.quantity;
 	return {
 		id,
@@ -1034,24 +1015,22 @@ const OP_TOP_CUT_ENTRANTS = [
 	{ name: OP_ARCHETYPES[2].pilots[0], archetype: OP_ARCHETYPES[2] },
 	{ name: OP_ARCHETYPES[3].pilots[0], archetype: OP_ARCHETYPES[3] },
 ];
-const OP_SAMPLE_BRACKET = deriveManualTopCutBracket({
-	size: 4,
-	entrants: OP_TOP_CUT_ENTRANTS.map(({ name }) => ({ name })),
-	results: [
-		[
-			{ winner: 0 },
-			{ winner: 1 },
-		],
-	],
-}, (entrant, seed) => {
-	const { name, archetype } = OP_TOP_CUT_ENTRANTS[seed - 1]!;
-	return {
-		playerId: seed,
-		name,
-		seed,
-		deck: { name: archetype.name, colors: archetype.colors },
-	};
-});
+const OP_SAMPLE_BRACKET = deriveManualTopCutBracket(
+	{
+		size: 4,
+		entrants: OP_TOP_CUT_ENTRANTS.map(({ name }) => ({ name })),
+		results: [[{ winner: 0 }, { winner: 1 }]],
+	},
+	(entrant, seed) => {
+		const { name, archetype } = OP_TOP_CUT_ENTRANTS[seed - 1]!;
+		return {
+			playerId: seed,
+			name,
+			seed,
+			deck: { name: archetype.name, colors: archetype.colors },
+		};
+	},
+);
 
 /** What the One Piece dataset answers for each read a One Piece Event's Screen Modes make. */
 const OP_ANSWERS = {
@@ -1129,12 +1108,13 @@ function commanderSlotData(seat: CommanderFeatureMatchSampleSeat): PlayerSlotDat
 			type: 'mtg',
 			...commanderDeckIdentity(seat.commanders),
 			commanders: [...seat.commanders],
-			featureMatchDeckList: seat === COMMANDER_DECK_SEAT
-				? {
-						id: COMMANDER_SAMPLE_DECK_LIST_ID,
-						mainboardCount: commanderMainboardCount(COMMANDER_DECK_CARDS, seat.commanders),
-					}
-				: null,
+			featureMatchDeckList:
+				seat === COMMANDER_DECK_SEAT
+					? {
+							id: COMMANDER_SAMPLE_DECK_LIST_ID,
+							mainboardCount: commanderMainboardCount(COMMANDER_DECK_CARDS, seat.commanders),
+						}
+					: null,
 		},
 	};
 }
@@ -1163,30 +1143,48 @@ function sampleCommanderTable(): BroadcastGraphicConfig {
 	];
 	const width = 924;
 	const height = 96;
-	return withThemeBindings({
-		id: 'sample-commander-table',
-		name: 'Sample Commander table',
-		items: COMMANDER_FEATURE_MATCH_SAMPLE_SEATS.flatMap((seat, index) => {
-			const { x, y } = cells[index]!;
-			const id = `sample-seat-${index + 1}`;
-			return [
-				withThemeBindings(sampleShape(`${id}-panel`, { x, y, width, height }), { surfaceStyle: 'panel', geometry: 'panel-shape' }),
-				withThemeBindings(sampleShape(`${id}-accent`, { x, y, width: 14, height }), { 'surfaceStyle.fill': 'accent-fill' }),
-				withThemeBindings(sampleText(`${id}-name`, seat.name, 36, {
-					x: x + 40,
-					y: y + 6,
-					width: width - 64,
-					height: 48,
-				}), { 'typography': 'heading', 'typography.color': 'text-primary' }),
-				withThemeBindings(sampleText(`${id}-deck`, commanderDeckIdentity(seat.commanders).deckName ?? '', 24, {
-					x: x + 40,
-					y: y + 54,
-					width: width - 64,
-					height: 34,
-				}), { 'typography': 'body', 'typography.color': 'text-secondary' }),
-			];
-		}),
-	}, { 'animation.enter': 'motion-enter', 'animation.update': 'motion-update', 'animation.exit': 'motion-exit' });
+	return withThemeBindings(
+		{
+			id: 'sample-commander-table',
+			name: 'Sample Commander table',
+			items: COMMANDER_FEATURE_MATCH_SAMPLE_SEATS.flatMap((seat, index) => {
+				const { x, y } = cells[index]!;
+				const id = `sample-seat-${index + 1}`;
+				return [
+					withThemeBindings(sampleShape(`${id}-panel`, { x, y, width, height }), {
+						surfaceStyle: 'panel',
+						geometry: 'panel-shape',
+					}),
+					withThemeBindings(sampleShape(`${id}-accent`, { x, y, width: 14, height }), {
+						'surfaceStyle.fill': 'accent-fill',
+					}),
+					withThemeBindings(
+						sampleText(`${id}-name`, seat.name, 36, {
+							x: x + 40,
+							y: y + 6,
+							width: width - 64,
+							height: 48,
+						}),
+						{ typography: 'heading', 'typography.color': 'text-primary' },
+					),
+					withThemeBindings(
+						sampleText(`${id}-deck`, commanderDeckIdentity(seat.commanders).deckName ?? '', 24, {
+							x: x + 40,
+							y: y + 54,
+							width: width - 64,
+							height: 34,
+						}),
+						{ typography: 'body', 'typography.color': 'text-secondary' },
+					),
+				];
+			}),
+		},
+		{
+			'animation.enter': 'motion-enter',
+			'animation.update': 'motion-update',
+			'animation.exit': 'motion-exit',
+		},
+	);
 }
 
 const COMMANDER_SAMPLE_GRAPHIC = sampleCommanderTable();
@@ -1210,12 +1208,14 @@ const COMMANDER_ANSWERS = {
 /** The sample lineup as a full panel, so the preview shows every part of the mode. */
 const SAMPLE_TALENT_CONFIG = {
 	selection: 'lineup',
-	talentIds: SAMPLE_TALENTS.talents.map(talent => talent.id),
+	talentIds: SAMPLE_TALENTS.talents.map((talent) => talent.id),
 	layout: 'fullPanel',
 	showHeader: true,
 } as const;
 
-const COMMANDER_TABLE = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(template => template.id === 'commander-table')!;
+const COMMANDER_TABLE = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(
+	(template) => template.id === 'commander-table',
+)!;
 
 /**
  * Each mode's configuration under each sample: what it selects from the
@@ -1226,16 +1226,16 @@ const SCREEN_MODE_SAMPLE_CONFIGS: Record<EventKind, ModeConfigsMap> = {
 		'broadcast-graphics': {
 			graphics: [SAMPLE_LOWER_THIRD],
 		},
-		'deck': {
+		deck: {
 			deckSource: { type: 'player', playerId: player(0).id },
 		},
-		'pairings': { roundId: ROUND_8.id },
+		pairings: { roundId: ROUND_8.id },
 		'top-cut': { phaseId: TOP_CUT.id, showSeeds: true, showArchetypes: true },
 		'player-history': { playerId: player(0).id },
 		'archetype-spotlight': { archetypeId: SPOTLIT.id },
 		'head-to-head': { playerSource: 'players', player1Id: player(0).id, player2Id: player(1).id },
-		'talent': SAMPLE_TALENT_CONFIG,
-		'standings': {
+		talent: SAMPLE_TALENT_CONFIG,
+		standings: {
 			columns: [
 				{ key: 'position', visible: true },
 				{ key: 'name', visible: true },
@@ -1251,32 +1251,37 @@ const SCREEN_MODE_SAMPLE_CONFIGS: Record<EventKind, ModeConfigsMap> = {
 			graphics: [COMMANDER_SAMPLE_GRAPHIC],
 		},
 		// A Commander Seat's deck: its Commanders apart, ahead of its Mainboard (ADR-0087).
-		'deck': {
+		deck: {
 			deckSource: { type: 'featureMatchSlot', slotId: COMMANDER_SAMPLE_SLOT_ID, side: 'player1' },
 		},
 		// The four-Seat built-in (ADR-0087).
-		'feature-match-overlay': { ...COMMANDER_TABLE.config, featureMatchId: null } as ModeConfigsMap['feature-match-overlay'],
-		'talent': SAMPLE_TALENT_CONFIG,
+		'feature-match-overlay': {
+			...COMMANDER_TABLE.config,
+			featureMatchId: null,
+		} as ModeConfigsMap['feature-match-overlay'],
+		talent: SAMPLE_TALENT_CONFIG,
 	},
-	'op': {
+	op: {
 		'broadcast-graphics': {
 			graphics: [OP_SAMPLE_LOWER_THIRD],
 		},
-		'deck': {
+		deck: {
 			deckSource: { type: 'featureMatchSlot', slotId: OP_SAMPLE_SLOT_ID, side: 'player1' },
 		},
 		'archetype-spotlight': { archetypeId: OP_SPOTLIT.id },
 		'top-cut': { bracketSource: 'manual', showSeeds: true, showArchetypes: true },
-		'talent': SAMPLE_TALENT_CONFIG,
+		talent: SAMPLE_TALENT_CONFIG,
 	},
 };
 
 /** The sample configuration of `mode` under the sample of `game` and `variant`, or its defaults where it needs none. */
-export function screenModeSampleConfigs(mode: ScreenMode, game: Game, variant?: Variant): ModeConfigsMap {
+export function screenModeSampleConfigs(
+	mode: ScreenMode,
+	game: Game,
+	variant?: Variant,
+): ModeConfigsMap {
 	const config = SCREEN_MODE_SAMPLE_CONFIGS[eventKind({ game, variant })][mode];
-	return config
-		? { [mode]: config }
-		: {};
+	return config ? { [mode]: config } : {};
 }
 
 /** A read the dataset does not hold: the Feature Match Overlay previews from the Feature Match Sample Dataset. */
@@ -1284,7 +1289,10 @@ function notInSample(resource: string): never {
 	throw new Error(`The Screen Mode Sample Dataset holds no ${resource}`);
 }
 
-const answer = <T>(value: T) => async (_scope: ScreenOutputReadScope): Promise<T> => structuredClone(value);
+const answer =
+	<T>(value: T) =>
+	async (_scope: ScreenOutputReadScope): Promise<T> =>
+		structuredClone(value);
 const none = (resource: string) => async () => notInSample(resource);
 
 /** Each sample's reads: every one answers its dataset, a fresh copy each time. */
@@ -1333,7 +1341,7 @@ const SAMPLE_READ_REPOSITORIES: Record<EventKind, SampleReadRepository> = {
 	},
 	// A One Piece Event models no Rounds or results (ADR-0057); its Metagame reads participation only (ADR-0074),
 	// and its Top Cut is a Manual Bracket (ADR-0075).
-	'op': {
+	op: {
 		event: none('Event context'),
 		card: answer(OP_ANSWERS.card),
 		liveSession: answer(OP_ANSWERS.liveSession),
@@ -1361,6 +1369,9 @@ const SAMPLE_READ_REPOSITORIES: Record<EventKind, SampleReadRepository> = {
  * `variant` where it has one, reads from: every read answers that sample's
  * dataset, and nothing leaves the browser.
  */
-export function useSampleScreenOutputReadRepository(game: Game, variant?: Variant): SampleReadRepository {
+export function useSampleScreenOutputReadRepository(
+	game: Game,
+	variant?: Variant,
+): SampleReadRepository {
 	return SAMPLE_READ_REPOSITORIES[eventKind({ game, variant })];
 }

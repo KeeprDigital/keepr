@@ -10,12 +10,10 @@ export function useCardPreview() {
 	const isPreviewPinned = ref(false);
 
 	function handlePreviewUpdate(cardKey: string, open: boolean) {
-		if (isPreviewPinned.value)
-			return;
+		if (isPreviewPinned.value) return;
 		if (open) {
 			activePreviewCard.value = cardKey;
-		}
-		else if (activePreviewCard.value === cardKey) {
+		} else if (activePreviewCard.value === cardKey) {
 			activePreviewCard.value = null;
 		}
 	}
@@ -24,8 +22,7 @@ export function useCardPreview() {
 		if (isPreviewPinned.value && activePreviewCard.value === cardKey) {
 			isPreviewPinned.value = false;
 			activePreviewCard.value = null;
-		}
-		else {
+		} else {
 			activePreviewCard.value = cardKey;
 			isPreviewPinned.value = true;
 		}

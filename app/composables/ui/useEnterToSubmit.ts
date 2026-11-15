@@ -24,8 +24,7 @@ const stack: EnterToSubmitStackEntry[] = [];
 function getTopEnabledEntry() {
 	for (let i = stack.length - 1; i >= 0; i--) {
 		const entry = stack[i]!;
-		if (!entry.disabled())
-			return entry;
+		if (!entry.disabled()) return entry;
 	}
 	return null;
 }
@@ -37,7 +36,9 @@ export function useEnterToSubmit(
 	const scope = getCurrentScope();
 	if (!scope) {
 		if (import.meta.dev) {
-			console.warn('[useEnterToSubmit] Called outside a setup or effect scope — listener will not be registered.');
+			console.warn(
+				'[useEnterToSubmit] Called outside a setup or effect scope — listener will not be registered.',
+			);
 		}
 		return;
 	}
@@ -47,17 +48,19 @@ export function useEnterToSubmit(
 	stack.push({ id, disabled });
 
 	function onKeydown(e: KeyboardEvent) {
-		if (e.key !== 'Enter')
-			return;
+		if (e.key !== 'Enter') return;
 
 		// Only the topmost enabled instance should respond.
-		if (getTopEnabledEntry()?.id !== id)
-			return;
+		if (getTopEnabledEntry()?.id !== id) return;
 
 		const target = e.target;
 		if (target instanceof Element) {
 			// Don't intercept controls where Enter already has native or component meaning.
-			if (target.closest('textarea, button, [role="button"], a[href], [contenteditable="true"], [data-enter-submit-ignore], [role="listbox"], [role="menu"], [role="combobox"]'))
+			if (
+				target.closest(
+					'textarea, button, [role="button"], a[href], [contenteditable="true"], [data-enter-submit-ignore], [role="listbox"], [role="menu"], [role="combobox"]',
+				)
+			)
 				return;
 		}
 
@@ -65,18 +68,14 @@ export function useEnterToSubmit(
 		callback();
 	}
 
-	const doc = typeof document !== 'undefined'
-		? document
-		: null;
-	if (!doc)
-		return;
+	const doc = typeof document !== 'undefined' ? document : null;
+	if (!doc) return;
 
 	doc.addEventListener('keydown', onKeydown);
 
 	onScopeDispose(() => {
 		doc.removeEventListener('keydown', onKeydown);
-		const idx = stack.findIndex(entry => entry.id === id);
-		if (idx !== -1)
-			stack.splice(idx, 1);
+		const idx = stack.findIndex((entry) => entry.id === id);
+		if (idx !== -1) stack.splice(idx, 1);
 	});
 }

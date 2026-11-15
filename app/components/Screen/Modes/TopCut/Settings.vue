@@ -25,8 +25,7 @@ const playerStore = usePlayerStore();
 useConsumedEventData(['players']);
 
 onMounted(async () => {
-	if (props.eventId && !playerStore.isLoaded)
-		await playerStore.loadPlayersByEventId(props.eventId);
+	if (props.eventId && !playerStore.isLoaded) await playerStore.loadPlayersByEventId(props.eventId);
 });
 </script>
 

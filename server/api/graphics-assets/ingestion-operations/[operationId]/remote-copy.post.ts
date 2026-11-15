@@ -9,9 +9,11 @@ import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
  * its query parameters and fragment are treated as secrets, so this route must
  * not log the body or echo the URL in any response.
  */
-const remoteCopySchema = z.object({
-	sourceUrl: z.string().min(1).max(2048),
-}).strict();
+const remoteCopySchema = z
+	.object({
+		sourceUrl: z.string().min(1).max(2048),
+	})
+	.strict();
 
 export default defineEventHandler(async (event) => {
 	const initiatedBy = await requireUserId(event);
@@ -22,8 +24,7 @@ export default defineEventHandler(async (event) => {
 			initiatedBy,
 			sourceUrl,
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

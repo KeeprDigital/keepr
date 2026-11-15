@@ -23,9 +23,7 @@ function throwReferenceNotFound(message: string): never {
 }
 
 function uniqueNumbers(values: Array<number | null | undefined>): number[] {
-	return [
-		...new Set(values.filter((value): value is number => value != null)),
-	];
+	return [...new Set(values.filter((value): value is number => value != null))];
 }
 
 /** One Piece card data serves only an Event played in the One Piece Card Game (ADR-0057). */
@@ -38,70 +36,82 @@ export async function requireOpEvent(eventId: number): Promise<void> {
 		throwReferenceNotFound('One Piece card data is only available on a One Piece Card Game Event');
 }
 
-export async function requireRoundInEvent(eventId: number, roundId: number | null | undefined): Promise<void> {
-	if (roundId == null)
-		return;
+export async function requireRoundInEvent(
+	eventId: number,
+	roundId: number | null | undefined,
+): Promise<void> {
+	if (roundId == null) return;
 
-	if (!await roundService().exists(roundId, eventId))
-		throwReferenceNotFound('Round not found');
+	if (!(await roundService().exists(roundId, eventId))) throwReferenceNotFound('Round not found');
 }
 
-export async function requirePhaseInEvent(eventId: number, phaseId: number | null | undefined): Promise<void> {
-	if (phaseId == null)
-		return;
+export async function requirePhaseInEvent(
+	eventId: number,
+	phaseId: number | null | undefined,
+): Promise<void> {
+	if (phaseId == null) return;
 
-	if (!await phaseService().exists(phaseId, eventId))
-		throwReferenceNotFound('Phase not found');
+	if (!(await phaseService().exists(phaseId, eventId))) throwReferenceNotFound('Phase not found');
 }
 
-export async function requireTalentInEvent(eventId: number, talentId: number | null | undefined): Promise<void> {
-	if (talentId == null)
-		return;
+export async function requireTalentInEvent(
+	eventId: number,
+	talentId: number | null | undefined,
+): Promise<void> {
+	if (talentId == null) return;
 
-	if (!await talentService().findById(talentId, eventId))
+	if (!(await talentService().findById(talentId, eventId)))
 		throwReferenceNotFound('Talent not found');
 }
 
-export async function requireArchetypeInEvent(eventId: number, archetypeId: number | null | undefined): Promise<void> {
-	if (archetypeId == null)
-		return;
+export async function requireArchetypeInEvent(
+	eventId: number,
+	archetypeId: number | null | undefined,
+): Promise<void> {
+	if (archetypeId == null) return;
 
-	if (!await archetypeService().findById(archetypeId, eventId))
+	if (!(await archetypeService().findById(archetypeId, eventId)))
 		throwReferenceNotFound('Archetype not found');
 }
 
-export async function requireMatchInEvent(eventId: number, matchId: number | null | undefined): Promise<void> {
-	if (matchId == null)
-		return;
+export async function requireMatchInEvent(
+	eventId: number,
+	matchId: number | null | undefined,
+): Promise<void> {
+	if (matchId == null) return;
 
-	if (!await matchService().exists(matchId, eventId))
-		throwReferenceNotFound('Match not found');
+	if (!(await matchService().exists(matchId, eventId))) throwReferenceNotFound('Match not found');
 }
 
-export async function requireFeatureMatchSlotInEvent(eventId: number, slotId: number | null | undefined): Promise<void> {
-	if (slotId == null)
-		return;
+export async function requireFeatureMatchSlotInEvent(
+	eventId: number,
+	slotId: number | null | undefined,
+): Promise<void> {
+	if (slotId == null) return;
 
-	if (!await featureMatchService().exists(slotId, eventId))
+	if (!(await featureMatchService().exists(slotId, eventId)))
 		throwReferenceNotFound('Feature match slot not found');
 }
 
-export async function requirePlayerListInEvent(eventId: number, listId: number | null | undefined): Promise<void> {
-	if (listId == null)
-		return;
+export async function requirePlayerListInEvent(
+	eventId: number,
+	listId: number | null | undefined,
+): Promise<void> {
+	if (listId == null) return;
 
-	if (!await playerListService().findById(listId, eventId))
+	if (!(await playerListService().findById(listId, eventId)))
 		throwReferenceNotFound('Player list not found');
 }
 
-export async function requirePlayersInEvent(eventId: number, playerIds: Array<number | null | undefined>): Promise<void> {
+export async function requirePlayersInEvent(
+	eventId: number,
+	playerIds: Array<number | null | undefined>,
+): Promise<void> {
 	const ids = uniqueNumbers(playerIds);
-	if (ids.length === 0)
-		return;
+	if (ids.length === 0) return;
 
 	const playerCount = await playerService().countByIds(eventId, ids);
-	if (playerCount !== ids.length)
-		throwReferenceNotFound('Player not found');
+	if (playerCount !== ids.length) throwReferenceNotFound('Player not found');
 }
 
 export async function validateFeatureMatchReferences(
@@ -133,19 +143,15 @@ export async function validateFeatureMatchAssignmentCreateReferences(
 		matchService().findById(input.matchId, eventId),
 	]);
 
-	if (!slot)
-		throwReferenceNotFound('Feature match slot not found');
-	if (!match)
-		throwReferenceNotFound('Match not found');
+	if (!slot) throwReferenceNotFound('Feature match slot not found');
+	if (!match) throwReferenceNotFound('Match not found');
 	if (match.roundId !== input.roundId)
 		throw createError({ statusCode: 400, message: 'Match does not belong to round' });
 }
 
 /** A field naming an entity by id; any other value names nothing to check. */
 function referencedId(value: unknown): number | null | undefined {
-	return typeof value === 'number' || value === null
-		? value
-		: undefined;
+	return typeof value === 'number' || value === null ? value : undefined;
 }
 
 /** The two Seats every Slot has. */
@@ -160,58 +166,61 @@ async function isCommanderEvent(eventId: number): Promise<boolean> {
 }
 
 async function requireDeckSourceInEvent(eventId: number, value: unknown): Promise<void> {
-	if (!value || typeof value !== 'object')
-		return;
+	if (!value || typeof value !== 'object') return;
 
 	const source = value as Record<string, unknown>;
 	if (source.type === 'player') {
-		await requirePlayersInEvent(eventId, [
-			referencedId(source.playerId),
-		]);
-	}
-	else if (source.type === 'broadcast') {
+		await requirePlayersInEvent(eventId, [referencedId(source.playerId)]);
+	} else if (source.type === 'broadcast') {
 		// A Broadcast Deck Source always names a list; one naming none is never selectable.
-		const listId = typeof source.broadcastDeckListId === 'number'
-			? source.broadcastDeckListId
-			: 0;
-		if (!await broadcastDeckListService().sourceIsSelectable(listId, eventId))
+		const listId = typeof source.broadcastDeckListId === 'number' ? source.broadcastDeckListId : 0;
+		if (!(await broadcastDeckListService().sourceIsSelectable(listId, eventId)))
 			throw new ScreenDeckSourceConflictError();
-	}
-	else if (source.type === 'featureMatchSlot') {
+	} else if (source.type === 'featureMatchSlot') {
 		await requireFeatureMatchSlotInEvent(eventId, referencedId(source.slotId));
 		// Seats 3 and 4 are a Commander Slot's alone (ADR-0087).
-		if (!PAIR_SEATS.includes(source.side) && !await isCommanderEvent(eventId))
-			throw createError({ statusCode: 400, message: 'Only a Commander Event\'s Slot has Seats 3 and 4' });
+		if (!PAIR_SEATS.includes(source.side) && !(await isCommanderEvent(eventId)))
+			throw createError({
+				statusCode: 400,
+				message: "Only a Commander Event's Slot has Seats 3 and 4",
+			});
 	}
 }
 
 /** A Manual Bracket's entrants naming a Player must name the Event's (ADR-0075); a typed name names nothing. */
 async function requireManualBracketInEvent(eventId: number, value: unknown): Promise<void> {
-	if (!value || typeof value !== 'object')
-		return;
+	if (!value || typeof value !== 'object') return;
 	const entrants = (value as Record<string, unknown>).entrants;
-	if (!Array.isArray(entrants))
-		return;
-	await requirePlayersInEvent(eventId, entrants.map(entrant => entrant && typeof entrant === 'object'
-		? referencedId((entrant as Record<string, unknown>).playerId)
-		: undefined));
+	if (!Array.isArray(entrants)) return;
+	await requirePlayersInEvent(
+		eventId,
+		entrants.map((entrant) =>
+			entrant && typeof entrant === 'object'
+				? referencedId((entrant as Record<string, unknown>).playerId)
+				: undefined,
+		),
+	);
 }
 
 /** How each kind of Event Reference is proved to belong to the Event. */
-const EVENT_REFERENCE_CHECKS: { readonly [K in EventReferenceKind]: (eventId: number, value: unknown) => Promise<void> } = {
+const EVENT_REFERENCE_CHECKS: {
+	readonly [K in EventReferenceKind]: (eventId: number, value: unknown) => Promise<void>;
+} = {
 	phase: (eventId, value) => requirePhaseInEvent(eventId, referencedId(value)),
 	round: (eventId, value) => requireRoundInEvent(eventId, referencedId(value)),
-	player: (eventId, value) => requirePlayersInEvent(eventId, [
-		referencedId(value),
-	]),
+	player: (eventId, value) => requirePlayersInEvent(eventId, [referencedId(value)]),
 	playerList: (eventId, value) => requirePlayerListInEvent(eventId, referencedId(value)),
-	featureMatchSlot: (eventId, value) => requireFeatureMatchSlotInEvent(eventId, referencedId(value)),
+	featureMatchSlot: (eventId, value) =>
+		requireFeatureMatchSlotInEvent(eventId, referencedId(value)),
 	archetype: (eventId, value) => requireArchetypeInEvent(eventId, referencedId(value)),
 	talent: (eventId, value) => requireTalentInEvent(eventId, referencedId(value)),
 	talentLineup: async (eventId, value) => {
-		if (!Array.isArray(value))
-			return;
-		await Promise.all(uniqueNumbers(value.map(referencedId)).map(talentId => requireTalentInEvent(eventId, talentId)));
+		if (!Array.isArray(value)) return;
+		await Promise.all(
+			uniqueNumbers(value.map(referencedId)).map((talentId) =>
+				requireTalentInEvent(eventId, talentId),
+			),
+		);
 	},
 	deckSource: requireDeckSourceInEvent,
 	manualBracket: requireManualBracketInEvent,
@@ -227,12 +236,11 @@ export async function validateScreenModeConfigReferences(
 	mode: ScreenMode,
 	config: Partial<ScreenModeConfig> | Record<string, unknown> | null | undefined,
 ): Promise<void> {
-	const fields: Record<string, unknown> = config && typeof config === 'object'
-		? config
-		: {};
+	const fields: Record<string, unknown> = config && typeof config === 'object' ? config : {};
 	await Promise.all(
-		Object.entries(SCREEN_MODES[mode].eventReferences)
-			.map(([field, kind]) => EVENT_REFERENCE_CHECKS[kind](eventId, fields[field])),
+		Object.entries(SCREEN_MODES[mode].eventReferences).map(([field, kind]) =>
+			EVENT_REFERENCE_CHECKS[kind](eventId, fields[field]),
+		),
 	);
 }
 
@@ -240,11 +248,11 @@ export async function validateScreenModeConfigsReferences(
 	eventId: number,
 	modeConfigs: ModeConfigsMap | null | undefined,
 ): Promise<void> {
-	if (!modeConfigs)
-		return;
+	if (!modeConfigs) return;
 
 	await Promise.all(
-		(Object.entries(modeConfigs) as Array<[ScreenMode, ScreenModeConfig | undefined]>)
-			.map(([mode, config]) => validateScreenModeConfigReferences(eventId, mode, config)),
+		(Object.entries(modeConfigs) as Array<[ScreenMode, ScreenModeConfig | undefined]>).map(
+			([mode, config]) => validateScreenModeConfigReferences(eventId, mode, config),
+		),
 	);
 }

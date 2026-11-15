@@ -11,7 +11,11 @@ describe('matches API', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Matches Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Matches Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 
@@ -31,8 +35,7 @@ describe('matches API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('creates a match and returns 201', async () => {
@@ -121,7 +124,10 @@ describe('matches API', () => {
 	it('refuses a manual write carrying a result, which only Melee Sync records', async () => {
 		const result = { hasResult: true, player1GameWins: 2, player2GameWins: 1 };
 
-		const update = await $fetchRaw(`/api/events/${eventId}/matches/${matchId}`, { method: 'PATCH', body: result });
+		const update = await $fetchRaw(`/api/events/${eventId}/matches/${matchId}`, {
+			method: 'PATCH',
+			body: result,
+		});
 		expect(update.status).toBe(400);
 
 		const create = await $fetchRaw(`/api/events/${eventId}/matches`, {

@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import type { StoredThemeTokens } from '~~/shared/modules/theme';
 import type { GraphicRect } from '~~/shared/types/graphics';
-import type { FeatureMatchOverlayModeConfig, FeatureMatchOverlayOutput } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchOverlayModeConfig,
+	FeatureMatchOverlayOutput,
+} from '~~/shared/types/screenConfig';
 import type { EditorSelectionFrame } from '~/modules/graphics/editor/layerFrame';
-import type { ExpectedSender, GraphicsPreviewAnimationPlan, MessageEnvelope } from '~/modules/graphics/previewMessages';
+import type {
+	ExpectedSender,
+	GraphicsPreviewAnimationPlan,
+	MessageEnvelope,
+} from '~/modules/graphics/previewMessages';
 import type { GraphicsSelectionTarget } from '~/modules/graphics/selection';
 import type { FeatureMatchOverlaySelectionTarget, Screen } from '~/types';
-import { FEATURE_MATCH_LAYOUT_ANIMATION_PHASES, FEATURE_MATCH_LAYOUT_COMPOSITION_ID } from '~~/shared/featureMatchLayoutComposition';
+import {
+	FEATURE_MATCH_LAYOUT_ANIMATION_PHASES,
+	FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+} from '~~/shared/featureMatchLayoutComposition';
 import { SCREEN_OUTPUT_OPTIONS } from '~~/shared/screenModeDefinitions';
 import {
 	FEATURE_MATCH_OVERLAY_PREVIEW_CONFIG_MESSAGE,
@@ -90,7 +100,7 @@ const ANIMATION_SUBJECTS = [
 	{ value: 'composition', label: 'Whole layout' },
 	{ value: 'item', label: 'Selected item' },
 ] as const;
-const animationSubject = ref<typeof ANIMATION_SUBJECTS[number]['value']>('composition');
+const animationSubject = ref<(typeof ANIMATION_SUBJECTS)[number]['value']>('composition');
 const animationPlan = ref<GraphicsPreviewAnimationPlan | null>(null);
 const animationTarget = computed(() => {
 	if (animationSubject.value === 'composition')
@@ -111,9 +121,7 @@ const previewMessages = computed(() => [
 	{ type: GRAPHICS_PREVIEW_SELECTED_TARGET_MESSAGE, target: props.compositorTarget },
 	...(props.previewThemeValues === undefined
 		? []
-		: [
-				{ type: GRAPHICS_PREVIEW_THEME_MESSAGE, tokens: props.previewThemeValues },
-			]),
+		: [{ type: GRAPHICS_PREVIEW_THEME_MESSAGE, tokens: props.previewThemeValues }]),
 	{ type: GRAPHICS_PREVIEW_ANIMATION_MESSAGE, plan: animationPlan.value },
 ]);
 
@@ -129,16 +137,18 @@ const previewMessages = computed(() => [
  * the frame's own.
  */
 function receiveHostSelection(message: MessageEnvelope, expected: ExpectedSender) {
-	if (!isFeatureMatchOverlayPreviewSelectMessage(message, expected))
-		return false;
+	if (!isFeatureMatchOverlayPreviewSelectMessage(message, expected)) return false;
 	emit('selectTarget', message.data.target, message.data.toggle === true);
 	return true;
 }
 
 async function downloadOutput(output: FeatureMatchOverlayOutput) {
-	if (props.publicationBlocked)
-		return;
-	toast.add({ title: 'Preparing download', description: `${output.toUpperCase()} PNG will download from a temporary output tab.`, color: 'info' });
+	if (props.publicationBlocked) return;
+	toast.add({
+		title: 'Preparing download',
+		description: `${output.toUpperCase()} PNG will download from a temporary output tab.`,
+		color: 'info',
+	});
 	// A capture browser that cannot resolve this Screen's assets produces a PNG that
 	// looks finished and is missing every image, video and library font in it, so a
 	// capture that cannot carry a capability is refused rather than exported (#231).
@@ -170,8 +180,8 @@ async function downloadOutput(output: FeatureMatchOverlayOutput) {
 }
 
 /** The PNG capture stays the editor's own, beside the shared hand-out (#1104). */
-const OUTPUT_VALUES = SCREEN_OUTPUT_OPTIONS.map(option => option.value);
-const downloadItems = SCREEN_OUTPUT_OPTIONS.map(option => ({
+const OUTPUT_VALUES = SCREEN_OUTPUT_OPTIONS.map((option) => option.value);
+const downloadItems = SCREEN_OUTPUT_OPTIONS.map((option) => ({
 	label: `${option.label} PNG`,
 	icon: option.icon,
 	onSelect: () => void downloadOutput(option.value),
@@ -213,7 +223,11 @@ const downloadItems = SCREEN_OUTPUT_OPTIONS.map(option => ({
 					:aria-pressed="stressDataset"
 					title="Preview the longest plausible Feature Match values, over any bound Slot. Nothing is saved."
 					data-testid="preview-stress-dataset"
-					@click="() => { stressDataset = !stressDataset }"
+					@click="
+						() => {
+							stressDataset = !stressDataset;
+						}
+					"
 				>
 					Stress test
 				</UButton>
@@ -233,7 +247,11 @@ const downloadItems = SCREEN_OUTPUT_OPTIONS.map(option => ({
 						trailing-icon="i-lucide-chevron-down"
 						label="PNG"
 						:disabled="publicationBlocked"
-						:title="publicationBlocked ? publicationBlockReason : 'Download a Screen Output as a PNG, captured with the asset access that resolves its media'"
+						:title="
+							publicationBlocked
+								? publicationBlockReason
+								: 'Download a Screen Output as a PNG, captured with the asset access that resolves its media'
+						"
 						data-testid="download-output"
 					/>
 				</UDropdownMenu>
@@ -248,7 +266,11 @@ const downloadItems = SCREEN_OUTPUT_OPTIONS.map(option => ({
 						:variant="animationSubject === subject.value ? 'subtle' : 'outline'"
 						:aria-pressed="animationSubject === subject.value"
 						:data-testid="`animation-preview-subject-${subject.value}`"
-						@click="() => { animationSubject = subject.value }"
+						@click="
+							() => {
+								animationSubject = subject.value;
+							}
+						"
 					>
 						{{ subject.label }}
 					</UButton>

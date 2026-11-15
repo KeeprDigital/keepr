@@ -45,15 +45,15 @@ function createHighlander(overrides: Partial<HighlanderDeckSummary> = {}): Highl
 				pointedAs: 'companion',
 			},
 		],
-		duplicateCards: [
-			{ name: 'Mana Drain', quantity: 2 },
-		],
+		duplicateCards: [{ name: 'Mana Drain', quantity: 2 }],
 		unknownCards: [],
 		...overrides,
 	};
 }
 
-async function mountComponent(props: { highlander?: HighlanderDeckSummary | null; compact?: boolean } = {}) {
+async function mountComponent(
+	props: { highlander?: HighlanderDeckSummary | null; compact?: boolean } = {},
+) {
 	return mount(HighlanderSummary, {
 		props: {
 			highlander: createHighlander(),
@@ -87,6 +87,8 @@ describe('highlanderSummary', () => {
 
 		expect(wrapper.find('[data-alert]').exists()).toBe(false);
 		expect(wrapper.text()).not.toContain('Illegal');
-		expect(wrapper.get('[data-testid="highlander-compact-cards"]').text()).toContain('Lutri, the Spellchaser');
+		expect(wrapper.get('[data-testid="highlander-compact-cards"]').text()).toContain(
+			'Lutri, the Spellchaser',
+		);
 	});
 });

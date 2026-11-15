@@ -11,7 +11,10 @@ import {
 } from '~~/server/utils/meleeSyncState';
 import { updateMeleeConfiguration } from './configuration';
 import { meleeSyncContextFrom } from './context';
-import { requireMeleeSyncEventData as loadMeleeSyncEventData, requireMeleeSyncOffered } from './eventData';
+import {
+	requireMeleeSyncEventData as loadMeleeSyncEventData,
+	requireMeleeSyncOffered,
+} from './eventData';
 import { loadLiveResultsStatus } from './liveResults/status';
 import { setMeleeLiveResults } from './liveResultsSetting';
 import { createMeleeSyncWorkflows } from './workflows';
@@ -32,7 +35,9 @@ interface RunMeleeSyncCommandOptions<T extends MeleeSyncCommandResult> {
 }
 
 function commandFailureFromResult(result: MeleeSyncCommandResult) {
-	return new Error(result.warnings?.at(-1) ?? result.message ?? 'Melee sync did not complete successfully');
+	return new Error(
+		result.warnings?.at(-1) ?? result.message ?? 'Melee sync did not complete successfully',
+	);
 }
 
 function leaseOwnershipLostError() {
@@ -68,20 +73,17 @@ async function runMeleeSyncCommand<T extends MeleeSyncCommandResult>(
 	let renewalError: unknown = null;
 	let renewalInFlight: Promise<void> | null = null;
 	const renewLease = () => {
-		if (renewalInFlight)
-			return renewalInFlight;
+		if (renewalInFlight) return renewalInFlight;
 
 		const renewal = renewMeleeSyncLease(options.eventId, lease.token)
 			.then((renewed) => {
-				if (!renewed)
-					renewalError = leaseOwnershipLostError();
+				if (!renewed) renewalError = leaseOwnershipLostError();
 			})
 			.catch((error) => {
 				renewalError = error;
 			})
 			.finally(() => {
-				if (renewalInFlight === renewal)
-					renewalInFlight = null;
+				if (renewalInFlight === renewal) renewalInFlight = null;
 			});
 		renewalInFlight = renewal;
 		return renewal;
@@ -90,30 +92,26 @@ async function runMeleeSyncCommand<T extends MeleeSyncCommandResult>(
 		void renewLease();
 	}, MELEE_SYNC_LEASE_RENEW_INTERVAL_MS);
 	const verifyLeaseOwnership = async () => {
-		if (renewalInFlight)
-			await renewalInFlight;
+		if (renewalInFlight) await renewalInFlight;
 
 		// A transient timer heartbeat failure can recover, but every composite-stage
 		// checkpoint and final metadata transition needs a fresh token-guarded check.
 		renewalError = null;
 		await renewLease();
-		if (renewalError)
-			throw renewalError;
+		if (renewalError) throw renewalError;
 	};
 
 	try {
 		let execution: { success: true; result: T } | { success: false; error: unknown };
 		try {
 			execution = { success: true, result: await options.execute(verifyLeaseOwnership) };
-		}
-		catch (error) {
+		} catch (error) {
 			execution = { success: false, error };
 		}
 
 		try {
 			await verifyLeaseOwnership();
-		}
-		catch (ownershipError) {
+		} catch (ownershipError) {
 			// This write is itself token-conditioned and therefore becomes a no-op if
 			// another command already owns the Event.
 			await recordMeleeSyncFailure(
@@ -134,8 +132,7 @@ async function runMeleeSyncCommand<T extends MeleeSyncCommandResult>(
 				options.failureMetadata?.() ?? {},
 				lease.token,
 			);
-			if (!recorded)
-				throw leaseOwnershipLostError();
+			if (!recorded) throw leaseOwnershipLostError();
 			throw execution.error;
 		}
 
@@ -151,8 +148,7 @@ async function runMeleeSyncCommand<T extends MeleeSyncCommandResult>(
 				metadata,
 				lease.token,
 			);
-		}
-		else {
+		} else {
 			recorded = await recordMeleeSyncSuccess(
 				options.syncContext,
 				options.eventId,
@@ -160,15 +156,12 @@ async function runMeleeSyncCommand<T extends MeleeSyncCommandResult>(
 				lease.token,
 			);
 		}
-		if (!recorded)
-			throw leaseOwnershipLostError();
+		if (!recorded) throw leaseOwnershipLostError();
 
 		return result;
-	}
-	finally {
+	} finally {
 		clearInterval(renewalTimer);
-		if (renewalInFlight)
-			await renewalInFlight;
+		if (renewalInFlight) await renewalInFlight;
 		// releaseMeleeSyncLease is best-effort and catches internally, so a cleanup
 		// regression never replaces the command's durable outcome.
 		await releaseMeleeSyncLease(options.eventId, lease.token);
@@ -204,13 +197,14 @@ export function meleeSyncModule() {
 				syncContext,
 				eventId,
 				command: 'initial-setup',
-				execute: async checkpoint => await workflows.runInitialSetup(
-					syncContext,
-					eventId,
-					await loadMeleeSyncEventData(eventId),
-					checkpoint,
-					progress.record,
-				),
+				execute: async (checkpoint) =>
+					await workflows.runInitialSetup(
+						syncContext,
+						eventId,
+						await loadMeleeSyncEventData(eventId),
+						checkpoint,
+						progress.record,
+					),
 				failureMetadata: progress.snapshot,
 				metadata: (result) => {
 					const completedAt = new Date();
@@ -235,11 +229,12 @@ export function meleeSyncModule() {
 				syncContext,
 				eventId,
 				command: 'event-structure',
-				execute: async () => await workflows.syncEventStructure(
-					syncContext,
-					eventId,
-					await loadMeleeSyncEventData(eventId),
-				),
+				execute: async () =>
+					await workflows.syncEventStructure(
+						syncContext,
+						eventId,
+						await loadMeleeSyncEventData(eventId),
+					),
 				metadata: () => ({
 					lastEventSyncedAt: new Date(),
 				}),
@@ -251,11 +246,8 @@ export function meleeSyncModule() {
 				syncContext,
 				eventId,
 				command: 'players',
-				execute: async () => await workflows.syncPlayers(
-					syncContext,
-					eventId,
-					await loadMeleeSyncEventData(eventId),
-				),
+				execute: async () =>
+					await workflows.syncPlayers(syncContext, eventId, await loadMeleeSyncEventData(eventId)),
 				metadata: () => ({
 					lastPlayersSyncedAt: new Date(),
 				}),
@@ -267,16 +259,18 @@ export function meleeSyncModule() {
 				syncContext,
 				eventId,
 				command: 'decklists',
-				execute: async () => await workflows.syncDeckLists(
-					syncContext,
-					eventId,
-					await loadMeleeSyncEventData(eventId),
-				),
-				metadata: result => result.success === false || result.skipped === true
-					? {}
-					: {
-							lastDecklistsSyncedAt: new Date(),
-						},
+				execute: async () =>
+					await workflows.syncDeckLists(
+						syncContext,
+						eventId,
+						await loadMeleeSyncEventData(eventId),
+					),
+				metadata: (result) =>
+					result.success === false || result.skipped === true
+						? {}
+						: {
+								lastDecklistsSyncedAt: new Date(),
+							},
 			});
 		},
 		async syncRoundMatches(requestEvent: H3Event, eventId: number, roundId: number) {
@@ -296,13 +290,15 @@ export function meleeSyncModule() {
 						});
 					}
 					await checkpoint();
-					const round = await workflows.syncRoundMatches(syncContext, eventId, syncEventData, roundId);
+					const round = await workflows.syncRoundMatches(
+						syncContext,
+						eventId,
+						syncEventData,
+						roundId,
+					);
 					return {
 						...round,
-						warnings: [
-							...(players.warnings ?? []),
-							...(round.warnings ?? []),
-						],
+						warnings: [...(players.warnings ?? []), ...(round.warnings ?? [])],
 					};
 				},
 				failureMetadata: progress.snapshot,
@@ -322,27 +318,25 @@ export function meleeSyncModule() {
 				syncContext,
 				eventId,
 				command: 'update',
-				execute: async checkpoint => await workflows.updateFromMelee(
-					syncContext,
-					eventId,
-					await loadMeleeSyncEventData(eventId),
-					options,
-					checkpoint,
-					progress.record,
-				),
+				execute: async (checkpoint) =>
+					await workflows.updateFromMelee(
+						syncContext,
+						eventId,
+						await loadMeleeSyncEventData(eventId),
+						options,
+						checkpoint,
+						progress.record,
+					),
 				failureMetadata: progress.snapshot,
 				metadata: (result) => {
 					const completedAt = new Date();
 					const includedDeckLists = result.steps.includes('decklists');
-					const completedDeckLists = includedDeckLists
-						&& result.success !== false
-						&& result.deckListsSkipped !== true;
+					const completedDeckLists =
+						includedDeckLists && result.success !== false && result.deckListsSkipped !== true;
 					return {
 						lastEventSyncedAt: completedAt,
 						lastPlayersSyncedAt: completedAt,
-						...(completedDeckLists
-							? { lastDecklistsSyncedAt: completedAt }
-							: {}),
+						...(completedDeckLists ? { lastDecklistsSyncedAt: completedAt } : {}),
 					};
 				},
 			});

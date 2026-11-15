@@ -52,8 +52,9 @@ describe('lastCallTo', () => {
 	});
 
 	it('refuses an endpoint nothing called rather than handing back a stray, and lists what arrived', () => {
-		expect(() => lastCallTo(recordedFetch(), '/api/other'))
-			.toThrow(`expected a call to /api/other, got only ["${LEDGER}", "${LEDGER}", "${CLOCK}"]`);
+		expect(() => lastCallTo(recordedFetch(), '/api/other')).toThrow(
+			`expected a call to /api/other, got only ["${LEDGER}", "${LEDGER}", "${CLOCK}"]`,
+		);
 	});
 });
 
@@ -82,11 +83,7 @@ describe('callsTo', () => {
 			},
 			`expected 2 calls to ${LEDGER}, got 1; recorded only ["${LEDGER}"]`,
 		],
-		[
-			'longer',
-			() => callsTo(recordedFetch(), 2),
-			'expected 2 calls, got 3; recorded only',
-		],
+		['longer', () => callsTo(recordedFetch(), 2), 'expected 2 calls, got 3; recorded only'],
 	])('refuses a list %s than the test expects', (_, read, message) => {
 		expect(read).toThrow(message);
 	});

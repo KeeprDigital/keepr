@@ -3,20 +3,25 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, reactive } from 'vue';
-import { LOCAL_DEVELOPER_USER_EMAIL, LOCAL_DEVELOPER_USER_ID, LOCAL_DEVELOPER_USER_NAME } from '~~/shared/utils/localDeveloperAuth';
+import {
+	LOCAL_DEVELOPER_USER_EMAIL,
+	LOCAL_DEVELOPER_USER_ID,
+	LOCAL_DEVELOPER_USER_NAME,
+} from '~~/shared/utils/localDeveloperAuth';
 import { UNavigationMenuStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
 
 vi.mock('~/composables/workflows/useEventLiveRefresh', () => ({
 	useEventLiveRefresh: vi.fn(),
 }));
 
-const { mockClearPlayerDeckCache, mockNavigateTo, mockSignOut, mockToastAdd, mockUser } = vi.hoisted(() => ({
-	mockClearPlayerDeckCache: vi.fn(),
-	mockNavigateTo: vi.fn(),
-	mockSignOut: vi.fn(),
-	mockToastAdd: vi.fn(),
-	mockUser: { value: null as { id: string; email: string; name: string } | null },
-}));
+const { mockClearPlayerDeckCache, mockNavigateTo, mockSignOut, mockToastAdd, mockUser } =
+	vi.hoisted(() => ({
+		mockClearPlayerDeckCache: vi.fn(),
+		mockNavigateTo: vi.fn(),
+		mockSignOut: vi.fn(),
+		mockToastAdd: vi.fn(),
+		mockUser: { value: null as { id: string; email: string; name: string } | null },
+	}));
 
 // `user` has to be a real ref for the layout's template to unwrap it, and a
 // hoisted factory cannot call `ref`; a computed over the hoisted container is
@@ -98,7 +103,8 @@ const UDashboardGroupStub = defineComponent({
 });
 
 const UDashboardSidebarStub = defineComponent({
-	template: '<aside><slot name="header" :collapsed="false" /><slot :collapsed="false" /><slot name="footer" :collapsed="false" /></aside>',
+	template:
+		'<aside><slot name="header" :collapsed="false" /><slot :collapsed="false" /><slot name="footer" :collapsed="false" /></aside>',
 });
 
 const UDashboardPanelStub = defineComponent({
@@ -120,7 +126,8 @@ const UDashboardNavbarStub = defineComponent({
 	props: {
 		toggle: { type: Boolean, default: true },
 	},
-	template: '<header data-testid="navbar" :data-toggle="String(toggle)"><slot name="leading" /><slot /><slot name="right" /></header>',
+	template:
+		'<header data-testid="navbar" :data-toggle="String(toggle)"><slot name="leading" /><slot /><slot name="right" /></header>',
 });
 
 async function mountLayout(props: Record<string, unknown> = {}) {
@@ -191,7 +198,9 @@ describe('default layout sync navigation', () => {
 		Object.assign(mockEventStore.event, { game, meleeEnabled: false, meleeConfigured: false });
 
 		const wrapper = await mountLayout();
-		const items = wrapper.findAll('[data-nav-item]').map(item => item.attributes('data-nav-item'));
+		const items = wrapper
+			.findAll('[data-nav-item]')
+			.map((item) => item.attributes('data-nav-item'));
 
 		expect(items.includes('Sync')).toBe(offered);
 	});
@@ -212,21 +221,24 @@ describe('default layout sync navigation', () => {
 		mockEventStore.event.game = game;
 
 		const wrapper = await mountLayout();
-		const items = wrapper.findAll('[data-nav-item]').map(item => item.attributes('data-nav-item'));
+		const items = wrapper
+			.findAll('[data-nav-item]')
+			.map((item) => item.attributes('data-nav-item'));
 
-		expect(items).toEqual(expect.arrayContaining([
-			...offered,
-			'Controls',
-			'Players',
-			'Metagame',
-			'Feature Matches',
-			'Cards',
-			'Screens',
-			'Event',
-			'Broadcast',
-		]));
-		for (const label of omitted)
-			expect(items).not.toContain(label);
+		expect(items).toEqual(
+			expect.arrayContaining([
+				...offered,
+				'Controls',
+				'Players',
+				'Metagame',
+				'Feature Matches',
+				'Cards',
+				'Screens',
+				'Event',
+				'Broadcast',
+			]),
+		);
+		for (const label of omitted) expect(items).not.toContain(label);
 	});
 
 	// A Commander Event has no Players (ADR-0087); which pages it is offered is the offering table's.
@@ -234,7 +246,9 @@ describe('default layout sync navigation', () => {
 		Object.assign(mockEventStore.event, { game: 'mtg', variant: 'commander' });
 
 		const wrapper = await mountLayout();
-		const items = wrapper.findAll('[data-nav-item]').map(item => item.attributes('data-nav-item'));
+		const items = wrapper
+			.findAll('[data-nav-item]')
+			.map((item) => item.attributes('data-nav-item'));
 
 		expect(items).toContain('Cards');
 		expect(items).not.toContain('Players');
@@ -250,7 +264,9 @@ describe('default layout sync navigation', () => {
 		mockEventStore.event.meleeConfigured = false;
 
 		const wrapper = await mountLayout();
-		const items = wrapper.findAll('[data-nav-item]').map(item => item.attributes('data-nav-item'));
+		const items = wrapper
+			.findAll('[data-nav-item]')
+			.map((item) => item.attributes('data-nav-item'));
 
 		expect(items.includes('Metagame')).toBe(offered);
 	});
@@ -295,16 +311,21 @@ describe('default layout sign-out', () => {
 	});
 
 	it('stays put and says so when the sign-out did not land', async () => {
-		mockSignOut.mockResolvedValue({ ok: false, message: 'Could not sign out — the session is still open. Try again.' });
+		mockSignOut.mockResolvedValue({
+			ok: false,
+			message: 'Could not sign out — the session is still open. Try again.',
+		});
 
 		const wrapper = await mountLayout();
 		await wrapper.find('[data-nav-item="Sign out"]').trigger('click');
 		await flushPromises();
 
 		expect(mockNavigateTo).not.toHaveBeenCalled();
-		expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({
-			description: 'Could not sign out — the session is still open. Try again.',
-		}));
+		expect(mockToastAdd).toHaveBeenCalledWith(
+			expect.objectContaining({
+				description: 'Could not sign out — the session is still open. Try again.',
+			}),
+		);
 	});
 });
 
@@ -317,7 +338,9 @@ describe('default layout Editor Focus Mode', () => {
 		const wrapper = await mountLayout();
 
 		expect(wrapper.find('aside').exists()).toBe(true);
-		expect(wrapper.get('[data-testid="navbar"]').find('u-i-realtime-status-stub').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="navbar"]').find('u-i-realtime-status-stub').exists()).toBe(
+			false,
+		);
 	});
 
 	it('hides the app sidebar and its toggles in Focus Mode, keeping the connection statuses in the navbar', async () => {

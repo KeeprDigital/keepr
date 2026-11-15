@@ -1,7 +1,13 @@
 import type { SQL } from 'drizzle-orm';
 import type { DbBroadcastGraphicsLiveSession } from '~~/server/db/schema';
-import type { SequencedLiveEpochTransition, SequencedLiveStateExecuteOptions } from '~~/server/modules/live-state';
-import type { BroadcastGraphicsLiveState, BroadcastGraphicsReductionContext } from '~~/shared/modules/broadcast-graphics-live-session';
+import type {
+	SequencedLiveEpochTransition,
+	SequencedLiveStateExecuteOptions,
+} from '~~/server/modules/live-state';
+import type {
+	BroadcastGraphicsLiveState,
+	BroadcastGraphicsReductionContext,
+} from '~~/shared/modules/broadcast-graphics-live-session';
 import type {
 	BroadcastGraphicsCommand,
 	BroadcastGraphicsCommandResult,
@@ -187,27 +193,32 @@ export function broadcastGraphicsStateService() {
 	 * epoch's media resolvable through the Screen's outputs while skipping the
 	 * announcement that would have told anyone (#305).
 	 */
-	const sessionEpochs = createSequencedLiveEpochs<BroadcastGraphicsEpochScope, BroadcastGraphicsLiveState, DbBroadcastGraphicsLiveSession>({
+	const sessionEpochs = createSequencedLiveEpochs<
+		BroadcastGraphicsEpochScope,
+		BroadcastGraphicsLiveState,
+		DbBroadcastGraphicsLiveSession
+	>({
 		aggregateKind: BROADCAST_GRAPHICS_LIVE_SESSION_AGGREGATE_KIND,
-		idOf: session => session.id,
+		idOf: (session) => session.id,
 		findActive: async ({ screenId, eventId }) => {
 			const active = await findActiveSessionByScreen(screenId, eventId);
-			return active
-				? [active]
-				: [];
+			return active ? [active] : [];
 		},
 
 		close: ({ screenId, eventId, onlyIf }) => {
 			const now = new Date();
 			return [
-				db.update(broadcastGraphicsLiveSessions)
+				db
+					.update(broadcastGraphicsLiveSessions)
 					.set({ status: 'ended', endedAt: now, updatedAt: now })
-					.where(and(
-						eq(broadcastGraphicsLiveSessions.screenId, screenId),
-						eq(broadcastGraphicsLiveSessions.eventId, eventId),
-						eq(broadcastGraphicsLiveSessions.status, 'active'),
-						onlyIf,
-					)),
+					.where(
+						and(
+							eq(broadcastGraphicsLiveSessions.screenId, screenId),
+							eq(broadcastGraphicsLiveSessions.eventId, eventId),
+							eq(broadcastGraphicsLiveSessions.status, 'active'),
+							onlyIf,
+						),
+					),
 				clearBroadcastGraphicsLiveSessionGraphicAssetReferencesStatement(screenId, onlyIf),
 			];
 		},
@@ -229,7 +240,8 @@ export function broadcastGraphicsStateService() {
 		`,
 
 		open: ({ screenId, eventId }, currentState) => [
-			db.insert(broadcastGraphicsLiveSessions)
+			db
+				.insert(broadcastGraphicsLiveSessions)
 				.values({
 					eventId,
 					screenId,
@@ -283,18 +295,21 @@ export function broadcastGraphicsStateService() {
 	const endSessionOnLeavingBroadcastGraphics = async (
 		screenId: number,
 		eventId: number,
-	): Promise<SequencedLiveEpochTransition<DbBroadcastGraphicsLiveSession>> => await sessionEpochs.close({
-		screenId,
-		eventId,
-		onlyIf: screenHasLeftBroadcastGraphics(screenId, eventId),
-	});
+	): Promise<SequencedLiveEpochTransition<DbBroadcastGraphicsLiveSession>> =>
+		await sessionEpochs.close({
+			screenId,
+			eventId,
+			onlyIf: screenHasLeftBroadcastGraphics(screenId, eventId),
+		});
 
 	/** Ends the Screen's epoch unannounced, answering which one it was. */
 	const endSessionsForScreen = async (
 		screenId: number,
 		eventId: number,
 	): Promise<DbBroadcastGraphicsLiveSession | undefined> => {
-		const { ended } = await sessionEpochs.commit(await sessionEpochs.close({ screenId, eventId }), { announce: false });
+		const { ended } = await sessionEpochs.commit(await sessionEpochs.close({ screenId, eventId }), {
+			announce: false,
+		});
 		return ended[0];
 	};
 
@@ -317,16 +332,18 @@ export function broadcastGraphicsStateService() {
 		screenId: number,
 		eventId: number,
 		originConnectionId?: string,
-	): Promise<{ ended?: DbBroadcastGraphicsLiveSession; opened: DbBroadcastGraphicsLiveSession }> => {
+	): Promise<{
+		ended?: DbBroadcastGraphicsLiveSession;
+		opened: DbBroadcastGraphicsLiveSession;
+	}> => {
 		const { ended, opened } = await sessionEpochs.commit(
 			await sessionEpochs.replace({ screenId, eventId }, createInitialBroadcastGraphicsLiveState()),
 			{ originConnectionId },
 		);
 		// A concurrent reset can have replaced this one's successor already; the
 		// Screen's epoch now is the honest answer.
-		const current = opened[0] ?? await findActiveSessionByScreen(screenId, eventId);
-		if (!current)
-			throw new Error('Failed to open broadcast graphics live session');
+		const current = opened[0] ?? (await findActiveSessionByScreen(screenId, eventId));
+		if (!current) throw new Error('Failed to open broadcast graphics live session');
 
 		return { ended: ended[0], opened: current };
 	};
@@ -347,8 +364,7 @@ export function broadcastGraphicsStateService() {
 		eventId: number,
 	): Promise<DbBroadcastGraphicsLiveSession> => {
 		const existing = await findActiveSessionByScreen(screenId, eventId);
-		if (existing)
-			return existing;
+		if (existing) return existing;
 
 		const previous = await findLatestEndedSessionByScreen(screenId, eventId);
 
@@ -362,21 +378,17 @@ export function broadcastGraphicsStateService() {
 				),
 				{ announce: false },
 			);
-			if (opened[0])
-				return opened[0];
-		}
-		catch (error) {
+			if (opened[0]) return opened[0];
+		} catch (error) {
 			// Another writer opened the epoch first; the partial unique index on the
 			// active status is what turned that race into a failure here.
 			const raced = await findActiveSessionByScreen(screenId, eventId);
-			if (!raced)
-				throw error;
+			if (!raced) throw error;
 			return raced;
 		}
 
 		const raced = await findActiveSessionByScreen(screenId, eventId);
-		if (raced)
-			return raced;
+		if (raced) return raced;
 		throw new Error('Failed to open broadcast graphics live session');
 	};
 
@@ -395,92 +407,92 @@ export function broadcastGraphicsStateService() {
 	 * can go stale. Closing over them for the one command that needs them keeps both
 	 * authoritative where they live.
 	 */
-	const liveStateFor = (context: Omit<BroadcastGraphicsReductionContext, 'acceptedAt'>) => createSequencedLiveState<
-		BroadcastGraphicsLiveSessionRef,
-		DbBroadcastGraphicsLiveSession,
-		BroadcastGraphicsCommand,
-		BroadcastGraphicsLiveState,
-		BroadcastGraphicsCommandResult
-	>({
-		aggregateKind: BROADCAST_GRAPHICS_LIVE_SESSION_AGGREGATE_KIND,
-		aggregateLabel: 'Broadcast graphics live session',
+	const liveStateFor = (context: Omit<BroadcastGraphicsReductionContext, 'acceptedAt'>) =>
+		createSequencedLiveState<
+			BroadcastGraphicsLiveSessionRef,
+			DbBroadcastGraphicsLiveSession,
+			BroadcastGraphicsCommand,
+			BroadcastGraphicsLiveState,
+			BroadcastGraphicsCommandResult
+		>({
+			aggregateKind: BROADCAST_GRAPHICS_LIVE_SESSION_AGGREGATE_KIND,
+			aggregateLabel: 'Broadcast graphics live session',
 
-		aggregateIdOf: ref => ref.sessionId,
-		eventIdOf: ref => ref.eventId,
-		load: ref => findSessionById(ref.sessionId, ref.eventId),
-		sequenceOf: session => session.sequence,
+			aggregateIdOf: (ref) => ref.sessionId,
+			eventIdOf: (ref) => ref.eventId,
+			load: (ref) => findSessionById(ref.sessionId, ref.eventId),
+			sequenceOf: (session) => session.sequence,
 
-		/**
-		 * Epoch admission, and nothing else. A playout action states the latest
-		 * desired on-air state of one Broadcast Graphic, so — unlike an absolute
-		 * Feature Match Session command — a session that has advanced since the
-		 * operator looked never invalidates it. There is deliberately no base
-		 * sequence to check.
-		 */
-		admit: (session) => {
-			if (session.status !== 'active') {
-				throw createError({
-					statusCode: 409,
-					message: 'Broadcast graphics live session has ended',
-				});
-			}
-		},
+			/**
+			 * Epoch admission, and nothing else. A playout action states the latest
+			 * desired on-air state of one Broadcast Graphic, so — unlike an absolute
+			 * Feature Match Session command — a session that has advanced since the
+			 * operator looked never invalidates it. There is deliberately no base
+			 * sequence to check.
+			 */
+			admit: (session) => {
+				if (session.status !== 'active') {
+					throw createError({
+						statusCode: 409,
+						message: 'Broadcast graphics live session has ended',
+					});
+				}
+			},
 
-		/**
-		 * Every command here is safe to re-reduce onto a newer state: each owns one
-		 * Broadcast Graphic's on-air intent or one of its Graphic Inputs, so a writer
-		 * that got in first with a different graphic — or with an older intent for the
-		 * same one — does not invalidate this one.
-		 *
-		 * Update Graphic is mergeable for the same reason, and its own guard is what
-		 * makes that safe: re-reducing it onto the newer state re-checks the acceptance
-		 * revision, so a merge retry cannot slip a stale acceptance past the guard the
-		 * first attempt satisfied. Answering `false` here instead would turn an
-		 * unrelated Take on another graphic into a spurious conflict for the operator
-		 * accepting inputs.
-		 */
-		isMergeable: () => true,
+			/**
+			 * Every command here is safe to re-reduce onto a newer state: each owns one
+			 * Broadcast Graphic's on-air intent or one of its Graphic Inputs, so a writer
+			 * that got in first with a different graphic — or with an older intent for the
+			 * same one — does not invalidate this one.
+			 *
+			 * Update Graphic is mergeable for the same reason, and its own guard is what
+			 * makes that safe: re-reducing it onto the newer state re-checks the acceptance
+			 * revision, so a merge retry cannot slip a stale acceptance past the guard the
+			 * first attempt satisfied. Answering `false` here instead would turn an
+			 * unrelated Take on another graphic into a spurious conflict for the operator
+			 * accepting inputs.
+			 */
+			isMergeable: () => true,
 
-		/**
-		 * A domain refusal is raised from the shared reducer, which is deliberately
-		 * ignorant of HTTP; this is the one place that maps it. Reduction happens
-		 * before the compare-and-swap write, so a refusal never leaves a receipt.
-		 *
-		 * Reduction starts from the *recovered* state, which is what makes an explicit
-		 * Take the way out of a recovery fault: the command is reduced onto a state
-		 * with nothing on air rather than onto the unreadable one, so the write that
-		 * commits it also replaces the state nobody could read. Reducing onto the raw
-		 * state instead would either throw or persist the corruption forward.
-		 */
-		reduce: (session, command) => {
-			try {
-				return applyBroadcastGraphicsCommand(
-					recoveredBroadcastGraphicsLiveState(session.currentState),
-					command,
-					// The server's clock is the authoritative effective start time of the
-					// phase this command begins. It is read here, at acceptance, rather than
-					// sent by a client: every output projects animation from this instant, so
-					// it has to come from the one place that decides the authoritative order.
-					//
-					// The addressed graphic's phase durations travel with it, because two of
-					// the reducer's decisions are about a schedule rather than a target — was
-					// the phase this intent interrupts still running, and when is a coalesced
-					// update due — and both have to be settled once, here, rather than by
-					// each output against its own clock.
-					{
-						...context,
-						acceptedAt: Date.now(),
-					},
-				);
-			}
-			catch (error) {
-				if (error instanceof BroadcastGraphicsCommandRejection)
-					throw broadcastGraphicsRejectionError(error);
-				throw error;
-			}
-		},
+			/**
+			 * A domain refusal is raised from the shared reducer, which is deliberately
+			 * ignorant of HTTP; this is the one place that maps it. Reduction happens
+			 * before the compare-and-swap write, so a refusal never leaves a receipt.
+			 *
+			 * Reduction starts from the *recovered* state, which is what makes an explicit
+			 * Take the way out of a recovery fault: the command is reduced onto a state
+			 * with nothing on air rather than onto the unreadable one, so the write that
+			 * commits it also replaces the state nobody could read. Reducing onto the raw
+			 * state instead would either throw or persist the corruption forward.
+			 */
+			reduce: (session, command) => {
+				try {
+					return applyBroadcastGraphicsCommand(
+						recoveredBroadcastGraphicsLiveState(session.currentState),
+						command,
+						// The server's clock is the authoritative effective start time of the
+						// phase this command begins. It is read here, at acceptance, rather than
+						// sent by a client: every output projects animation from this instant, so
+						// it has to come from the one place that decides the authoritative order.
+						//
+						// The addressed graphic's phase durations travel with it, because two of
+						// the reducer's decisions are about a schedule rather than a target — was
+						// the phase this intent interrupts still running, and when is a coalesced
+						// update due — and both have to be settled once, here, rather than by
+						// each output against its own clock.
+						{
+							...context,
+							acceptedAt: Date.now(),
+						},
+					);
+				} catch (error) {
+					if (error instanceof BroadcastGraphicsCommandRejection)
+						throw broadcastGraphicsRejectionError(error);
+					throw error;
+				}
+			},
 
-		casGuard: session => sql`
+			casGuard: (session) => sql`
 			from ${broadcastGraphicsLiveSessions}
 			where ${broadcastGraphicsLiveSessions.id} = ${session.id}
 				and ${broadcastGraphicsLiveSessions.eventId} = ${session.eventId}
@@ -488,53 +500,57 @@ export function broadcastGraphicsStateService() {
 				and ${broadcastGraphicsLiveSessions.status} = 'active'
 		`,
 
-		projection: ({ aggregate, reduction, nextSequence }) => db
-			.update(broadcastGraphicsLiveSessions)
-			.set({
-				currentState: reduction,
-				sequence: nextSequence,
-				updatedAt: new Date(),
-			})
-			.where(and(
-				eq(broadcastGraphicsLiveSessions.id, aggregate.id),
-				eq(broadcastGraphicsLiveSessions.eventId, aggregate.eventId),
-				eq(broadcastGraphicsLiveSessions.sequence, aggregate.sequence),
-				eq(broadcastGraphicsLiveSessions.status, 'active'),
-			))
-			.returning(),
+			projection: ({ aggregate, reduction, nextSequence }) =>
+				db
+					.update(broadcastGraphicsLiveSessions)
+					.set({
+						currentState: reduction,
+						sequence: nextSequence,
+						updatedAt: new Date(),
+					})
+					.where(
+						and(
+							eq(broadcastGraphicsLiveSessions.id, aggregate.id),
+							eq(broadcastGraphicsLiveSessions.eventId, aggregate.eventId),
+							eq(broadcastGraphicsLiveSessions.sequence, aggregate.sequence),
+							eq(broadcastGraphicsLiveSessions.status, 'active'),
+						),
+					)
+					.returning(),
 
-		// One mapped snapshot feeds both the result and the notification derived from
-		// it, so a client cannot be handed a recovered `session` alongside a raw
-		// `currentState` that disagrees with it. The invariant lives with the mapper
-		// that owns recovery, and is pinned there.
-		toResult: (session, commandType) => mapBroadcastGraphicsCommandResult(
-			session,
-			commandType as BroadcastGraphicsCommandResult['commandType'],
-		),
-
-		/**
-		 * The notification announces what the command *changed*, measured against the
-		 * live state it was reduced onto.
-		 *
-		 * Reading the previous state through the module rather than remembering it here
-		 * is what keeps the two halves honest: the merge retry reduces onto a reloaded
-		 * aggregate and a recognised replay onto nothing at all, and a difference
-		 * measured from the wrong one would leave every peer holding a state the server
-		 * does not have — silently, since nothing downstream re-checks it.
-		 */
-		publish: async (result, { originConnectionId, previous }) => {
-			await publishMessage(
-				result.session.eventId,
-				'broadcastGraphicsLiveSession:commandApplied',
-				broadcastGraphicsCommandAppliedPayload(
-					result,
-					previous && recoveredBroadcastGraphicsLiveState(previous.currentState),
-					originConnectionId,
+			// One mapped snapshot feeds both the result and the notification derived from
+			// it, so a client cannot be handed a recovered `session` alongside a raw
+			// `currentState` that disagrees with it. The invariant lives with the mapper
+			// that owns recovery, and is pinned there.
+			toResult: (session, commandType) =>
+				mapBroadcastGraphicsCommandResult(
+					session,
+					commandType as BroadcastGraphicsCommandResult['commandType'],
 				),
-				originConnectionId,
-			);
-		},
-	});
+
+			/**
+			 * The notification announces what the command *changed*, measured against the
+			 * live state it was reduced onto.
+			 *
+			 * Reading the previous state through the module rather than remembering it here
+			 * is what keeps the two halves honest: the merge retry reduces onto a reloaded
+			 * aggregate and a recognised replay onto nothing at all, and a difference
+			 * measured from the wrong one would leave every peer holding a state the server
+			 * does not have — silently, since nothing downstream re-checks it.
+			 */
+			publish: async (result, { originConnectionId, previous }) => {
+				await publishMessage(
+					result.session.eventId,
+					'broadcastGraphicsLiveSession:commandApplied',
+					broadcastGraphicsCommandAppliedPayload(
+						result,
+						previous && recoveredBroadcastGraphicsLiveState(previous.currentState),
+						originConnectionId,
+					),
+					originConnectionId,
+				);
+			},
+		});
 
 	const applyCommand = async (
 		sessionId: number,
@@ -552,8 +568,10 @@ export function broadcastGraphicsStateService() {
 		originConnectionId?: string,
 		options: Omit<SequencedLiveStateExecuteOptions, 'originConnectionId'> = {},
 	): Promise<BroadcastGraphicsCommandResult> => {
-		return await liveStateFor(context)
-			.execute({ sessionId, eventId }, command, { ...options, originConnectionId });
+		return await liveStateFor(context).execute({ sessionId, eventId }, command, {
+			...options,
+			originConnectionId,
+		});
 	};
 
 	return {

@@ -16,10 +16,7 @@ export default defineEventHandler(async (event) => {
 		const operationId = graphicsIngestionOperationId(getRouterParam(event, 'operationId') ?? '');
 		const operation = await library.getIngestionOperation({ operationId, initiatedBy });
 		const partNumber = Number(getRouterParam(event, 'partNumber'));
-		const byteLength = graphicsMultipartPartByteLength(
-			operation.declaredByteLength,
-			partNumber,
-		);
+		const byteLength = graphicsMultipartPartByteLength(operation.declaredByteLength, partNumber);
 		const body = getBoundedRequestBodyStream(event);
 		if (!body) {
 			throw createError({
@@ -37,8 +34,7 @@ export default defineEventHandler(async (event) => {
 				maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
 			}),
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

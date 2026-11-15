@@ -9,14 +9,10 @@ export function createFakeNitroApp() {
 	const nitroApp = {
 		hooks: {
 			hook: (name: string, handler: Handler) => {
-				handlers.set(name, [
-					...handlers.get(name) ?? [],
-					handler,
-				]);
+				handlers.set(name, [...(handlers.get(name) ?? []), handler]);
 			},
 			callHook: async (name: string, payload?: unknown) => {
-				for (const handler of handlers.get(name) ?? [])
-					await handler(payload as never);
+				for (const handler of handlers.get(name) ?? []) await handler(payload as never);
 			},
 		},
 	};
@@ -24,6 +20,9 @@ export function createFakeNitroApp() {
 }
 
 /** Installs a `defineNitroPlugin` default export onto `nitroApp`; tests stub `defineNitroPlugin` as identity. */
-export function installNitroPlugin(plugin: unknown, nitroApp: ReturnType<typeof createFakeNitroApp>) {
+export function installNitroPlugin(
+	plugin: unknown,
+	nitroApp: ReturnType<typeof createFakeNitroApp>,
+) {
 	(plugin as (app: typeof nitroApp) => void)(nitroApp);
 }

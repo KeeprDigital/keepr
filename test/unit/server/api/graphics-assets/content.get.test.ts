@@ -6,11 +6,7 @@ import { boundedBytes, canonicalIdentity } from '~~/test/helpers/graphicsLibrary
 import { stubH3Event } from '~~/test/helpers/h3Event';
 import { refusalFrom } from '~~/test/helpers/publicServerFailure';
 
-const {
-	library,
-	mockRequireUserId,
-	mockSetResponseHeader,
-} = vi.hoisted(() => ({
+const { library, mockRequireUserId, mockSetResponseHeader } = vi.hoisted(() => ({
 	library: { current: undefined as unknown },
 	mockRequireUserId: vi.fn(),
 	mockSetResponseHeader: vi.fn(),
@@ -24,24 +20,31 @@ vi.mock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => library.current,
 }));
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
-vi.stubGlobal('getRouterParam', vi.fn((_event, name: string) =>
-	name === 'assetId'
-		? 'asset-1'
-		: 'revision-1'));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
+vi.stubGlobal(
+	'getRouterParam',
+	vi.fn((_event, name: string) => (name === 'assetId' ? 'asset-1' : 'revision-1')),
+);
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
-vi.stubGlobal('getRequestHeader', vi.fn((event: { headers?: Record<string, string | undefined> }, name: string) =>
-	event.headers?.[name]));
+vi.stubGlobal(
+	'getRequestHeader',
+	vi.fn(
+		(event: { headers?: Record<string, string | undefined> }, name: string) =>
+			event.headers?.[name],
+	),
+);
 
 function eventWithHeaders(headers: Record<string, string | undefined>) {
 	return stubH3Event({ headers });
 }
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage?: string; message: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message), input),
+);
 
 const etag = '"sk-revision-asset-1-revision-1"';
 const digest = 'c'.repeat(64);
@@ -70,7 +73,7 @@ async function deliveryOfOneRevision() {
 	library.current = createGraphicsAssetDelivery({
 		canonical,
 		catalogue: {
-			findRevisionContent: async () => state.purged ? undefined : content,
+			findRevisionContent: async () => (state.purged ? undefined : content),
 			findRevisionContents: async () => [],
 			findThumbnailContent: async () => undefined,
 		},
@@ -83,9 +86,9 @@ async function deliveryOfOneRevision() {
 }
 
 async function contentHandler() {
-	return (await import(
-		'../../../../../server/api/graphics-assets/[assetId]/revisions/[revisionId]/content.get',
-	)).default;
+	return (
+		await import('../../../../../server/api/graphics-assets/[assetId]/revisions/[revisionId]/content.get')
+	).default;
 }
 
 async function bytesOf(response: Response) {
@@ -103,7 +106,7 @@ describe('authenticated exact Graphic Asset Revision content delivery', () => {
 		const { bodyReads } = await deliveryOfOneRevision();
 		const handler = await contentHandler();
 
-		const response = await handler(eventWithHeaders({})) as Response;
+		const response = (await handler(eventWithHeaders({}))) as Response;
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get('accept-ranges')).toBe('bytes');
@@ -119,7 +122,7 @@ describe('authenticated exact Graphic Asset Revision content delivery', () => {
 		const { bodyReads } = await deliveryOfOneRevision();
 		const handler = await contentHandler();
 
-		const response = await handler(eventWithHeaders({ 'if-none-match': etag })) as Response;
+		const response = (await handler(eventWithHeaders({ 'if-none-match': etag }))) as Response;
 
 		expect(response.status).toBe(304);
 		expect(response.headers.get('etag')).toBe(etag);
@@ -158,23 +161,21 @@ describe('authenticated exact Graphic Asset Revision content delivery', () => {
 		const { bodyReads } = await deliveryOfOneRevision();
 		const handler = await contentHandler();
 
-		const response = await handler(eventWithHeaders({ range: 'bytes=100-199' })) as Response;
+		const response = (await handler(eventWithHeaders({ range: 'bytes=100-199' }))) as Response;
 
 		expect(response.status).toBe(206);
 		expect(response.headers.get('content-range')).toBe('bytes 100-199/1000');
 		expect(response.headers.get('content-length')).toBe('100');
 		expect(response.headers.get('content-type')).toBe('video/webm');
 		expect(await bytesOf(response)).toEqual(contentBytes.slice(100, 200));
-		expect(bodyReads.mock.calls.map(([, range]) => range)).toEqual([
-			{ offset: 100, length: 100 },
-		]);
+		expect(bodyReads.mock.calls.map(([, range]) => range)).toEqual([{ offset: 100, length: 100 }]);
 	});
 
 	it('rejects an unsatisfiable range with 416 and the complete length', async () => {
 		const { bodyReads } = await deliveryOfOneRevision();
 		const handler = await contentHandler();
 
-		const response = await handler(eventWithHeaders({ range: 'bytes=5000-' })) as Response;
+		const response = (await handler(eventWithHeaders({ range: 'bytes=5000-' }))) as Response;
 
 		expect(response.status).toBe(416);
 		expect(response.headers.get('content-range')).toBe('bytes */1000');
@@ -185,10 +186,12 @@ describe('authenticated exact Graphic Asset Revision content delivery', () => {
 		const { bodyReads } = await deliveryOfOneRevision();
 		const handler = await contentHandler();
 
-		const response = await handler(eventWithHeaders({
-			'range': 'bytes=0-99',
-			'if-range': '"some-other-validator"',
-		})) as Response;
+		const response = (await handler(
+			eventWithHeaders({
+				range: 'bytes=0-99',
+				'if-range': '"some-other-validator"',
+			}),
+		)) as Response;
 
 		expect(response.status).toBe(200);
 		expect(await bytesOf(response)).toEqual(contentBytes);
@@ -208,19 +211,22 @@ describe('authenticated exact Graphic Asset Revision content delivery', () => {
 			store: 'bodyReads',
 			headers: { range: 'bytes=100-199' },
 		},
-	] as const)('says what is unavailable when the $read read cannot be served', async ({ store, headers }) => {
-		const reads = await deliveryOfOneRevision();
-		reads[store].mockResolvedValueOnce({ outcome: 'unavailable' } as never);
-		const handler = await contentHandler();
-		const event = eventWithHeaders(headers);
+	] as const)(
+		'says what is unavailable when the $read read cannot be served',
+		async ({ store, headers }) => {
+			const reads = await deliveryOfOneRevision();
+			reads[store].mockResolvedValueOnce({ outcome: 'unavailable' } as never);
+			const handler = await contentHandler();
+			const event = eventWithHeaders(headers);
 
-		const failure = await refusalFrom(handler(event));
+			const failure = await refusalFrom(handler(event));
 
-		expect(failure).toMatchObject({
-			statusCode: 503,
-			statusMessage: 'Service Unavailable',
-			message: 'Graphic Asset Content is temporarily unavailable',
-		});
-		expect(mockSetResponseHeader).toHaveBeenCalledWith(event, 'retry-after', 5);
-	});
+			expect(failure).toMatchObject({
+				statusCode: 503,
+				statusMessage: 'Service Unavailable',
+				message: 'Graphic Asset Content is temporarily unavailable',
+			});
+			expect(mockSetResponseHeader).toHaveBeenCalledWith(event, 'retry-after', 5);
+		},
+	);
 });

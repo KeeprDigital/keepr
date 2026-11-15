@@ -44,24 +44,21 @@ const OP_CARD_TYPE_BY_CATEGORY: Record<OpCardCategory, OpCardTypeBucket | null> 
  * Archetype rather than a card (ADR-0074).
  */
 export function metagameCardType(game: Game, card: MetagameCardTypeFacts): string | null {
-	if (game === 'op')
-		return card.category ? OP_CARD_TYPE_BY_CATEGORY[card.category] : null;
+	if (game === 'op') return card.category ? OP_CARD_TYPE_BY_CATEGORY[card.category] : null;
 
 	return card.cardType;
 }
 
 /** A card's colours as a Metagame of `game` shows them: OP's as `Red/Green`, as its Archetypes' are. */
 export function metagameCardColors(game: Game, colors: string | null): string | null {
-	if (game === 'op')
-		return formatOpColors(decodeOpCatalogueColors(colors)) || null;
+	if (game === 'op') return formatOpColors(decodeOpCatalogueColors(colors)) || null;
 
 	return colors;
 }
 
 /** Whether a Metagame of `game` counts the card: MTG leaves basic lands out, OP its Leaders. */
 export function isEligibleMetagameCard(game: Game, card: MetagameCardTypeFacts): boolean {
-	if (game === 'op')
-		return metagameCardType(game, card) !== null;
+	if (game === 'op') return metagameCardType(game, card) !== null;
 
 	return isMetagameAnalysisCard(card.cardType);
 }
@@ -80,7 +77,7 @@ export function createCardTypeBucketFilter(
 	}
 
 	const excluded = new Set<MetagameCardTypeBucket>(excludeTypes);
-	return cardType => !excluded.has(getMetagameCardTypeBucket(game, cardType));
+	return (cardType) => !excluded.has(getMetagameCardTypeBucket(game, cardType));
 }
 
 export function toCardBreakdownEntry(
@@ -118,14 +115,16 @@ export function compareCardBreakdownEntries(
 ): number {
 	const primaryDifference = (() => {
 		switch (sortBy) {
-			case 'avgCopies': return b.avgCopies - a.avgCopies;
-			case 'totalCopies': return b.totalCopies - a.totalCopies;
-			default: return b.inclusionRate - a.inclusionRate;
+			case 'avgCopies':
+				return b.avgCopies - a.avgCopies;
+			case 'totalCopies':
+				return b.totalCopies - a.totalCopies;
+			default:
+				return b.inclusionRate - a.inclusionRate;
 		}
 	})();
 
-	if (primaryDifference !== 0)
-		return primaryDifference;
+	if (primaryDifference !== 0) return primaryDifference;
 
 	// A total order: tied cards keep their places across re-reads.
 	return a.name.localeCompare(b.name) || a.id - b.id;

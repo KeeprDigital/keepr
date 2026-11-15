@@ -9,16 +9,24 @@ describe('archetypes API', () => {
 	let keyCardArchetypeId: number;
 
 	beforeAll(async () => {
-		const event = await $fetch('/api/events', {
+		const event = (await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Archetypes Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-		}) as any;
+			body: {
+				name: 'Integration Archetypes Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
+		})) as any;
 		eventId = event.id;
 
-		const opEvent = await $fetch('/api/events', {
+		const opEvent = (await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration OP Archetypes Event', game: 'op', featureMatchOrientation: 'horizontal' },
-		}) as any;
+			body: {
+				name: 'Integration OP Archetypes Event',
+				game: 'op',
+				featureMatchOrientation: 'horizontal',
+			},
+		})) as any;
 		opEventId = opEvent.id;
 
 		// A One Piece Archetype follows its Leader, so none is created by hand (ADR-0074).
@@ -28,23 +36,21 @@ describe('archetypes API', () => {
 		});
 		expect(opCreate.status).toBe(400);
 
-		const keyCardArchetype = await $fetch(`/api/events/${eventId}/archetypes`, {
+		const keyCardArchetype = (await $fetch(`/api/events/${eventId}/archetypes`, {
 			method: 'POST',
 			body: { name: 'Key Cards Test', colors: 'R' },
-		}) as any;
+		})) as any;
 		keyCardArchetypeId = keyCardArchetype.id;
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 
 		try {
 			await $fetch(`/api/events/${opEventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	// ── CRUD ──
@@ -108,7 +114,9 @@ describe('archetypes API', () => {
 			});
 
 			const beforeDelete = (await $fetch(`/api/events/${eventId}/players`)) as any;
-			expect(beforeDelete.players.find((p: any) => p.id === player.id).archetypeId).toBe(archetype.id);
+			expect(beforeDelete.players.find((p: any) => p.id === player.id).archetypeId).toBe(
+				archetype.id,
+			);
 
 			const res = await $fetchRaw(`/api/events/${eventId}/archetypes/${archetype.id}`, {
 				method: 'DELETE',
@@ -180,7 +188,11 @@ describe('archetypes API', () => {
 	it('removes the Empty Archetypes, keeping one a Player holds', async () => {
 		const event = (await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Empty Archetypes Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Empty Archetypes Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		})) as any;
 		try {
 			const empty = (await $fetch(`/api/events/${event.id}/archetypes`, {
@@ -206,8 +218,7 @@ describe('archetypes API', () => {
 			expect(res._data.archetypeIds).toEqual([empty.id]);
 			const archetypes = (await $fetch(`/api/events/${event.id}/archetypes`)) as any;
 			expect(archetypes.archetypes.map((a: any) => a.id)).toEqual([held.id]);
-		}
-		finally {
+		} finally {
 			await $fetch(`/api/events/${event.id}`, { method: 'DELETE' }).catch(() => {});
 		}
 	});
@@ -228,13 +239,10 @@ describe('archetypes API', () => {
 		});
 
 		it('pATCH /archetypes/:id/cards with empty cardIds clears key cards', async () => {
-			const data = (await $fetch(
-				`/api/events/${eventId}/archetypes/${keyCardArchetypeId}/cards`,
-				{
-					method: 'PATCH',
-					body: { cardIds: [] },
-				},
-			)) as any;
+			const data = (await $fetch(`/api/events/${eventId}/archetypes/${keyCardArchetypeId}/cards`, {
+				method: 'PATCH',
+				body: { cardIds: [] },
+			})) as any;
 
 			expect(data).toHaveProperty('keyCards');
 			expect(data.keyCards).toBeInstanceOf(Array);
@@ -242,10 +250,9 @@ describe('archetypes API', () => {
 		});
 
 		it('gET /archetypes/99999/cards returns 404', async () => {
-			const res = await $fetchRaw(
-				`/api/events/${eventId}/archetypes/99999/cards`,
-				{ ignoreResponseError: true },
-			);
+			const res = await $fetchRaw(`/api/events/${eventId}/archetypes/99999/cards`, {
+				ignoreResponseError: true,
+			});
 
 			expect(res.status).toBe(404);
 		});

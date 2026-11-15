@@ -24,25 +24,23 @@ registerHooks({
 		const aliased = specifier.startsWith('~~/')
 			? new URL(specifier.slice(3), repositoryRoot).href
 			: specifier;
-		if (!/^(?:[./]|file:)/.test(aliased))
-			return next(specifier, context);
+		if (!/^(?:[./]|file:)/.test(aliased)) return next(specifier, context);
 		const base = new URL(aliased, context.parentURL);
 		const path = fileURLToPath(base);
 		for (const candidate of [`${path}.ts`, `${path}/index.ts`]) {
-			if (existsSync(candidate))
-				return next(pathToFileURL(candidate).href, context);
+			if (existsSync(candidate)) return next(pathToFileURL(candidate).href, context);
 		}
 		return next(base.href, context);
 	},
 });
 
 const { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } = await import(
-	new URL('shared/builtInFeatureMatchLayoutTemplates.ts', repositoryRoot).href,
+	new URL('shared/builtInFeatureMatchLayoutTemplates.ts', repositoryRoot).href
 );
 
 /** The same stored-ZIP reader and writer the Template Package tests rewrite packages with. */
 export const { readTemplatePackageParts, writeTemplatePackage } = await import(
-	new URL('test/helpers/templatePackageArchive.ts', repositoryRoot).href,
+	new URL('test/helpers/templatePackageArchive.ts', repositoryRoot).href
 );
 
 /** A complete, publishable Feature Match Layout with one pinned reference. */

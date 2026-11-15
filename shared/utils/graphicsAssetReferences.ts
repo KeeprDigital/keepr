@@ -72,7 +72,9 @@ export function mediaScreenGraphicAssetReference(
  * The exact revision a Screen Media Source pins, or null for a Remote Media URL,
  * which is a remote dependency and never a Graphic Asset Reference (ADR-0021).
  */
-export function screenMediaSourceReference(source: ScreenMediaSource | undefined): GraphicAssetReference | null {
+export function screenMediaSourceReference(
+	source: ScreenMediaSource | undefined,
+): GraphicAssetReference | null {
 	return source?.kind === 'asset'
 		? { assetId: source.assetId, revisionId: source.revisionId }
 		: null;
@@ -85,16 +87,14 @@ function appendScreenMediaSourceReference(
 	ownerSlot: string,
 ) {
 	const reference = screenMediaSourceReference(source);
-	if (reference)
-		references.push(mediaScreenGraphicAssetReference(reference, kind, ownerSlot));
+	if (reference) references.push(mediaScreenGraphicAssetReference(reference, kind, ownerSlot));
 }
 
 export function sameGraphicAssetReference(
 	left: GraphicAssetReference | undefined,
 	right: GraphicAssetReference | undefined,
 ): boolean {
-	return left?.assetId === right?.assetId
-		&& left?.revisionId === right?.revisionId;
+	return left?.assetId === right?.assetId && left?.revisionId === right?.revisionId;
 }
 
 /**
@@ -118,15 +118,12 @@ function appendGraphicFontReferences(
 	ownerSlot: string,
 ) {
 	function append(font: GraphicFontSelection | undefined, slot: string) {
-		if (font?.kind !== 'asset')
-			return;
+		if (font?.kind !== 'asset') return;
 		references.push({ reference: font.reference, ownerSlot: slot, kind: 'font' });
 	}
 
-	if ('typography' in item)
-		append(item.typography.font, `${ownerSlot}.typography.font`);
-	if (!('placeholderStyles' in item))
-		return;
+	if ('typography' in item) append(item.typography.font, `${ownerSlot}.typography.font`);
+	if (!('placeholderStyles' in item)) return;
 	for (const [key, style] of Object.entries(item.placeholderStyles ?? {}))
 		append(style.font, `${ownerSlot}.placeholderStyles.${key}.font`);
 }
@@ -141,29 +138,31 @@ function appendGraphicFontReferences(
  * Beside that walk because both graphics hosts wait for the fonts of the same
  * items, read with their Theme bindings painted, and reach both through one rule.
  */
-export function graphicItemsApplicationFonts(items: readonly GraphicItemConfig[]): ApplicationFontFaceRequest[] {
+export function graphicItemsApplicationFonts(
+	items: readonly GraphicItemConfig[],
+): ApplicationFontFaceRequest[] {
 	const requests: ApplicationFontFaceRequest[] = [];
 
 	function append(font: GraphicFontSelection, weight: number, style: GraphicFontStyle) {
-		if (font.kind === 'application')
-			requests.push({ fontId: font.fontId, weight, style });
+		if (font.kind === 'application') requests.push({ fontId: font.fontId, weight, style });
 	}
 
 	function appendItem(item: GraphicItemConfig | GraphicGroupChildConfig) {
-		if (!('typography' in item))
-			return;
+		if (!('typography' in item)) return;
 		const base = item.typography;
 		append(base.font, base.fontWeight, base.fontStyle);
-		if (!('placeholderStyles' in item))
-			return;
+		if (!('placeholderStyles' in item)) return;
 		for (const style of Object.values(item.placeholderStyles ?? {}))
-			append(style.font ?? base.font, style.fontWeight ?? base.fontWeight, style.fontStyle ?? base.fontStyle);
+			append(
+				style.font ?? base.font,
+				style.fontWeight ?? base.fontWeight,
+				style.fontStyle ?? base.fontStyle,
+			);
 	}
 
 	for (const item of items) {
 		appendItem(item);
-		if (item.type === 'group')
-			item.children.forEach(appendItem);
+		if (item.type === 'group') item.children.forEach(appendItem);
 	}
 	return requests;
 }
@@ -188,22 +187,17 @@ function appendSharedGraphicItemReferences(
 ) {
 	function append(item: GraphicItemConfig | GraphicGroupChildConfig, ownerSlot: string) {
 		appendGraphicFontReferences(references, item, ownerSlot);
-		if (item.type !== 'media' || !item.asset)
-			return;
-		references.push(mediaScreenGraphicAssetReference(
-			item.asset,
-			item.mediaKind,
-			`${ownerSlot}.asset`,
-		));
+		if (item.type !== 'media' || !item.asset) return;
+		references.push(
+			mediaScreenGraphicAssetReference(item.asset, item.mediaKind, `${ownerSlot}.asset`),
+		);
 	}
 
 	for (const item of items) {
 		const slot = `${slotPrefix}.${item.id}`;
 		append(item, slot);
-		if (item.type !== 'group')
-			continue;
-		for (const child of item.children)
-			append(child, `${slot}.children.${child.id}`);
+		if (item.type !== 'group') continue;
+		for (const child of item.children) append(child, `${slot}.children.${child.id}`);
 	}
 }
 
@@ -227,13 +221,14 @@ function appendGraphicInputReferences(
 	slotPrefix: string,
 ) {
 	for (const declaration of inputs ?? []) {
-		if (declaration.type !== 'media' || !declaration.default)
-			continue;
-		references.push(mediaScreenGraphicAssetReference(
-			declaration.default,
-			declaration.mediaKind,
-			`${slotPrefix}.${declaration.key}.default`,
-		));
+		if (declaration.type !== 'media' || !declaration.default) continue;
+		references.push(
+			mediaScreenGraphicAssetReference(
+				declaration.default,
+				declaration.mediaKind,
+				`${slotPrefix}.${declaration.key}.default`,
+			),
+		);
 	}
 }
 
@@ -261,9 +256,23 @@ export function featureMatchLayoutGraphicAssetReferences(
 ): ScreenGraphicAssetReference[] {
 	const references: ScreenGraphicAssetReference[] = [];
 	// A disabled Frame video still publishes, as a disabled Background Layer does.
-	appendScreenMediaSourceReference(references, layout.frame.backgroundImage, 'image', 'layout.frame.backgroundImage');
-	appendScreenMediaSourceReference(references, layout.frame.mediaBackground?.source, 'silent-video', 'layout.frame.mediaBackground.source');
-	appendSharedGraphicItemReferences(references, layout.composition.items, 'layout.composition.items');
+	appendScreenMediaSourceReference(
+		references,
+		layout.frame.backgroundImage,
+		'image',
+		'layout.frame.backgroundImage',
+	);
+	appendScreenMediaSourceReference(
+		references,
+		layout.frame.mediaBackground?.source,
+		'silent-video',
+		'layout.frame.mediaBackground.source',
+	);
+	appendSharedGraphicItemReferences(
+		references,
+		layout.composition.items,
+		'layout.composition.items',
+	);
 	appendGraphicInputReferences(references, layout.composition.inputs, 'layout.composition.inputs');
 
 	return references;
@@ -330,7 +339,10 @@ export function plainModeBackgroundLayerGraphicAssetReferences(
 	mode: BackgroundLayersCapableMode,
 	config: BackgroundLayersModeConfig | undefined,
 ): ScreenGraphicAssetReference[] {
-	return backgroundLayerStackGraphicAssetReferences(config?.backgroundLayers, `${mode}.backgroundLayers`);
+	return backgroundLayerStackGraphicAssetReferences(
+		config?.backgroundLayers,
+		`${mode}.backgroundLayers`,
+	);
 }
 
 function backgroundLayerStackGraphicAssetReferences(
@@ -342,14 +354,11 @@ function backgroundLayerStackGraphicAssetReferences(
 	// A stored configuration is legitimately partial — PATCH writes fragments —
 	// so a config with no stack yet publishes nothing rather than throwing.
 	for (const layer of layers ?? []) {
-		if (layer.type !== 'image' && layer.type !== 'video')
-			continue;
+		if (layer.type !== 'image' && layer.type !== 'video') continue;
 		appendScreenMediaSourceReference(
 			references,
 			layer.source,
-			layer.type === 'video'
-				? 'silent-video'
-				: 'image',
+			layer.type === 'video' ? 'silent-video' : 'image',
 			`${slotRoot}.${layer.id}.source`,
 		);
 	}
@@ -375,9 +384,12 @@ export const GRAPHIC_ASSET_REFERENCING_SCREEN_MODES = [
 	...BACKGROUND_LAYERS_CAPABLE_MODES,
 ] as const;
 
-export type GraphicAssetReferencingScreenMode = typeof GRAPHIC_ASSET_REFERENCING_SCREEN_MODES[number];
+export type GraphicAssetReferencingScreenMode =
+	(typeof GRAPHIC_ASSET_REFERENCING_SCREEN_MODES)[number];
 
-export function isGraphicAssetReferencingScreenMode(mode: string): mode is GraphicAssetReferencingScreenMode {
+export function isGraphicAssetReferencingScreenMode(
+	mode: string,
+): mode is GraphicAssetReferencingScreenMode {
 	return (GRAPHIC_ASSET_REFERENCING_SCREEN_MODES as readonly string[]).includes(mode);
 }
 
@@ -401,10 +413,12 @@ export function isGraphicAssetReferencingScreenMode(mode: string): mode is Graph
 export const GRAPHIC_ASSET_REFERENCE_SLOT_PREFIXES = {
 	'feature-match-overlay': 'layout.',
 	'broadcast-graphics': 'graphics.',
-	'background': 'layers.',
-	...Object.fromEntries(BACKGROUND_LAYERS_CAPABLE_MODES.map(mode => [mode, `${mode}.backgroundLayers.`])) as {
+	background: 'layers.',
+	...(Object.fromEntries(
+		BACKGROUND_LAYERS_CAPABLE_MODES.map((mode) => [mode, `${mode}.backgroundLayers.`]),
+	) as {
 		[M in BackgroundLayersCapableMode]: `${M}.backgroundLayers.`;
-	},
+	}),
 } as const satisfies Record<GraphicAssetReferencingScreenMode, string>;
 
 export function graphicAssetReferenceSlotPrefix(mode: GraphicAssetReferencingScreenMode): string {
@@ -451,7 +465,7 @@ export function screenOutputResolvableSlotPrefixes(
 export type GraphicAssetReferencingScreenModeConfigs = {
 	'feature-match-overlay'?: Partial<FeatureMatchOverlayModeConfig>;
 	'broadcast-graphics'?: Partial<BroadcastGraphicsModeConfig>;
-	'background'?: Partial<BackgroundModeConfig>;
+	background?: Partial<BackgroundModeConfig>;
 } & {
 	[Mode in BackgroundLayersCapableMode]?: Partial<BackgroundLayersModeConfig>;
 };
@@ -494,15 +508,11 @@ export function sameScreenGraphicAssetReferences(
 	left: readonly ScreenGraphicAssetReference[],
 	right: readonly ScreenGraphicAssetReference[],
 ): boolean {
-	if (left.length !== right.length)
-		return false;
-	const rightBySlot = new Map(
-		right.map(item => [item.ownerSlot, item] as const),
-	);
+	if (left.length !== right.length) return false;
+	const rightBySlot = new Map(right.map((item) => [item.ownerSlot, item] as const));
 	return left.every((item) => {
 		const other = rightBySlot.get(item.ownerSlot);
-		return item.kind === other?.kind
-			&& sameGraphicAssetReference(item.reference, other.reference);
+		return item.kind === other?.kind && sameGraphicAssetReference(item.reference, other.reference);
 	});
 }
 

@@ -1,5 +1,8 @@
 import type { BroadcastDeckListCanonicalDocument } from '~~/server/modules/broadcast-deck-list-import';
-import type { CreateBroadcastDeckListInput, UpdateBroadcastDeckListInput } from '~~/shared/types/broadcastDeckList';
+import type {
+	CreateBroadcastDeckListInput,
+	UpdateBroadcastDeckListInput,
+} from '~~/shared/types/broadcastDeckList';
 import {
 	BroadcastDeckListCardProviderError,
 	createBroadcastDeckListScryfallResolver,
@@ -12,7 +15,10 @@ import {
 } from '~~/server/services/broadcastDeckList';
 import { eventCardNameOverrideService } from '~~/server/services/eventCardNameOverride';
 import { holdsBroadcastDeckLists } from '~~/shared/config/games';
-import { BROADCAST_DECK_LIST_IN_USE, BROADCAST_DECK_LIST_REVISION_CONFLICT } from '~~/shared/types/broadcastDeckList';
+import {
+	BROADCAST_DECK_LIST_IN_USE,
+	BROADCAST_DECK_LIST_REVISION_CONFLICT,
+} from '~~/shared/types/broadcastDeckList';
 
 interface BaseWriteParams {
 	eventId: number;
@@ -54,12 +60,12 @@ function nameConflictError(error: BroadcastDeckListNameConflict) {
 }
 
 function inUseError(screens: Array<{ id: number; name: string }>) {
-	const names = screens.map(screen => screen.name).join(', ');
+	const names = screens.map((screen) => screen.name).join(', ');
 	return createError({
 		statusCode: 409,
-		message: `Broadcast Deck List is selected by ${screens.length === 1
-			? 'Screen'
-			: 'Screens'}: ${names}`,
+		message: `Broadcast Deck List is selected by ${
+			screens.length === 1 ? 'Screen' : 'Screens'
+		}: ${names}`,
 		data: { code: BROADCAST_DECK_LIST_IN_USE, screens },
 	});
 }
@@ -71,20 +77,23 @@ export function broadcastDeckListWriteModule() {
 	/** Only a Two-Player Magic: The Gathering Event holds Broadcast Deck Lists (ADR-0087). */
 	async function requireEventHoldsBroadcastDeckLists(eventId: number) {
 		const event = await lists.findEventKindFields(eventId);
-		if (event === undefined)
-			throw createError({ statusCode: 404, message: 'Event not found' });
+		if (event === undefined) throw createError({ statusCode: 404, message: 'Event not found' });
 		if (!holdsBroadcastDeckLists(event)) {
 			throw createError({
 				statusCode: 400,
-				message: 'Broadcast Deck Lists are only supported for Two-Player Magic: The Gathering Events',
+				message:
+					'Broadcast Deck Lists are only supported for Two-Player Magic: The Gathering Events',
 			});
 		}
 	}
 
-	async function resolveSource(eventId: number, sourceText: string): Promise<BroadcastDeckListCanonicalDocument> {
+	async function resolveSource(
+		eventId: number,
+		sourceText: string,
+	): Promise<BroadcastDeckListCanonicalDocument> {
 		const overrides = await eventCardNameOverrideService().listResolvedByEvent(eventId);
 		const resolver = createBroadcastDeckListScryfallResolver({
-			overrides: overrides.map(override => ({
+			overrides: overrides.map((override) => ({
 				inputName: override.inputName,
 				inputSetCode: override.inputSetCode,
 				canonicalName: override.card.name,
@@ -100,8 +109,7 @@ export function broadcastDeckListWriteModule() {
 				});
 			}
 			return result.document;
-		}
-		catch (error) {
+		} catch (error) {
 			if (error instanceof BroadcastDeckListCardProviderError) {
 				throw createError({ cause: error });
 			}
@@ -119,33 +127,31 @@ export function broadcastDeckListWriteModule() {
 				entity: created,
 				originConnectionId,
 			});
-		}
-		catch (error) {
-			if (error instanceof BroadcastDeckListNameConflict)
-				throw nameConflictError(error);
+		} catch (error) {
+			if (error instanceof BroadcastDeckListNameConflict) throw nameConflictError(error);
 			throw error;
 		}
 	}
 
-	async function updateBroadcastDeckList({ eventId, listId, input, originConnectionId }: UpdateParams) {
+	async function updateBroadcastDeckList({
+		eventId,
+		listId,
+		input,
+		originConnectionId,
+	}: UpdateParams) {
 		await requireEventHoldsBroadcastDeckLists(eventId);
-		const document = input.sourceText === undefined
-			? undefined
-			: await resolveSource(eventId, input.sourceText);
+		const document =
+			input.sourceText === undefined ? undefined : await resolveSource(eventId, input.sourceText);
 		let result;
 		try {
 			result = await lists.update(listId, eventId, input, document);
-		}
-		catch (error) {
-			if (error instanceof BroadcastDeckListNameConflict)
-				throw nameConflictError(error);
+		} catch (error) {
+			if (error instanceof BroadcastDeckListNameConflict) throw nameConflictError(error);
 			throw error;
 		}
 
-		if (result.status === 'missing')
-			throw missingListError();
-		if (result.status === 'conflict')
-			throw revisionConflictError(result.current);
+		if (result.status === 'missing') throw missingListError();
+		if (result.status === 'conflict') throw revisionConflictError(result.current);
 
 		return await publication.broadcastDeckListUpdated({
 			eventId,
@@ -154,15 +160,17 @@ export function broadcastDeckListWriteModule() {
 		});
 	}
 
-	async function deleteBroadcastDeckList({ eventId, listId, expectedRevision, originConnectionId }: DeleteParams) {
+	async function deleteBroadcastDeckList({
+		eventId,
+		listId,
+		expectedRevision,
+		originConnectionId,
+	}: DeleteParams) {
 		await requireEventHoldsBroadcastDeckLists(eventId);
 		const result = await lists.remove(listId, eventId, expectedRevision);
-		if (result.status === 'missing')
-			throw missingListError();
-		if (result.status === 'in-use')
-			throw inUseError(result.screens);
-		if (result.status === 'conflict')
-			throw revisionConflictError(result.current);
+		if (result.status === 'missing') throw missingListError();
+		if (result.status === 'in-use') throw inUseError(result.screens);
+		if (result.status === 'conflict') throw revisionConflictError(result.current);
 
 		await publication.broadcastDeckListDeleted({ eventId, id: listId, originConnectionId });
 		return { success: true as const };

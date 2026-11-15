@@ -37,7 +37,8 @@ describe('metagameArchetypeTable', () => {
 					...nuxtUiStubs,
 					UTable: {
 						props: ['data'],
-						template: '<table><tr v-for="row in data" :key="row.id"><td>{{ row.name }}</td></tr></table>',
+						template:
+							'<table><tr v-for="row in data" :key="row.id"><td>{{ row.name }}</td></tr></table>',
 					},
 					MtgManaColorDisplay: true,
 					MetagameMetaShareBar: true,
@@ -53,27 +54,8 @@ describe('metagameArchetypeTable', () => {
 
 	// An OP Metagame reads participation only, and an OP Archetype is a Leader's colours (ADR-0074).
 	it.each([
-		[
-			'mtg',
-			[
-				'name',
-				'count',
-				'metaShare',
-				'winRate',
-				'avgPosition',
-				'conversionRate',
-				'actions',
-			],
-		],
-		[
-			'op',
-			[
-				'name',
-				'count',
-				'metaShare',
-				'actions',
-			],
-		],
+		['mtg', ['name', 'count', 'metaShare', 'winRate', 'avgPosition', 'conversionRate', 'actions']],
+		['op', ['name', 'count', 'metaShare', 'actions']],
 	] as const)('on a %s Event, shows the columns %j', (game, columns) => {
 		const wrapper = mount(ArchetypeTable, {
 			props: {
@@ -101,7 +83,8 @@ describe('metagameArchetypeTable', () => {
 					...nuxtUiStubs,
 					UTable: {
 						props: ['data', 'columns'],
-						template: '<table><tr><th v-for="column in columns" :key="column.accessorKey ?? column.id" data-testid="column">{{ column.accessorKey ?? column.id }}</th></tr><tr v-for="row in data" :key="row.id"><td><slot name="name-cell" :row="{ original: row }" /></td></tr></table>',
+						template:
+							'<table><tr><th v-for="column in columns" :key="column.accessorKey ?? column.id" data-testid="column">{{ column.accessorKey ?? column.id }}</th></tr><tr v-for="row in data" :key="row.id"><td><slot name="name-cell" :row="{ original: row }" /></td></tr></table>',
 					},
 					MtgManaColorDisplay: { template: '<span data-testid="mana" />' },
 					MetagameMetaShareBar: true,
@@ -109,8 +92,12 @@ describe('metagameArchetypeTable', () => {
 			},
 		});
 
-		expect(wrapper.findAll('[data-testid="column"]').map(column => column.text())).toEqual(columns);
+		expect(wrapper.findAll('[data-testid="column"]').map((column) => column.text())).toEqual(
+			columns,
+		);
 		if (game === 'op')
-			expect(wrapper.findAll('[data-op-color]').map(pip => pip.attributes('data-op-color'))).toEqual(['Red', 'Green']);
+			expect(
+				wrapper.findAll('[data-op-color]').map((pip) => pip.attributes('data-op-color')),
+			).toEqual(['Red', 'Green']);
 	});
 });

@@ -39,7 +39,7 @@ export const GRAPHIC_FONT_IDS = [
 	'system-mono',
 ] as const;
 
-export type GraphicApplicationFontId = typeof GRAPHIC_FONT_IDS[number];
+export type GraphicApplicationFontId = (typeof GRAPHIC_FONT_IDS)[number];
 
 /**
  * The application font a newly authored Graphic Item gets, and the one an author
@@ -92,7 +92,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'inter',
 		label: 'Inter',
-		stack: '\'Inter\', sans-serif',
+		stack: "'Inter', sans-serif",
 		category: 'sans',
 		package: {
 			name: '@fontsource/inter',
@@ -104,7 +104,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'ibm-plex-sans',
 		label: 'IBM Plex Sans',
-		stack: '\'IBM Plex Sans\', sans-serif',
+		stack: "'IBM Plex Sans', sans-serif",
 		category: 'sans',
 		package: {
 			name: '@fontsource/ibm-plex-sans',
@@ -116,7 +116,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'arimo',
 		label: 'Arimo',
-		stack: '\'Arimo\', sans-serif',
+		stack: "'Arimo', sans-serif",
 		category: 'sans',
 		package: {
 			name: '@fontsource/arimo',
@@ -128,7 +128,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'roboto',
 		label: 'Roboto',
-		stack: '\'Roboto\', sans-serif',
+		stack: "'Roboto', sans-serif",
 		category: 'sans',
 		package: {
 			name: '@fontsource/roboto',
@@ -140,7 +140,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'poppins',
 		label: 'Poppins',
-		stack: '\'Poppins\', sans-serif',
+		stack: "'Poppins', sans-serif",
 		category: 'sans',
 		package: {
 			name: '@fontsource/poppins',
@@ -152,7 +152,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'open-sans',
 		label: 'Open Sans',
-		stack: '\'Open Sans\', sans-serif',
+		stack: "'Open Sans', sans-serif",
 		category: 'sans',
 		package: {
 			name: '@fontsource/open-sans',
@@ -164,7 +164,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'montserrat',
 		label: 'Montserrat',
-		stack: '\'Montserrat\', sans-serif',
+		stack: "'Montserrat', sans-serif",
 		category: 'sans',
 		package: {
 			name: '@fontsource/montserrat',
@@ -176,7 +176,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'saira-condensed',
 		label: 'Saira Condensed',
-		stack: '\'Saira Condensed\', \'IBM Plex Sans\', \'Inter\', sans-serif',
+		stack: "'Saira Condensed', 'IBM Plex Sans', 'Inter', sans-serif",
 		category: 'condensed',
 		package: {
 			name: '@fontsource/saira-condensed',
@@ -188,7 +188,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'roboto-condensed',
 		label: 'Roboto Condensed',
-		stack: '\'Roboto Condensed\', sans-serif',
+		stack: "'Roboto Condensed', sans-serif",
 		category: 'condensed',
 		package: {
 			name: '@fontsource/roboto-condensed',
@@ -200,7 +200,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'oswald',
 		label: 'Oswald',
-		stack: '\'Oswald\', sans-serif',
+		stack: "'Oswald', sans-serif",
 		category: 'condensed',
 		package: {
 			name: '@fontsource/oswald',
@@ -212,7 +212,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'barlow-condensed',
 		label: 'Barlow Condensed',
-		stack: '\'Barlow Condensed\', sans-serif',
+		stack: "'Barlow Condensed', sans-serif",
 		category: 'condensed',
 		package: {
 			name: '@fontsource/barlow-condensed',
@@ -224,7 +224,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'source-serif-4',
 		label: 'Source Serif 4',
-		stack: '\'Source Serif 4\', serif',
+		stack: "'Source Serif 4', serif",
 		category: 'serif',
 		package: {
 			name: '@fontsource/source-serif-4',
@@ -236,7 +236,7 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'jetbrains-mono',
 		label: 'JetBrains Mono',
-		stack: '\'JetBrains Mono\', monospace',
+		stack: "'JetBrains Mono', monospace",
 		category: 'mono',
 		package: {
 			name: '@fontsource/jetbrains-mono',
@@ -248,38 +248,36 @@ const GRAPHIC_FONT_ENTRIES: readonly Omit<GraphicFontDefinition, 'cssFamily'>[] 
 	{
 		id: 'system-sans',
 		label: 'System Sans',
-		stack: 'system-ui, -apple-system, BlinkMacSystemFont, \'Segoe UI\', sans-serif',
+		stack: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 		category: 'system',
 	},
 	{
 		id: 'system-serif',
 		label: 'System Serif',
-		stack: 'Georgia, \'Times New Roman\', serif',
+		stack: "Georgia, 'Times New Roman', serif",
 		category: 'system',
 	},
 	{
 		id: 'system-mono',
 		label: 'System Mono',
-		stack: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \'Liberation Mono\', monospace',
+		stack: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
 		category: 'system',
 	},
 ];
 
 /** Each entry with the custom property `app/assets/css/main.css` declares for it, derived so no entry can name another's. */
-export const GRAPHIC_FONTS: readonly GraphicFontDefinition[] = GRAPHIC_FONT_ENTRIES.map(font => ({
+export const GRAPHIC_FONTS: readonly GraphicFontDefinition[] = GRAPHIC_FONT_ENTRIES.map((font) => ({
 	...font,
 	cssFamily: `var(--font-${font.id})`,
 }));
 
 const GRAPHIC_FONT_MAP = new Map<GraphicApplicationFontId, GraphicFontDefinition>(
-	GRAPHIC_FONTS.map(font => [font.id, font]),
+	GRAPHIC_FONTS.map((font) => [font.id, font]),
 );
 
 export function getGraphicFontDefinition(value: string | null | undefined) {
 	const normalized = value?.trim();
-	return normalized
-		? GRAPHIC_FONT_MAP.get(normalized as GraphicApplicationFontId)
-		: undefined;
+	return normalized ? GRAPHIC_FONT_MAP.get(normalized as GraphicApplicationFontId) : undefined;
 }
 
 export interface GraphicFontOptionGroup {
@@ -301,15 +299,16 @@ const GRAPHIC_FONT_CATEGORY_LABELS: readonly { category: GraphicFontCategory; la
  * the family it paints its own name in. Derived from the registry so a font added
  * there appears here, in registry order within its category; an empty category has no group.
  */
-export const GRAPHIC_FONT_OPTION_GROUPS: readonly GraphicFontOptionGroup[] = GRAPHIC_FONT_CATEGORY_LABELS
-	.map(({ category, label }) => ({
+export const GRAPHIC_FONT_OPTION_GROUPS: readonly GraphicFontOptionGroup[] =
+	GRAPHIC_FONT_CATEGORY_LABELS.map(({ category, label }) => ({
 		category,
 		label,
-		options: GRAPHIC_FONTS
-			.filter(font => font.category === category)
-			.map(font => ({ label: font.label, value: font.id, cssFamily: font.cssFamily })),
-	}))
-	.filter(group => group.options.length > 0);
+		options: GRAPHIC_FONTS.filter((font) => font.category === category).map((font) => ({
+			label: font.label,
+			value: font.id,
+			cssFamily: font.cssFamily,
+		})),
+	})).filter((group) => group.options.length > 0);
 
 /**
  * The CSS family name one exact font Graphic Asset Revision is loaded under.
@@ -336,10 +335,10 @@ export function graphicAssetFontFaceFamily(reference: GraphicAssetReference) {
  * and saying so is what makes the Template Package's `application-font`
  * capability check meaningful.
  */
-export function resolveGraphicFontFamily(font: GraphicFontSelection | undefined): string | undefined {
-	if (!font)
-		return undefined;
-	if (font.kind === 'asset')
-		return `"${graphicAssetFontFaceFamily(font.reference)}"`;
+export function resolveGraphicFontFamily(
+	font: GraphicFontSelection | undefined,
+): string | undefined {
+	if (!font) return undefined;
+	if (font.kind === 'asset') return `"${graphicAssetFontFaceFamily(font.reference)}"`;
 	return getGraphicFontDefinition(font.fontId)?.cssFamily;
 }

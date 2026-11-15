@@ -14,7 +14,6 @@ export function isRoundComplete(
 	matches: readonly RoundCompletionMatch[],
 	nextRoundHasPairings: boolean,
 ): boolean {
-	if (nextRoundHasPairings)
-		return true;
-	return matches.length > 0 && matches.every(match => match.hasResult || match.isBye);
+	if (nextRoundHasPairings) return true;
+	return matches.length > 0 && matches.every((match) => match.hasResult || match.isBye);
 }

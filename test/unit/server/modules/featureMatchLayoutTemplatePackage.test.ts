@@ -142,7 +142,7 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 
 		const report = reportOf(await preflight(await createLibrary('receiver'), archive));
 
-		expect(report.issues.filter(issue => issue.severity === 'error')).toEqual([]);
+		expect(report.issues.filter((issue) => issue.severity === 'error')).toEqual([]);
 		expect(report.outcome).not.toBe('rejected');
 		expect(report.templateRevision).toBe(4);
 	});
@@ -161,16 +161,21 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 		const parts = readTemplatePackageParts(archive);
 		parts.template = { ...(parts.template as Record<string, unknown>), featureMatchId: 12 };
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+		const report = reportOf(
+			await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+		);
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'invalid-template-document')).toBe(true);
+		expect(report.issues.some((issue) => issue.code === 'invalid-template-document')).toBe(true);
 	});
 
 	it('refuses a Template document that is not a Feature Match Layout, before anything is installed', async () => {
 		const { archive } = await exportedPackage();
 		const parts = readTemplatePackageParts(archive);
-		parts.template = { ...(parts.template as Record<string, unknown>), sources: 'not a list of sources' };
+		parts.template = {
+			...(parts.template as Record<string, unknown>),
+			sources: 'not a list of sources',
+		};
 
 		const receiver = await createLibrary('receiver');
 		const before = await receiver.listGraphicAssets({});
@@ -178,12 +183,14 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 		const report = reportOf(operation);
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'invalid-template-document')).toBe(true);
+		expect(report.issues.some((issue) => issue.code === 'invalid-template-document')).toBe(true);
 		// Terminal, because nothing about the package changes on a retry.
-		expect(report.issues.every(issue => !issue.retryable)).toBe(true);
+		expect(report.issues.every((issue) => !issue.retryable)).toBe(true);
 		expect(operation.stage).toBe('failed');
 		const after = await receiver.listGraphicAssets({});
-		expect(after.map((asset: GraphicAsset) => asset.id)).toEqual(before.map((asset: GraphicAsset) => asset.id));
+		expect(after.map((asset: GraphicAsset) => asset.id)).toEqual(
+			before.map((asset: GraphicAsset) => asset.id),
+		);
 	});
 
 	// A Broadcast Graphic is a valid document a `.sklayout` receiver must still refuse.
@@ -192,32 +199,42 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 		const parts = readTemplatePackageParts(archive);
 		parts.template = maximalBroadcastGraphicDocument({ asset: itemAsset });
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+		const report = reportOf(
+			await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+		);
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'invalid-template-document')).toBe(true);
+		expect(report.issues.some((issue) => issue.code === 'invalid-template-document')).toBe(true);
 	});
 
 	// Host vocabulary terms are declared, and a receiver checks them before installing.
 	it('declares every host vocabulary term the layout uses', async () => {
 		const { archive } = await exportedPackage();
-		const declared = readTemplatePackageParts(archive).manifest.applicationCapabilities.filter(declaration => declaration.capability === 'host-vocabulary').map(declaration => declaration.identity);
+		const declared = readTemplatePackageParts(archive)
+			.manifest.applicationCapabilities.filter(
+				(declaration) => declaration.capability === 'host-vocabulary',
+			)
+			.map((declaration) => declaration.identity);
 
-		expect(declared).toEqual(expect.arrayContaining([
-			featureMatchLayoutVocabularyIdentity('source-role', 'main'),
-			featureMatchLayoutVocabularyIdentity('source-role', 'player1'),
-			featureMatchLayoutVocabularyIdentity('source-role', 'player2'),
-			featureMatchLayoutVocabularyIdentity('token', 'player1Name'),
-			featureMatchLayoutVocabularyIdentity('token', 'player1Record'),
-			featureMatchLayoutVocabularyIdentity('token', 'player1Deck'),
-		]));
+		expect(declared).toEqual(
+			expect.arrayContaining([
+				featureMatchLayoutVocabularyIdentity('source-role', 'main'),
+				featureMatchLayoutVocabularyIdentity('source-role', 'player1'),
+				featureMatchLayoutVocabularyIdentity('source-role', 'player2'),
+				featureMatchLayoutVocabularyIdentity('token', 'player1Name'),
+				featureMatchLayoutVocabularyIdentity('token', 'player1Record'),
+				featureMatchLayoutVocabularyIdentity('token', 'player1Deck'),
+			]),
+		);
 	});
 
 	// An unknown `{placeholder}` renders as an absence, so it travels undeclared.
 	it('carries a placeholder that names no token without claiming a capability for it', async () => {
 		const { archive } = await exportedPackage();
 		const parts = readTemplatePackageParts(archive);
-		const declared = parts.manifest.applicationCapabilities.map(declaration => declaration.identity);
+		const declared = parts.manifest.applicationCapabilities.map(
+			(declaration) => declaration.identity,
+		);
 
 		// It travelled…
 		expect(JSON.stringify(parts.template)).toContain('{player1name}');
@@ -242,25 +259,34 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 			},
 		];
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+		const report = reportOf(
+			await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+		);
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'unsupported-application-capability')).toBe(true);
+		expect(report.issues.some((issue) => issue.code === 'unsupported-application-capability')).toBe(
+			true,
+		);
 	});
 
 	it('refuses a host vocabulary at a format version this installation does not implement', async () => {
 		const { archive } = await exportedPackage();
 		const parts = readTemplatePackageParts(archive);
 		parts.manifest.applicationCapabilities = parts.manifest.applicationCapabilities.map(
-			declaration => declaration.capability === 'host-vocabulary'
-				? { ...declaration, configurationVersion: 2 }
-				: declaration,
+			(declaration) =>
+				declaration.capability === 'host-vocabulary'
+					? { ...declaration, configurationVersion: 2 }
+					: declaration,
 		);
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+		const report = reportOf(
+			await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+		);
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'unsupported-application-capability')).toBe(true);
+		expect(report.issues.some((issue) => issue.code === 'unsupported-application-capability')).toBe(
+			true,
+		);
 	});
 
 	// An undeclared term was never version-checked, so it is refused.
@@ -268,32 +294,44 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 		const { archive } = await exportedPackage();
 		const parts = readTemplatePackageParts(archive);
 		parts.manifest.applicationCapabilities = parts.manifest.applicationCapabilities.filter(
-			declaration => declaration.identity !== featureMatchLayoutVocabularyIdentity('token', 'player1Name'),
+			(declaration) =>
+				declaration.identity !== featureMatchLayoutVocabularyIdentity('token', 'player1Name'),
 		);
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+		const report = reportOf(
+			await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+		);
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue =>
-			issue.code === 'unsupported-application-capability'
-			&& issue.message.includes('never declares'),
-		)).toBe(true);
+		expect(
+			report.issues.some(
+				(issue) =>
+					issue.code === 'unsupported-application-capability' &&
+					issue.message.includes('never declares'),
+			),
+		).toBe(true);
 	});
 
 	it('declares the host-owned Source Item Definition alongside the shared ones', async () => {
 		const { archive } = await exportedPackage();
-		const declared = readTemplatePackageParts(archive).manifest.applicationCapabilities.filter(declaration => declaration.capability === 'graphic-item-definition').map(declaration => declaration.identity);
+		const declared = readTemplatePackageParts(archive)
+			.manifest.applicationCapabilities.filter(
+				(declaration) => declaration.capability === 'graphic-item-definition',
+			)
+			.map((declaration) => declaration.identity);
 
-		expect(declared).toEqual(expect.arrayContaining([
-			'source',
-			'group',
-			'text',
-			'media',
-			'clock',
-			'player-life',
-			'game-wins',
-			'deck-list',
-		]));
+		expect(declared).toEqual(
+			expect.arrayContaining([
+				'source',
+				'group',
+				'text',
+				'media',
+				'clock',
+				'player-life',
+				'game-wins',
+				'deck-list',
+			]),
+		);
 	});
 
 	// The Deck List Item is declared and version-pinned through the generic walk.
@@ -301,12 +339,14 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 		const { archive } = await exportedPackage();
 		const declarations = readTemplatePackageParts(archive).manifest.applicationCapabilities;
 
-		expect(declarations).toContainEqual(expect.objectContaining({
-			capability: 'graphic-item-definition',
-			identity: 'deck-list',
-			configurationVersion: 1,
-			requiredBy: ['composition.items.sideboard.type'],
-		}));
+		expect(declarations).toContainEqual(
+			expect.objectContaining({
+				capability: 'graphic-item-definition',
+				identity: 'deck-list',
+				configurationVersion: 1,
+				requiredBy: ['composition.items.sideboard.type'],
+			}),
+		);
 	});
 
 	// The document's own Source Roles are checked, not only the manifest's declarations.
@@ -317,16 +357,16 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 		parts.template = {
 			...layout,
 			sources: layout.sources.map((source, index) =>
-				index === 0
-					? { ...source, sourceRole: 'commentator-desk' }
-					: source,
+				index === 0 ? { ...source, sourceRole: 'commentator-desk' } : source,
 			),
 		};
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+		const report = reportOf(
+			await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+		);
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'invalid-template-document')).toBe(true);
+		expect(report.issues.some((issue) => issue.code === 'invalid-template-document')).toBe(true);
 	});
 
 	// A `.skgraphic` naming a layout host term is a package no exporter could write.
@@ -351,9 +391,10 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 		});
 
 		expect(result.outcome).toBe('rejected');
-		if (result.outcome !== 'rejected')
-			return;
-		expect(result.report.issues.some(issue => issue.code === 'unsupported-application-capability')).toBe(true);
+		if (result.outcome !== 'rejected') return;
+		expect(
+			result.report.issues.some((issue) => issue.code === 'unsupported-application-capability'),
+		).toBe(true);
 	});
 
 	// Both kinds share one application font registry (#138).
@@ -371,16 +412,8 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 		// A font the registry does have is accepted for both kinds…
 		const knownFont = { ...unknownFont, identity: GRAPHIC_FONT_IDS[0] };
 		for (const [packageKind, document, requirements] of [
-			[
-				'skgraphic',
-				graphic,
-				broadcastGraphicTemplatePackageRequirements(graphic),
-			],
-			[
-				'sklayout',
-				layout,
-				featureMatchLayoutTemplatePackageRequirements(layout),
-			],
+			['skgraphic', graphic, broadcastGraphicTemplatePackageRequirements(graphic)],
+			['sklayout', layout, featureMatchLayoutTemplatePackageRequirements(layout)],
 		] as const) {
 			const accepted = await sender.exportTemplatePackage({
 				packageKind,
@@ -398,12 +431,14 @@ describe('a `.sklayout` Template Package crossing an installation boundary', () 
 				capabilities: [...requirements.capabilities, unknownFont],
 			});
 			expect(refused.outcome).toBe('rejected');
-			if (refused.outcome !== 'rejected')
-				continue;
-			expect(refused.report.issues.some(issue =>
-				issue.code === 'unsupported-application-capability'
-				&& issue.message.includes('a-font-no-installation-ships'),
-			)).toBe(true);
+			if (refused.outcome !== 'rejected') continue;
+			expect(
+				refused.report.issues.some(
+					(issue) =>
+						issue.code === 'unsupported-application-capability' &&
+						issue.message.includes('a-font-no-installation-ships'),
+				),
+			).toBe(true);
 		}
 	});
 });
@@ -414,9 +449,11 @@ describe('a `.sklayout` Template Package and the Theme', () => {
 		const { document, archive } = await exportedPackage();
 		const travelled = readTemplatePackageParts(archive).template as FeatureMatchLayoutConfig;
 
-		expect(travelled.composition.items.map(item => item.themeBindings)).toEqual(document.composition.items.map(item => item.themeBindings));
-		expect(travelled.composition.items.some(item => item.themeBindings)).toBe(true);
+		expect(travelled.composition.items.map((item) => item.themeBindings)).toEqual(
+			document.composition.items.map((item) => item.themeBindings),
+		);
+		expect(travelled.composition.items.some((item) => item.themeBindings)).toBe(true);
 		const report = reportOf(await preflight(await createLibrary('theme-receiver'), archive));
-		expect(report.issues.filter(issue => issue.severity === 'error')).toEqual([]);
+		expect(report.issues.filter((issue) => issue.severity === 'error')).toEqual([]);
 	});
 });

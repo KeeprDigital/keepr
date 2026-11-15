@@ -1,7 +1,7 @@
 import { ServiceConfigurationError } from './errors';
 
-const SECRET_NOT_TEXT_CLAUSE
-	= 'does not read as text (a value of only digits, true/false or JSON is read as another type), so it cannot be checked: set one that contains a letter';
+const SECRET_NOT_TEXT_CLAUSE =
+	'does not read as text (a value of only digits, true/false or JSON is read as another type), so it cannot be checked: set one that contains a letter';
 
 /**
  * The fewest characters a shared secret a caller presents in a header may have.
@@ -33,19 +33,20 @@ export function readConfiguredSecret(
 	settingName: string,
 	options: { minLength?: number } = {},
 ): string {
-	if (value === undefined || value === null)
-		return '';
+	if (value === undefined || value === null) return '';
 	if (typeof value !== 'string')
 		throw new ServiceConfigurationError(settingName, SECRET_NOT_TEXT_CLAUSE);
 
 	const secret = value.trim();
 	if (secret && options.minLength !== undefined && secret.length < options.minLength) {
-		console.error(JSON.stringify({
-			event: 'configured_secret_too_short',
-			setting: settingName,
-			minLength: options.minLength,
-			message: `${settingName} is shorter than ${options.minLength} characters, so it is treated as not configured: generate one with \`openssl rand -base64 32\``,
-		}));
+		console.error(
+			JSON.stringify({
+				event: 'configured_secret_too_short',
+				setting: settingName,
+				minLength: options.minLength,
+				message: `${settingName} is shorter than ${options.minLength} characters, so it is treated as not configured: generate one with \`openssl rand -base64 32\``,
+			}),
+		);
 		return '';
 	}
 	return secret;

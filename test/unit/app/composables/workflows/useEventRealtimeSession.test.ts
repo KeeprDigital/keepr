@@ -22,7 +22,8 @@ describe('useEventRealtimeSession', () => {
 	let disposeCallback: (() => void) | undefined;
 
 	async function startSession() {
-		const { useEventRealtimeSession } = await import('~~/app/composables/workflows/useEventRealtimeSession');
+		const { useEventRealtimeSession } =
+			await import('~~/app/composables/workflows/useEventRealtimeSession');
 		useEventRealtimeSession();
 	}
 
@@ -54,14 +55,19 @@ describe('useEventRealtimeSession', () => {
 		])
 			vi.stubGlobal(name, () => ({}));
 		vi.stubGlobal('useReconnectResync', vi.fn());
-		vi.stubGlobal('watch', (source: () => unknown, callback: (value: never) => void, options?: { immediate?: boolean }) => {
-			// The token wait's watcher, which reads a boolean; only the room's is followed.
-			if (typeof source() === 'boolean')
-				return;
-			watchCallback = callback as typeof watchCallback;
-			if (options?.immediate)
-				callback(source() as never);
-		});
+		vi.stubGlobal(
+			'watch',
+			(
+				source: () => unknown,
+				callback: (value: never) => void,
+				options?: { immediate?: boolean },
+			) => {
+				// The token wait's watcher, which reads a boolean; only the room's is followed.
+				if (typeof source() === 'boolean') return;
+				watchCallback = callback as typeof watchCallback;
+				if (options?.immediate) callback(source() as never);
+			},
+		);
 		vi.stubGlobal('onScopeDispose', (callback: () => void) => {
 			disposeCallback = callback;
 		});
@@ -80,7 +86,8 @@ describe('useEventRealtimeSession', () => {
 	});
 
 	it('starts once per scope, and again after disposal', async () => {
-		const { useEventRealtimeSession } = await import('~~/app/composables/workflows/useEventRealtimeSession');
+		const { useEventRealtimeSession } =
+			await import('~~/app/composables/workflows/useEventRealtimeSession');
 
 		useEventRealtimeSession();
 		useEventRealtimeSession();

@@ -25,8 +25,7 @@ export function jsonPayloadByteLength(value: unknown): number {
 }
 
 export function assertJsonPayloadSize(value: unknown, maxBytes: number, label: string): void {
-	if (jsonPayloadByteLength(value) <= maxBytes)
-		return;
+	if (jsonPayloadByteLength(value) <= maxBytes) return;
 
 	payloadTooLarge(maxBytes, label);
 }
@@ -36,14 +35,16 @@ export function assertJsonPayloadSize(value: unknown, maxBytes: number, label: s
  * Raw transfer routes should consume this stream instead of H3's original
  * Request body, which the limiting transform has already locked.
  */
-export function getBoundedRequestBodyStream(event: H3Event): ReadableStream<Uint8Array> | undefined {
+export function getBoundedRequestBodyStream(
+	event: H3Event,
+): ReadableStream<Uint8Array> | undefined {
 	const boundedRequestBody = event._requestBody;
-	return boundedRequestBody
-		&& typeof boundedRequestBody === 'object'
-		&& 'getReader' in boundedRequestBody
-		&& typeof boundedRequestBody.getReader === 'function'
-		? boundedRequestBody as ReadableStream<Uint8Array>
-		: getRequestWebStream(event) as ReadableStream<Uint8Array> | undefined;
+	return boundedRequestBody &&
+		typeof boundedRequestBody === 'object' &&
+		'getReader' in boundedRequestBody &&
+		typeof boundedRequestBody.getReader === 'function'
+		? (boundedRequestBody as ReadableStream<Uint8Array>)
+		: (getRequestWebStream(event) as ReadableStream<Uint8Array> | undefined);
 }
 
 /**
@@ -63,8 +64,7 @@ export async function readJsonPayloadLimited(
 	const contentLength = getRequestHeader(event, 'content-length');
 	if (contentLength && /^\d+$/.test(contentLength.trim())) {
 		const declaredBytes = Number(contentLength);
-		if (declaredBytes > maxBytes)
-			payloadTooLarge(maxBytes, label);
+		if (declaredBytes > maxBytes) payloadTooLarge(maxBytes, label);
 	}
 
 	const stream = getBoundedRequestBodyStream(event);
@@ -80,23 +80,20 @@ export async function readJsonPayloadLimited(
 	try {
 		while (true) {
 			const { done, value } = await reader.read();
-			if (done)
-				break;
+			if (done) break;
 
 			totalBytes += value.byteLength;
 			if (totalBytes > maxBytes) {
 				try {
 					await reader.cancel();
-				}
-				catch {
+				} catch {
 					// The 413 is authoritative; transport cleanup is best-effort.
 				}
 				payloadTooLarge(maxBytes, label);
 			}
 			chunks.push(value);
 		}
-	}
-	finally {
+	} finally {
 		reader.releaseLock();
 	}
 
@@ -110,15 +107,13 @@ export async function readJsonPayloadLimited(
 	let text: string;
 	try {
 		text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-	}
-	catch {
+	} catch {
 		return invalidJsonPayload(label);
 	}
 
 	try {
 		return JSON.parse(text) as unknown;
-	}
-	catch {
+	} catch {
 		return invalidJsonPayload(label);
 	}
 }

@@ -18,7 +18,9 @@ import {
 const profiles = [twitch, youtube, x];
 
 /** Rotating through all three profiles, on YouTube since 1,000,000. */
-function state(overrides: Partial<SocialProfileProjectionLiveState> = {}): SocialProfileProjectionLiveState {
+function state(
+	overrides: Partial<SocialProfileProjectionLiveState> = {},
+): SocialProfileProjectionLiveState {
 	return profileState({
 		acceptedProfiles: profiles,
 		currentNetwork: 'youtube',
@@ -29,10 +31,11 @@ function state(overrides: Partial<SocialProfileProjectionLiveState> = {}): Socia
 
 describe('social profile rotation projection', () => {
 	it('reserves a transition before giving every target its complete authored dwell', () => {
-		const at = (now: number) => projectSocialProfileRotation(state(), profileDeclaration, {
-			onAir: true,
-			now,
-		});
+		const at = (now: number) =>
+			projectSocialProfileRotation(state(), profileDeclaration, {
+				onAir: true,
+				now,
+			});
 
 		expect(at(1_000_000)).toMatchObject({
 			current: profiles[1],
@@ -78,17 +81,21 @@ describe('social profile rotation projection', () => {
 			},
 		};
 
-		const taken = applyBroadcastGraphicsCommand(initial, {
-			type: 'Take',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 2_000_000,
-			socialProfileProjections: [profileDeclaration],
-			resolveSocialProfileProjections: () => ({
-				profile: { acceptedProfiles: profiles },
-			}),
-		});
+		const taken = applyBroadcastGraphicsCommand(
+			initial,
+			{
+				type: 'Take',
+				payload: { graphicId: 'lower' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 2_000_000,
+				socialProfileProjections: [profileDeclaration],
+				resolveSocialProfileProjections: () => ({
+					profile: { acceptedProfiles: profiles },
+				}),
+			},
+		);
 
 		expect(taken.socialProfileProjections?.lower?.profile).toEqual({
 			acceptedProfiles: profiles,
@@ -100,48 +107,61 @@ describe('social profile rotation projection', () => {
 	});
 
 	it('re-anchors a manual selection before automatic advancement resumes', () => {
-		const selected = applyBroadcastGraphicsCommand({
-			...createInitialBroadcastGraphicsLiveState(),
-			socialProfileProjections: {
-				lower: {
-					profile: state(),
+		const selected = applyBroadcastGraphicsCommand(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				socialProfileProjections: {
+					lower: {
+						profile: state(),
+					},
 				},
 			},
-		}, {
-			type: 'Select Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile', network: 'twitch' },
-		}, {
-			inputs: [],
-			acceptedAt: 3_000_000,
-			socialProfileProjections: [profileDeclaration],
-		});
+			{
+				type: 'Select Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile', network: 'twitch' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 3_000_000,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 
 		expect(selected.socialProfileProjections?.lower?.profile).toMatchObject({
 			currentNetwork: 'twitch',
 			manualNetwork: 'twitch',
 			rotationAnchor: { network: 'twitch', anchoredAt: 3_000_000 },
 		});
-		expect(projectSocialProfileRotation(
-			selected.socialProfileProjections!.lower!.profile!,
-			profileDeclaration,
-			{ onAir: true, now: 3_007_999 },
-		).current).toEqual(profiles[0]);
+		expect(
+			projectSocialProfileRotation(
+				selected.socialProfileProjections!.lower!.profile!,
+				profileDeclaration,
+				{ onAir: true, now: 3_007_999 },
+			).current,
+		).toEqual(profiles[0]);
 	});
 
 	it.each([
 		['Next Social Profile', 'twitch'],
 		['Previous Social Profile', 'youtube'],
 	] as const)('%s steps from the automatically projected profile', (type, expectedNetwork) => {
-		const stepped = applyBroadcastGraphicsCommand(onAirWith({
-			profile: state(),
-		}, { startedAt: 999_000 }), {
-			type,
-			payload: { graphicId: 'lower', projectionKey: 'profile' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_100,
-			socialProfileProjections: [profileDeclaration],
-		});
+		const stepped = applyBroadcastGraphicsCommand(
+			onAirWith(
+				{
+					profile: state(),
+				},
+				{ startedAt: 999_000 },
+			),
+			{
+				type,
+				payload: { graphicId: 'lower', projectionKey: 'profile' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_100,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 
 		expect(stepped.socialProfileProjections?.lower?.profile).toMatchObject({
 			currentNetwork: expectedNetwork,
@@ -173,29 +193,34 @@ describe('social profile rotation projection', () => {
 			'This Social Profile Projection has no accepted state',
 		],
 	] as const)('preserves the unavailable message for $type', (command, message) => {
-		expect(() => applyBroadcastGraphicsCommand(
-			createInitialBroadcastGraphicsLiveState(),
-			command,
-			{
+		expect(() =>
+			applyBroadcastGraphicsCommand(createInitialBroadcastGraphicsLiveState(), command, {
 				inputs: [],
 				acceptedAt: 1_000_000,
 				socialProfileProjections: [profileDeclaration],
-			},
-		)).toThrowError(message);
+			}),
+		).toThrowError(message);
 	});
 
 	it('freezes the authoritative projected profile when Automatic is disabled and re-anchors it on resume', () => {
-		const onAir = onAirWith({
-			profile: state(),
-		}, { startedAt: 999_000 });
-		const paused = applyBroadcastGraphicsCommand(onAir, {
-			type: 'Set Social Profile Automatic',
-			payload: { graphicId: 'lower', projectionKey: 'profile', automatic: false },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_100,
-			socialProfileProjections: [profileDeclaration],
-		});
+		const onAir = onAirWith(
+			{
+				profile: state(),
+			},
+			{ startedAt: 999_000 },
+		);
+		const paused = applyBroadcastGraphicsCommand(
+			onAir,
+			{
+				type: 'Set Social Profile Automatic',
+				payload: { graphicId: 'lower', projectionKey: 'profile', automatic: false },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_100,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 
 		expect(paused.socialProfileProjections?.lower?.profile).toMatchObject({
 			currentNetwork: 'x',
@@ -204,14 +229,18 @@ describe('social profile rotation projection', () => {
 		});
 		expect(paused.socialProfileProjections?.lower?.profile).not.toHaveProperty('manualNetwork');
 
-		const resumed = applyBroadcastGraphicsCommand(paused, {
-			type: 'Set Social Profile Automatic',
-			payload: { graphicId: 'lower', projectionKey: 'profile', automatic: true },
-		}, {
-			inputs: [],
-			acceptedAt: 1_020_000,
-			socialProfileProjections: [profileDeclaration],
-		});
+		const resumed = applyBroadcastGraphicsCommand(
+			paused,
+			{
+				type: 'Set Social Profile Automatic',
+				payload: { graphicId: 'lower', projectionKey: 'profile', automatic: true },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_020_000,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 
 		expect(resumed.socialProfileProjections?.lower?.profile).toMatchObject({
 			currentNetwork: 'x',
@@ -222,35 +251,48 @@ describe('social profile rotation projection', () => {
 	});
 
 	it('holds the projected profile when hidden and gives the retained manual profile a fresh dwell on the next Take', () => {
-		const onAir = onAirWith({
-			profile: state(),
-		}, { startedAt: 999_000 });
-		const hidden = applyBroadcastGraphicsCommand(onAir, {
-			type: 'Out',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_100,
-			socialProfileProjections: [profileDeclaration],
-		});
+		const onAir = onAirWith(
+			{
+				profile: state(),
+			},
+			{ startedAt: 999_000 },
+		);
+		const hidden = applyBroadcastGraphicsCommand(
+			onAir,
+			{
+				type: 'Out',
+				payload: { graphicId: 'lower' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_100,
+				socialProfileProjections: [profileDeclaration],
+			},
+		);
 
-		expect(projectSocialProfileRotation(
-			hidden.socialProfileProjections!.lower!.profile!,
-			profileDeclaration,
-			{ onAir: false, now: 9_000_000 },
-		).current).toEqual(profiles[2]);
+		expect(
+			projectSocialProfileRotation(
+				hidden.socialProfileProjections!.lower!.profile!,
+				profileDeclaration,
+				{ onAir: false, now: 9_000_000 },
+			).current,
+		).toEqual(profiles[2]);
 
-		const shown = applyBroadcastGraphicsCommand(hidden, {
-			type: 'Take',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 9_000_000,
-			socialProfileProjections: [profileDeclaration],
-			resolveSocialProfileProjections: () => ({
-				profile: { acceptedProfiles: profiles },
-			}),
-		});
+		const shown = applyBroadcastGraphicsCommand(
+			hidden,
+			{
+				type: 'Take',
+				payload: { graphicId: 'lower' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 9_000_000,
+				socialProfileProjections: [profileDeclaration],
+				resolveSocialProfileProjections: () => ({
+					profile: { acceptedProfiles: profiles },
+				}),
+			},
+		);
 		expect(shown.socialProfileProjections?.lower?.profile).toMatchObject({
 			currentNetwork: 'twitch',
 			rotationAnchor: { network: 'twitch', anchoredAt: 9_000_000 },
@@ -259,87 +301,114 @@ describe('social profile rotation projection', () => {
 	});
 
 	it('freezes an on-air rotation when a Graphic Channel Take hides its member', () => {
-		const onAir = onAirWith({
-			profile: state(),
-		}, { startedAt: 999_000 });
-		const replaced = applyBroadcastGraphicsCommand(onAir, {
-			type: 'Take',
-			payload: { graphicId: 'replacement' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_008_100,
-			channel: {
-				handoff: 'overlap',
-				members: [
-					{
-						graphicId: 'lower',
-						socialProfileProjections: [profileDeclaration],
-					},
-					{ graphicId: 'replacement' },
-				],
+		const onAir = onAirWith(
+			{
+				profile: state(),
 			},
-		});
+			{ startedAt: 999_000 },
+		);
+		const replaced = applyBroadcastGraphicsCommand(
+			onAir,
+			{
+				type: 'Take',
+				payload: { graphicId: 'replacement' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_008_100,
+				channel: {
+					handoff: 'overlap',
+					members: [
+						{
+							graphicId: 'lower',
+							socialProfileProjections: [profileDeclaration],
+						},
+						{ graphicId: 'replacement' },
+					],
+				},
+			},
+		);
 
 		expect(replaced.playout.lower?.onAir).toBe(false);
-		expect(projectSocialProfileRotation(
-			replaced.socialProfileProjections!.lower!.profile!,
-			profileDeclaration,
-			{ onAir: false, now: 9_000_000 },
-		).current).toEqual(profiles[2]);
+		expect(
+			projectSocialProfileRotation(
+				replaced.socialProfileProjections!.lower!.profile!,
+				profileDeclaration,
+				{ onAir: false, now: 9_000_000 },
+			).current,
+		).toEqual(profiles[2]);
 	});
 
-	it('starts a queued Graphic Channel member\'s full dwell when it reaches program', () => {
-		const queued = applyBroadcastGraphicsCommand({
-			...createInitialBroadcastGraphicsLiveState(),
-			playout: {
-				outgoing: { onAir: true, effectiveStartedAt: 900_000, cut: false },
+	it("starts a queued Graphic Channel member's full dwell when it reaches program", () => {
+		const queued = applyBroadcastGraphicsCommand(
+			{
+				...createInitialBroadcastGraphicsLiveState(),
+				playout: {
+					outgoing: { onAir: true, effectiveStartedAt: 900_000, cut: false },
+				},
 			},
-		}, {
-			type: 'Take',
-			payload: { graphicId: 'lower' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_000_000,
-			socialProfileProjections: [profileDeclaration],
-			resolveSocialProfileProjections: () => ({
-				profile: { acceptedProfiles: profiles },
-			}),
-			channel: {
-				handoff: 'out-then-in',
-				members: [
-					{
-						graphicId: 'outgoing',
-						durations: { exit: 10_000 },
-					},
-					{ graphicId: 'lower' },
-				],
+			{
+				type: 'Take',
+				payload: { graphicId: 'lower' },
 			},
-		});
+			{
+				inputs: [],
+				acceptedAt: 1_000_000,
+				socialProfileProjections: [profileDeclaration],
+				resolveSocialProfileProjections: () => ({
+					profile: { acceptedProfiles: profiles },
+				}),
+				channel: {
+					handoff: 'out-then-in',
+					members: [
+						{
+							graphicId: 'outgoing',
+							durations: { exit: 10_000 },
+						},
+						{ graphicId: 'lower' },
+					],
+				},
+			},
+		);
 		const projection = queued.socialProfileProjections!.lower!.profile!;
 
 		expect(queued.playout.lower?.effectiveStartedAt).toBe(1_010_000);
-		expect(projectSocialProfileRotation(projection, profileDeclaration, {
-			onAir: true,
-			now: 1_010_000,
-		})).toMatchObject({
+		expect(
+			projectSocialProfileRotation(projection, profileDeclaration, {
+				onAir: true,
+				now: 1_010_000,
+			}),
+		).toMatchObject({
 			current: profiles[0],
 			phase: { kind: 'dwell', elapsedMs: 0, durationMs: 8_000 },
 		});
 	});
 
 	it('holds a bounded static presentation for zero or one profile and without trustworthy synchronized time', () => {
-		expect(projectSocialProfileRotation(state({ acceptedProfiles: [], currentNetwork: undefined }), profileDeclaration, {
-			onAir: true,
-			now: 9_000_000,
-		})).toEqual({
+		expect(
+			projectSocialProfileRotation(
+				state({ acceptedProfiles: [], currentNetwork: undefined }),
+				profileDeclaration,
+				{
+					onAir: true,
+					now: 9_000_000,
+				},
+			),
+		).toEqual({
 			phase: { kind: 'static', elapsedMs: 0, durationMs: null },
 		});
 
-		expect(projectSocialProfileRotation(state({
-			acceptedProfiles: [profiles[0]!],
-			currentNetwork: 'twitch',
-			rotationAnchor: { network: 'twitch', anchoredAt: 1_000_000 },
-		}), profileDeclaration, { onAir: true, now: 9_000_000 })).toEqual({
+		expect(
+			projectSocialProfileRotation(
+				state({
+					acceptedProfiles: [profiles[0]!],
+					currentNetwork: 'twitch',
+					rotationAnchor: { network: 'twitch', anchoredAt: 1_000_000 },
+				}),
+				profileDeclaration,
+				{ onAir: true, now: 9_000_000 },
+			),
+		).toEqual({
 			current: profiles[0],
 			phase: { kind: 'static', elapsedMs: 0, durationMs: null },
 		});
@@ -351,9 +420,12 @@ describe('social profile rotation projection', () => {
 	});
 
 	it('projects long elapsed intervals in constant bounded state and identically for redundant renderers', () => {
-		const now = 1_000_000 + 8_000 + (1_000_000 * 8_250) + 125;
+		const now = 1_000_000 + 8_000 + 1_000_000 * 8_250 + 125;
 		const first = projectSocialProfileRotation(state(), profileDeclaration, { onAir: true, now });
-		const redundant = projectSocialProfileRotation(structuredClone(state()), profileDeclaration, { onAir: true, now });
+		const redundant = projectSocialProfileRotation(structuredClone(state()), profileDeclaration, {
+			onAir: true,
+			now,
+		});
 
 		expect(first).toEqual({
 			outgoing: profiles[2],
@@ -372,24 +444,23 @@ describe('social profile rotation projection', () => {
 		});
 	});
 
-	it.each([
-		'crossfade',
-		'slide-left',
-		'slide-right',
-		'slide-up',
-		'slide-down',
-	] as const)('uses the same reserved authoritative schedule for %s', (transition) => {
-		const transitioned = { ...profileDeclaration, transition };
+	it.each(['crossfade', 'slide-left', 'slide-right', 'slide-up', 'slide-down'] as const)(
+		'uses the same reserved authoritative schedule for %s',
+		(transition) => {
+			const transitioned = { ...profileDeclaration, transition };
 
-		expect(projectSocialProfileRotation(state(), transitioned, {
-			onAir: true,
-			now: 1_008_125,
-		})).toEqual({
-			outgoing: profiles[1],
-			current: profiles[2],
-			phase: { kind: 'transition', elapsedMs: 125, durationMs: 250 },
-		});
-	});
+			expect(
+				projectSocialProfileRotation(state(), transitioned, {
+					onAir: true,
+					now: 1_008_125,
+				}),
+			).toEqual({
+				outgoing: profiles[1],
+				current: profiles[2],
+				phase: { kind: 'transition', elapsedMs: 125, durationMs: 250 },
+			});
+		},
+	);
 
 	it('treats an absent Automatic field as enabled and rejoins the projected phase after clock recovery', () => {
 		const legacy = state({ automatic: undefined });
@@ -398,10 +469,12 @@ describe('social profile rotation projection', () => {
 			current: profiles[1],
 			phase: { kind: 'static', elapsedMs: 0, durationMs: null },
 		});
-		expect(projectSocialProfileRotation(legacy, profileDeclaration, {
-			onAir: true,
-			now: 1_008_125,
-		})).toEqual({
+		expect(
+			projectSocialProfileRotation(legacy, profileDeclaration, {
+				onAir: true,
+				now: 1_008_125,
+			}),
+		).toEqual({
 			outgoing: profiles[1],
 			current: profiles[2],
 			phase: { kind: 'transition', elapsedMs: 125, durationMs: 250 },
@@ -409,9 +482,12 @@ describe('social profile rotation projection', () => {
 	});
 
 	it('supplies the same clock-projected correlated values through the renderer seam', () => {
-		const liveState = onAirWith({
-			profile: state(),
-		}, { startedAt: 999_000 });
+		const liveState = onAirWith(
+			{
+				profile: state(),
+			},
+			{ startedAt: 999_000 },
+		);
 		const graphic = {
 			id: 'lower',
 			socialProfileProjections: [profileDeclaration],

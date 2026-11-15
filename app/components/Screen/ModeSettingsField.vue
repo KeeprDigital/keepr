@@ -10,7 +10,12 @@ import ScreenPlayerField from '~/components/Screen/PlayerField.vue';
 import ScreenPlayerListField from '~/components/Screen/PlayerListField.vue';
 import ScreenRoundField from '~/components/Screen/RoundField.vue';
 import ScreenTalentField from '~/components/Screen/TalentField.vue';
-import { fieldDescription, fieldLabel, fieldOptions, fieldValue } from '~/modules/screen-mode/settingsPage';
+import {
+	fieldDescription,
+	fieldLabel,
+	fieldOptions,
+	fieldValue,
+} from '~/modules/screen-mode/settingsPage';
 
 /**
  * One contract field's control on a generic settings page (#1094): a plain
@@ -36,7 +41,12 @@ const emit = defineEmits<{
  * beyond its label, description, value and none label. A Deck Source is a
  * union, so it has a picker of its own.
  */
-const ID_PICKERS: Partial<Record<EventReferenceKind, { picker: Component; withEvent: boolean; props?: Record<string, unknown> }>> = {
+const ID_PICKERS: Partial<
+	Record<
+		EventReferenceKind,
+		{ picker: Component; withEvent: boolean; props?: Record<string, unknown> }
+	>
+> = {
 	round: { picker: ScreenRoundField, withEvent: true },
 	player: { picker: ScreenPlayerField, withEvent: true },
 	playerList: { picker: ScreenPlayerListField, withEvent: true },
@@ -60,46 +70,37 @@ const value = computed(() => fieldValue(props.entry));
 const items = computed(() => fieldOptions(props.entry));
 /** A plain control's value; its contract's schema fixes which of these it is. */
 const plainValue = computed(() => value.value as string | number | boolean | null | undefined);
-const referenceId = computed(() => typeof value.value === 'number'
-	? value.value
-	: null);
+const referenceId = computed(() => (typeof value.value === 'number' ? value.value : null));
 const nullLabel = computed(() => props.entry.field.placeholder);
-const setValue = computed(() => Array.isArray(value.value)
-	? value.value as string[]
-	: []);
-const setItems = computed(() => items.value
-	?? (props.entry.field.values ?? []).map(option => ({ label: option, value: option })));
-const idPicker = computed(() => props.entry.field.reference === undefined
-	? undefined
-	: ID_PICKERS[props.entry.field.reference]);
+const setValue = computed(() => (Array.isArray(value.value) ? (value.value as string[]) : []));
+const setItems = computed(
+	() =>
+		items.value ??
+		(props.entry.field.values ?? []).map((option) => ({ label: option, value: option })),
+);
+const idPicker = computed(() =>
+	props.entry.field.reference === undefined ? undefined : ID_PICKERS[props.entry.field.reference],
+);
 const idPickerProps = computed(() => ({
 	label: field.value.label,
 	description: description.value,
 	modelValue: referenceId.value,
-	...(nullLabel.value
-		? { nullLabel: nullLabel.value }
-		: {}),
-	...(idPicker.value?.withEvent
-		? { eventId: props.eventId }
-		: {}),
+	...(nullLabel.value ? { nullLabel: nullLabel.value } : {}),
+	...(idPicker.value?.withEvent ? { eventId: props.eventId } : {}),
 	...idPicker.value?.props,
 }));
 /** A bound following the Screen's content, in displayed units. */
 const contentMax = computed(() => {
 	const max = props.entry.field.maxFor?.(props.entry.context);
-	return max === undefined
-		? undefined
-		: max / props.entry.field.displayScale;
+	return max === undefined ? undefined : max / props.entry.field.displayScale;
 });
 
 /** A set with `value` checked or not, in the order its values run, whatever order they were picked in. */
 function toggledSet(value: string, checked: boolean): string[] {
 	const chosen = new Set(setValue.value);
-	if (checked)
-		chosen.add(value);
-	else
-		chosen.delete(value);
-	return setItems.value.map(item => item.value).filter(item => chosen.has(item));
+	if (checked) chosen.add(value);
+	else chosen.delete(value);
+	return setItems.value.map((item) => item.value).filter((item) => chosen.has(item));
 }
 </script>
 

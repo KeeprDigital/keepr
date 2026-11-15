@@ -51,18 +51,14 @@ const FIELDS = [
 
 /** The value every selected layer has on an axis, or nothing when they differ. */
 function shared(axis: keyof GraphicRect): number | undefined {
-	const values = new Set(props.rects.map(rect => rect[axis]));
-	return values.size === 1
-		? [...values][0]
-		: undefined;
+	const values = new Set(props.rects.map((rect) => rect[axis]));
+	return values.size === 1 ? [...values][0] : undefined;
 }
 
 function update(axis: keyof GraphicRect, value: number | null | undefined) {
-	if (typeof value !== 'number' || !Number.isFinite(value))
-		return;
-	const pixels = axis === 'width' || axis === 'height'
-		? Math.max(1, Math.round(value))
-		: Math.round(value);
+	if (typeof value !== 'number' || !Number.isFinite(value)) return;
+	const pixels =
+		axis === 'width' || axis === 'height' ? Math.max(1, Math.round(value)) : Math.round(value);
 	emit('update', { [axis]: pixels });
 }
 </script>
@@ -75,9 +71,7 @@ function update(axis: keyof GraphicRect, value: number | null | undefined) {
 				<p class="truncate text-sm font-semibold" data-testid="multi-layer-count">
 					{{ rects.length }} layers
 				</p>
-				<p class="mt-0.5 text-xs text-muted">
-					Editing a field sets it on every selected layer.
-				</p>
+				<p class="mt-0.5 text-xs text-muted">Editing a field sets it on every selected layer.</p>
 			</div>
 		</div>
 

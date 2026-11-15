@@ -68,7 +68,9 @@ function working(state: BroadcastGraphicsLiveState): Record<string, GraphicInput
 
 describe('broadcastGraphicsFieldOwnership', () => {
 	it('accepts an edit whose claim matches the value it replaces', () => {
-		const state = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', { value: 'Unnamed' });
+		const state = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', {
+			value: 'Unnamed',
+		});
 
 		expect(working(state).name).toBe('Ava Reed');
 	});
@@ -77,38 +79,47 @@ describe('broadcastGraphicsFieldOwnership', () => {
 		// Nothing is stored for an input nobody has edited, so the value an operator
 		// sees — and therefore claims — is the declaration's default rather than
 		// absence. Comparing against absence would refuse every first edit.
-		const state = setInput(createInitialBroadcastGraphicsLiveState(), 'title', 'Champion', { value: '' });
+		const state = setInput(createInitialBroadcastGraphicsLiveState(), 'title', 'Champion', {
+			value: '',
+		});
 
 		expect(working(state).title).toBe('Champion');
 	});
 
 	it('rejects an edit whose claim names a value another operator has replaced', () => {
-		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', { value: 'Unnamed' });
+		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', {
+			value: 'Unnamed',
+		});
 
 		// The second operator's Live Control still showed the default when they typed.
-		expect(() => setInput(first, 'name', 'Ben Cole', { value: 'Unnamed' }))
-			.toThrow(BroadcastGraphicsCommandRejection);
+		expect(() => setInput(first, 'name', 'Ben Cole', { value: 'Unnamed' })).toThrow(
+			BroadcastGraphicsCommandRejection,
+		);
 	});
 
 	it('leaves the first operator’s value in place when it rejects the stale edit', () => {
-		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', { value: 'Unnamed' });
+		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', {
+			value: 'Unnamed',
+		});
 
 		try {
 			setInput(first, 'name', 'Ben Cole', { value: 'Unnamed' });
-		}
-		catch {}
+		} catch {}
 
 		expect(working(first).name).toBe('Ava Reed');
 	});
 
 	it('names the refusal so the operator can be told what happened', () => {
-		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', { value: 'Unnamed' });
+		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', {
+			value: 'Unnamed',
+		});
 
-		expect(() => setInput(first, 'name', 'Ben Cole', { value: 'Unnamed' }))
-			.toThrow(expect.objectContaining({
+		expect(() => setInput(first, 'name', 'Ben Cole', { value: 'Unnamed' })).toThrow(
+			expect.objectContaining({
 				code: 'stale-input-edit',
 				inputKeys: ['name'],
-			}));
+			}),
+		);
 	});
 
 	it('merges concurrent edits to different Graphic Inputs', () => {
@@ -124,7 +135,9 @@ describe('broadcastGraphicsFieldOwnership', () => {
 	it('accepts a restatement of the same value as the same edit rather than a conflict', () => {
 		// Two operators typing the same value have nothing to disagree about; refusing
 		// here would report a conflict where no value is being overwritten.
-		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', { value: 'Unnamed' });
+		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', {
+			value: 'Unnamed',
+		});
 		const again = setInput(first, 'name', 'Ava Reed', { value: 'Ava Reed' });
 
 		expect(working(again).name).toBe('Ava Reed');
@@ -134,7 +147,9 @@ describe('broadcastGraphicsFieldOwnership', () => {
 		// An edit that states no belief about the prior value is claiming nothing, so
 		// there is nothing to refuse. Live Control always states one; this keeps the
 		// guard a property of the claim rather than of the route.
-		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', { value: 'Unnamed' });
+		const first = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', {
+			value: 'Unnamed',
+		});
 		const overwritten = setInput(first, 'name', 'Ben Cole');
 
 		expect(working(overwritten).name).toBe('Ben Cole');
@@ -165,29 +180,33 @@ describe('broadcastGraphicsFieldOwnership', () => {
 
 		// A structurally equal reference is the same claim even though it is a
 		// different object, which is exactly what arrives over the wire.
-		expect(() => applyBroadcastGraphicsCommand(
-			state,
-			{
-				type: 'Set Input',
-				payload: {
-					graphicId: GRAPHIC,
-					inputKey: 'badge',
-					value: null,
-					basedOn: {
-						value: { assetId: 'asset-1', revisionId: 'rev-1' },
+		expect(() =>
+			applyBroadcastGraphicsCommand(
+				state,
+				{
+					type: 'Set Input',
+					payload: {
+						graphicId: GRAPHIC,
+						inputKey: 'badge',
+						value: null,
+						basedOn: {
+							value: { assetId: 'asset-1', revisionId: 'rev-1' },
+						},
 					},
+				} as BroadcastGraphicsCommandInput,
+				{
+					inputs: [media],
+					acceptedAt: T0,
 				},
-			} as BroadcastGraphicsCommandInput,
-			{
-				inputs: [media],
-				acceptedAt: T0,
-			},
-		)).not.toThrow();
+			),
+		).not.toThrow();
 	});
 
 	describe('what Live Control shows about a refused edit', () => {
 		it('marks a Graphic Input superseded so a refreshed field is not read as the operator’s own', () => {
-			const state = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', { value: 'Unnamed' });
+			const state = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', {
+				value: 'Unnamed',
+			});
 
 			const [name, title] = graphicInputTraces(
 				state,
@@ -204,7 +223,9 @@ describe('broadcastGraphicsFieldOwnership', () => {
 		});
 
 		it('still reports the authoritative value behind a superseded field', () => {
-			const state = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', { value: 'Unnamed' });
+			const state = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed', {
+				value: 'Unnamed',
+			});
 
 			const [name] = graphicInputTraces(
 				state,
@@ -222,13 +243,11 @@ describe('broadcastGraphicsFieldOwnership', () => {
 		});
 
 		it('reports no Graphic Input as superseded when none was refused', () => {
-			const traces = graphicInputTraces(
-				createInitialBroadcastGraphicsLiveState(),
-				GRAPHIC,
-				{ inputs: DECLARATIONS },
-			);
+			const traces = graphicInputTraces(createInitialBroadcastGraphicsLiveState(), GRAPHIC, {
+				inputs: DECLARATIONS,
+			});
 
-			expect(traces.every(trace => trace.status !== 'superseded')).toBe(true);
+			expect(traces.every((trace) => trace.status !== 'superseded')).toBe(true);
 		});
 	});
 });

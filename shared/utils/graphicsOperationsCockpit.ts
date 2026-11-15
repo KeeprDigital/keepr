@@ -61,10 +61,9 @@ export const GRAPHICS_STORAGE_HEALTH_ALERT_CODES = [
 	'graphics-staged-input-unreleased',
 ] as const;
 
-export type GraphicsStorageHealthAlertSeverity
-	= typeof GRAPHICS_STORAGE_HEALTH_ALERT_SEVERITIES[number];
-export type GraphicsStorageHealthAlertCode
-	= typeof GRAPHICS_STORAGE_HEALTH_ALERT_CODES[number];
+export type GraphicsStorageHealthAlertSeverity =
+	(typeof GRAPHICS_STORAGE_HEALTH_ALERT_SEVERITIES)[number];
+export type GraphicsStorageHealthAlertCode = (typeof GRAPHICS_STORAGE_HEALTH_ALERT_CODES)[number];
 
 /**
  * Which alerts outlive the reading that reported them.
@@ -83,29 +82,28 @@ const PERSISTENT_ALERT_CODES = new Set<GraphicsStorageHealthAlertCode>([
 	'graphics-staged-input-unreleased',
 ]);
 
-export function graphicsStorageHealthAlertPersists(
-	code: GraphicsStorageHealthAlertCode,
-): boolean {
+export function graphicsStorageHealthAlertPersists(code: GraphicsStorageHealthAlertCode): boolean {
 	return PERSISTENT_ALERT_CODES.has(code);
 }
 
-const ALERT_SEVERITIES: Record<GraphicsStorageHealthAlertCode, GraphicsStorageHealthAlertSeverity> = {
-	'catalogue-unavailable': 'critical',
-	'canonical-byte-store-unavailable': 'critical',
-	'staging-byte-store-unavailable': 'warning',
-	'critical-integrity-incident-open': 'critical',
-	'unavailable-content-open': 'warning',
-	'missing-derivative-open': 'warning',
-	'unexpected-object-quarantined': 'info',
-	'canonical-quota-full': 'critical',
-	'canonical-quota-critical': 'critical',
-	'canonical-quota-warning': 'warning',
-	'staging-allowance-exhausted': 'warning',
-	'graphics-ingestion-input-expired': 'warning',
-	// Warning, never escalating by age (#358): the queue carries the detail,
-	// and critical stays reserved for integrity.
-	'graphics-staged-input-unreleased': 'warning',
-};
+const ALERT_SEVERITIES: Record<GraphicsStorageHealthAlertCode, GraphicsStorageHealthAlertSeverity> =
+	{
+		'catalogue-unavailable': 'critical',
+		'canonical-byte-store-unavailable': 'critical',
+		'staging-byte-store-unavailable': 'warning',
+		'critical-integrity-incident-open': 'critical',
+		'unavailable-content-open': 'warning',
+		'missing-derivative-open': 'warning',
+		'unexpected-object-quarantined': 'info',
+		'canonical-quota-full': 'critical',
+		'canonical-quota-critical': 'critical',
+		'canonical-quota-warning': 'warning',
+		'staging-allowance-exhausted': 'warning',
+		'graphics-ingestion-input-expired': 'warning',
+		// Warning, never escalating by age (#358): the queue carries the detail,
+		// and critical stays reserved for integrity.
+		'graphics-staged-input-unreleased': 'warning',
+	};
 
 export function graphicsStorageHealthAlertSeverity(
 	code: GraphicsStorageHealthAlertCode,
@@ -120,12 +118,13 @@ export function graphicsStorageHealthAlertSeverity(
  * the only kind that is critical. Unexpected objects are being held safely in
  * Content Quarantine and are rechecked before any byte is deleted.
  */
-const DISCREPANCY_SEVERITIES: Record<GraphicsDiscrepancyKind, GraphicsStorageHealthAlertSeverity> = {
-	'critical-integrity-incident': 'critical',
-	'unavailable-content': 'warning',
-	'missing-derivative': 'warning',
-	'unexpected-object': 'info',
-};
+const DISCREPANCY_SEVERITIES: Record<GraphicsDiscrepancyKind, GraphicsStorageHealthAlertSeverity> =
+	{
+		'critical-integrity-incident': 'critical',
+		'unavailable-content': 'warning',
+		'missing-derivative': 'warning',
+		'unexpected-object': 'info',
+	};
 
 export function graphicsDiscrepancySeverity(
 	kind: GraphicsDiscrepancyKind,
@@ -143,9 +142,7 @@ export function graphicsDiscrepancySeverity(
  * alert row into open disagreement — "Degraded" above a row reporting nothing
  * worse than info — and teach an administrator to stop trusting the headline.
  */
-export function graphicsDiscrepancyDegradesCondition(
-	kind: GraphicsDiscrepancyKind,
-): boolean {
+export function graphicsDiscrepancyDegradesCondition(kind: GraphicsDiscrepancyKind): boolean {
 	return graphicsDiscrepancySeverity(kind) !== 'info';
 }
 
@@ -180,8 +177,7 @@ export const GRAPHICS_INGESTION_ATTENTION_STATES = [
 	'active',
 ] as const;
 
-export type GraphicsIngestionAttentionState
-	= typeof GRAPHICS_INGESTION_ATTENTION_STATES[number];
+export type GraphicsIngestionAttentionState = (typeof GRAPHICS_INGESTION_ATTENTION_STATES)[number];
 
 /** Stages in which a Graphics Ingestion Operation is waiting on its author. */
 export const GRAPHICS_INGESTION_AWAITING_CONFIRMATION_STAGES = [
@@ -221,7 +217,7 @@ export const GRAPHICS_RECENT_OUTCOME_GROUPS = [
 	'rejected-repair',
 ] as const;
 
-export type GraphicsRecentOutcomeGroup = typeof GRAPHICS_RECENT_OUTCOME_GROUPS[number];
+export type GraphicsRecentOutcomeGroup = (typeof GRAPHICS_RECENT_OUTCOME_GROUPS)[number];
 
 /**
  * Which outcome group each Evidence category answers.

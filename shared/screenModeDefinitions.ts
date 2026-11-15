@@ -9,10 +9,7 @@ import { isOfferedToEvent } from './config/games';
 import { pageRotationEdit } from './modules/page-rotation';
 import { FOUNDATION_TOKENS, resolveThemeTokens } from './modules/theme';
 import { SCREEN_MODES, screenModeSupportsBackgroundLayers, screenModeTokens } from './screenModes';
-import {
-	getDefaultConfigForMode,
-	getDisplayDefaultsForMode,
-} from './types/screenConfig';
+import { getDefaultConfigForMode, getDisplayDefaultsForMode } from './types/screenConfig';
 
 export type ScreenModeHostKind = 'overlay' | 'control';
 
@@ -49,7 +46,11 @@ export interface SharedScreenModeDefinition<M extends ScreenMode = ScreenMode> {
 	host: ScreenModeHostDefinition;
 	getDefaultConfig: () => ModeConfigTypeMap[M];
 	/** The write a display reset makes (`getDisplayResetForMode`). */
-	getDisplayReset: (current: Partial<ModeConfigTypeMap[M]>, now: number, kind?: EventKind) => Partial<ModeConfigTypeMap[M]>;
+	getDisplayReset: (
+		current: Partial<ModeConfigTypeMap[M]>,
+		now: number,
+		kind?: EventKind,
+	) => Partial<ModeConfigTypeMap[M]>;
 	configurationPolicy: ScreenModeConfigurationPolicy;
 }
 
@@ -60,7 +61,10 @@ export interface ScreenModeSelectOption {
 }
 
 /** What a plain overlay mode's host consumes: it insets and aligns the mode's content. */
-export const PLAIN_HOST_TOKENS = ['inset', 'alignment'] as const satisfies readonly FoundationTokenName[];
+export const PLAIN_HOST_TOKENS = [
+	'inset',
+	'alignment',
+] as const satisfies readonly FoundationTokenName[];
 
 /**
  * The graphics Screen Outputs, in the order an editor names, previews and hands them
@@ -75,7 +79,9 @@ export const SCREEN_OUTPUT_OPTIONS = [
 ] as const satisfies ReadonlyArray<{ label: string; value: ScreenOutput; icon: string }>;
 
 /** The Screen Outputs every graphics host hands out. */
-const GRAPHICS_HOST_OUTPUTS: readonly ScreenOutput[] = SCREEN_OUTPUT_OPTIONS.map(option => option.value);
+const GRAPHICS_HOST_OUTPUTS: readonly ScreenOutput[] = SCREEN_OUTPUT_OPTIONS.map(
+	(option) => option.value,
+);
 
 /**
  * How a Screen Mode is hosted.
@@ -94,9 +100,7 @@ export function getScreenModeHostDefinition(mode: ScreenMode): ScreenModeHostDef
 	return {
 		kind: 'overlay',
 		fitToViewport: true,
-		foundationTokens: screenModeSupportsBackgroundLayers(mode)
-			? PLAIN_HOST_TOKENS
-			: [],
+		foundationTokens: screenModeSupportsBackgroundLayers(mode) ? PLAIN_HOST_TOKENS : [],
 	};
 }
 
@@ -111,17 +115,17 @@ export function screenModeHostTokens(mode: ScreenMode): readonly string[] {
  * from `overrides`, the Screen's Screen Theme Overrides, over `theme`, its
  * Event's Theme. With no mode it consumes no token.
  */
-export function resolveScreenThemeTokens(mode: ScreenMode | undefined, theme: StoredThemeTokens, overrides: StoredThemeTokens): ResolvedThemeTokens {
+export function resolveScreenThemeTokens(
+	mode: ScreenMode | undefined,
+	theme: StoredThemeTokens,
+	overrides: StoredThemeTokens,
+): ResolvedThemeTokens {
 	return resolveThemeTokens({
 		vocabulary: FOUNDATION_TOKENS,
-		modeTokens: mode
-			? screenModeTokens(mode)
-			: {},
+		modeTokens: mode ? screenModeTokens(mode) : {},
 		theme,
 		overrides,
-		hostTokens: mode
-			? screenModeHostTokens(mode)
-			: [],
+		hostTokens: mode ? screenModeHostTokens(mode) : [],
 	});
 }
 
@@ -131,14 +135,14 @@ export function getScreenModeConfigurationPolicy(mode: ScreenMode): ScreenModeCo
 
 	return {
 		displayType: sharedDefinition.displayType,
-		outputs: graphicsHost
-			? GRAPHICS_HOST_OUTPUTS
-			: [],
+		outputs: graphicsHost ? GRAPHICS_HOST_OUTPUTS : [],
 		fullWidthConfiguration: Boolean(graphicsHost),
 	};
 }
 
-export function getScreenModeDefinition<M extends ScreenMode>(mode: M): SharedScreenModeDefinition<M> {
+export function getScreenModeDefinition<M extends ScreenMode>(
+	mode: M,
+): SharedScreenModeDefinition<M> {
 	const sharedDefinition = SCREEN_MODES[mode];
 
 	return {
@@ -170,20 +174,25 @@ export function getDisplayResetForMode<M extends ScreenMode>(
 	now: number,
 	kind?: EventKind,
 ): Partial<ModeConfigTypeMap[M]> {
-	const display = mode === 'feature-match-overlay'
-		? {
-				...getDisplayDefaultsForMode(mode),
-				layout: defaultFeatureMatchLayoutFor(kind),
-			} as Partial<ModeConfigTypeMap[M]>
-		: getDisplayDefaultsForMode(mode);
+	const display =
+		mode === 'feature-match-overlay'
+			? ({
+					...getDisplayDefaultsForMode(mode),
+					layout: defaultFeatureMatchLayoutFor(kind),
+				} as Partial<ModeConfigTypeMap[M]>)
+			: getDisplayDefaultsForMode(mode);
 	const declaration = SCREEN_MODES[mode].pageRotation;
-	if (!declaration)
-		return display;
+	if (!declaration) return display;
 	const reset: Partial<Record<keyof PageRotationConfig, unknown>> = {
 		...current,
 		...display,
 	};
-	return pageRotationEdit(declaration, { autoPageEnabled: reset.autoPageEnabled === true }, display, now);
+	return pageRotationEdit(
+		declaration,
+		{ autoPageEnabled: reset.autoPageEnabled === true },
+		display,
+		now,
+	);
 }
 
 /**
@@ -191,9 +200,11 @@ export function getDisplayResetForMode<M extends ScreenMode>(
  * or those every Event is offered while it is not yet known (`isOfferedToEvent`).
  */
 export function getScreenModeSelectOptions(kind: EventKind | undefined): ScreenModeSelectOption[] {
-	return Object.entries(SCREEN_MODES).filter(([, definition]) => isOfferedToEvent(definition.offeredTo, kind)).map(([mode, definition]) => ({
-		label: definition.label,
-		value: mode as ScreenMode,
-		icon: definition.icon,
-	}));
+	return Object.entries(SCREEN_MODES)
+		.filter(([, definition]) => isOfferedToEvent(definition.offeredTo, kind))
+		.map(([mode, definition]) => ({
+			label: definition.label,
+			value: mode as ScreenMode,
+			icon: definition.icon,
+		}));
 }

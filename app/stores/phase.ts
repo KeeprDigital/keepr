@@ -1,8 +1,4 @@
-import type {
-	CreatePhaseInput,
-	Phase,
-	UpdatePhaseInput,
-} from '~/types';
+import type { CreatePhaseInput, Phase, UpdatePhaseInput } from '~/types';
 import type { MessageData } from '~/types/realtime';
 import { useEventDataResource } from '~/modules/event-data/client';
 import { useEventDataLifecycle } from '~/modules/event-data/lifecycle';

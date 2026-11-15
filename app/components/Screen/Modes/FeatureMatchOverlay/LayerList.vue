@@ -32,13 +32,13 @@ const sections = computed<GraphicsLayerListSection<FeatureMatchLayoutEditorLayer
 		{
 			key: 'items',
 			title: 'Graphic Items',
-			layers: layers.filter(layer => layer.type === 'item'),
+			layers: layers.filter((layer) => layer.type === 'item'),
 			empty: 'No Graphic Items yet',
 		},
 		{
 			key: 'sources',
 			title: 'Sources',
-			layers: layers.filter(layer => layer.type === 'source'),
+			layers: layers.filter((layer) => layer.type === 'source'),
 			empty: 'No Source Items yet',
 		},
 	];

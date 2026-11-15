@@ -1,7 +1,11 @@
 import type { ScreenOutputReadScope } from '~/composables/repositories/useScreenOutputReadRepository';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
 import { useScreenOutputReadRepository } from '~/composables/repositories/useScreenOutputReadRepository';
-import { SAMPLE_ID, sampleDeckCardData, useSampleScreenOutputReadRepository } from '~/modules/screen-mode/sampleDataset';
+import {
+	SAMPLE_ID,
+	sampleDeckCardData,
+	useSampleScreenOutputReadRepository,
+} from '~/modules/screen-mode/sampleDataset';
 
 /**
  * The Screen Output reads of the Screen this rendering shows, bound to it (#604).
@@ -21,16 +25,16 @@ export function useScreenOutputReads(context: ScreenContext) {
 	const repository = sampleDataset
 		? useSampleScreenOutputReadRepository(sampleDataset, sampleVariant)
 		: useScreenOutputReadRepository();
-	const cardData = sampleDataset
-		? sampleDeckCardData
-		: useScryfallBatch().fetchScryfallCards;
+	const cardData = sampleDataset ? sampleDeckCardData : useScryfallBatch().fetchScryfallCards;
 
 	const scope = computed<ScreenOutputReadScope | null>(() => {
-		if (sampleDataset)
-			return { eventId: SAMPLE_ID, screenId: SAMPLE_ID };
-		if (!eventId.value || !screen.value)
-			return null;
-		return { eventId: eventId.value, screenId: screen.value.id, assetCapability: assetCapability?.value ?? null };
+		if (sampleDataset) return { eventId: SAMPLE_ID, screenId: SAMPLE_ID };
+		if (!eventId.value || !screen.value) return null;
+		return {
+			eventId: eventId.value,
+			screenId: screen.value.id,
+			assetCapability: assetCapability?.value ?? null,
+		};
 	});
 
 	/**
@@ -38,13 +42,14 @@ export function useScreenOutputReads(context: ScreenContext) {
 	 * A mode watches this beside the configuration fields its read depends on, so
 	 * it re-reads when either changes and not on every unrelated Screen save.
 	 */
-	const scopeKey = computed(() => scope.value
-		? `${scope.value.eventId}:${scope.value.screenId}:${scope.value.assetCapability ?? ''}`
-		: null);
+	const scopeKey = computed(() =>
+		scope.value
+			? `${scope.value.eventId}:${scope.value.screenId}:${scope.value.assetCapability ?? ''}`
+			: null,
+	);
 
 	function requireScope(): ScreenOutputReadScope {
-		if (!scope.value)
-			throw new Error('No Screen loaded');
+		if (!scope.value) throw new Error('No Screen loaded');
 		return scope.value;
 	}
 

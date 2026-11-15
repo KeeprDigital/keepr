@@ -22,17 +22,25 @@ export function realtimeHandlersFor({ connectionId = OWN_CONNECTION_ID } = {}) {
 		built ??= createEventRealtimeHandlers({
 			accept: useRealtimeMessageGate(connectionId).accept,
 			eventStore: useEventStore(),
-			realtime: createMockRealtime() as unknown as Parameters<typeof createEventRealtimeHandlers>[0]['realtime'],
+			realtime: createMockRealtime() as unknown as Parameters<
+				typeof createEventRealtimeHandlers
+			>[0]['realtime'],
 		});
 		return built;
 	}
 	return {
 		handlers,
-		deliver<T extends MessageType>(type: T, payload: MessagePayload<T>, { eventId = 1, fromSelf = false } = {}) {
+		deliver<T extends MessageType>(
+			type: T,
+			payload: MessagePayload<T>,
+			{ eventId = 1, fromSelf = false } = {},
+		) {
 			const handler = handlers()[type] as ((data: unknown, raw: unknown) => void) | undefined;
-			if (!handler)
-				throw new Error(`The Realtime Event Session has no handler for "${type}"`);
-			handler(createMessage(eventId, type, payload, fromSelf ? connectionId : PEER_CONNECTION_ID), undefined);
+			if (!handler) throw new Error(`The Realtime Event Session has no handler for "${type}"`);
+			handler(
+				createMessage(eventId, type, payload, fromSelf ? connectionId : PEER_CONNECTION_ID),
+				undefined,
+			);
 		},
 	};
 }

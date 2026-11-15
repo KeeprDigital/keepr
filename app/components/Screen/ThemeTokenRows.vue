@@ -12,7 +12,7 @@ const props = defineProps<{
 }>();
 
 const overrides = useScreenThemeOverrides();
-const entries = computed(() => props.names.map(name => overrides.entry(name)));
+const entries = computed(() => props.names.map((name) => overrides.entry(name)));
 </script>
 
 <template>
@@ -32,7 +32,7 @@ const entries = computed(() => props.names.map(name => overrides.entry(name)));
 			:resolved="entry.resolved"
 			:event-id="eventId"
 			:writing="overrides.writing.value.has(entry.name)"
-			@set="value => overrides.set(entry.name, value)"
+			@set="(value) => overrides.set(entry.name, value)"
 			@clear="overrides.clear(entry.name)"
 		/>
 	</div>

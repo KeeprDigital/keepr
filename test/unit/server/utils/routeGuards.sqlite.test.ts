@@ -7,7 +7,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // references are proved per declared field in screenModeEventReferences.sqlite.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -30,10 +31,14 @@ interface Seeded {
 }
 
 async function seed(name: string): Promise<Seeded> {
-	const [event] = await db.insert(schema.events).values({ name, game: 'mtg', featureMatchOrientation: 'horizontal' }).returning();
+	const [event] = await db
+		.insert(schema.events)
+		.values({ name, game: 'mtg', featureMatchOrientation: 'horizontal' })
+		.returning();
 	const eventId = event!.id;
 	const [phase] = await db.insert(schema.phases).values({ eventId, name: 'Swiss' }).returning();
-	const [round, otherRound] = await db.insert(schema.rounds)
+	const [round, otherRound] = await db
+		.insert(schema.rounds)
 		.values([
 			{
 				eventId,
@@ -49,12 +54,21 @@ async function seed(name: string): Promise<Seeded> {
 			},
 		])
 		.returning();
-	const [match] = await db.insert(schema.matches).values({ eventId, roundId: round!.id }).returning();
+	const [match] = await db
+		.insert(schema.matches)
+		.values({ eventId, roundId: round!.id })
+		.returning();
 	const [slot] = await db.insert(schema.featureMatches).values({ eventId }).returning();
 	const [player] = await db.insert(schema.players).values({ eventId, name: 'Player' }).returning();
 	const [list] = await db.insert(schema.playerLists).values({ eventId, name: 'List' }).returning();
-	const [talent] = await db.insert(schema.eventTalents).values({ eventId, name: 'Talent' }).returning();
-	const [archetype] = await db.insert(schema.archetypes).values({ eventId, name: 'Burn' }).returning();
+	const [talent] = await db
+		.insert(schema.eventTalents)
+		.values({ eventId, name: 'Talent' })
+		.returning();
+	const [archetype] = await db
+		.insert(schema.archetypes)
+		.values({ eventId, name: 'Burn' })
+		.returning();
 	return {
 		eventId,
 		phaseId: phase!.id,
@@ -88,46 +102,72 @@ describe('single-reference guards', () => {
 		['requirePlayerListInEvent', 'listId', 'Player list not found'],
 		['requireTalentInEvent', 'talentId', 'Talent not found'],
 		['requireArchetypeInEvent', 'archetypeId', 'Archetype not found'],
-	] as const)('%s admits its own Event\'s %s and nothing, and refuses another Event\'s as 404', async (guard, key, message) => {
-		const check = guards[guard];
+	] as const)(
+		"%s admits its own Event's %s and nothing, and refuses another Event's as 404",
+		async (guard, key, message) => {
+			const check = guards[guard];
 
-		await expect(check(own.eventId, own[key])).resolves.toBeUndefined();
-		await expect(check(own.eventId, null)).resolves.toBeUndefined();
-		await expect(check(own.eventId, foreign[key])).rejects.toMatchObject({ statusCode: 404, message });
-	});
+			await expect(check(own.eventId, own[key])).resolves.toBeUndefined();
+			await expect(check(own.eventId, null)).resolves.toBeUndefined();
+			await expect(check(own.eventId, foreign[key])).rejects.toMatchObject({
+				statusCode: 404,
+				message,
+			});
+		},
+	);
 
-	it('requirePlayersInEvent refuses the set when any Player is another Event\'s', async () => {
-		await expect(guards.requirePlayersInEvent(own.eventId, [own.playerId, own.playerId, null])).resolves.toBeUndefined();
-		await expect(guards.requirePlayersInEvent(own.eventId, [own.playerId, foreign.playerId])).rejects.toMatchObject({ statusCode: 404, message: 'Player not found' });
+	it("requirePlayersInEvent refuses the set when any Player is another Event's", async () => {
+		await expect(
+			guards.requirePlayersInEvent(own.eventId, [own.playerId, own.playerId, null]),
+		).resolves.toBeUndefined();
+		await expect(
+			guards.requirePlayersInEvent(own.eventId, [own.playerId, foreign.playerId]),
+		).rejects.toMatchObject({ statusCode: 404, message: 'Player not found' });
 	});
 });
 
 describe('validateFeatureMatchReferences', () => {
 	it('checks the Match and both Players', async () => {
-		await expect(guards.validateFeatureMatchReferences(own.eventId, { matchId: own.matchId, player1Id: own.playerId, player2Id: null })).resolves.toBeUndefined();
-		await expect(guards.validateFeatureMatchReferences(own.eventId, { matchId: foreign.matchId })).rejects.toMatchObject({ statusCode: 404 });
-		await expect(guards.validateFeatureMatchReferences(own.eventId, { player2Id: foreign.playerId })).rejects.toMatchObject({ statusCode: 404 });
+		await expect(
+			guards.validateFeatureMatchReferences(own.eventId, {
+				matchId: own.matchId,
+				player1Id: own.playerId,
+				player2Id: null,
+			}),
+		).resolves.toBeUndefined();
+		await expect(
+			guards.validateFeatureMatchReferences(own.eventId, { matchId: foreign.matchId }),
+		).rejects.toMatchObject({ statusCode: 404 });
+		await expect(
+			guards.validateFeatureMatchReferences(own.eventId, { player2Id: foreign.playerId }),
+		).rejects.toMatchObject({ statusCode: 404 });
 	});
 });
 
 describe('validateFeatureMatchAssignmentCreateReferences', () => {
 	it('admits a Slot and a Match of the named Round', async () => {
-		await expect(guards.validateFeatureMatchAssignmentCreateReferences(own.eventId, { roundId: own.roundId, slotId: own.slotId, matchId: own.matchId })).resolves.toBeUndefined();
+		await expect(
+			guards.validateFeatureMatchAssignmentCreateReferences(own.eventId, {
+				roundId: own.roundId,
+				slotId: own.slotId,
+				matchId: own.matchId,
+			}),
+		).resolves.toBeUndefined();
 	});
 
 	it.each([
 		[
-			'another Event\'s Round',
+			"another Event's Round",
 			() => ({ roundId: foreign.roundId, slotId: own.slotId, matchId: own.matchId }),
 			{ statusCode: 404, message: 'Round not found' },
 		],
 		[
-			'another Event\'s Slot',
+			"another Event's Slot",
 			() => ({ roundId: own.roundId, slotId: foreign.slotId, matchId: own.matchId }),
 			{ statusCode: 404, message: 'Feature match slot not found' },
 		],
 		[
-			'another Event\'s Match',
+			"another Event's Match",
 			() => ({ roundId: own.roundId, slotId: own.slotId, matchId: foreign.matchId }),
 			{ statusCode: 404, message: 'Match not found' },
 		],
@@ -137,6 +177,8 @@ describe('validateFeatureMatchAssignmentCreateReferences', () => {
 			{ statusCode: 400, message: 'Match does not belong to round' },
 		],
 	])('refuses %s', async (_case, input, refusal) => {
-		await expect(guards.validateFeatureMatchAssignmentCreateReferences(own.eventId, input())).rejects.toMatchObject(refusal);
+		await expect(
+			guards.validateFeatureMatchAssignmentCreateReferences(own.eventId, input()),
+		).rejects.toMatchObject(refusal);
 	});
 });

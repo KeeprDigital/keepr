@@ -36,46 +36,48 @@ async function seedRevisionAcceptedBeforeTheCap() {
 	const accepted = await processStillImage(overCapJpeg, {}, { bounds: 'stored' });
 	const sourceDigest = digestOf(overCapJpeg);
 	const thumbnailDigest = digestOf(accepted.thumbnail);
-	await harness.client.batch([
-		{
-			sql: 'INSERT INTO graphic_asset_contents (digest, byte_length, canonical_mime) VALUES (?, ?, ?), (?, ?, ?)',
-			args: [
-				sourceDigest,
-				overCapJpeg.byteLength,
-				'image/jpeg',
-				thumbnailDigest,
-				accepted.thumbnail.byteLength,
-				'image/png',
-			],
-		},
-		{
-			sql: 'INSERT INTO graphic_assets (id, name, kind) VALUES (\'asset-before-cap\', \'Before the cap\', \'image\')',
-			args: [],
-		},
-		{
-			sql: `
+	await harness.client.batch(
+		[
+			{
+				sql: 'INSERT INTO graphic_asset_contents (digest, byte_length, canonical_mime) VALUES (?, ?, ?), (?, ?, ?)',
+				args: [
+					sourceDigest,
+					overCapJpeg.byteLength,
+					'image/jpeg',
+					thumbnailDigest,
+					accepted.thumbnail.byteLength,
+					'image/png',
+				],
+			},
+			{
+				sql: "INSERT INTO graphic_assets (id, name, kind) VALUES ('asset-before-cap', 'Before the cap', 'image')",
+				args: [],
+			},
+			{
+				sql: `
 				INSERT INTO graphic_asset_revisions (id, asset_id, revision_number, content_digest, compatibility_profile, technical_facts)
 				VALUES ('revision-before-cap', 'asset-before-cap', 1, ?, 'still-image-v1', ?)
 			`,
-			args: [
-				sourceDigest,
-				JSON.stringify(accepted.report.facts),
-			],
-		},
-		{
-			sql: `
+				args: [sourceDigest, JSON.stringify(accepted.report.facts)],
+			},
+			{
+				sql: `
 				INSERT INTO graphics_derivatives (id, source_revision_id, kind, content_digest)
 				VALUES ('derivative-before-cap', 'revision-before-cap', 'thumbnail', ?)
 			`,
-			args: [thumbnailDigest],
-		},
-	], 'write');
+				args: [thumbnailDigest],
+			},
+		],
+		'write',
+	);
 }
 
-function openDiscrepancy(discrepancies: readonly GraphicsDiscrepancy[], kind: GraphicsDiscrepancy['kind']) {
-	const found = discrepancies.find(discrepancy => discrepancy.kind === kind);
-	if (!found)
-		throw new Error(`No open ${kind} discrepancy was recorded`);
+function openDiscrepancy(
+	discrepancies: readonly GraphicsDiscrepancy[],
+	kind: GraphicsDiscrepancy['kind'],
+) {
+	const found = discrepancies.find((discrepancy) => discrepancy.kind === kind);
+	if (!found) throw new Error(`No open ${kind} discrepancy was recorded`);
 	return found;
 }
 
@@ -114,6 +116,9 @@ describe('a JPEG revision accepted before the full-decode pixel cap', () => {
 			actor: 'administrator',
 		});
 
-		expect(regenerated).toMatchObject({ outcome: 'resolved', resolution: 'derivative-regenerated' });
+		expect(regenerated).toMatchObject({
+			outcome: 'resolved',
+			resolution: 'derivative-regenerated',
+		});
 	});
 });

@@ -97,7 +97,7 @@ export default defineEventHandler(async (event) => {
 	// Only the session arm checks this. A capability bearer's Event came from the
 	// capability, so it exists by construction — and asking again would be a second
 	// query to confirm what a foreign key already says.
-	if (!await eventService().exists(eventId))
+	if (!(await eventService().exists(eventId)))
 		throw createError({ statusCode: 404, message: 'Event not found' });
 
 	// Event updates stay read-only for clients. Screen channels only need

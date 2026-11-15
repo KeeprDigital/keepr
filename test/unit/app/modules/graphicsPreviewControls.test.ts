@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { previewZoomScroll, previewZoomShortcut, wheelPreviewZoom } from '~~/app/modules/graphics/previewControls';
+import {
+	previewZoomScroll,
+	previewZoomShortcut,
+	wheelPreviewZoom,
+} from '~~/app/modules/graphics/previewControls';
 
 /**
  * Zooming and panning an editor preview: how far a wheel step zooms, which keys
@@ -125,7 +129,7 @@ describe('preview zoom', () => {
 			expected: null,
 		},
 		{
-			case: '⇧⌘0 is someone else\'s',
+			case: "⇧⌘0 is someone else's",
 			key: '0',
 			metaKey: true,
 			ctrlKey: false,
@@ -134,7 +138,7 @@ describe('preview zoom', () => {
 			expected: null,
 		},
 		{
-			case: '⌥⌘1 is someone else\'s',
+			case: "⌥⌘1 is someone else's",
 			key: '1',
 			metaKey: true,
 			ctrlKey: false,
@@ -205,7 +209,7 @@ describe('preview zoom', () => {
 			expected: { left: 0, top: 0 },
 		},
 		{
-			case: 'it never scrolls before the canvas\'s start',
+			case: "it never scrolls before the canvas's start",
 			from: 0.25,
 			to: 1,
 			scroll: { left: 0, top: 0 },
@@ -213,13 +217,15 @@ describe('preview zoom', () => {
 			expected: { left: 0, top: 0 },
 		},
 	])('$case', ({ from, to, scroll, pointer, expected }) => {
-		expect(previewZoomScroll({
-			canvas: CANVAS,
-			client: CLIENT,
-			scroll,
-			pointer,
-			from,
-			to,
-		})).toEqual(expected);
+		expect(
+			previewZoomScroll({
+				canvas: CANVAS,
+				client: CLIENT,
+				scroll,
+				pointer,
+				from,
+				to,
+			}),
+		).toEqual(expected);
 	});
 });

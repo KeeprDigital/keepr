@@ -25,16 +25,14 @@ const POSITIONAL_INSERT_SELECT = /\.select\(\s*sql`/;
  * `INSERT INTO <name> SELECT|VALUES` with no `(column, …)` list between —
  * whether the table is a literal name or a `${table}` interpolation.
  */
-const RAW_INSERT_WITHOUT_COLUMNS = /insert\s+into\s+(?:[`"']?\w+[`"']?|\$\{[^}]+\})\s+(?:select|values)\b/i;
+const RAW_INSERT_WITHOUT_COLUMNS =
+	/insert\s+into\s+(?:[`"']?\w+[`"']?|\$\{[^}]+\})\s+(?:select|values)\b/i;
 
 function sourceFiles(directory: string): string[] {
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
 		const path = join(directory, entry.name);
-		if (entry.isDirectory())
-			return sourceFiles(path);
-		return entry.name.endsWith('.ts')
-			? [path]
-			: [];
+		if (entry.isDirectory()) return sourceFiles(path);
+		return entry.name.endsWith('.ts') ? [path] : [];
 	});
 }
 
@@ -46,12 +44,19 @@ describe('insert-select statements in server code', () => {
 	});
 
 	it('never hands a raw positional select to an insert builder', () => {
-		const offenders = files.filter(path => POSITIONAL_INSERT_SELECT.test(readFileSync(path, 'utf8')));
-		expect(offenders, 'use selectForInsert from server/utils/db.ts instead of .select(sql`…`)').toEqual([]);
+		const offenders = files.filter((path) =>
+			POSITIONAL_INSERT_SELECT.test(readFileSync(path, 'utf8')),
+		);
+		expect(
+			offenders,
+			'use selectForInsert from server/utils/db.ts instead of .select(sql`…`)',
+		).toEqual([]);
 	});
 
 	it('gives every raw INSERT statement an explicit column list', () => {
-		const offenders = files.filter(path => RAW_INSERT_WITHOUT_COLUMNS.test(readFileSync(path, 'utf8')));
+		const offenders = files.filter((path) =>
+			RAW_INSERT_WITHOUT_COLUMNS.test(readFileSync(path, 'utf8')),
+		);
 		expect(offenders, 'raw INSERT INTO must name its columns before SELECT/VALUES').toEqual([]);
 	});
 });

@@ -43,34 +43,26 @@ describe('cardInputSchema One Piece variant', () => {
 	});
 
 	it.each([
-		[
-			'an orientation an OP card does not have',
-			{ displayData: validCard().displayData },
-		],
-		[
-			'a Printing kind bandai-keepr does not use',
-			{ printingKind: 'parallel' },
-		],
-		[
-			'a non-HTTPS image URL',
-			{ imageUrl: 'http://cards-img.keepr.digital/OP01-001.png' },
-		],
-		[
-			'no image URL',
-			{ imageUrl: undefined },
-		],
+		['an orientation an OP card does not have', { displayData: validCard().displayData }],
+		['a Printing kind bandai-keepr does not use', { printingKind: 'parallel' }],
+		['a non-HTTPS image URL', { imageUrl: 'http://cards-img.keepr.digital/OP01-001.png' }],
+		['no image URL', { imageUrl: undefined }],
 	])('rejects %s', (_case, change) => {
-		expect(cardInputSchema.safeParse({
-			...opCard(),
-			...change,
-		}).success).toBe(false);
+		expect(
+			cardInputSchema.safeParse({
+				...opCard(),
+				...change,
+			}).success,
+		).toBe(false);
 	});
 
 	it('rejects an MTG card that claims to be One Piece', () => {
-		expect(cardInputSchema.safeParse({
-			...validCard(),
-			game: 'op',
-		}).success).toBe(false);
+		expect(
+			cardInputSchema.safeParse({
+				...validCard(),
+				game: 'op',
+			}).success,
+		).toBe(false);
 	});
 });
 
@@ -80,21 +72,27 @@ describe('cardInputSchema persistence bounds', () => {
 	});
 
 	it('accepts a full Scryfall set name longer than a set code', () => {
-		expect(cardInputSchema.safeParse({
-			...validCard(),
-			set: 'Secret Lair Drop Series',
-		}).success).toBe(true);
+		expect(
+			cardInputSchema.safeParse({
+				...validCard(),
+				set: 'Secret Lair Drop Series',
+			}).success,
+		).toBe(true);
 	});
 
 	it('rejects unbounded image URI maps', () => {
-		const front = Object.fromEntries(Array.from({ length: 21 }, (_, index) => [
-			`variant-${index}`,
-			`https://example.com/${index}.jpg`,
-		]));
-		expect(cardInputSchema.safeParse({
-			...validCard(),
-			imageData: { front, back: null },
-		}).success).toBe(false);
+		const front = Object.fromEntries(
+			Array.from({ length: 21 }, (_, index) => [
+				`variant-${index}`,
+				`https://example.com/${index}.jpg`,
+			]),
+		);
+		expect(
+			cardInputSchema.safeParse({
+				...validCard(),
+				imageData: { front, back: null },
+			}).success,
+		).toBe(false);
 	});
 
 	it('rejects non-HTTPS or credential-bearing image URLs', () => {
@@ -103,23 +101,27 @@ describe('cardInputSchema persistence bounds', () => {
 			'http://127.0.0.1/private.png',
 			'https://user:secret@example.com/card.jpg',
 		]) {
-			expect(cardInputSchema.safeParse({
-				...validCard(),
-				imageData: {
-					front: { normal: url },
-					back: null,
-				},
-			}).success).toBe(false);
+			expect(
+				cardInputSchema.safeParse({
+					...validCard(),
+					imageData: {
+						front: { normal: url },
+						back: null,
+					},
+				}).success,
+			).toBe(false);
 		}
 	});
 
 	it('rejects invalid or excessive timeout values', () => {
-		expect(cardInputSchema.safeParse({
-			...validCard(),
-			timeoutData: {
-				timeoutDuration: Number.MAX_SAFE_INTEGER,
-				timeoutStartTimestamp: Date.now(),
-			},
-		}).success).toBe(false);
+		expect(
+			cardInputSchema.safeParse({
+				...validCard(),
+				timeoutData: {
+					timeoutDuration: Number.MAX_SAFE_INTEGER,
+					timeoutStartTimestamp: Date.now(),
+				},
+			}).success,
+		).toBe(false);
 	});
 });

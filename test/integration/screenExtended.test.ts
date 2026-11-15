@@ -221,18 +221,22 @@ function fatOverlayLayout() {
 						leftSlant: 0,
 						rightSlant: 0,
 					},
-					children: Array.from({ length: 50 }, (_, index) => fatTextGraphicItem(`overlay-child-${index}`)),
+					children: Array.from({ length: 50 }, (_, index) =>
+						fatTextGraphicItem(`overlay-child-${index}`),
+					),
 				},
 			],
 		},
 	};
 }
 
-interface FetchFailure { data?: { statusCode?: number; message?: string } }
+interface FetchFailure {
+	data?: { statusCode?: number; message?: string };
+}
 
 async function patchConfig(path: string, body: Record<string, unknown>) {
 	return await $fetch(path, { method: 'PATCH', body }).then(
-		result => ({ ok: true as const, result }),
+		(result) => ({ ok: true as const, result }),
 		(error: FetchFailure) => ({ ok: false as const, error }),
 	);
 }
@@ -244,7 +248,11 @@ describe('screens extended API', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration ScreenExtended Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration ScreenExtended Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 
@@ -262,8 +270,7 @@ describe('screens extended API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	// ── Card endpoints ────────────────────────────────────────────────
@@ -274,7 +281,10 @@ describe('screens extended API', () => {
 		set: 'lea',
 		layout: 'normal' as const,
 		imageData: {
-			front: { small: 'https://example.com/front-small.jpg', normal: 'https://example.com/front.jpg' },
+			front: {
+				small: 'https://example.com/front-small.jpg',
+				normal: 'https://example.com/front.jpg',
+			},
 			back: null,
 		},
 		orientationData: {
@@ -470,10 +480,13 @@ describe('screens extended API', () => {
 			},
 		];
 
-		const updated = await $fetch(`/api/events/${eventId}/screens/${screenId}/config/broadcast-graphics`, {
-			method: 'PATCH',
-			body: { graphics },
-		});
+		const updated = await $fetch(
+			`/api/events/${eventId}/screens/${screenId}/config/broadcast-graphics`,
+			{
+				method: 'PATCH',
+				body: { graphics },
+			},
+		);
 
 		expect(updated!.modeConfigs!['broadcast-graphics']).toEqual({ graphics });
 
@@ -516,14 +529,20 @@ describe('screens extended API', () => {
 		// would be satisfied by any 400, including the opaque byte-limit failure this
 		// cap exists to prevent, and the named message travels in the response body
 		// rather than in the thrown error's own message.
-		const failure = await $fetch(`/api/events/${eventId}/screens/${screenId}/config/broadcast-graphics`, {
-			method: 'PATCH',
-			body: { graphics },
-		}).then(() => null).catch((error: { data?: { statusCode?: number; message?: string } }) => error);
+		const failure = await $fetch(
+			`/api/events/${eventId}/screens/${screenId}/config/broadcast-graphics`,
+			{
+				method: 'PATCH',
+				body: { graphics },
+			},
+		)
+			.then(() => null)
+			.catch((error: { data?: { statusCode?: number; message?: string } }) => error);
 
 		expect(failure?.data?.statusCode).toBe(400);
-		expect(failure?.data?.message)
-			.toContain('A Broadcast Graphics Screen must not carry more than 300 Graphic Items in total');
+		expect(failure?.data?.message).toContain(
+			'A Broadcast Graphics Screen must not carry more than 300 Graphic Items in total',
+		);
 	});
 
 	// ── Mode configuration byte total ─────────────────────────────────
@@ -533,7 +552,11 @@ describe('screens extended API', () => {
 		// each legal and each well under the body limit, accumulating past the total.
 		const budgetScreen = await $fetch(`/api/events/${eventId}/screens`, {
 			method: 'POST',
-			body: { name: 'Budget Screen', slug: 'integration-budget-accumulated', currentMode: 'background' },
+			body: {
+				name: 'Budget Screen',
+				slug: 'integration-budget-accumulated',
+				currentMode: 'background',
+			},
 		});
 
 		const first = await patchConfig(
@@ -556,8 +579,9 @@ describe('screens extended API', () => {
 		// The operator has to be able to read which limit they reached. #65 established
 		// that a cap message never reaches the thrown error's own `message` — ofetch
 		// summarises that as "400 Validation Error" — so this asserts the body.
-		expect(second.ok === false && second.error.data?.message)
-			.toContain('Mode configuration must not exceed');
+		expect(second.ok === false && second.error.data?.message).toContain(
+			'Mode configuration must not exceed',
+		);
 	});
 
 	// ── A Screen's look ───────────────────────────────────────────────
@@ -566,19 +590,21 @@ describe('screens extended API', () => {
 	it('refuses a Screen a look or a canvas of its own', async () => {
 		const screen = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${screenId}`);
 
-		await expect($fetch(`/api/events/${eventId}/screens/${screenId}`, {
-			method: 'PATCH',
-			body: {
-				stateVersion: screen.stateVersion,
-				screenConfig: {
-					background: '#000000',
-					paddingX: 12,
-					colorMode: 'dark',
-					width: 1920,
-					height: 1080,
+		await expect(
+			$fetch(`/api/events/${eventId}/screens/${screenId}`, {
+				method: 'PATCH',
+				body: {
+					stateVersion: screen.stateVersion,
+					screenConfig: {
+						background: '#000000',
+						paddingX: 12,
+						colorMode: 'dark',
+						width: 1920,
+						height: 1080,
+					},
 				},
-			},
-		})).rejects.toMatchObject({ statusCode: 400 });
+			}),
+		).rejects.toMatchObject({ statusCode: 400 });
 		expect(screen).not.toHaveProperty('screenConfig');
 	});
 
@@ -587,15 +613,22 @@ describe('screens extended API', () => {
 	it('stores a Screen Theme Override on the Screen it names', async () => {
 		const standings = await $fetch(`/api/events/${eventId}/screens`, {
 			method: 'POST',
-			body: { name: 'Overridden Screen', slug: 'integration-overridden-screen', currentMode: 'standings' },
-		});
-
-		const updated = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${standings.id}/theme-overrides`, {
-			method: 'PATCH',
 			body: {
-				tokens: { 'standings.rise': '#ff0000' },
+				name: 'Overridden Screen',
+				slug: 'integration-overridden-screen',
+				currentMode: 'standings',
 			},
 		});
+
+		const updated = await $fetch<ScreenResponse>(
+			`/api/events/${eventId}/screens/${standings.id}/theme-overrides`,
+			{
+				method: 'PATCH',
+				body: {
+					tokens: { 'standings.rise': '#ff0000' },
+				},
+			},
+		);
 
 		expect(updated.themeOverrides).toEqual({ 'standings.rise': '#ff0000' });
 	});

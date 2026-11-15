@@ -14,20 +14,23 @@ import { MAX_GRAPHIC_FILL_STOPS, MIN_GRAPHIC_FILL_STOPS } from '~~/shared/types/
  * The colour field is the `color` slot, as in the border and glow fields: an item
  * takes the default hex picker, and a host may pass its own picker.
  */
-const props = withDefaults(defineProps<{
-	fill: GraphicFill;
-	disabled?: boolean;
-	size?: 'xs' | 'sm';
-	/** The host's fill is always the kind it shows, so the kind is not offered. */
-	fixedKind?: boolean;
-	/** Qualifies accessible names where one form shows several surfaces. */
-	ariaLabelPrefix?: string;
-	/** Prefixes every test id: `<prefix>-kind`, `<prefix>-color`, `<prefix>-stop`… */
-	testIdPrefix?: string;
-}>(), {
-	size: 'sm',
-	testIdPrefix: 'graphic-fill',
-});
+const props = withDefaults(
+	defineProps<{
+		fill: GraphicFill;
+		disabled?: boolean;
+		size?: 'xs' | 'sm';
+		/** The host's fill is always the kind it shows, so the kind is not offered. */
+		fixedKind?: boolean;
+		/** Qualifies accessible names where one form shows several surfaces. */
+		ariaLabelPrefix?: string;
+		/** Prefixes every test id: `<prefix>-kind`, `<prefix>-color`, `<prefix>-stop`… */
+		testIdPrefix?: string;
+	}>(),
+	{
+		size: 'sm',
+		testIdPrefix: 'graphic-fill',
+	},
+);
 
 const emit = defineEmits<{ edit: [edit: GraphicFillEdit] }>();
 
@@ -51,9 +54,7 @@ const FILL_KIND_OPTIONS = [
 
 /** "Stop 1 colour" alone; "Win box stop 1 colour" where a prefix tells surfaces apart. */
 function ariaLabel(label: string) {
-	return props.ariaLabelPrefix
-		? `${props.ariaLabelPrefix} ${label.toLowerCase()}`
-		: label;
+	return props.ariaLabelPrefix ? `${props.ariaLabelPrefix} ${label.toLowerCase()}` : label;
 }
 
 function testId(suffix: string) {
@@ -64,7 +65,10 @@ function editSolid(color: string) {
 	emit('edit', { kind: 'solid-fill', color });
 }
 
-function editStop(index: number, patch: Extract<GraphicFillEdit, { kind: 'gradient-stop' }>['patch']) {
+function editStop(
+	index: number,
+	patch: Extract<GraphicFillEdit, { kind: 'gradient-stop' }>['patch'],
+) {
 	emit('edit', { kind: 'gradient-stop', index, patch });
 }
 </script>
@@ -81,7 +85,9 @@ function editStop(index: number, patch: Extract<GraphicFillEdit, { kind: 'gradie
 				:disabled="disabled"
 				:aria-label="ariaLabel('Graphic Fill')"
 				:data-testid="testId('kind')"
-				@update:model-value="emit('edit', { kind: 'fill-kind', fillKind: $event as GraphicFillKind })"
+				@update:model-value="
+					emit('edit', { kind: 'fill-kind', fillKind: $event as GraphicFillKind })
+				"
 			/>
 		</UFormField>
 
@@ -101,7 +107,7 @@ function editStop(index: number, patch: Extract<GraphicFillEdit, { kind: 'gradie
 					:size="size"
 					:aria-label="ariaLabel('Fill colour')"
 					:data-testid="testId('color')"
-					@update:model-value="color => color && editSolid(color)"
+					@update:model-value="(color) => color && editSolid(color)"
 				/>
 			</slot>
 		</UFormField>
@@ -140,7 +146,7 @@ function editStop(index: number, patch: Extract<GraphicFillEdit, { kind: 'gradie
 							:size="size"
 							:aria-label="ariaLabel(`Stop ${index + 1} colour`)"
 							:data-testid="testId('stop-color')"
-							@update:model-value="color => color && editStop(index, { color })"
+							@update:model-value="(color) => color && editStop(index, { color })"
 						/>
 					</slot>
 				</UFormField>

@@ -6,7 +6,9 @@ import { computed, ref } from 'vue';
  * interactive, with whatever the test sets. A fake Screen or Event id needs no
  * cast, so each field takes any value.
  */
-export function screenContextOf(fields: { [K in keyof ScreenContext]?: unknown } = {}): ScreenContext {
+export function screenContextOf(
+	fields: { [K in keyof ScreenContext]?: unknown } = {},
+): ScreenContext {
 	return {
 		screen: ref(null),
 		eventId: computed(() => null),

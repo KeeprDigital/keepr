@@ -49,21 +49,27 @@ export async function readMetagameGame(eventId: number): Promise<Game> {
 	return event?.game ?? 'mtg';
 }
 
-export async function resolveMetagameScope(eventId: number, query: MetagameScopeQuery): Promise<MetagameScopeModel> {
+export async function resolveMetagameScope(
+	eventId: number,
+	query: MetagameScopeQuery,
+): Promise<MetagameScopeModel> {
 	const event = await db.query.events.findFirst({
 		where: eq(events.id, eventId),
 		columns: { game: true, pointsSystem: true },
 	});
 	const game = event?.game ?? 'mtg';
 	const rules = getMetagameRules(game);
-	const scope = rules.scopes.includes(query.scope)
-		? query.scope
-		: 'all';
-	const playerScope = getPlayerScope(eventId, scope, query.topN, query.playerListId, query.minPoints);
+	const scope = rules.scopes.includes(query.scope) ? query.scope : 'all';
+	const playerScope = getPlayerScope(
+		eventId,
+		scope,
+		query.topN,
+		query.playerListId,
+		query.minPoints,
+	);
 	const playerWhere = playerScopeWhere(playerScope);
 	const playerFilters: SQL[] = [playerWhere];
-	if (query.archetypeId != null)
-		playerFilters.push(eq(players.archetypeId, query.archetypeId));
+	if (query.archetypeId != null) playerFilters.push(eq(players.archetypeId, query.archetypeId));
 
 	const deckUniverse: MetagameDeckUniverse = {
 		board: query.board ?? 'full',
@@ -72,10 +78,7 @@ export async function resolveMetagameScope(eventId: number, query: MetagameScope
 				.selectDistinct({ deckId: playerDecks.id })
 				.from(playerDecks)
 				.innerJoin(players, eq(playerDecks.playerId, players.id))
-				.where(and(
-					...playerFilters,
-					eq(playerDecks.isPrimary, true),
-				));
+				.where(and(...playerFilters, eq(playerDecks.isPrimary, true)));
 			return deckCountRows.length;
 		},
 	};
@@ -84,14 +87,12 @@ export async function resolveMetagameScope(eventId: number, query: MetagameScope
 		eventId,
 		game,
 		rules,
-		pointsSystem: game === 'mtg'
-			? event?.pointsSystem ?? null
-			: null,
+		pointsSystem: game === 'mtg' ? (event?.pointsSystem ?? null) : null,
 		scope,
 		playerScope,
 		playerWhere,
 		playerFilters,
 		deckUniverse,
-		countPlayers: extraCondition => countScopedPlayers(playerScope, extraCondition),
+		countPlayers: (extraCondition) => countScopedPlayers(playerScope, extraCondition),
 	};
 }

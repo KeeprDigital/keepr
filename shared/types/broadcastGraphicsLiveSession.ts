@@ -13,7 +13,8 @@ import type {
  */
 export const BROADCAST_GRAPHICS_LIVE_SESSION_STATUS_VALUES = ['active', 'ended'] as const;
 
-export type BroadcastGraphicsLiveSessionStatus = typeof BROADCAST_GRAPHICS_LIVE_SESSION_STATUS_VALUES[number];
+export type BroadcastGraphicsLiveSessionStatus =
+	(typeof BROADCAST_GRAPHICS_LIVE_SESSION_STATUS_VALUES)[number];
 
 /** The authoritative snapshot every Live Control and Screen Output reloads. */
 export interface BroadcastGraphicsLiveSessionResponse {

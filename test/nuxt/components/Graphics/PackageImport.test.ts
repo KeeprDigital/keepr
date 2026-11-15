@@ -13,7 +13,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, default: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 
 async function mountImport(props: Record<string, unknown> = {}) {
@@ -31,11 +32,12 @@ async function mountImport(props: Record<string, unknown> = {}) {
 }
 
 /** Choosing an archive the way an author does, through the hidden file input. */
-async function chooseFile(wrapper: Awaited<ReturnType<typeof mountImport>>, name = 'show.skgraphic') {
+async function chooseFile(
+	wrapper: Awaited<ReturnType<typeof mountImport>>,
+	name = 'show.skgraphic',
+) {
 	const input = wrapper.get<HTMLInputElement>('[data-testid="library-import-input"]');
-	const file = new File([
-		new Uint8Array([1, 2, 3]),
-	], name);
+	const file = new File([new Uint8Array([1, 2, 3])], name);
 	Object.defineProperty(input.element, 'files', {
 		value: [file],
 		configurable: true,
@@ -53,14 +55,16 @@ describe('graphicsPackageImport', () => {
 		const graphic = await mountImport({ kind: 'skgraphic' });
 
 		expect(graphic.get('[data-testid="library-import"]').text()).toBe('Import a Template Package');
-		expect(graphic.get<HTMLInputElement>('[data-testid="library-import-input"]')
-			.attributes('accept')).toBe('.skgraphic');
+		expect(
+			graphic.get<HTMLInputElement>('[data-testid="library-import-input"]').attributes('accept'),
+		).toBe('.skgraphic');
 
 		const layout = await mountImport({ kind: 'sklayout' });
 
 		expect(layout.get('[data-testid="library-import"]').text()).toBe('Import a Template Package');
-		expect(layout.get<HTMLInputElement>('[data-testid="library-import-input"]')
-			.attributes('accept')).toBe('.sklayout');
+		expect(
+			layout.get<HTMLInputElement>('[data-testid="library-import-input"]').attributes('accept'),
+		).toBe('.sklayout');
 	});
 
 	// The component receives the file and stops there.
@@ -69,12 +73,11 @@ describe('graphicsPackageImport', () => {
 
 		const chosen = await chooseFile(wrapper);
 
-		expect(wrapper.emitted('file')).toEqual([
-			[chosen],
-		]);
+		expect(wrapper.emitted('file')).toEqual([[chosen]]);
 		// Cleared straight away, so choosing the same file twice still fires a change.
-		expect(wrapper.get<HTMLInputElement>('[data-testid="library-import-input"]').element.value)
-			.toBe('');
+		expect(
+			wrapper.get<HTMLInputElement>('[data-testid="library-import-input"]').element.value,
+		).toBe('');
 	});
 
 	it('asks the author to accept a proposal that paused for one', async () => {
@@ -105,9 +108,7 @@ describe('graphicsPackageImport', () => {
 		const wrapper = await mountImport({
 			reported: true,
 			rejected: true,
-			issues: [
-				{ code: 'unsupported-application-capability', message: 'Not supported here' },
-			],
+			issues: [{ code: 'unsupported-application-capability', message: 'Not supported here' }],
 		});
 
 		const report = wrapper.get('[data-testid="library-import-report"]');

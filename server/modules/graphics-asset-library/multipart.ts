@@ -35,11 +35,9 @@ export function graphicsIngestionPartIdentity(
 	return `${operationId}:${partNumber}` as GraphicsIngestionPartIdentity;
 }
 
-export function graphicsMultipartCompletedByteLength(
-	state: GraphicsAssetMultipartState,
-): number {
+export function graphicsMultipartCompletedByteLength(state: GraphicsAssetMultipartState): number {
 	return state.parts
-		.filter(part => part.status === 'completed')
+		.filter((part) => part.status === 'completed')
 		.reduce((total, part) => total + part.byteLength, 0);
 }
 
@@ -55,7 +53,7 @@ export function graphicsMultipartTransfer(
 		partCount: Math.ceil(declaredByteLength / GRAPHICS_MULTIPART_PART_BYTES),
 		cleanupPending: state.cleanupPending ?? false,
 		completedParts: state.parts
-			.filter(part => part.status === 'completed')
+			.filter((part) => part.status === 'completed')
 			.map(({ partNumber, partIdentity, byteLength }) => ({
 				partNumber,
 				partIdentity,
@@ -71,7 +69,10 @@ export function graphicsMultipartPartByteLength(
 ): number {
 	const partCount = Math.ceil(declaredByteLength / GRAPHICS_MULTIPART_PART_BYTES);
 	if (!Number.isSafeInteger(partNumber) || partNumber <= 0 || partNumber > partCount)
-		throw new GraphicsAssetLibraryError('Multipart part number is outside this operation', 'invalid-ingestion-input');
+		throw new GraphicsAssetLibraryError(
+			'Multipart part number is outside this operation',
+			'invalid-ingestion-input',
+		);
 	return partNumber === partCount
 		? declaredByteLength - GRAPHICS_MULTIPART_PART_BYTES * (partCount - 1)
 		: GRAPHICS_MULTIPART_PART_BYTES;

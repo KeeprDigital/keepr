@@ -1,4 +1,7 @@
-import type { FeatureMatchLayoutConfig, FeatureMatchSourceItemConfig } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchLayoutConfig,
+	FeatureMatchSourceItemConfig,
+} from '~~/shared/types/screenConfig';
 import { describe, expect, it } from 'vitest';
 import {
 	featureMatchOverlaySelectionKey,
@@ -29,26 +32,32 @@ describe('feature-match-overlay selection', () => {
 		const layout = layoutOf([sourceItem]);
 
 		it('resolves canvas', () => {
-			expect(resolveFeatureMatchOverlaySelection(layout, { type: 'canvas' })).toEqual({ kind: 'canvas' });
+			expect(resolveFeatureMatchOverlaySelection(layout, { type: 'canvas' })).toEqual({
+				kind: 'canvas',
+			});
 		});
 
 		it('resolves a source target to its Source Item', () => {
-			expect(resolveFeatureMatchOverlaySelection(layout, { type: 'source', itemId: 's1' }))
-				.toMatchObject({
-					kind: 'source',
-					item: { id: 's1' },
-				});
+			expect(
+				resolveFeatureMatchOverlaySelection(layout, { type: 'source', itemId: 's1' }),
+			).toMatchObject({
+				kind: 'source',
+				item: { id: 's1' },
+			});
 		});
 
 		it('resolves missing ids to the missing kind', () => {
-			expect(resolveFeatureMatchOverlaySelection(layout, { type: 'source', itemId: 'nope' })).toEqual({ kind: 'missing' });
+			expect(
+				resolveFeatureMatchOverlaySelection(layout, { type: 'source', itemId: 'nope' }),
+			).toEqual({ kind: 'missing' });
 		});
 
 		it('never resolves a shared Graphic Item, which the compositor selects instead', () => {
 			const compositionItemId = layout.composition.items[0]!.id;
 
-			expect(resolveFeatureMatchOverlaySelection(layout, { type: 'source', itemId: compositionItemId }))
-				.toEqual({ kind: 'missing' });
+			expect(
+				resolveFeatureMatchOverlaySelection(layout, { type: 'source', itemId: compositionItemId }),
+			).toEqual({ kind: 'missing' });
 		});
 	});
 

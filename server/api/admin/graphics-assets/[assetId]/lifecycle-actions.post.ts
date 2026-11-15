@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { requireGraphicsAdministrator } from '~~/server/modules/graphics-administrator';
 import { graphicAssetId } from '~~/server/modules/graphics-asset-library';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import { graphicsAdministratorActor, rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
+import {
+	graphicsAdministratorActor,
+	rethrowGraphicsAssetApiError,
+} from '~~/server/utils/graphicsAssetApi';
 import { graphicsQueueActionErrorOutcome } from '~~/server/utils/graphicsQueueActions';
 import { graphicsLifecycleQueueOutcome } from '~~/shared/utils/graphicsOperationalQueues';
 
@@ -14,9 +17,11 @@ import { graphicsLifecycleQueueOutcome } from '~~/shared/utils/graphicsOperation
  * bringing one back from Retired or from Trash. Accepting the other two here
  * would be mutation surface nothing calls.
  */
-const actionSchema = z.object({
-	action: z.literal('restore'),
-}).strict();
+const actionSchema = z
+	.object({
+		action: z.literal('restore'),
+	})
+	.strict();
 
 /**
  * The administrator-gated restoration the operational queues offer.
@@ -27,25 +32,27 @@ const actionSchema = z.object({
  * under `/api/admin`, and because a queue action reports the explicit outcome
  * vocabulary rather than a status the caller has to interpret.
  */
-export default defineEventHandler(async (event): Promise<{
-	outcome: GraphicsQueueActionOutcome;
-}> => {
-	try {
-		await requireGraphicsAdministrator(event);
-		await readValidatedBody(event, actionSchema.parse);
-		return {
-			outcome: graphicsLifecycleQueueOutcome(
-				await graphicsAssetLibraryForEvent(event).restoreGraphicAsset({
-					assetId: graphicAssetId(getRouterParam(event, 'assetId') ?? ''),
-					actor: await graphicsAdministratorActor(event),
-				}),
-			),
-		};
-	}
-	catch (error) {
-		const outcome = graphicsQueueActionErrorOutcome(error);
-		if (outcome)
-			return { outcome };
-		return rethrowGraphicsAssetApiError(error, event);
-	}
-});
+export default defineEventHandler(
+	async (
+		event,
+	): Promise<{
+		outcome: GraphicsQueueActionOutcome;
+	}> => {
+		try {
+			await requireGraphicsAdministrator(event);
+			await readValidatedBody(event, actionSchema.parse);
+			return {
+				outcome: graphicsLifecycleQueueOutcome(
+					await graphicsAssetLibraryForEvent(event).restoreGraphicAsset({
+						assetId: graphicAssetId(getRouterParam(event, 'assetId') ?? ''),
+						actor: await graphicsAdministratorActor(event),
+					}),
+				),
+			};
+		} catch (error) {
+			const outcome = graphicsQueueActionErrorOutcome(error);
+			if (outcome) return { outcome };
+			return rethrowGraphicsAssetApiError(error, event);
+		}
+	},
+);

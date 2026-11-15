@@ -4,7 +4,10 @@ import {
 	createInMemoryCanonicalGraphicsObjectStore,
 	createInMemoryStagingGraphicsObjectStore,
 } from '~~/server/modules/graphics-asset-library/in-memory-object-store';
-import { createBoundedByteStream, graphicsObjectIdentity } from '~~/server/modules/graphics-asset-library/object-store';
+import {
+	createBoundedByteStream,
+	graphicsObjectIdentity,
+} from '~~/server/modules/graphics-asset-library/object-store';
 import {
 	createR2CanonicalGraphicsObjectStore,
 	createR2StagingGraphicsObjectStore,
@@ -26,8 +29,9 @@ beforeAll(async () => {
 afterAll(async () => await r2?.dispose());
 
 it('refuses a stream longer than its declared maximum before any store sees it', () => {
-	expect(() => createBoundedByteStream(new Uint8Array(6), { byteLength: 6, maximumByteLength: 5 }))
-		.toThrow('Byte stream exceeds its maximum byte length');
+	expect(() =>
+		createBoundedByteStream(new Uint8Array(6), { byteLength: 6, maximumByteLength: 5 }),
+	).toThrow('Byte stream exceeds its maximum byte length');
 });
 
 // The same contract over the in-memory double every library suite runs on and the
@@ -108,9 +112,9 @@ describe.each([
 		const read = await store.read(identity);
 		if (read.outcome !== 'available')
 			throw new Error(`Expected the raced object, got ${read.outcome}`);
-		expect(await new Response(read.body).text()).toBe(first.outcome === 'created'
-			? 'first'
-			: 'second');
+		expect(await new Response(read.body).text()).toBe(
+			first.outcome === 'created' ? 'first' : 'second',
+		);
 	});
 
 	it('reads metadata and exact byte ranges without conflating a missing object', async () => {
@@ -134,23 +138,27 @@ describe.each([
 		expect(await new Response(ranged.body).text()).toBe('irs');
 		expect(overlongTail.range).toEqual({ offset: 3, length: 2, completeLength: 5 });
 		expect(await new Response(overlongTail.body).text()).toBe('st');
-		await expect(store.read(at('canonical/sha256/missing'))).resolves.toEqual({ outcome: 'missing' });
+		await expect(store.read(at('canonical/sha256/missing'))).resolves.toEqual({
+			outcome: 'missing',
+		});
 	});
 
 	it('refuses a stream shorter than it declared without reserving the identity', async () => {
 		const store = canonical();
 		const identity = at('canonical/sha256/bounded');
 
-		await expect(store.createImmutable({
-			identity,
-			bytes: createBoundedByteStream(new Uint8Array(4), { byteLength: 5, maximumByteLength: 5 }),
-		})).rejects.toThrow('Byte stream length mismatch');
-		await expect(store.createImmutable({
-			identity,
-			bytes: boundedBytes(new Uint8Array(5)),
-		}))
-			.resolves
-			.toMatchObject({ outcome: 'created' });
+		await expect(
+			store.createImmutable({
+				identity,
+				bytes: createBoundedByteStream(new Uint8Array(4), { byteLength: 5, maximumByteLength: 5 }),
+			}),
+		).rejects.toThrow('Byte stream length mismatch');
+		await expect(
+			store.createImmutable({
+				identity,
+				bytes: boundedBytes(new Uint8Array(5)),
+			}),
+		).resolves.toMatchObject({ outcome: 'created' });
 	});
 
 	it('resumes multipart uploads, completes ordered parts, and deletes the result', async () => {
@@ -160,13 +168,11 @@ describe.each([
 			identity,
 			metadata: { contentType: 'application/octet-stream' },
 		});
-		if (started.outcome !== 'started')
-			throw new Error('Expected multipart upload to start');
+		if (started.outcome !== 'started') throw new Error('Expected multipart upload to start');
 
 		const resumed = await store.resumeMultipart(identity, started.upload.uploadId);
 		expect(resumed).toEqual({ outcome: 'resumed', upload: started.upload });
-		if (resumed.outcome !== 'resumed')
-			throw new Error('Expected multipart upload to resume');
+		if (resumed.outcome !== 'resumed') throw new Error('Expected multipart upload to resume');
 
 		// Uploaded out of order; completion orders them by part number.
 		const second = await store.uploadPart({
@@ -182,18 +188,17 @@ describe.each([
 		if (first.outcome !== 'uploaded' || second.outcome !== 'uploaded')
 			throw new Error('Expected both parts to upload');
 
-		await expect(store.completeMultipart({
-			upload: resumed.upload,
-			parts: [first.part, second.part],
-		}))
-			.resolves
-			.toMatchObject({
-				outcome: 'created',
-				object: { identity, byteLength: FIRST_PART.byteLength + 6 },
-			});
+		await expect(
+			store.completeMultipart({
+				upload: resumed.upload,
+				parts: [first.part, second.part],
+			}),
+		).resolves.toMatchObject({
+			outcome: 'created',
+			object: { identity, byteLength: FIRST_PART.byteLength + 6 },
+		});
 		const read = await store.read(identity, { offset: FIRST_PART.byteLength - 1, length: 7 });
-		if (read.outcome !== 'available')
-			throw new Error('Expected the completed object');
+		if (read.outcome !== 'available') throw new Error('Expected the completed object');
 		expect(await new Response(read.body).text()).toBe('apart-2');
 
 		expect(await store.delete(identity)).toEqual({ outcome: 'deleted' });
@@ -208,25 +213,22 @@ describe.each([
 			bytes: boundedBytes(text('old')),
 		});
 		const started = await store.beginMultipart({ identity });
-		if (started.outcome !== 'started')
-			throw new Error('Expected multipart upload to start');
+		if (started.outcome !== 'started') throw new Error('Expected multipart upload to start');
 		const part = await store.uploadPart({
 			upload: started.upload,
 			partNumber: 1,
 			bytes: boundedBytes(text('new')),
 		});
-		if (part.outcome !== 'uploaded')
-			throw new Error('Expected multipart part to upload');
+		if (part.outcome !== 'uploaded') throw new Error('Expected multipart part to upload');
 
-		await expect(store.completeMultipart({
-			upload: started.upload,
-			parts: [part.part],
-		}))
-			.resolves
-			.toMatchObject({ outcome: 'created' });
+		await expect(
+			store.completeMultipart({
+				upload: started.upload,
+				parts: [part.part],
+			}),
+		).resolves.toMatchObject({ outcome: 'created' });
 		const read = await store.read(identity);
-		if (read.outcome !== 'available')
-			throw new Error('Expected the replaced object');
+		if (read.outcome !== 'available') throw new Error('Expected the replaced object');
 		expect(await new Response(read.body).text()).toBe('new');
 	});
 });
@@ -238,14 +240,15 @@ it('reports an upload that is already gone as missing, however it is named', asy
 	const store = createInMemoryStagingGraphicsObjectStore();
 	const identity = graphicsObjectIdentity('staging/operation/aborted-twice');
 	const started = await store.beginMultipart({ identity });
-	if (started.outcome !== 'started')
-		throw new Error('Expected multipart upload to start');
+	if (started.outcome !== 'started') throw new Error('Expected multipart upload to start');
 
 	expect(await store.abortMultipart(started.upload)).toEqual({ outcome: 'aborted' });
 	// A stranded checkpoint retries this abort; `missing` lets it clear the checkpoint.
 	expect(await store.abortMultipart(started.upload)).toEqual({ outcome: 'missing' });
-	expect(await store.abortMultipart({
-		identity: graphicsObjectIdentity('staging/operation/somewhere-else'),
-		uploadId: started.upload.uploadId,
-	})).toEqual({ outcome: 'missing' });
+	expect(
+		await store.abortMultipart({
+			identity: graphicsObjectIdentity('staging/operation/somewhere-else'),
+			uploadId: started.upload.uploadId,
+		}),
+	).toEqual({ outcome: 'missing' });
 });

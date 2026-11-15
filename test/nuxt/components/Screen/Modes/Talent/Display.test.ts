@@ -22,13 +22,16 @@ mockNuxtImport('useTalentModeData', () => () => ({
 	headerText: computed(() => 'On the Desk'),
 	talents: computed(() => talents.value),
 }));
-mockNuxtImport('useScreenGraphicAssetContentUrls', () => (references: () => Array<{ assetId: string; revisionId: string }>) => {
-	resolvedPhotos.value = references();
-	return {
-		contentUrl: (reference: { revisionId: string }) => `/content/${reference.revisionId}`,
-		contentUrlsSettled,
-	};
-});
+mockNuxtImport(
+	'useScreenGraphicAssetContentUrls',
+	() => (references: () => Array<{ assetId: string; revisionId: string }>) => {
+		resolvedPhotos.value = references();
+		return {
+			contentUrl: (reference: { revisionId: string }) => `/content/${reference.revisionId}`,
+			contentUrlsSettled,
+		};
+	},
+);
 
 const PHOTO = { assetId: 'asset-1', revisionId: 'revision-1' };
 
@@ -76,10 +79,7 @@ describe('screenModesTalentDisplay', () => {
 			talent(7, 'Jordan Reyes', {
 				role: 'Host',
 				photo: PHOTO,
-				shownProfiles: [
-					profile('twitch', 'jordan'),
-					profile('x', 'jordan_x'),
-				],
+				shownProfiles: [profile('twitch', 'jordan'), profile('x', 'jordan_x')],
 			}),
 			talent(8, 'Sam Okafor', { role: 'Commentator' }),
 		];
@@ -90,17 +90,19 @@ describe('screenModesTalentDisplay', () => {
 		const wrapper = mountComponent();
 
 		expect(wrapper.get('[data-talent-layout]').attributes('data-talent-layout')).toBe(layout);
-		expect(wrapper.findAll('[data-talent-name]').map(name => name.text())).toEqual(['Jordan Reyes', 'Sam Okafor']);
+		expect(wrapper.findAll('[data-talent-name]').map((name) => name.text())).toEqual([
+			'Jordan Reyes',
+			'Sam Okafor',
+		]);
 	});
 
 	it('shows each Social Profile it is handed with its network icon and handle', () => {
 		const wrapper = mountComponent();
 		const profiles = wrapper.findAll('[data-talent-id="7"] [data-social-network]');
 
-		expect(profiles.map(entry => [
-			entry.attributes('data-social-network'),
-			entry.text(),
-		])).toEqual([
+		expect(
+			profiles.map((entry) => [entry.attributes('data-social-network'), entry.text()]),
+		).toEqual([
 			['twitch', '@jordan'],
 			['x', '@jordan_x'],
 		]);
@@ -108,29 +110,32 @@ describe('screenModesTalentDisplay', () => {
 	});
 
 	it.each([
-		[
-			true,
-			['Host', 'Commentator'],
-		],
+		[true, ['Host', 'Commentator']],
 		[false, []],
 	])('shows each role while roles show: %s', (showRole, roles) => {
 		config.value.showRole = showRole;
 
-		expect(mountComponent().findAll('[data-talent-role]').map(role => role.text())).toEqual(roles);
+		expect(
+			mountComponent()
+				.findAll('[data-talent-role]')
+				.map((role) => role.text()),
+		).toEqual(roles);
 	});
 
-	it('shows a Talent\'s photo through the Screen\'s capability, and a placeholder without one', () => {
+	it("shows a Talent's photo through the Screen's capability, and a placeholder without one", () => {
 		const wrapper = mountComponent();
 
 		expect(resolvedPhotos.value).toEqual([PHOTO]);
 		expect(wrapper.get('[data-talent-id="7"] img').attributes('src')).toBe('/content/revision-1');
-		expect(wrapper.get('[data-talent-id="8"] [data-talent-photo]').attributes('data-talent-photo')).toBe('none');
+		expect(
+			wrapper.get('[data-talent-id="8"] [data-talent-photo]').attributes('data-talent-photo'),
+		).toBe('none');
 	});
 
 	// The read answers no photo while photos are hidden.
 	it('shows no photo, nor its placeholder, while photos are hidden', () => {
 		config.value.showPhoto = false;
-		talents.value = talents.value.map(talent => ({ ...talent, photo: null }));
+		talents.value = talents.value.map((talent) => ({ ...talent, photo: null }));
 		const wrapper = mountComponent();
 
 		expect(resolvedPhotos.value).toEqual([]);
@@ -140,19 +145,22 @@ describe('screenModesTalentDisplay', () => {
 	it('holds its rendering pending until the photos resolve', () => {
 		contentUrlsSettled.value = false;
 
-		expect(mountComponent().get('[data-talent-layout]').attributes()).toHaveProperty('data-render-pending');
+		expect(mountComponent().get('[data-talent-layout]').attributes()).toHaveProperty(
+			'data-render-pending',
+		);
 	});
 
 	it.each([
-		[
-			true,
-			['On the Desk'],
-		],
+		[true, ['On the Desk']],
 		[false, []],
 	])('shows its header while the header shows: %s', (showHeader, headers) => {
 		config.value.showHeader = showHeader;
 
-		expect(mountComponent().findAll('h2').map(header => header.text())).toEqual(headers);
+		expect(
+			mountComponent()
+				.findAll('h2')
+				.map((header) => header.text()),
+		).toEqual(headers);
 	});
 
 	it('renders nothing while it shows no Talent', () => {

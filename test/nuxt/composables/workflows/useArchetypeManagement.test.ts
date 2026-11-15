@@ -62,9 +62,7 @@ beforeEach(() => {
 		{ id: 11, playerId: 2, archetypeId: 1 },
 		{ id: 12, playerId: 3, archetypeId: 2 },
 	];
-	playerStore.players = [
-		{ id: 4, archetypeId: 2 },
-	];
+	playerStore.players = [{ id: 4, archetypeId: 2 }];
 	screenStore.screens = [
 		{
 			id: 20,
@@ -82,11 +80,7 @@ describe('what holds an Archetype', () => {
 	it('counts the decks assigned to each', () => {
 		const { deckCountOf } = useArchetypeHoldings(9);
 
-		expect([
-			deckCountOf(1),
-			deckCountOf(2),
-			deckCountOf(3),
-		]).toEqual([2, 1, 0]);
+		expect([deckCountOf(1), deckCountOf(2), deckCountOf(3)]).toEqual([2, 1, 0]);
 	});
 
 	it('finds empty those no deck is assigned to and no Player holds', () => {
@@ -95,22 +89,23 @@ describe('what holds an Archetype', () => {
 			UNUSED,
 			createMockUiArchetype({ id: 5, name: 'Held by a Player alone' }),
 		];
-		playerStore.players = [
-			{ id: 4, archetypeId: 5 },
-		];
+		playerStore.players = [{ id: 4, archetypeId: 5 }];
 
 		expect(useArchetypeHoldings(9).emptyArchetypes.value).toEqual([UNUSED]);
 	});
 
 	// Before its decks are read, every Archetype would look empty.
-	it.each(['archetypeStore', 'playerDeckStore', 'playerStore'] as const)('finds none empty until the %s has loaded', (name) => {
-		const store = { archetypeStore, playerDeckStore, playerStore }[name];
-		store.isLoaded = false;
+	it.each(['archetypeStore', 'playerDeckStore', 'playerStore'] as const)(
+		'finds none empty until the %s has loaded',
+		(name) => {
+			const store = { archetypeStore, playerDeckStore, playerStore }[name];
+			store.isLoaded = false;
 
-		expect(useArchetypeHoldings(9).emptyArchetypes.value).toEqual([]);
+			expect(useArchetypeHoldings(9).emptyArchetypes.value).toEqual([]);
 
-		store.isLoaded = true;
-	});
+			store.isLoaded = true;
+		},
+	);
 });
 
 describe('merging an Archetype from its page', () => {

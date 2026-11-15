@@ -36,10 +36,8 @@ export interface BroadcastGraphicsCommandRefusal {
 export function graphicAssetRefusalOutcome(
 	code: BroadcastGraphicsRejectionCode,
 ): 'missing' | 'unavailable' | undefined {
-	if (code === 'missing-asset-reference')
-		return 'missing';
-	if (code === 'unavailable-asset-content')
-		return 'unavailable';
+	if (code === 'missing-asset-reference') return 'missing';
+	if (code === 'unavailable-asset-content') return 'unavailable';
 	return undefined;
 }
 
@@ -66,8 +64,7 @@ export function graphicAssetRefusalOutcome(
 export function broadcastGraphicsCommandRefusal(
 	failure: unknown,
 ): BroadcastGraphicsCommandRefusal | undefined {
-	if (typeof failure !== 'object' || failure === null || !('data' in failure))
-		return undefined;
+	if (typeof failure !== 'object' || failure === null || !('data' in failure)) return undefined;
 
 	const body = (failure as { data?: { message?: unknown; data?: { code?: unknown } } }).data;
 	const code = body?.data?.code;
@@ -79,8 +76,9 @@ export function broadcastGraphicsCommandRefusal(
 	// prose went missing would be the worse failure.
 	return {
 		code: code as BroadcastGraphicsRejectionCode,
-		message: typeof body?.message === 'string' && body.message.length > 0
-			? body.message
-			: 'The authoritative side refused this playout action',
+		message:
+			typeof body?.message === 'string' && body.message.length > 0
+				? body.message
+				: 'The authoritative side refused this playout action',
 	};
 }

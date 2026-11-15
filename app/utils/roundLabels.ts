@@ -7,8 +7,7 @@ export function formatRoundLabel(
 	phase?: Pick<Phase, 'name'> | null,
 	options: { style?: RoundLabelStyle; separator?: string } = {},
 ): string {
-	if (!round)
-		return 'No round selected';
+	if (!round) return 'No round selected';
 
 	const style = options.style ?? 'short';
 	if (style === 'phase' && phase?.name) {
@@ -35,12 +34,18 @@ export function roundPickerOptions(
 	rounds: readonly Pick<Round, 'id' | 'name' | 'phaseId' | 'roundNumber'>[],
 	phases: readonly Pick<Phase, 'id' | 'name' | 'sortOrder'>[],
 ): { label: string; value: number }[] {
-	const phaseById = new Map(phases.map(phase => [phase.id, phase]));
-	const phaseOrder = (round: Pick<Round, 'phaseId'>) => phaseById.get(round.phaseId)?.sortOrder ?? Infinity;
+	const phaseById = new Map(phases.map((phase) => [phase.id, phase]));
+	const phaseOrder = (round: Pick<Round, 'phaseId'>) =>
+		phaseById.get(round.phaseId)?.sortOrder ?? Infinity;
 	return rounds
-		.toSorted((a, b) => phaseOrder(a) - phaseOrder(b) || a.roundNumber - b.roundNumber || a.id - b.id)
-		.map(round => ({
-			label: formatRoundLabel(round, phaseById.get(round.phaseId), { style: 'phase', separator: ' · ' }),
+		.toSorted(
+			(a, b) => phaseOrder(a) - phaseOrder(b) || a.roundNumber - b.roundNumber || a.id - b.id,
+		)
+		.map((round) => ({
+			label: formatRoundLabel(round, phaseById.get(round.phaseId), {
+				style: 'phase',
+				separator: ' · ',
+			}),
 			value: round.id,
 		}));
 }

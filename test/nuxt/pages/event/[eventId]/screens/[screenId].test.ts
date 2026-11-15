@@ -3,12 +3,20 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, nextTick, reactive } from 'vue';
-import { UButtonStub, UDropdownMenuStub, UModalStub, UTooltipStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import {
+	UButtonStub,
+	UDropdownMenuStub,
+	UModalStub,
+	UTooltipStub,
+} from '~~/test/nuxt/helpers/nuxtUiStubs';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import EditorFocusModeToggle from '~/components/Graphics/EditorFocusModeToggle.vue';
 import ScreenModeSettings from '~/components/Screen/ModeSettings.vue';
 import { useEditorFocusMode } from '~/modules/graphics/editorFocusMode';
-import { getScreenModeConfigurationPolicy, getScreenModeSettingsComponent } from '~/modules/screen-mode';
+import {
+	getScreenModeConfigurationPolicy,
+	getScreenModeSettingsComponent,
+} from '~/modules/screen-mode';
 
 // The mode-settings module pulls in every mode's Display/Settings component
 // (feature-match overlay, metagame, etc.) via defineAsyncComponent. None of
@@ -40,14 +48,20 @@ let pendingLoads: PendingLoad[] = [];
 
 const mockScreenStore = reactive({
 	screens: [] as Array<{ id: number }>,
-	screenPresence: new Map<number, { count: number; members: Array<{ clientId: string; data?: Record<string, unknown> }> }>(),
+	screenPresence: new Map<
+		number,
+		{ count: number; members: Array<{ clientId: string; data?: Record<string, unknown> }> }
+	>(),
 	subscribeToScreenPresence: vi.fn(),
 	unsubscribeFromScreenPresence: vi.fn(),
 	getConnectedCount: vi.fn(() => 0),
 	sendScreenCommand: vi.fn(async () => {}),
-	getScreenById: vi.fn((_eventId: number, screenId: number) => new Promise((resolve) => {
-		pendingLoads.push({ screenId, resolve });
-	})),
+	getScreenById: vi.fn(
+		(_eventId: number, screenId: number) =>
+			new Promise((resolve) => {
+				pendingLoads.push({ screenId, resolve });
+			}),
+	),
 });
 
 const mockToast = {
@@ -75,7 +89,8 @@ const NuxtLayoutStub = defineComponent({
 	props: {
 		editorFocus: { type: Boolean, default: false },
 	},
-	template: '<div data-testid="layout" :data-focus="String(editorFocus)"><slot name="navbar-center" /><slot name="actions" /><slot /></div>',
+	template:
+		'<div data-testid="layout" :data-focus="String(editorFocus)"><slot name="navbar-center" /><slot name="actions" /><slot /></div>',
 });
 
 const UContainerStub = defineComponent({
@@ -102,9 +117,8 @@ const SlotStub = defineComponent({
 /** Opens the header menu behind `trigger` and chooses the item labelled `label`. */
 async function chooseMenuItem(page: VueWrapper, trigger: string, label: string) {
 	await page.get(trigger).trigger('click');
-	const item = page.findAll('[role="menuitem"]').find(entry => entry.text() === label);
-	if (!item)
-		throw new Error(`No menu item "${label}" behind ${trigger}`);
+	const item = page.findAll('[role="menuitem"]').find((entry) => entry.text() === label);
+	if (!item) throw new Error(`No menu item "${label}" behind ${trigger}`);
 	await item.trigger('click');
 	await flushPromises();
 }
@@ -131,9 +145,8 @@ function stubModePolicy(policy: unknown) {
 
 /** Resolve the getScreenById(...) call for a specific screenId, in whatever order the test wants. */
 function resolveLoad(screenId: number, screen: unknown) {
-	const index = pendingLoads.findIndex(load => load.screenId === screenId);
-	if (index === -1)
-		throw new Error(`No pending load for screen ${screenId}`);
+	const index = pendingLoads.findIndex((load) => load.screenId === screenId);
+	if (index === -1) throw new Error(`No pending load for screen ${screenId}`);
 	const [load] = pendingLoads.splice(index, 1);
 	load!.resolve(screen);
 }
@@ -240,9 +253,7 @@ describe('screen config page — screenId route changes', () => {
 	// A Screen deleted elsewhere leaves the store's list, and the page stops
 	// offering its settings rather than editing what no longer exists.
 	it('shows the Screen as not found once it is deleted from under the page', async () => {
-		mockScreenStore.screens = [
-			makeScreen(1),
-		];
+		mockScreenStore.screens = [makeScreen(1)];
 		wrapper = await mountPage({ UIEmptyState: EmptyStateStub });
 		await flushPromises();
 		resolveLoad(1, makeScreen(1));
@@ -325,29 +336,30 @@ describe('screen config page — degraded card data on connected outputs', () =>
 			protocols: [2, 2],
 			outdated: null,
 		},
-	])('shows $outdated for outputs reporting protocols $protocols', async ({ protocols, outdated }) => {
-		mockScreenStore.screenPresence = new Map([
-			[
-				1,
-				{
-					count: protocols.length,
-					members: protocols.map((protocol, index) => ({
-						clientId: String(index),
-						data: { screenId: 1, protocol },
-					})),
-				},
-			],
-		]);
+	])(
+		'shows $outdated for outputs reporting protocols $protocols',
+		async ({ protocols, outdated }) => {
+			mockScreenStore.screenPresence = new Map([
+				[
+					1,
+					{
+						count: protocols.length,
+						members: protocols.map((protocol, index) => ({
+							clientId: String(index),
+							data: { screenId: 1, protocol },
+						})),
+					},
+				],
+			]);
 
-		const page = await mountLoadedPage();
+			const page = await mountLoadedPage();
 
-		const warning = page.find('[data-testid="outputs-outdated"]');
-		expect(warning.exists()
-			? warning.text()
-			: null).toEqual(outdated === null
-			? null
-			: expect.stringContaining(outdated));
-	});
+			const warning = page.find('[data-testid="outputs-outdated"]');
+			expect(warning.exists() ? warning.text() : null).toEqual(
+				outdated === null ? null : expect.stringContaining(outdated),
+			);
+		},
+	);
 
 	it('says nothing while every reporting output is complete or silent', async () => {
 		mockScreenStore.screenPresence = new Map([
@@ -395,8 +407,7 @@ describe('screen config page — handing out this Screen’s output', () => {
 		mockApiFetch.mockReset();
 		mockApiFetch.mockImplementation(async (path: string) => {
 			if (String(path).endsWith('/asset-capability')) {
-				if (!mockCapabilityResponse.value)
-					throw new Error('no capability');
+				if (!mockCapabilityResponse.value) throw new Error('no capability');
 				return { assetCapability: mockCapabilityResponse.value };
 			}
 			return {};
@@ -423,7 +434,10 @@ describe('screen config page — handing out this Screen’s output', () => {
 			location: { href: '' },
 			close: vi.fn(),
 		};
-		vi.stubGlobal('open', vi.fn(() => outputWindow));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => outputWindow),
+		);
 		return outputWindow;
 	}
 
@@ -438,7 +452,10 @@ describe('screen config page — handing out this Screen’s output', () => {
 		await wrapper.get('[aria-label="Copy output URL"]').trigger('click');
 		await flushPromises();
 
-		expect(mockCopyToClipboard).toHaveBeenCalledWith(accessUrl('rotated-capability'), expect.anything());
+		expect(mockCopyToClipboard).toHaveBeenCalledWith(
+			accessUrl('rotated-capability'),
+			expect.anything(),
+		);
 	});
 
 	describe('a Screen Mode’s own outputs', () => {
@@ -507,25 +524,24 @@ describe('screen config page — the Screen header', () => {
 	}
 
 	function rotations() {
-		return mockApiFetch.mock.calls.filter(([path, options]) =>
-			path === '/api/events/1/screens/1/asset-capability' && options?.method === 'POST');
+		return mockApiFetch.mock.calls.filter(
+			([path, options]) =>
+				path === '/api/events/1/screens/1/asset-capability' && options?.method === 'POST',
+		);
 	}
 
 	function dialogButton(page: VueWrapper, label: string) {
-		const button = page.findAll('[role="dialog"] button').find(entry => entry.text() === label);
-		if (!button)
-			throw new Error(`No "${label}" button in an open dialog`);
+		const button = page.findAll('[role="dialog"] button').find((entry) => entry.text() === label);
+		if (!button) throw new Error(`No "${label}" button in an open dialog`);
 		return button;
 	}
 
 	it('offers the output hand-out, Refresh and one menu at the top level, in that order', async () => {
 		const page = await mountLoadedPage();
 
-		expect(page.findAll('[data-header-action]').map(action => action.attributes('data-header-action'))).toEqual([
-			'hand-out',
-			'refresh',
-			'more',
-		]);
+		expect(
+			page.findAll('[data-header-action]').map((action) => action.attributes('data-header-action')),
+		).toEqual(['hand-out', 'refresh', 'more']);
 	});
 
 	it('holds Identify, Debug, Rotate Asset Access and Reset mode settings in the one menu', async () => {
@@ -533,7 +549,7 @@ describe('screen config page — the Screen header', () => {
 
 		await page.get(MORE_MENU).trigger('click');
 
-		expect(page.findAll('[role="menuitem"]').map(item => item.text())).toEqual([
+		expect(page.findAll('[role="menuitem"]').map((item) => item.text())).toEqual([
 			'Identify',
 			'Debug',
 			'Rotate Asset Access',
@@ -541,7 +557,7 @@ describe('screen config page — the Screen header', () => {
 		]);
 	});
 
-	it('refreshes the Screen\'s outputs on one click', async () => {
+	it("refreshes the Screen's outputs on one click", async () => {
 		const page = await mountLoadedPage();
 
 		await page.get('[data-header-action="refresh"]').trigger('click');
@@ -612,15 +628,19 @@ describe('screen config page — the Screen header', () => {
 		expect(page.find('[role="dialog"]').exists()).toBe(true);
 	});
 
-	it('disables Reset mode settings, with the reason, while the mode\'s settings block it', async () => {
-		modeSettings.resetBlockedReason = 'Another session is editing this Screen\'s graphics';
+	it("disables Reset mode settings, with the reason, while the mode's settings block it", async () => {
+		modeSettings.resetBlockedReason = "Another session is editing this Screen's graphics";
 		const page = await mountLoadedPage();
 
 		await page.get(MORE_MENU).trigger('click');
-		const reset = page.findAll('[role="menuitem"]').find(entry => entry.text() === 'Reset mode settings')!;
+		const reset = page
+			.findAll('[role="menuitem"]')
+			.find((entry) => entry.text() === 'Reset mode settings')!;
 
 		expect(reset.attributes('disabled')).toBeDefined();
-		expect(reset.attributes('aria-description')).toBe('Another session is editing this Screen\'s graphics');
+		expect(reset.attributes('aria-description')).toBe(
+			"Another session is editing this Screen's graphics",
+		);
 	});
 });
 
@@ -671,7 +691,7 @@ describe('screen config page — Editor Focus Mode', () => {
 		return wrapper;
 	}
 
-	it('shows the Screen header and settings until the editor\'s toggle enters Focus Mode', async () => {
+	it("shows the Screen header and settings until the editor's toggle enters Focus Mode", async () => {
 		const page = await mountLoadedPage(GraphicsEditorStub);
 
 		expect(page.get('[data-testid="layout"]').attributes('data-focus')).toBe('false');
@@ -743,7 +763,7 @@ describe('screen config page — live actions first, Background & Placement last
 
 	// The card's own open rule is tested at its home; this shows the page wires the Screen to it,
 	// and holds the one Screen Theme Override instance it reads the Event's Theme through.
-	it('ends with Background & Placement, opening on what it holds, over one read of the Event\'s Theme', async () => {
+	it("ends with Background & Placement, opening on what it holds, over one read of the Event's Theme", async () => {
 		mockEventStore.event = { id: 1, themeId: 'brand' };
 		mockApiFetch.mockReset();
 		mockApiFetch.mockResolvedValue({
@@ -766,19 +786,21 @@ describe('screen config page — live actions first, Background & Placement last
 		await flushPromises();
 
 		const cards = wrapper.findAll('[data-section]');
-		expect(cards.map(card => card.attributes('data-section'))).toEqual([
+		expect(cards.map((card) => card.attributes('data-section'))).toEqual([
 			'Mode settings',
 			'Background & Placement',
 		]);
 		expect(cards[1]!.attributes('data-default-open')).toBe('true');
 		expect(wrapper.findAll('[data-token="inset"]')).toHaveLength(1);
 		expect(wrapper.findAll('[data-token="alignment"]')).toHaveLength(1);
-		expect(mockApiFetch.mock.calls.filter(([path]) => path === '/api/themes/brand')).toHaveLength(1);
+		expect(mockApiFetch.mock.calls.filter(([path]) => path === '/api/themes/brand')).toHaveLength(
+			1,
+		);
 	});
 
 	// The cards' order is the renderer's to test; this shows the page adds no card before
 	// the mode's Live card, and none, such as a Screen-wide look, after Background & Placement.
-	it('opens on the mode\'s live actions and closes on Background & Placement', async () => {
+	it("opens on the mode's live actions and closes on Background & Placement", async () => {
 		mockEventStore.event = { id: 1, themeId: 'brand' };
 		mockApiFetch.mockReset();
 		mockApiFetch.mockResolvedValue({
@@ -802,9 +824,11 @@ describe('screen config page — live actions first, Background & Placement last
 		resolveLoad(1, screen);
 		await flushPromises();
 
-		const titles = wrapper.findAll('section[data-section]').map(card => card.attributes('data-section'));
+		const titles = wrapper
+			.findAll('section[data-section]')
+			.map((card) => card.attributes('data-section'));
 		expect(titles[0]).toBe('Live');
 		expect(titles.at(-1)).toBe('Background & Placement');
-		expect(titles.filter(title => title === 'Background & Placement')).toHaveLength(1);
+		expect(titles.filter((title) => title === 'Background & Placement')).toHaveLength(1);
 	});
 });

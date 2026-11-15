@@ -1,5 +1,8 @@
 import { requireGraphicsAdministrator } from '~~/server/modules/graphics-administrator';
-import { administeredUserIdFrom, setUserAccountPassword } from '~~/server/modules/user-administration';
+import {
+	administeredUserIdFrom,
+	setUserAccountPassword,
+} from '~~/server/modules/user-administration';
 import { betterAuthUserAdministrationPort } from '~~/server/modules/user-administration/betterAuthPort';
 import { setUserPasswordSchema } from '~~/server/schemas/api/userAdministration';
 

@@ -55,16 +55,19 @@ export default function createCausticsEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'caustics'>,
 ): AnimationEffectInstance<AnimationEffectParams<'caustics'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: CAUSTICS_FRAGMENT_SHADER,
-		uniforms: current => ({
-			lightColor: current.lightColor,
-			waterColor: current.waterColor,
-			intensity: current.intensity,
-			scale: current.scale,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: CAUSTICS_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				lightColor: current.lightColor,
+				waterColor: current.waterColor,
+				intensity: current.intensity,
+				scale: current.scale,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

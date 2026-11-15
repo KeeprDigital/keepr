@@ -75,7 +75,7 @@ export const LOCALLY_REQUIRED_NUXT_NAMES = [
 	'NUXT_ADMIN_BOOTSTRAP_TOKEN',
 ] as const;
 
-export type LocallyRequiredNuxtName = typeof LOCALLY_REQUIRED_NUXT_NAMES[number];
+export type LocallyRequiredNuxtName = (typeof LOCALLY_REQUIRED_NUXT_NAMES)[number];
 
 /**
  * Deliberately optional, and named here so the partition above is legible.
@@ -167,8 +167,8 @@ export function missingLocalNuxtNames(
 		? new Set<LocallyRequiredNuxtName>(['NUXT_BETTER_AUTH_SECRET', 'NUXT_ADMIN_BOOTSTRAP_TOKEN'])
 		: new Set<LocallyRequiredNuxtName>();
 
-	return LOCALLY_REQUIRED_NUXT_NAMES.filter(name =>
-		!bypassedAuthNames.has(name) && (env[name] ?? '').trim().length === 0,
+	return LOCALLY_REQUIRED_NUXT_NAMES.filter(
+		(name) => !bypassedAuthNames.has(name) && (env[name] ?? '').trim().length === 0,
 	);
 }
 
@@ -186,8 +186,7 @@ export function missingLocalNuxtNames(
  * existing assertion about these notices was written against.
  */
 export function sentenceList(items: readonly string[], conjunction: 'and' | 'or'): string {
-	if (items.length <= 2)
-		return items.join(` ${conjunction} `);
+	if (items.length <= 2) return items.join(` ${conjunction} `);
 
 	return `${items.slice(0, -1).join(', ')}, ${conjunction} ${items[items.length - 1]}`;
 }
@@ -221,22 +220,26 @@ export function sentenceList(items: readonly string[], conjunction: 'and' | 'or'
  * the boot would trade an obscure 503 for an obstruction.
  */
 export function localConfigurationBootNotice(missing: readonly LocallyRequiredNuxtName[]): string {
-	const names = missing.length === 1
-		? `${missing[0]}, so it keeps its empty default`
-		: `${sentenceList(missing, 'or')}, so they keep their empty default`;
+	const names =
+		missing.length === 1
+			? `${missing[0]}, so it keeps its empty default`
+			: `${sentenceList(missing, 'or')}, so they keep their empty default`;
 
 	// Only the surfaces belonging to the names that are missing, and only the
 	// "each says so on its own" clause when there is more than one to say it.
-	const surfaces = missing.map(name => LOCAL_NUXT_NAME_SURFACES[name]);
-	const consequence = surfaces.length === 1
-		? `${surfaces[0]} answer 503 without naming this as the cause`
-		: `${sentenceList(surfaces, 'and')} answer 503, and each says so on its own without naming a common cause`;
+	const surfaces = missing.map((name) => LOCAL_NUXT_NAME_SURFACES[name]);
+	const consequence =
+		surfaces.length === 1
+			? `${surfaces[0]} answer 503 without naming this as the cause`
+			: `${sentenceList(surfaces, 'and')} answer 503, and each says so on its own without naming a common cause`;
 
-	return `Nothing in this checkout sets ${names}: ${consequence}. `
-		+ 'A fresh git worktree is the usual way to arrive here — .env is gitignored, so a new checkout '
-		+ 'inherits none of it from the one it was branched from, and a copied .env.example carries the names '
-		+ 'with empty values. Fix: copy .env in from the checkout you branched from, or fill in .env.example. '
-		+ 'See README.md → Local configuration.';
+	return (
+		`Nothing in this checkout sets ${names}: ${consequence}. ` +
+		'A fresh git worktree is the usual way to arrive here — .env is gitignored, so a new checkout ' +
+		'inherits none of it from the one it was branched from, and a copied .env.example carries the names ' +
+		'with empty values. Fix: copy .env in from the checkout you branched from, or fill in .env.example. ' +
+		'See README.md → Local configuration.'
+	);
 }
 
 /**
@@ -308,14 +311,11 @@ export function parseDotenv(source: string): Map<string, string> {
 	const values = new Map<string, string>();
 	for (const rawLine of source.split(/\r?\n/)) {
 		const line = rawLine.trim();
-		if (line.length === 0 || line.startsWith('#'))
-			continue;
+		if (line.length === 0 || line.startsWith('#')) continue;
 		const separator = line.indexOf('=');
-		if (separator <= 0)
-			continue;
+		if (separator <= 0) continue;
 		const name = line.slice(0, separator).replace(EXPORT_PREFIX, '').trim();
-		if (!NAME.test(name))
-			continue;
+		if (!NAME.test(name)) continue;
 		values.set(name, unquote(line.slice(separator + 1).trim()));
 	}
 	return values;
@@ -323,7 +323,7 @@ export function parseDotenv(source: string): Map<string, string> {
 
 function unquote(value: string): string {
 	const quote = value[0];
-	if ((quote === '"' || quote === '\'') && value.length >= 2 && value.endsWith(quote))
+	if ((quote === '"' || quote === "'") && value.length >= 2 && value.endsWith(quote))
 		return value.slice(1, -1);
 	// An unquoted value ends at an inline comment, as dotenv reads it.
 	return value.replace(/\s+#.*$/, '');
@@ -348,14 +348,12 @@ export function localConfigurationLogLine(
 	context: LocalConfigurationContext,
 	bypassActive = localAuthBypassActive(context),
 ): { level: 'warn'; message: string } | undefined {
-	if (!announcesLocalConfiguration(context))
-		return undefined;
+	if (!announcesLocalConfiguration(context)) return undefined;
 
 	const missing = missingLocalNuxtNames(context.env, {
 		localAuthBypassActive: bypassActive,
 	});
-	if (missing.length === 0)
-		return undefined;
+	if (missing.length === 0) return undefined;
 
 	return {
 		level: 'warn',
@@ -374,8 +372,9 @@ export function localAuthBypassLogLine(
 
 	return {
 		level: 'warn',
-		message: `AUTHENTICATION BYPASSED: every request is acting as ${LOCAL_DEVELOPER_USER_NAME}. `
-			+ 'Keep the development server bound to loopback; binding it to 0.0.0.0 or another non-loopback '
-			+ 'address exposes the application to other machines without authentication.',
+		message:
+			`AUTHENTICATION BYPASSED: every request is acting as ${LOCAL_DEVELOPER_USER_NAME}. ` +
+			'Keep the development server bound to loopback; binding it to 0.0.0.0 or another non-loopback ' +
+			'address exposes the application to other machines without authentication.',
 	};
 }

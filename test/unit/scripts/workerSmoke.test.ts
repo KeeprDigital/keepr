@@ -18,7 +18,9 @@ describe('the built Worker smoke runner', () => {
 	afterEach(async () => {
 		vi.useRealTimers();
 		vi.unstubAllEnvs();
-		await Promise.all(temporaryRoots.splice(0).map(root => rm(root, { recursive: true, force: true })));
+		await Promise.all(
+			temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })),
+		);
 	});
 
 	async function builtRepository() {
@@ -48,7 +50,8 @@ describe('the built Worker smoke runner', () => {
 
 	/** A spawn whose migration and Live Results seed exit 0, then starts `worker`. */
 	function spawnAfterSetup(worker: () => unknown) {
-		return vi.fn()
+		return vi
+			.fn()
 			.mockImplementationOnce(() => exitedProcess(0))
 			.mockImplementationOnce(() => exitedProcess(0))
 			.mockImplementationOnce(worker);
@@ -74,8 +77,7 @@ describe('the built Worker smoke runner', () => {
 	function stubbornProcess() {
 		const child = livingProcess();
 		child.kill = vi.fn((signal: NodeJS.Signals) => {
-			if (signal === 'SIGKILL')
-				queueMicrotask(() => child.emit('exit', null, signal));
+			if (signal === 'SIGKILL') queueMicrotask(() => child.emit('exit', null, signal));
 			return true;
 		});
 		return child;
@@ -119,8 +121,7 @@ describe('the built Worker smoke runner', () => {
 	])('names failed $failing and starts no Worker', async ({ exits, failureClass }) => {
 		const repositoryRoot = await builtRepository();
 		const spawnProcess = vi.fn();
-		for (const status of exits)
-			spawnProcess.mockImplementationOnce(() => exitedProcess(status));
+		for (const status of exits) spawnProcess.mockImplementationOnce(() => exitedProcess(status));
 
 		await expect(runWorkerSmoke({ repositoryRoot, spawnProcess })).rejects.toMatchObject({
 			probe: 'setup',
@@ -139,7 +140,8 @@ describe('the built Worker smoke runner', () => {
 		await writeFile(stagedEnv, originalEnv);
 		await writeFile(stagedDevVars, originalDevVars);
 		let generatedBody = '';
-		const spawnProcess = vi.fn()
+		const spawnProcess = vi
+			.fn()
 			.mockImplementationOnce((_command, _arguments, options) => {
 				generatedBody = readFileSync(stagedEnv, 'utf8');
 				expect(generatedBody).not.toContain('developer-value');
@@ -178,15 +180,17 @@ describe('the built Worker smoke runner', () => {
 		const migration = livingProcess();
 		let bindingStateDuringMigration: string[] = [];
 
-		await expect(runWorkerSmoke({
-			repositoryRoot,
-			temporaryRoot,
-			spawnProcess: vi.fn(() => {
-				bindingStateDuringMigration = readdirSync(temporaryRoot);
-				return migration;
+		await expect(
+			runWorkerSmoke({
+				repositoryRoot,
+				temporaryRoot,
+				spawnProcess: vi.fn(() => {
+					bindingStateDuringMigration = readdirSync(temporaryRoot);
+					return migration;
+				}),
+				hardTimeoutMs: 5,
 			}),
-			hardTimeoutMs: 5,
-		})).rejects.toMatchObject({
+		).rejects.toMatchObject({
 			probe: 'runner',
 			failureClass: 'hard-timeout',
 		});
@@ -207,11 +211,13 @@ describe('the built Worker smoke runner', () => {
 			return migration;
 		});
 
-		await expect(runWorkerSmoke({
-			repositoryRoot,
-			spawnProcess,
-			signal: interrupted.signal,
-		})).rejects.toMatchObject({
+		await expect(
+			runWorkerSmoke({
+				repositoryRoot,
+				spawnProcess,
+				signal: interrupted.signal,
+			}),
+		).rejects.toMatchObject({
 			probe: 'runner',
 			failureClass: 'interrupted',
 		});
@@ -222,13 +228,18 @@ describe('the built Worker smoke runner', () => {
 		const repositoryRoot = await builtRepository();
 		const worker = livingProcess();
 		const spawnProcess = spawnAfterSetup(() => worker);
-		const fetchRequest = vi.fn()
-			.mockResolvedValueOnce(Response.json({
-				serverTime: Date.now(),
-			}))
+		const fetchRequest = vi
+			.fn()
+			.mockResolvedValueOnce(
+				Response.json({
+					serverTime: Date.now(),
+				}),
+			)
 			.mockResolvedValueOnce(Response.json({ events: [] }));
 
-		await expect(runWorkerSmoke({ repositoryRoot, spawnProcess, fetchRequest })).rejects.toMatchObject({
+		await expect(
+			runWorkerSmoke({ repositoryRoot, spawnProcess, fetchRequest }),
+		).rejects.toMatchObject({
 			probe: 'api-boundary',
 			failureClass: 'unexpected-status',
 			detail: { expected: 401, actual: 200 },
@@ -285,7 +296,7 @@ describe('the built Worker smoke runner', () => {
 			...scenario,
 			new Response(null, { status: 500 }),
 		]);
-		return { outcome: await run.catch(error => error), fetchRequest };
+		return { outcome: await run.catch((error) => error), fetchRequest };
 	}
 
 	/**
@@ -293,9 +304,11 @@ describe('the built Worker smoke runner', () => {
 	 * did before `rateLimit` was stated: every attempt reached the password check.
 	 */
 	it('refuses a Worker that admits a fourth sign-in attempt from one client', async () => {
-		const { outcome } = await rateLimitAnswering(rateLimitScenario({
-			3: new Response(null, { status: 401 }),
-		}));
+		const { outcome } = await rateLimitAnswering(
+			rateLimitScenario({
+				3: new Response(null, { status: 401 }),
+			}),
+		);
 
 		expect(outcome).toMatchObject({
 			probe: 'auth-rate-limit-refusal',
@@ -305,25 +318,37 @@ describe('the built Worker smoke runner', () => {
 	});
 
 	it('refuses a Worker that limits a client it should not have limited yet', async () => {
-		const { outcome } = await rateLimitAnswering(rateLimitScenario({
-			2: new Response(null, { status: 429 }),
-		}));
+		const { outcome } = await rateLimitAnswering(
+			rateLimitScenario({
+				2: new Response(null, { status: 429 }),
+			}),
+		);
 
-		expect(outcome).toMatchObject({ probe: 'auth-rate-limit-admitted', failureClass: 'unexpected-status' });
+		expect(outcome).toMatchObject({
+			probe: 'auth-rate-limit-admitted',
+			failureClass: 'unexpected-status',
+		});
 	});
 
 	it('refuses a 429 that names no retry delay', async () => {
-		const { outcome } = await rateLimitAnswering(rateLimitScenario({
-			3: new Response('{}', { status: 429 }),
-		}));
+		const { outcome } = await rateLimitAnswering(
+			rateLimitScenario({
+				3: new Response('{}', { status: 429 }),
+			}),
+		);
 
-		expect(outcome).toMatchObject({ probe: 'auth-rate-limit-refusal', failureClass: 'unexpected-body' });
+		expect(outcome).toMatchObject({
+			probe: 'auth-rate-limit-refusal',
+			failureClass: 'unexpected-body',
+		});
 	});
 
 	it('refuses a Worker whose limit also refuses an independent client', async () => {
-		const { outcome } = await rateLimitAnswering(rateLimitScenario({
-			4: new Response(null, { status: 429 }),
-		}));
+		const { outcome } = await rateLimitAnswering(
+			rateLimitScenario({
+				4: new Response(null, { status: 429 }),
+			}),
+		);
 
 		expect(outcome).toMatchObject({
 			probe: 'auth-rate-limit-independent-client',
@@ -345,8 +370,8 @@ describe('the built Worker smoke runner', () => {
 		const independent = headers[4]!;
 		const following = headers[5]!;
 
-		expect(new Set(limited.map(each => each.get('cf-connecting-ip'))).size).toBe(1);
-		expect(new Set(limited.map(each => each.get('x-forwarded-for'))).size).toBeGreaterThan(1);
+		expect(new Set(limited.map((each) => each.get('cf-connecting-ip'))).size).toBe(1);
+		expect(new Set(limited.map((each) => each.get('x-forwarded-for'))).size).toBeGreaterThan(1);
 		expect(independent.get('cf-connecting-ip')).toMatch(/^\d+\.\d+\.\d+\.\d+$/u);
 		expect(independent.get('cf-connecting-ip')).not.toBe(limited[0]!.get('cf-connecting-ip'));
 		expect(following.has('cf-connecting-ip')).toBe(false);
@@ -360,8 +385,7 @@ describe('the built Worker smoke runner', () => {
 	 */
 	async function signInAnswering(setCookies: string[]) {
 		const signIn = new Response('{}', { status: 200 });
-		for (const value of setCookies)
-			signIn.headers.append('set-cookie', value);
+		for (const value of setCookies) signIn.headers.append('set-cookie', value);
 		const { run } = await bootstrappedWorkerAnswering([
 			...rateLimitScenario(),
 			new Response(null, { status: 403 }),
@@ -378,12 +402,30 @@ describe('the built Worker smoke runner', () => {
 	 * Worker actually set before the option was stated, measured on #621.
 	 */
 	it.each([
-		['unprefixed and not Secure', 'better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax'],
-		['named __Secure- but not Secure', '__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax'],
-		['Secure but not named __Secure-', 'better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax; Secure'],
-		['without HttpOnly', '__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; Secure; SameSite=Lax'],
-		['without SameSite=Lax', '__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=None'],
-		['scoped below the root path', '__Secure-better-auth.session_token=t; Max-Age=604800; Path=/api; HttpOnly; Secure; SameSite=Lax'],
+		[
+			'unprefixed and not Secure',
+			'better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax',
+		],
+		[
+			'named __Secure- but not Secure',
+			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax',
+		],
+		[
+			'Secure but not named __Secure-',
+			'better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax; Secure',
+		],
+		[
+			'without HttpOnly',
+			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; Secure; SameSite=Lax',
+		],
+		[
+			'without SameSite=Lax',
+			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=None',
+		],
+		[
+			'scoped below the root path',
+			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/api; HttpOnly; Secure; SameSite=Lax',
+		],
 	])('refuses a production session cookie %s', async (_case, setCookie) => {
 		await expect(signInAnswering([setCookie])).rejects.toMatchObject({
 			probe: 'auth-sign-in',
@@ -399,9 +441,11 @@ describe('the built Worker smoke runner', () => {
 	});
 
 	it('accepts a __Secure- prefixed, Secure session cookie and signs in with it', async () => {
-		await expect(signInAnswering([
-			'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Lax',
-		])).rejects.toMatchObject({
+		await expect(
+			signInAnswering([
+				'__Secure-better-auth.session_token=t; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Lax',
+			]),
+		).rejects.toMatchObject({
 			probe: 'authenticated-api',
 			failureClass: 'unexpected-status',
 		});
@@ -414,12 +458,17 @@ describe('the built Worker smoke runner', () => {
 		const repositoryRoot = await builtRepository();
 		const worker = stubbornProcess();
 		const spawnProcess = spawnAfterSetup(() => worker);
-		const fetchRequest = vi.fn()
-			.mockResolvedValueOnce(Response.json({
-				serverTime: Date.now(),
-			}))
+		const fetchRequest = vi
+			.fn()
+			.mockResolvedValueOnce(
+				Response.json({
+					serverTime: Date.now(),
+				}),
+			)
 			.mockResolvedValueOnce(Response.json({ events: [] }));
-		const outcome = runWorkerSmoke({ repositoryRoot, spawnProcess, fetchRequest }).catch(error => error);
+		const outcome = runWorkerSmoke({ repositoryRoot, spawnProcess, fetchRequest }).catch(
+			(error) => error,
+		);
 
 		// Bounded by real time, not event-loop turns: the runner does real
 		// filesystem work first, and a slow CI machine needs more turns than a
@@ -439,12 +488,14 @@ describe('the built Worker smoke runner', () => {
 		const worker = livingProcess();
 		const spawnProcess = spawnAfterSetup(() => worker);
 
-		await expect(runWorkerSmoke({
-			repositoryRoot,
-			spawnProcess,
-			fetchRequest: vi.fn().mockRejectedValue(new Error('not ready')),
-			readinessTimeoutMs: 5,
-		})).rejects.toMatchObject({
+		await expect(
+			runWorkerSmoke({
+				repositoryRoot,
+				spawnProcess,
+				fetchRequest: vi.fn().mockRejectedValue(new Error('not ready')),
+				readinessTimeoutMs: 5,
+			}),
+		).rejects.toMatchObject({
 			probe: 'readiness',
 			failureClass: 'timeout',
 		});

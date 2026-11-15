@@ -81,8 +81,7 @@ const STALE = new URL(`../${STALE_PREVIEW_DEV_VARS}`, import.meta.url);
 function read(path) {
 	try {
 		return readFileSync(path, 'utf8');
-	}
-	catch {
+	} catch {
 		return null;
 	}
 }
@@ -102,8 +101,7 @@ const plan = previewStagingPlan({
 // in the past tense: printed first, "Removed …" is a claim about something that
 // has not happened yet, and a step that then threw would have said it did.
 try {
-	if (plan.removeStale)
-		rmSync(STALE, { force: true });
+	if (plan.removeStale) rmSync(STALE, { force: true });
 
 	if (plan.stage) {
 		mkdirSync(RESOLVED_DIRECTORY, { recursive: true });
@@ -113,15 +111,15 @@ try {
 		writeFileSync(RESOLVED, plan.body, { mode: 0o600 });
 	}
 
-	for (const line of plan.lines)
-		process.stdout.write(`${line}\n`);
-}
-catch (error) {
+	for (const line of plan.lines) process.stdout.write(`${line}\n`);
+} catch (error) {
 	// Never fails the preview, per the docblock above — a preview nobody can
 	// authenticate against is still worth having, and the notice below already
 	// names what it will be short of. Reported without the plan's lines, which
 	// this run has just made false.
-	process.stderr.write(`Could not stage local configuration into ${RESOLVED_PREVIEW_ENV}: ${error}\n`);
+	process.stderr.write(
+		`Could not stage local configuration into ${RESOLVED_PREVIEW_ENV}: ${error}\n`,
+	);
 }
 
 // Keyed on the name being unusable rather than on the file being absent, so a
@@ -129,5 +127,4 @@ catch (error) {
 // the same thing as a checkout with no file at all.
 const supplied = suppliedNames([process.env, body]);
 const missing = missingLocalAcceptanceNames(supplied, { localAuthBypassActive: bypassActive });
-if (missing.length > 0)
-	process.stderr.write(`${localConfigurationNotice(missing)}\n`);
+if (missing.length > 0) process.stderr.write(`${localConfigurationNotice(missing)}\n`);

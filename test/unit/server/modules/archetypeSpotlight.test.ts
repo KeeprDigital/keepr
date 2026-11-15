@@ -1,8 +1,17 @@
-import type { ArchetypeDetailResponse, ArchetypePlayerEntry, CardBreakdownEntry } from '~~/shared/types/metagame';
+import type {
+	ArchetypeDetailResponse,
+	ArchetypePlayerEntry,
+	CardBreakdownEntry,
+} from '~~/shared/types/metagame';
 import { describe, expect, it } from 'vitest';
 import { projectArchetypeSpotlight } from '~~/server/modules/metagame/archetypeSpotlight';
 
-function pilot(id: number, name: string, position: number | null, record: [number, number, number] = [3, 1, 0]): ArchetypePlayerEntry {
+function pilot(
+	id: number,
+	name: string,
+	position: number | null,
+	record: [number, number, number] = [3, 1, 0],
+): ArchetypePlayerEntry {
 	return {
 		id,
 		name,
@@ -16,7 +25,12 @@ function pilot(id: number, name: string, position: number | null, record: [numbe
 	};
 }
 
-function card(id: number, name: string, cardType: string, inclusionRate: number): CardBreakdownEntry {
+function card(
+	id: number,
+	name: string,
+	cardType: string,
+	inclusionRate: number,
+): CardBreakdownEntry {
 	return {
 		id,
 		name,
@@ -65,8 +79,12 @@ const detail: ArchetypeDetailResponse = {
 };
 
 describe('projectArchetypeSpotlight', () => {
-	it('carries the archetype detail page\'s meta share and Conversion Rate unchanged', () => {
-		const spotlight = projectArchetypeSpotlight(detail, { game: 'mtg', cardLimit: 10, excludedCardTypes: [] });
+	it("carries the archetype detail page's meta share and Conversion Rate unchanged", () => {
+		const spotlight = projectArchetypeSpotlight(detail, {
+			game: 'mtg',
+			cardLimit: 10,
+			excludedCardTypes: [],
+		});
 
 		expect(spotlight).toMatchObject({
 			archetype: { id: 7, name: 'Mono Red', colors: 'R' },
@@ -78,7 +96,11 @@ describe('projectArchetypeSpotlight', () => {
 	});
 
 	it('lists the pilots by position, with their record, placed pilots first', () => {
-		const { pilots } = projectArchetypeSpotlight(detail, { game: 'mtg', cardLimit: 10, excludedCardTypes: [] });
+		const { pilots } = projectArchetypeSpotlight(detail, {
+			game: 'mtg',
+			cardLimit: 10,
+			excludedCardTypes: [],
+		});
 
 		expect(pilots).toEqual([
 			{
@@ -118,13 +140,24 @@ describe('projectArchetypeSpotlight', () => {
 			excludedCardTypes: ['Land'],
 		});
 
-		expect(topCards.map(entry => entry.name)).toEqual(['Monastery Swiftspear', 'Lightning Bolt', 'Eidolon of the Great Revel']);
+		expect(topCards.map((entry) => entry.name)).toEqual([
+			'Monastery Swiftspear',
+			'Lightning Bolt',
+			'Eidolon of the Great Revel',
+		]);
 		expect(topCards[2]).toMatchObject({ inclusionRate: 66.67 });
 	});
 
 	it('keeps every card type when none is excluded', () => {
-		const { topCards } = projectArchetypeSpotlight(detail, { game: 'mtg', cardLimit: 2, excludedCardTypes: [] });
+		const { topCards } = projectArchetypeSpotlight(detail, {
+			game: 'mtg',
+			cardLimit: 2,
+			excludedCardTypes: [],
+		});
 
-		expect(topCards.map(entry => entry.name)).toEqual(['Monastery Swiftspear', 'Sunbaked Canyon']);
+		expect(topCards.map((entry) => entry.name)).toEqual([
+			'Monastery Swiftspear',
+			'Sunbaked Canyon',
+		]);
 	});
 });

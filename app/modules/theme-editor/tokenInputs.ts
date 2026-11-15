@@ -3,7 +3,10 @@ import type { ThemeColor, ThemeTokenType, ThemeTokenValueTypes } from '~~/shared
 import { ANIMATION_EFFECT_CATALOGUE } from '~~/shared/animationEffects';
 import { getGraphicFontDefinition } from '~~/shared/modules/graphics/typography';
 import { FOUNDATION_TOKENS } from '~~/shared/modules/theme';
-import { HORIZONTAL_ALIGN_SELECT_OPTIONS, VERTICAL_ALIGN_SELECT_OPTIONS } from '~~/shared/utils/selectOptions';
+import {
+	HORIZONTAL_ALIGN_SELECT_OPTIONS,
+	VERTICAL_ALIGN_SELECT_OPTIONS,
+} from '~~/shared/utils/selectOptions';
 import AlignmentTokenInput from '~/components/Theme/AlignmentTokenInput.vue';
 import AnimationEffectTokenInput from '~/components/Theme/AnimationEffectTokenInput.vue';
 import AnimationRecipeTokenInput from '~/components/Theme/AnimationRecipeTokenInput.vue';
@@ -27,19 +30,19 @@ import TypographyTokenInput from '~/components/Theme/TypographyTokenInput.vue';
  * value as the token's draft and writes it as the token.
  */
 export const THEME_TOKEN_INPUTS = {
-	'color': ColorTokenInput,
-	'dimension': DimensionTokenInput,
-	'typography': TypographyTokenInput,
-	'backgroundLayers': BackgroundLayersTokenInput,
-	'animationEffect': AnimationEffectTokenInput,
-	'asset': AssetTokenInput,
+	color: ColorTokenInput,
+	dimension: DimensionTokenInput,
+	typography: TypographyTokenInput,
+	backgroundLayers: BackgroundLayersTokenInput,
+	animationEffect: AnimationEffectTokenInput,
+	asset: AssetTokenInput,
 	// The composites Graphic Items bind to (#829).
-	'fill': FillTokenInput,
+	fill: FillTokenInput,
 	'surface-style': SurfaceStyleTokenInput,
 	'shape-geometry': ShapeGeometryTokenInput,
 	'animation-recipe': AnimationRecipeTokenInput,
 	// Where a plain overlay host places its mode's content.
-	'alignment': AlignmentTokenInput,
+	alignment: AlignmentTokenInput,
 } as const satisfies Record<ThemeTokenType, Component>;
 
 /**
@@ -48,103 +51,100 @@ export const THEME_TOKEN_INPUTS = {
  * written at once.
  */
 export const THEME_TOKEN_COMMITS_IN_STEPS = {
-	'color': false,
-	'dimension': true,
-	'typography': true,
-	'backgroundLayers': true,
-	'animationEffect': true,
-	'asset': false,
-	'fill': true,
+	color: false,
+	dimension: true,
+	typography: true,
+	backgroundLayers: true,
+	animationEffect: true,
+	asset: false,
+	fill: true,
 	'surface-style': true,
 	'shape-geometry': true,
 	'animation-recipe': true,
-	'alignment': false,
+	alignment: false,
 } as const satisfies Record<ThemeTokenType, boolean>;
 
 const ASSET_KIND_TEXT = {
-	'image': 'Library image',
+	image: 'Library image',
 	'silent-video': 'Library video',
-	'font': 'Library font',
+	font: 'Library font',
 } as const;
 
 /** A token value as the editor states an inherited default. */
-const THEME_TOKEN_VALUE_TEXT: { [T in ThemeTokenType]: (value: ThemeTokenValueTypes[T]) => string } = {
-	'color': value => value,
-	'dimension': value => `${value}px`,
-	'typography': value => [
-		value.font.kind === 'asset'
-			? 'Library font'
-			: getGraphicFontDefinition(value.font.fontId)?.label ?? value.font.fontId,
-		String(value.weight),
-		`line ${value.lineHeight}`,
-		`tracking ${value.tracking}em`,
-		value.case === 'none'
-			? null
-			: value.case,
-	].filter(Boolean).join(' · '),
-	'backgroundLayers': value => value.length === 0
-		? 'no layers'
-		: `${value.length} ${value.length === 1
-			? 'layer'
-			: 'layers'}`,
-	'animationEffect': value => ANIMATION_EFFECT_CATALOGUE[value.effect].label,
-	'asset': value => value === null
-		? 'none'
-		: ASSET_KIND_TEXT[value.kind],
+const THEME_TOKEN_VALUE_TEXT: {
+	[T in ThemeTokenType]: (value: ThemeTokenValueTypes[T]) => string;
+} = {
+	color: (value) => value,
+	dimension: (value) => `${value}px`,
+	typography: (value) =>
+		[
+			value.font.kind === 'asset'
+				? 'Library font'
+				: (getGraphicFontDefinition(value.font.fontId)?.label ?? value.font.fontId),
+			String(value.weight),
+			`line ${value.lineHeight}`,
+			`tracking ${value.tracking}em`,
+			value.case === 'none' ? null : value.case,
+		]
+			.filter(Boolean)
+			.join(' · '),
+	backgroundLayers: (value) =>
+		value.length === 0 ? 'no layers' : `${value.length} ${value.length === 1 ? 'layer' : 'layers'}`,
+	animationEffect: (value) => ANIMATION_EFFECT_CATALOGUE[value.effect].label,
+	asset: (value) => (value === null ? 'none' : ASSET_KIND_TEXT[value.kind]),
 	// The composites Graphic Items bind to (#829).
-	'fill': fillText,
-	'surface-style': value => [
-		fillText(value.fill),
-		value.fillOpacity < 1
-			? `${Math.round(value.fillOpacity * 100)}%`
-			: null,
-		value.outline
-			? `outline ${themeColorText(value.outline.color)}`
-			: null,
-		value.glow
-			? `glow ${themeColorText(value.glow.color)}`
-			: null,
-	].filter(Boolean).join(' · '),
-	'shape-geometry': value => [
-		...new Set([
-			value.topLeft,
-			value.topRight,
-			value.bottomRight,
-			value.bottomLeft,
-		].map(corner => corner.treatment === 'square'
-			? 'square'
-			: `${corner.treatment} ${corner.size}px`)),
-		value.leftSlant || value.rightSlant
-			? 'slanted'
-			: null,
-	].filter(Boolean).join(' · '),
-	'animation-recipe': value => [
-		`${value.duration}ms`,
-		value.easing,
-		...(['fade', 'slide', 'scale', 'reveal'] as const).filter(channel => value[channel]),
-	].join(' · '),
-	'alignment': value => [
-		VERTICAL_ALIGN_SELECT_OPTIONS.find(option => option.value === value.vertical)!.label,
-		HORIZONTAL_ALIGN_SELECT_OPTIONS.find(option => option.value === value.horizontal)!.label,
-	].join(' ').toLowerCase(),
+	fill: fillText,
+	'surface-style': (value) =>
+		[
+			fillText(value.fill),
+			value.fillOpacity < 1 ? `${Math.round(value.fillOpacity * 100)}%` : null,
+			value.outline ? `outline ${themeColorText(value.outline.color)}` : null,
+			value.glow ? `glow ${themeColorText(value.glow.color)}` : null,
+		]
+			.filter(Boolean)
+			.join(' · '),
+	'shape-geometry': (value) =>
+		[
+			...new Set(
+				[value.topLeft, value.topRight, value.bottomRight, value.bottomLeft].map((corner) =>
+					corner.treatment === 'square' ? 'square' : `${corner.treatment} ${corner.size}px`,
+				),
+			),
+			value.leftSlant || value.rightSlant ? 'slanted' : null,
+		]
+			.filter(Boolean)
+			.join(' · '),
+	'animation-recipe': (value) =>
+		[
+			`${value.duration}ms`,
+			value.easing,
+			...(['fade', 'slide', 'scale', 'reveal'] as const).filter((channel) => value[channel]),
+		].join(' · '),
+	alignment: (value) =>
+		[
+			VERTICAL_ALIGN_SELECT_OPTIONS.find((option) => option.value === value.vertical)!.label,
+			HORIZONTAL_ALIGN_SELECT_OPTIONS.find((option) => option.value === value.horizontal)!.label,
+		]
+			.join(' ')
+			.toLowerCase(),
 };
 
 /** A composite's colour as the editor states it: a literal, or the colour Foundation Token a shipped default names. */
 function themeColorText(color: ThemeColor): string {
-	if (typeof color === 'string')
-		return color;
+	if (typeof color === 'string') return color;
 	const token = FOUNDATION_TOKENS[color.token as keyof typeof FOUNDATION_TOKENS];
-	return token
-		? token.label
-		: color.token;
+	return token ? token.label : color.token;
 }
 
 function fillText(fill: ThemeTokenValueTypes['fill']): string {
 	return fill.type === 'solid'
 		? themeColorText(fill.color)
-		: `gradient · ${fill.stops.map(stop => themeColorText(stop.color)).join(' → ')}`;
+		: `gradient · ${fill.stops.map((stop) => themeColorText(stop.color)).join(' → ')}`;
 }
 
-export function themeTokenValueText<T extends ThemeTokenType>(type: T, value: ThemeTokenValueTypes[T]): string {
+export function themeTokenValueText<T extends ThemeTokenType>(
+	type: T,
+	value: ThemeTokenValueTypes[T],
+): string {
 	return THEME_TOKEN_VALUE_TEXT[type](value);
 }

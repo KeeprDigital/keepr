@@ -28,7 +28,10 @@ const mockEventStore = reactive({
 
 const mockFeatureMatchStateStore = reactive({
 	featureMatchStates: new Map<number, FeatureMatchState>(),
-	featureMatchSessions: new Map<number, { id: number; slotId: number; sourceSnapshot: { playersSwapped?: boolean } }>(),
+	featureMatchSessions: new Map<
+		number,
+		{ id: number; slotId: number; sourceSnapshot: { playersSwapped?: boolean } }
+	>(),
 	sessionIdBySlotId: new Map<number, number>(),
 	loadState: vi.fn(),
 });
@@ -162,7 +165,8 @@ const PlayerFormStub = defineComponent({
 		commanderEvent: { type: Boolean, default: false },
 	},
 	emits: ['submit', 'update:playerId', 'update:modelValue'],
-	template: '<form :id="formId" data-testid="player-form" @submit.prevent="$emit(\'submit\')"></form>',
+	template:
+		'<form :id="formId" data-testid="player-form" @submit.prevent="$emit(\'submit\')"></form>',
 });
 
 /** A fresh match per mount, so nothing one test edits reaches the next. */
@@ -196,7 +200,7 @@ async function mountComponent(overrides: Record<string, unknown> = {}) {
 type Wrapper = Awaited<ReturnType<typeof mountComponent>>;
 
 function saveButton(wrapper: Wrapper) {
-	return wrapper.findAll('button').find(button => button.text() === 'Save')!;
+	return wrapper.findAll('button').find((button) => button.text() === 'Save')!;
 }
 
 /** Mounts the panel inside a page that has installed the unsaved-changes guard. */
@@ -210,10 +214,12 @@ async function mountUnderGuard(props = mountProps()) {
  */
 function storeEchoedMatch() {
 	const match = reactive(createMockFeatureMatch({ id: 1, eventId: 1 }));
-	mockFeatureMatchStore.updateFeatureMatch.mockImplementation(async (_eventId: number, _matchId: number, update: object) => {
-		Object.assign(match, update);
-		return { ...match };
-	});
+	mockFeatureMatchStore.updateFeatureMatch.mockImplementation(
+		async (_eventId: number, _matchId: number, update: object) => {
+			Object.assign(match, update);
+			return { ...match };
+		},
+	);
 	return match;
 }
 
@@ -229,7 +235,9 @@ describe('featureMatchPanel setup sides after a swap', () => {
 	}
 
 	function columns(wrapper: Wrapper) {
-		return wrapper.findAllComponents(PlayerFormStub).map(form => (form.props('modelValue') as { name?: string }).name);
+		return wrapper
+			.findAllComponents(PlayerFormStub)
+			.map((form) => (form.props('modelValue') as { name?: string }).name);
 	}
 
 	async function editColumn(wrapper: Wrapper, column: 0 | 1, name: string) {
@@ -243,7 +251,9 @@ describe('featureMatchPanel setup sides after a swap', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockFeatureMatchStore.updateFeatureMatch.mockImplementation(async () => createMockFeatureMatch({ id: 1 }));
+		mockFeatureMatchStore.updateFeatureMatch.mockImplementation(async () =>
+			createMockFeatureMatch({ id: 1 }),
+		);
 	});
 
 	afterEach(() => {
@@ -263,16 +273,21 @@ describe('featureMatchPanel setup sides after a swap', () => {
 			swapped: true,
 			pasteSides: ['player2', 'player1'],
 		},
-	])('sends each column\'s Deck List paste to its own player\'s Slot side in $orientation', async ({ swapped, pasteSides }) => {
-		followSession(swapped);
-		const wrapper = await mountComponent({
-			player1Data: { name: 'Alice' },
-			player2Data: { name: 'Bob' },
-		});
-		await wrapper.get('[data-testid="edit-mode"]').trigger('click');
+	])(
+		"sends each column's Deck List paste to its own player's Slot side in $orientation",
+		async ({ swapped, pasteSides }) => {
+			followSession(swapped);
+			const wrapper = await mountComponent({
+				player1Data: { name: 'Alice' },
+				player2Data: { name: 'Bob' },
+			});
+			await wrapper.get('[data-testid="edit-mode"]').trigger('click');
 
-		expect(wrapper.findAllComponents(PlayerFormStub).map(form => form.props('side'))).toEqual(pasteSides);
-	});
+			expect(wrapper.findAllComponents(PlayerFormStub).map((form) => form.props('side'))).toEqual(
+				pasteSides,
+			);
+		},
+	);
 
 	// The Session owns side order; the form holds the Slot's (ADR-0058).
 	it.each([
@@ -292,22 +307,25 @@ describe('featureMatchPanel setup sides after a swap', () => {
 				player2Data: { name: 'Edited' },
 			},
 		},
-	])('shows its sides in the Session\'s $orientation and saves the left one to its own Slot side', async ({ swapped, shown, saved }) => {
-		followSession(swapped);
-		const wrapper = await mountComponent({
-			player1Data: { name: 'Alice' },
-			player2Data: { name: 'Bob' },
-		});
-		await wrapper.get('[data-testid="edit-mode"]').trigger('click');
+	])(
+		"shows its sides in the Session's $orientation and saves the left one to its own Slot side",
+		async ({ swapped, shown, saved }) => {
+			followSession(swapped);
+			const wrapper = await mountComponent({
+				player1Data: { name: 'Alice' },
+				player2Data: { name: 'Bob' },
+			});
+			await wrapper.get('[data-testid="edit-mode"]').trigger('click');
 
-		expect(columns(wrapper)).toEqual(shown);
+			expect(columns(wrapper)).toEqual(shown);
 
-		await editColumn(wrapper, 0, 'Edited');
-		await saveButton(wrapper).trigger('click');
-		await flushPromises();
+			await editColumn(wrapper, 0, 'Edited');
+			await saveButton(wrapper).trigger('click');
+			await flushPromises();
 
-		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, saved);
-	});
+			expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, saved);
+		},
+	);
 
 	it('turns its sides when a swap lands, keeping an unsaved edit with its player and leaving nothing else to save', async () => {
 		followSession(false);
@@ -329,7 +347,7 @@ describe('featureMatchPanel setup sides after a swap', () => {
 		});
 	});
 
-	it('keeps the Session\'s sides through a reset', async () => {
+	it("keeps the Session's sides through a reset", async () => {
 		followSession(true);
 		const wrapper = await mountComponent({
 			player1Data: { name: 'Alice' },
@@ -338,7 +356,10 @@ describe('featureMatchPanel setup sides after a swap', () => {
 		await wrapper.get('[data-testid="edit-mode"]').trigger('click');
 		await editColumn(wrapper, 0, 'Edited');
 
-		await wrapper.findAll('button').find(button => button.text() === 'Reset')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Reset')!
+			.trigger('click');
 
 		expect(columns(wrapper)).toEqual(['Bob', 'Alice']);
 		expect(saveButton(wrapper).attributes('disabled')).toBeDefined();
@@ -365,11 +386,15 @@ describe('featureMatchPanel setup save', () => {
 		await saveButton(wrapper).trigger('click');
 		await flushPromises();
 
-		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, { tableNumber: 12 });
-		expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({
-			title: 'Match updated successfully',
-			color: 'success',
-		}));
+		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+			tableNumber: 12,
+		});
+		expect(mockToast.add).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Match updated successfully',
+				color: 'success',
+			}),
+		);
 	});
 
 	it('saves setup edits when a player form submits', async () => {
@@ -382,11 +407,13 @@ describe('featureMatchPanel setup save', () => {
 		await wrapper.findAll('[data-testid="player-form"]')[0]!.trigger('submit');
 		await flushPromises();
 
-		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, { tableNumber: 12 });
+		expect(mockFeatureMatchStore.updateFeatureMatch).toHaveBeenCalledWith(1, 1, {
+			tableNumber: 12,
+		});
 	});
 
 	// A saved player object carries only the fields this operator edited (#612).
-	it('keeps a colleague\'s change to a player field this operator left untouched', async () => {
+	it("keeps a colleague's change to a player field this operator left untouched", async () => {
 		const updated = createMockFeatureMatch({ id: 1 });
 		mockFeatureMatchStore.updateFeatureMatch.mockResolvedValue(updated);
 		const original = { name: 'Alice', pronouns: 'she/her' };
@@ -432,13 +459,15 @@ describe('featureMatchPanel setup save', () => {
 	it('keeps an edit typed while the save is in flight', async () => {
 		const match = reactive(createMockFeatureMatch({ id: 1, eventId: 1 }));
 		let land = () => {};
-		mockFeatureMatchStore.updateFeatureMatch.mockImplementation((_eventId: number, _matchId: number, update: object) =>
-			new Promise((resolve) => {
-				land = () => {
-					Object.assign(match, update);
-					resolve({ ...match });
-				};
-			}));
+		mockFeatureMatchStore.updateFeatureMatch.mockImplementation(
+			(_eventId: number, _matchId: number, update: object) =>
+				new Promise((resolve) => {
+					land = () => {
+						Object.assign(match, update);
+						resolve({ ...match });
+					};
+				}),
+		);
 		const { wrapper, pageIsDirty } = await mountUnderGuard({ match: match as any, matchNumber: 1 });
 
 		await wrapper.get('[data-testid="edit-mode"]').trigger('click');
@@ -453,24 +482,17 @@ describe('featureMatchPanel setup save', () => {
 		await flushPromises();
 
 		expect(match.tableNumber).toBe(12);
-		expect(wrapper.findAllComponents(PlayerFormStub)[0]!.props('modelValue')).toMatchObject({ name: 'Alicia' });
+		expect(wrapper.findAllComponents(PlayerFormStub)[0]!.props('modelValue')).toMatchObject({
+			name: 'Alicia',
+		});
 		expect(pageIsDirty()).toBe(true);
 	});
 
 	// The save normalizes what it sends; the form settles to the stored value.
 	it.each([
-		[
-			'a name with trailing whitespace',
-			{ name: 'Alicia ' },
-		],
-		[
-			'a cleared field',
-			{ pronouns: '' },
-		],
-		[
-			'a number typed as text',
-			{ points: '3' },
-		],
+		['a name with trailing whitespace', { name: 'Alicia ' }],
+		['a cleared field', { pronouns: '' }],
+		['a number typed as text', { points: '3' }],
 		[
 			'a deck name typed then cleared',
 			{
@@ -501,16 +523,20 @@ describe('featureMatchPanel setup save', () => {
 
 	it('reads clean when the saved player comes back carrying a field it did not send', async () => {
 		const match = reactive(createMockFeatureMatch({ id: 1, eventId: 1 }));
-		mockFeatureMatchStore.updateFeatureMatch.mockImplementation(async (_eventId: number, _matchId: number, update: any) => {
-			Object.assign(match, update, {
-				player1Data: { ...update.player1Data, archetypeId: 7 },
-			});
-			return { ...match };
-		});
+		mockFeatureMatchStore.updateFeatureMatch.mockImplementation(
+			async (_eventId: number, _matchId: number, update: any) => {
+				Object.assign(match, update, {
+					player1Data: { ...update.player1Data, archetypeId: 7 },
+				});
+				return { ...match };
+			},
+		);
 		const { wrapper, pageIsDirty } = await mountUnderGuard({ match: match as any, matchNumber: 1 });
 
 		await wrapper.get('[data-testid="edit-mode"]').trigger('click');
-		wrapper.findAllComponents(PlayerFormStub)[0]!.vm.$emit('update:modelValue', { name: 'Bob', lgs: 'Shop' });
+		wrapper
+			.findAllComponents(PlayerFormStub)[0]!
+			.vm.$emit('update:modelValue', { name: 'Bob', lgs: 'Shop' });
 		await flushPromises();
 		await saveButton(wrapper).trigger('click');
 		await flushPromises();
@@ -527,13 +553,13 @@ describe('featureMatchPanel setup save', () => {
 		expect(wrapper.find('#feature-match-1-player-2-form').exists()).toBe(true);
 
 		const submitButtons = wrapper.findAll('button[type="submit"]');
-		expect(submitButtons.map(button => button.attributes('form'))).toEqual([
+		expect(submitButtons.map((button) => button.attributes('form'))).toEqual([
 			'feature-match-1-player-1-form',
 			'feature-match-1-player-2-form',
 		]);
 	});
 
-	it('shows the Assignment Note for the panel\'s Round, and releases the Round on unmount', async () => {
+	it("shows the Assignment Note for the panel's Round, and releases the Round on unmount", async () => {
 		const releaseRound = vi.fn();
 		mockAssignmentStore.consumeRound.mockReturnValueOnce(releaseRound);
 		mockAssignmentStore.assignments = [
@@ -583,8 +609,7 @@ describe('featureMatchPanel setup save', () => {
 			await flushPromises();
 
 			expect(wrapper.find('.feature-match-note').exists()).toBe(false);
-		}
-		finally {
+		} finally {
 			mockEventStore.event.featureMatchNotesEnabled = true;
 		}
 	});
@@ -614,9 +639,7 @@ describe('featureMatchPanel setup save', () => {
 		];
 		mockMatchRepository.getById.mockImplementation(async (_eventId, matchId) => ({
 			id: matchId,
-			roundId: matchId === 7
-				? 3
-				: 4,
+			roundId: matchId === 7 ? 3 : 4,
 		}));
 
 		const roundThreePanel = await mountComponent({ id: 1, matchId: 7 });
@@ -633,16 +656,7 @@ describe('featureMatchPanel setup save', () => {
 describe('featureMatchPanel match state by Card Game', () => {
 	// `useFeatureMatchGameMode` owns what a Card Game tracks; the panel offers exactly that.
 	it.each([
-		[
-			'every part',
-			true,
-			[
-				'counters',
-				'life',
-				'overtime',
-				'sideboard',
-			],
-		],
+		['every part', true, ['counters', 'life', 'overtime', 'sideboard']],
 		['none of the optional parts', false, []],
 	] as const)('offers %s of the match state its Card Game tracks', async (_, tracked, expected) => {
 		Object.assign(cardGameTracks, {
@@ -691,41 +705,35 @@ describe('featureMatchPanel game view by Variant', () => {
 	});
 
 	it.each([
-		[
-			'commander',
-			['commander-table'],
-			0,
-		],
+		['commander', ['commander-table'], 0],
 		['two-player', [], 2],
-	] as const)('on a %s Event, drives the game from %j and %i player sides', async (variant, parts, sides) => {
-		Object.assign(mockEventStore.event, { variant });
-		mockFeatureMatchStateStore.featureMatchStates = new Map([
-			[
-				1,
-				createMockFeatureMatchState(),
-			],
-		]);
+	] as const)(
+		'on a %s Event, drives the game from %j and %i player sides',
+		async (variant, parts, sides) => {
+			Object.assign(mockEventStore.event, { variant });
+			mockFeatureMatchStateStore.featureMatchStates = new Map([[1, createMockFeatureMatchState()]]);
 
-		const wrapper = mount(FeatureMatchPanel, {
-			props: mountProps(),
-			global: {
-				stubs: {
-					...mountOptions.global.stubs,
-					FeatureMatchStateCommanderTable: matchStatePart('commander-table'),
-					FeatureMatchStateGameWins: true,
-					FeatureMatchStateCounterList: true,
-					FeatureMatchStateEditStateModal: true,
-					FeatureMatchTokensModal: true,
-					PlayerMatchHistoryButton: true,
-					UINumericCounter: true,
+			const wrapper = mount(FeatureMatchPanel, {
+				props: mountProps(),
+				global: {
+					stubs: {
+						...mountOptions.global.stubs,
+						FeatureMatchStateCommanderTable: matchStatePart('commander-table'),
+						FeatureMatchStateGameWins: true,
+						FeatureMatchStateCounterList: true,
+						FeatureMatchStateEditStateModal: true,
+						FeatureMatchTokensModal: true,
+						PlayerMatchHistoryButton: true,
+						UINumericCounter: true,
+					},
 				},
-			},
-		});
-		await flushPromises();
+			});
+			await flushPromises();
 
-		expect(offeredMatchStateParts(wrapper)).toEqual(parts);
-		expect(wrapper.findAll('[data-player-side]')).toHaveLength(sides);
-	});
+			expect(offeredMatchStateParts(wrapper)).toEqual(parts);
+			expect(wrapper.findAll('[data-player-side]')).toHaveLength(sides);
+		},
+	);
 });
 
 // A Commander Slot has four typed Seats, shown where they sit at the table (ADR-0087).
@@ -746,17 +754,22 @@ describe('featureMatchPanel setup Seats', () => {
 	}
 
 	function seats(wrapper: Wrapper) {
-		return wrapper.findAllComponents(PlayerFormStub).map(form => [
-			(form.props('modelValue') as { name?: string }).name,
-			form.props('commanderEvent'),
-		]);
+		return wrapper
+			.findAllComponents(PlayerFormStub)
+			.map((form) => [
+				(form.props('modelValue') as { name?: string }).name,
+				form.props('commanderEvent'),
+			]);
 	}
 
-	const swapMenu = (wrapper: Wrapper, seat: number) => wrapper.get(`button[aria-label="Swap Seat ${seat} with another Seat"]`);
+	const swapMenu = (wrapper: Wrapper, seat: number) =>
+		wrapper.get(`button[aria-label="Swap Seat ${seat} with another Seat"]`);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockFeatureMatchStore.updateFeatureMatch.mockImplementation(async () => createMockFeatureMatch({ id: 1 }));
+		mockFeatureMatchStore.updateFeatureMatch.mockImplementation(async () =>
+			createMockFeatureMatch({ id: 1 }),
+		);
 	});
 
 	afterEach(() => {
@@ -790,18 +803,24 @@ describe('featureMatchPanel setup Seats', () => {
 			],
 			table: [],
 		},
-	])('shows $event\'s Slot $shown.length Seats, a Commander Slot\'s where they sit at the table', async ({ variant, shown, table }) => {
-		const wrapper = await mountSetup(variant);
+	])(
+		"shows $event's Slot $shown.length Seats, a Commander Slot's where they sit at the table",
+		async ({ variant, shown, table }) => {
+			const wrapper = await mountSetup(variant);
 
-		expect(seats(wrapper)).toEqual(shown);
-		expect(wrapper.findAll('[data-seat]').map(seat => [
-			seat.attributes('data-seat'),
-			seat.attributes('data-table-position'),
-		])).toEqual(table);
-		expect(wrapper.findAll('button').some(button => button.text() === 'Swap Players')).toBe(variant === 'two-player');
-	});
+			expect(seats(wrapper)).toEqual(shown);
+			expect(
+				wrapper
+					.findAll('[data-seat]')
+					.map((seat) => [seat.attributes('data-seat'), seat.attributes('data-table-position')]),
+			).toEqual(table);
+			expect(wrapper.findAll('button').some((button) => button.text() === 'Swap Players')).toBe(
+				variant === 'two-player',
+			);
+		},
+	);
 
-	it('saves an edit to Seat 3 as Seat 3\'s', async () => {
+	it("saves an edit to Seat 3 as Seat 3's", async () => {
 		const wrapper = await mountSetup('commander');
 		const seatThree = wrapper.get('[data-seat="player3"]').getComponent(PlayerFormStub);
 
@@ -822,12 +841,14 @@ describe('featureMatchPanel setup Seats', () => {
 		const wrapper = await mountSetup('commander');
 
 		await swapMenu(wrapper, 1).trigger('click');
-		expect(wrapper.findAll('[role="menuitem"]').map(item => item.text())).toEqual(['With Seat 2', 'With Seat 3', 'With Seat 4']);
+		expect(wrapper.findAll('[role="menuitem"]').map((item) => item.text())).toEqual([
+			'With Seat 2',
+			'With Seat 3',
+			'With Seat 4',
+		]);
 		await wrapper.findAll('[role="menuitem"]')[1]!.trigger('click');
 
-		expect(mockSwapSeats.mock.calls).toEqual([
-			['player1', 'player3'],
-		]);
+		expect(mockSwapSeats.mock.calls).toEqual([['player1', 'player3']]);
 	});
 
 	// The server swaps what the Slot has stored, so an unsaved edit is saved or reset first.

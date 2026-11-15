@@ -59,10 +59,14 @@ function reduce(
 }
 
 function take(state: BroadcastGraphicsLiveState, inputs?: readonly GraphicInputDeclaration[]) {
-	return reduce(state, {
-		type: 'Take',
-		payload: { graphicId: GRAPHIC },
-	}, inputs);
+	return reduce(
+		state,
+		{
+			type: 'Take',
+			payload: { graphicId: GRAPHIC },
+		},
+		inputs,
+	);
 }
 
 function setInput(
@@ -71,10 +75,14 @@ function setInput(
 	value: unknown,
 	inputs?: readonly GraphicInputDeclaration[],
 ) {
-	return reduce(state, {
-		type: 'Set Input',
-		payload: { graphicId: GRAPHIC, inputKey, value },
-	} as BroadcastGraphicsCommandInput, inputs);
+	return reduce(
+		state,
+		{
+			type: 'Set Input',
+			payload: { graphicId: GRAPHIC, inputKey, value },
+		} as BroadcastGraphicsCommandInput,
+		inputs,
+	);
 }
 
 function updateGraphic(
@@ -96,10 +104,8 @@ function updateGraphic(
 function rejection(action: () => unknown): BroadcastGraphicsCommandRejection {
 	try {
 		action();
-	}
-	catch (error) {
-		if (error instanceof BroadcastGraphicsCommandRejection)
-			return error;
+	} catch (error) {
+		if (error instanceof BroadcastGraphicsCommandRejection) return error;
 		throw error;
 	}
 	throw new Error('expected the command to be rejected');
@@ -120,28 +126,35 @@ describe('broadcastGraphicsInputs', () => {
 
 	// A Graphic Input key may be a name every object inherits: only a value
 	// stored under that key counts as stored.
-	it.each(['constructor', 'toString', 'valueOf'])('reads a Graphic Input keyed %s as any other', (key) => {
-		const declaration: GraphicInputDeclaration = { ...REQUIRED_TITLE, key, default: 'Unnamed' };
-		const initial = createInitialBroadcastGraphicsLiveState();
+	it.each(['constructor', 'toString', 'valueOf'])(
+		'reads a Graphic Input keyed %s as any other',
+		(key) => {
+			const declaration: GraphicInputDeclaration = { ...REQUIRED_TITLE, key, default: 'Unnamed' };
+			const initial = createInitialBroadcastGraphicsLiveState();
 
-		expect(workingGraphicInputValues(initial, GRAPHIC, [declaration])).toEqual({ [key]: 'Unnamed' });
-		expect(acceptedGraphicInputValues(initial, GRAPHIC, [declaration])).toEqual({});
-		expect(graphicInputTraces(initial, GRAPHIC, {
-			inputs: [declaration],
-			bindings: [
-				{ inputKey: key, sourceKey: 'player', fieldId: 'name' },
-			],
-		})[0]).toMatchObject({
-			bound: undefined,
-			override: undefined,
-			effective: { value: null, source: 'none' },
-			blocksTake: true,
-		});
+			expect(workingGraphicInputValues(initial, GRAPHIC, [declaration])).toEqual({
+				[key]: 'Unnamed',
+			});
+			expect(acceptedGraphicInputValues(initial, GRAPHIC, [declaration])).toEqual({});
+			expect(
+				graphicInputTraces(initial, GRAPHIC, {
+					inputs: [declaration],
+					bindings: [{ inputKey: key, sourceKey: 'player', fieldId: 'name' }],
+				})[0],
+			).toMatchObject({
+				bound: undefined,
+				override: undefined,
+				effective: { value: null, source: 'none' },
+				blocksTake: true,
+			});
 
-		const taken = take(setInput(initial, key, 'Ava Reed', [declaration]), [declaration]);
+			const taken = take(setInput(initial, key, 'Ava Reed', [declaration]), [declaration]);
 
-		expect(acceptedGraphicInputValues(taken, GRAPHIC, [declaration])).toEqual({ [key]: 'Ava Reed' });
-	});
+			expect(acceptedGraphicInputValues(taken, GRAPHIC, [declaration])).toEqual({
+				[key]: 'Ava Reed',
+			});
+		},
+	);
 
 	it('changes the working value without touching what is on air', () => {
 		const edited = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed');
@@ -171,7 +184,9 @@ describe('broadcastGraphicsInputs', () => {
 	});
 
 	it('blocks Take while a required Graphic Input has no available value, and names it', () => {
-		const failure = rejection(() => take(createInitialBroadcastGraphicsLiveState(), [NAME, REQUIRED_TITLE]));
+		const failure = rejection(() =>
+			take(createInitialBroadcastGraphicsLiveState(), [NAME, REQUIRED_TITLE]),
+		);
 
 		expect(failure.code).toBe('required-input-unavailable');
 		expect(failure.inputKeys).toEqual(['title']);
@@ -179,11 +194,16 @@ describe('broadcastGraphicsInputs', () => {
 	});
 
 	it('takes the graphic on air once the required Graphic Input has an available value', () => {
-		let state = setInput(createInitialBroadcastGraphicsLiveState(), 'title', 'Champion', [NAME, REQUIRED_TITLE]);
+		let state = setInput(createInitialBroadcastGraphicsLiveState(), 'title', 'Champion', [
+			NAME,
+			REQUIRED_TITLE,
+		]);
 		state = take(state, [NAME, REQUIRED_TITLE]);
 
 		expect(state.playout[GRAPHIC]).toMatchObject({ onAir: true, cut: false });
-		expect(acceptedGraphicInputValues(state, GRAPHIC, [REQUIRED_TITLE])).toEqual({ title: 'Champion' });
+		expect(acceptedGraphicInputValues(state, GRAPHIC, [REQUIRED_TITLE])).toEqual({
+			title: 'Champion',
+		});
 	});
 
 	it('accepts the complete staged set atomically through Update Graphic', () => {
@@ -194,13 +214,17 @@ describe('broadcastGraphicsInputs', () => {
 		state = setInput(state, 'title', 'Champion', inputs);
 
 		// Neither edit is on air until one acceptance takes both.
-		expect(acceptedGraphicInputValues(state, GRAPHIC, inputs))
-			.toEqual({ name: 'Unnamed', title: 'Runner up' });
+		expect(acceptedGraphicInputValues(state, GRAPHIC, inputs)).toEqual({
+			name: 'Unnamed',
+			title: 'Runner up',
+		});
 
 		const updated = updateGraphic(state, 1, false, inputs);
 
-		expect(acceptedGraphicInputValues(updated, GRAPHIC, inputs))
-			.toEqual({ name: 'Ava Reed', title: 'Champion' });
+		expect(acceptedGraphicInputValues(updated, GRAPHIC, inputs)).toEqual({
+			name: 'Ava Reed',
+			title: 'Champion',
+		});
 		expect(broadcastGraphicInputsState(updated, GRAPHIC).acceptedRevision).toBe(2);
 	});
 
@@ -263,7 +287,9 @@ describe('broadcastGraphicsInputs', () => {
 	});
 
 	it('rejects an edit to a Graphic Input this Broadcast Graphic does not declare', () => {
-		const failure = rejection(() => setInput(createInitialBroadcastGraphicsLiveState(), 'ghost', 'x'));
+		const failure = rejection(() =>
+			setInput(createInitialBroadcastGraphicsLiveState(), 'ghost', 'x'),
+		);
 
 		expect(failure.code).toBe('unknown-input');
 	});
@@ -271,10 +297,13 @@ describe('broadcastGraphicsInputs', () => {
 	it('forgets accepted values whose Graphic Input declaration has gone', () => {
 		let state = setInput(createInitialBroadcastGraphicsLiveState(), 'name', 'Ava Reed');
 		state = take(state);
-		state = take(reduce(state, {
-			type: 'Out',
-			payload: { graphicId: GRAPHIC },
-		}), []);
+		state = take(
+			reduce(state, {
+				type: 'Out',
+				payload: { graphicId: GRAPHIC },
+			}),
+			[],
+		);
 
 		expect(broadcastGraphicInputsState(state, GRAPHIC).accepted).toEqual({});
 	});
@@ -306,9 +335,7 @@ describe('broadcastGraphicsInputs', () => {
 
 		const [trace] = graphicInputTraces(state, GRAPHIC, {
 			inputs: [NAME],
-			bindings: [
-				{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' },
-			],
+			bindings: [{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }],
 		});
 
 		expect(trace!.working.value).toBe('Ava Reed');
@@ -332,7 +359,10 @@ describe('broadcastGraphicsInputs', () => {
 		});
 
 		expect(trace!.status).toBe('unavailable');
-		expect(trace!.working.availability).toEqual({ available: false, reason: 'Longer than 20 characters' });
+		expect(trace!.working.availability).toEqual({
+			available: false,
+			reason: 'Longer than 20 characters',
+		});
 	});
 
 	it('reports which required Graphic Inputs block a Take, and why', () => {

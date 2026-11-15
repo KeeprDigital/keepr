@@ -67,7 +67,10 @@ describe('useFeatureMatchDeckList', () => {
 	it('reports hasDeckList correctly based on deckName', () => {
 		const player1Data = createPlayerData({ name: 'Alice' });
 		const player2Data = createPlayerData({ name: 'Bob' });
-		const { player1HasDeckList, player2HasDeckList } = useFeatureMatchDeckList(player1Data, player2Data);
+		const { player1HasDeckList, player2HasDeckList } = useFeatureMatchDeckList(
+			player1Data,
+			player2Data,
+		);
 		// Alice has deckName set, Bob does not
 		expect(player1HasDeckList.value).toBe(true);
 		expect(player2HasDeckList.value).toBe(false);

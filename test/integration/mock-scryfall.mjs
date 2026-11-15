@@ -104,25 +104,29 @@ function jsonResponse(body, status = 200) {
 }
 
 globalThis.fetch = async (input, init) => {
-	const requestUrl = new URL(input instanceof Request
-		? input.url
-		: String(input));
-	if (requestUrl.origin !== 'https://api.scryfall.com')
-		return await upstreamFetch(input, init);
+	const requestUrl = new URL(input instanceof Request ? input.url : String(input));
+	if (requestUrl.origin !== 'https://api.scryfall.com') return await upstreamFetch(input, init);
 
 	if (requestUrl.pathname === '/cards/collection') {
-		const body = typeof init?.body === 'string'
-			? init.body
-			: input instanceof Request
-				? await input.clone().text()
-				: '';
+		const body =
+			typeof init?.body === 'string'
+				? init.body
+				: input instanceof Request
+					? await input.clone().text()
+					: '';
 		const identifiers = JSON.parse(body).identifiers ?? [];
-		if (identifiers.some(identifier => identifier.name === 'Integration Provider Failure')) {
+		if (identifiers.some((identifier) => identifier.name === 'Integration Provider Failure')) {
 			return jsonResponse({ object: 'error', details: 'Synthetic retryable refusal' }, 503);
 		}
 		// Exact printings are asked for in one batch, by set and collector number.
-		if (identifiers.length > 0 && identifiers.every(identifier => identifier.collector_number !== undefined && SYNTHETIC_SETS.has(identifier.set))) {
-			const answered = identifiers.map(identifier => ({
+		if (
+			identifiers.length > 0 &&
+			identifiers.every(
+				(identifier) =>
+					identifier.collector_number !== undefined && SYNTHETIC_SETS.has(identifier.set),
+			)
+		) {
+			const answered = identifiers.map((identifier) => ({
 				identifier,
 				card: cardsByPrinting.get(`${identifier.set}/${identifier.collector_number}`),
 			}));
@@ -137,7 +141,5 @@ globalThis.fetch = async (input, init) => {
 
 	const printingKey = requestUrl.pathname.slice('/cards/'.length);
 	const card = cardsByPrinting.get(printingKey);
-	return card
-		? jsonResponse(card)
-		: await upstreamFetch(input, init);
+	return card ? jsonResponse(card) : await upstreamFetch(input, init);
 };

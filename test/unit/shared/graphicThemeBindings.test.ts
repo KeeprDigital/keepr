@@ -13,15 +13,23 @@ import {
 	resolveGraphicThemeTokens,
 } from '~~/shared/modules/graphics';
 import { FOUNDATION_TOKENS as VOCABULARY } from '~~/shared/modules/theme';
-import { gameWins, graphic, group, media, shape, socialIcon, text } from '~~/test/helpers/graphicsComposition';
+import {
+	gameWins,
+	graphic,
+	group,
+	media,
+	shape,
+	socialIcon,
+	text,
+} from '~~/test/helpers/graphicsComposition';
 
 // The home of Graphic Item Theme bindings (ADR-0049): a bound property paints its
 // Foundation Token's resolved value; detach keeps it as a literal; bind replaces one.
 
 const TOKENS = resolveGraphicThemeTokens({
-	'accent': 'rgba(10, 20, 30, 0.5)',
+	accent: 'rgba(10, 20, 30, 0.5)',
 	'text-primary': 'rgb(1, 2, 3)',
-	'body': {
+	body: {
 		font: { kind: 'application', fontId: 'system-serif' },
 		weight: 300,
 		lineHeight: 1.7,
@@ -55,7 +63,7 @@ describe('a bound Graphic Item property', () => {
 			text('t', {
 				themeBindings: { 'typography.color': 'text-primary' },
 			}),
-			item => item.typography.color,
+			(item) => item.typography.color,
 			'rgb(1, 2, 3)',
 		],
 		[
@@ -63,7 +71,7 @@ describe('a bound Graphic Item property', () => {
 			shape('s', {
 				themeBindings: { 'surfaceStyle.fill': 'accent-fill' },
 			}),
-			item => item.surfaceStyle.fill,
+			(item) => item.surfaceStyle.fill,
 			{ type: 'solid', color: 'rgba(10, 20, 30, 0.5)' },
 		],
 		[
@@ -71,7 +79,7 @@ describe('a bound Graphic Item property', () => {
 			shape('s', {
 				themeBindings: { surfaceStyle: 'panel' },
 			}),
-			item => item.surfaceStyle,
+			(item) => item.surfaceStyle,
 			{
 				fill: { type: 'solid', color: 'rgba(10, 20, 30, 0.5)' },
 				fillOpacity: 1,
@@ -82,7 +90,7 @@ describe('a bound Graphic Item property', () => {
 			gameWins('w', {
 				themeBindings: { wonBoxSurfaceStyle: 'panel' },
 			}),
-			item => item.wonBoxSurfaceStyle.fill.color,
+			(item) => item.wonBoxSurfaceStyle.fill.color,
 			'rgba(10, 20, 30, 0.5)',
 		],
 		[
@@ -90,23 +98,23 @@ describe('a bound Graphic Item property', () => {
 			shape('s', {
 				themeBindings: { geometry: 'panel-shape' },
 			}),
-			item => item.geometry.topLeft,
+			(item) => item.geometry.topLeft,
 			{ treatment: 'cut', size: 12 },
 		],
 		[
-			'a Social Network Icon\'s colour',
+			"a Social Network Icon's colour",
 			socialIcon('i', {
 				themeBindings: { color: 'text-primary' },
 			}),
-			item => item.color,
+			(item) => item.color,
 			'rgb(1, 2, 3)',
 		],
 		[
-			'an item\'s enter recipe from a motion token',
+			"an item's enter recipe from a motion token",
 			text('t', {
 				themeBindings: { 'animation.enter': 'motion-enter' },
 			}),
-			item => item.animation.enter,
+			(item) => item.animation.enter,
 			{
 				duration: 900,
 				easing: 'linear',
@@ -118,7 +126,7 @@ describe('a bound Graphic Item property', () => {
 		expect(read(paintOne(item))).toEqual(expected);
 	});
 
-	it('paints typography\'s face and setting, keeping the item\'s own size, alignment and colour', () => {
+	it("paints typography's face and setting, keeping the item's own size, alignment and colour", () => {
 		const item = text('t', {
 			typography: {
 				...text('t').typography,
@@ -148,18 +156,21 @@ describe('a bound Graphic Item property', () => {
 			mediaKind: 'silent-video',
 		},
 		{ logo: null, asset: undefined, mediaKind: 'image' },
-	] as const)('paints a Media Graphic Item\'s picture from the logo: $mediaKind $asset.revisionId', ({ logo, asset, mediaKind }) => {
-		const item = media('m', {
-			asset: { assetId: 'own', revisionId: 'own-1' } as never,
-			mediaKind: 'image',
-			themeBindings: { media: 'logo' },
-		});
+	] as const)(
+		"paints a Media Graphic Item's picture from the logo: $mediaKind $asset.revisionId",
+		({ logo, asset, mediaKind }) => {
+			const item = media('m', {
+				asset: { assetId: 'own', revisionId: 'own-1' } as never,
+				mediaKind: 'image',
+				themeBindings: { media: 'logo' },
+			});
 
-		const painted = paintOne(item, resolveGraphicThemeTokens({ logo }));
+			const painted = paintOne(item, resolveGraphicThemeTokens({ logo }));
 
-		expect(painted.asset).toEqual(asset);
-		expect(painted.mediaKind).toBe(mediaKind);
-	});
+			expect(painted.asset).toEqual(asset);
+			expect(painted.mediaKind).toBe(mediaKind);
+		},
+	);
 
 	it('detaches a bound picture as its own, and releases the binding when the author picks another', () => {
 		const tokens = resolveGraphicThemeTokens({
@@ -172,16 +183,19 @@ describe('a bound Graphic Item property', () => {
 		expect(detached.asset).toEqual({ assetId: 'logo', revisionId: 'logo-1' });
 		expect(detached.themeBindings).toBeUndefined();
 
-		const edited = releaseEditedGraphicThemeBindings(graphic('g', [bound]), graphic('g', [
-			{
-				...bound,
-				asset: { assetId: 'own', revisionId: 'own-1' } as never,
-			},
-		]));
+		const edited = releaseEditedGraphicThemeBindings(
+			graphic('g', [bound]),
+			graphic('g', [
+				{
+					...bound,
+					asset: { assetId: 'own', revisionId: 'own-1' } as never,
+				},
+			]),
+		);
 		expect(only(edited).themeBindings).toBeUndefined();
 	});
 
-	it('paints a Broadcast Graphic\'s own motion and a Graphic Group child', () => {
+	it("paints a Broadcast Graphic's own motion and a Graphic Group child", () => {
 		const composition: BroadcastGraphicConfig = {
 			...graphic('g', [
 				group('row', [
@@ -201,11 +215,7 @@ describe('a bound Graphic Item property', () => {
 	});
 
 	it.each([
-		[
-			'the Theme',
-			resolveGraphicThemeTokens({ accent: '#111111' }),
-			'#111111',
-		],
+		['the Theme', resolveGraphicThemeTokens({ accent: '#111111' }), '#111111'],
 		['the Default Theme', DEFAULT_GRAPHIC_THEME_TOKENS, VOCABULARY.accent.default],
 	])('follows %s through the colour its token names', (_case, tokens, expected) => {
 		const item = shape('s', {
@@ -241,10 +251,7 @@ describe('a bound Graphic Item property', () => {
 	});
 
 	it('leaves an unbound graphic as the same object', () => {
-		const composition = graphic('g', [
-			text('t'),
-			shape('s'),
-		]);
+		const composition = graphic('g', [text('t'), shape('s')]);
 
 		expect(paintBroadcastGraphicThemeBindings(composition, TOKENS)).toBe(composition);
 	});
@@ -258,7 +265,7 @@ describe('binding and detaching', () => {
 		},
 	});
 
-	it('binds by replacing the literal with the token\'s value', () => {
+	it("binds by replacing the literal with the token's value", () => {
 		const bound = bindGraphicThemeOwner(typed, 'typography.color', 'text-primary', TOKENS);
 
 		expect(bound.themeBindings).toEqual({ 'typography.color': 'text-primary' });
@@ -266,7 +273,12 @@ describe('binding and detaching', () => {
 	});
 
 	it('detaches by keeping the resolved value as the literal, with no override record', () => {
-		const bound = bindGraphicThemeOwner(typed, 'typography.color', 'text-primary', DEFAULT_GRAPHIC_THEME_TOKENS);
+		const bound = bindGraphicThemeOwner(
+			typed,
+			'typography.color',
+			'text-primary',
+			DEFAULT_GRAPHIC_THEME_TOKENS,
+		);
 		const detached = detachGraphicThemeOwner(bound, 'typography.color', TOKENS);
 
 		expect(detached).toEqual({
@@ -277,33 +289,18 @@ describe('binding and detaching', () => {
 	});
 
 	it.each<[string, GraphicThemeOwner, GraphicThemeSlot, string]>([
-		[
-			'a token of another type',
-			typed,
-			'typography.color',
-			'body',
-		],
-		[
-			'a slot the kind lacks',
-			shape('s'),
-			'typography',
-			'body',
-		],
-		[
-			'an unknown token',
-			typed,
-			'typography.color',
-			'nonsense',
-		],
+		['a token of another type', typed, 'typography.color', 'body'],
+		['a slot the kind lacks', shape('s'), 'typography', 'body'],
+		['an unknown token', typed, 'typography.color', 'nonsense'],
 	])('binds nothing for %s', (_case, owner, slot, token) => {
 		expect(bindGraphicThemeOwner(owner, slot, token, TOKENS)).toBe(owner);
 	});
 });
 
-describe('an author\'s edit to a bound property', () => {
+describe("an author's edit to a bound property", () => {
 	const bound = graphic('g', [
 		text('t', {
-			themeBindings: { 'typography': 'body', 'typography.color': 'text-primary' },
+			themeBindings: { typography: 'body', 'typography.color': 'text-primary' },
 		}),
 	]);
 	const painted = paintBroadcastGraphicThemeBindings(bound, TOKENS);
@@ -322,10 +319,13 @@ describe('an author\'s edit to a bound property', () => {
 		[
 			'a size releases nothing a typography token owns',
 			{ fontSize: 12 },
-			{ 'typography': 'body', 'typography.color': 'text-primary' },
+			{ typography: 'body', 'typography.color': 'text-primary' },
 		],
 	])('%s', (_case, patch, kept) => {
-		const edited = releaseEditedGraphicThemeBindings(painted, patchGraphicTypography(painted, 't', patch));
+		const edited = releaseEditedGraphicThemeBindings(
+			painted,
+			patchGraphicTypography(painted, 't', patch),
+		);
 
 		expect(only(edited).themeBindings).toEqual(kept);
 	});
@@ -333,18 +333,9 @@ describe('an author\'s edit to a bound property', () => {
 
 describe('a newly authored Graphic Item', () => {
 	it.each([
-		[
-			'text',
-			{ 'typography': 'body', 'typography.color': 'text-primary' },
-		],
-		[
-			'shape',
-			{ surfaceStyle: 'panel', geometry: 'panel-shape' },
-		],
-		[
-			'social-network-icon',
-			{ color: 'text-primary' },
-		],
+		['text', { typography: 'body', 'typography.color': 'text-primary' }],
+		['shape', { surfaceStyle: 'panel', geometry: 'panel-shape' }],
+		['social-network-icon', { color: 'text-primary' }],
 		['media', undefined],
 	] as const)('of kind %s starts bound to %o', (kind, bindings) => {
 		const { graphic: added } = addGraphicItem(graphic('g', []), {

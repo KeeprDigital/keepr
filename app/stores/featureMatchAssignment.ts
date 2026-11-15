@@ -1,6 +1,13 @@
-import type { FeatureMatchAssignment, SaveFeatureMatchAssignmentInput, UpdateFeatureMatchAssignmentInput } from '~/types';
+import type {
+	FeatureMatchAssignment,
+	SaveFeatureMatchAssignmentInput,
+	UpdateFeatureMatchAssignmentInput,
+} from '~/types';
 import type { Flight } from '~/utils/guardedSequence';
-import { applySavedFeatureMatchAssignment, applyUpdatedFeatureMatchAssignment } from '~/modules/feature-match-assignment/collection';
+import {
+	applySavedFeatureMatchAssignment,
+	applyUpdatedFeatureMatchAssignment,
+} from '~/modules/feature-match-assignment/collection';
 
 interface AssignmentMessage {
 	eventId: number;
@@ -35,9 +42,7 @@ export const useFeatureMatchAssignmentStore = defineStore('featureMatchAssignmen
 	const lifetimes = createGuardedSequence();
 	let lifetime = lifetimes.begin();
 
-	const assignments = computed(() => [
-		...assignmentsByRound.value.values(),
-	].flat());
+	const assignments = computed(() => [...assignmentsByRound.value.values()].flat());
 
 	function assignmentsForRound(roundId: number): FeatureMatchAssignment[] {
 		return assignmentsByRound.value.get(roundId) ?? [];
@@ -64,8 +69,7 @@ export const useFeatureMatchAssignmentStore = defineStore('featureMatchAssignmen
 		consumedRoundIds.value = new Set(consumedRoundIds.value).add(roundId);
 		let released = false;
 		return () => {
-			if (released || currentEventId.value !== eventId)
-				return;
+			if (released || currentEventId.value !== eventId) return;
 			released = true;
 			const remaining = (roundConsumerCounts.get(roundId) ?? 1) - 1;
 			if (remaining > 0) {
@@ -86,68 +90,77 @@ export const useFeatureMatchAssignmentStore = defineStore('featureMatchAssignmen
 		error.value = null;
 		try {
 			const loaded = await repo.listByRound(eventId, roundId);
-			if (flight.current && currentEventId.value === eventId)
-				replaceRound(roundId, loaded);
+			if (flight.current && currentEventId.value === eventId) replaceRound(roundId, loaded);
 			return loaded;
-		}
-		catch (cause) {
+		} catch (cause) {
 			if (flight.current) {
-				error.value = cause instanceof Error
-					? cause.message
-					: 'Failed to load feature match assignments';
+				error.value =
+					cause instanceof Error ? cause.message : 'Failed to load feature match assignments';
 			}
 			return null;
-		}
-		finally {
+		} finally {
 			loading.value = false;
 		}
 	}
 
 	async function reloadConsumedRounds() {
 		const eventId = currentEventId.value;
-		if (!eventId)
-			return;
+		if (!eventId) return;
 		const roundIds = [...consumedRoundIds.value];
-		await Promise.all(roundIds.map(async (roundId) => {
-			const flight = roundLoads.begin(roundId);
-			try {
-				const loaded = await repo.listByRound(eventId, roundId);
-				if (flight.current && currentEventId.value === eventId && consumedRoundIds.value.has(roundId))
-					replaceRound(roundId, loaded);
-			}
-			catch (cause) {
-				if (flight.current) {
-					error.value = cause instanceof Error
-						? cause.message
-						: 'Failed to reload feature match assignments';
+		await Promise.all(
+			roundIds.map(async (roundId) => {
+				const flight = roundLoads.begin(roundId);
+				try {
+					const loaded = await repo.listByRound(eventId, roundId);
+					if (
+						flight.current &&
+						currentEventId.value === eventId &&
+						consumedRoundIds.value.has(roundId)
+					)
+						replaceRound(roundId, loaded);
+				} catch (cause) {
+					if (flight.current) {
+						error.value =
+							cause instanceof Error ? cause.message : 'Failed to reload feature match assignments';
+					}
 				}
-			}
-		}));
+			}),
+		);
 	}
 
 	async function saveAssignment(eventId: number, input: SaveFeatureMatchAssignmentInput) {
 		const flight = lifetime;
 		const saved = await repo.create(eventId, input);
 		if (saved && flight.current && assignmentsByRound.value.has(saved.roundId))
-			replaceRound(saved.roundId, applySavedFeatureMatchAssignment(assignmentsForRound(saved.roundId), saved));
+			replaceRound(
+				saved.roundId,
+				applySavedFeatureMatchAssignment(assignmentsForRound(saved.roundId), saved),
+			);
 		return saved;
 	}
 
-	async function updateAssignment(eventId: number, assignmentId: number, input: UpdateFeatureMatchAssignmentInput) {
+	async function updateAssignment(
+		eventId: number,
+		assignmentId: number,
+		input: UpdateFeatureMatchAssignmentInput,
+	) {
 		const flight = lifetime;
 		const updated = await repo.update(eventId, assignmentId, input);
 		if (updated && flight.current && assignmentsByRound.value.has(updated.roundId)) {
 			replaceRound(
 				updated.roundId,
-				applyUpdatedFeatureMatchAssignment(assignmentsForRound(updated.roundId), assignmentId, updated),
+				applyUpdatedFeatureMatchAssignment(
+					assignmentsForRound(updated.roundId),
+					assignmentId,
+					updated,
+				),
 			);
 		}
 		return updated;
 	}
 
 	function applySavedAssignment(assignment: FeatureMatchAssignment) {
-		if (!assignmentsByRound.value.has(assignment.roundId))
-			return;
+		if (!assignmentsByRound.value.has(assignment.roundId)) return;
 		replaceRound(
 			assignment.roundId,
 			applySavedFeatureMatchAssignment(assignmentsForRound(assignment.roundId), assignment),
@@ -156,41 +169,51 @@ export const useFeatureMatchAssignmentStore = defineStore('featureMatchAssignmen
 
 	function markRemoteNoteChanged(assignmentId: number) {
 		const existingTimer = remoteChangeTimers.get(assignmentId);
-		if (existingTimer)
-			clearTimeout(existingTimer);
+		if (existingTimer) clearTimeout(existingTimer);
 		remoteChangedAssignmentIds.value = new Set(remoteChangedAssignmentIds.value).add(assignmentId);
-		remoteChangeTimers.set(assignmentId, setTimeout(() => {
-			const next = new Set(remoteChangedAssignmentIds.value);
-			next.delete(assignmentId);
-			remoteChangedAssignmentIds.value = next;
-			remoteChangeTimers.delete(assignmentId);
-		}, 2500));
+		remoteChangeTimers.set(
+			assignmentId,
+			setTimeout(() => {
+				const next = new Set(remoteChangedAssignmentIds.value);
+				next.delete(assignmentId);
+				remoteChangedAssignmentIds.value = next;
+				remoteChangeTimers.delete(assignmentId);
+			}, 2500),
+		);
 	}
 
 	function applyRemoteCreated({ eventId, featureMatchAssignment }: AssignmentMessage) {
-		if (currentEventId.value !== eventId || !assignmentsByRound.value.has(featureMatchAssignment.roundId))
+		if (
+			currentEventId.value !== eventId ||
+			!assignmentsByRound.value.has(featureMatchAssignment.roundId)
+		)
 			return;
 		applySavedAssignment(featureMatchAssignment);
-		if (featureMatchAssignment.note)
-			markRemoteNoteChanged(featureMatchAssignment.id);
+		if (featureMatchAssignment.note) markRemoteNoteChanged(featureMatchAssignment.id);
 	}
 
 	function applyRemoteUpdated({ eventId, featureMatchAssignment }: AssignmentMessage) {
-		if (currentEventId.value !== eventId || !assignmentsByRound.value.has(featureMatchAssignment.roundId))
+		if (
+			currentEventId.value !== eventId ||
+			!assignmentsByRound.value.has(featureMatchAssignment.roundId)
+		)
 			return;
-		const previous = assignmentsForRound(featureMatchAssignment.roundId)
-			.find(assignment => assignment.id === featureMatchAssignment.id);
+		const previous = assignmentsForRound(featureMatchAssignment.roundId).find(
+			(assignment) => assignment.id === featureMatchAssignment.id,
+		);
 		applySavedAssignment(featureMatchAssignment);
 		if (previous?.note !== featureMatchAssignment.note)
 			markRemoteNoteChanged(featureMatchAssignment.id);
 	}
 
 	function applyRemoteDeleted({ eventId, featureMatchAssignmentId }: AssignmentDeletedMessage) {
-		if (currentEventId.value !== eventId)
-			return;
+		if (currentEventId.value !== eventId) return;
 		for (const [roundId, roundAssignments] of assignmentsByRound.value) {
-			if (roundAssignments.some(assignment => assignment.id === featureMatchAssignmentId)) {
-				replaceRound(roundId, roundAssignments.filter(assignment => assignment.id !== featureMatchAssignmentId));
+			if (roundAssignments.some((assignment) => assignment.id === featureMatchAssignmentId)) {
+				replaceRound(
+					roundId,
+					roundAssignments.filter((assignment) => assignment.id !== featureMatchAssignmentId),
+				);
 				break;
 			}
 		}
@@ -209,8 +232,7 @@ export const useFeatureMatchAssignmentStore = defineStore('featureMatchAssignmen
 		lifetime = lifetimes.begin();
 		roundLoads.supersedeAll();
 		roundConsumerCounts.clear();
-		for (const timer of remoteChangeTimers.values())
-			clearTimeout(timer);
+		for (const timer of remoteChangeTimers.values()) clearTimeout(timer);
 		remoteChangeTimers.clear();
 		assignmentsByRound.value = new Map();
 		consumedRoundIds.value = new Set();

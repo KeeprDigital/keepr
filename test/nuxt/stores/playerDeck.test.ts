@@ -84,31 +84,17 @@ describe('usePlayerDeckStore', () => {
 	// A load answered after its Event Lifetime ended, or after a newer load began,
 	// is superseded: it writes nothing and answers null (ADR-0024).
 	it.each([
-		[
-			'the operator left for an Event not loaded yet',
-			{ reset: true, newerLoad: false },
-		],
-		[
-			'the operator left and the next Event\'s Decks loaded',
-			{ reset: true, newerLoad: true },
-		],
-		[
-			'a newer load of the same Event answered',
-			{ reset: false, newerLoad: true },
-		],
+		['the operator left for an Event not loaded yet', { reset: true, newerLoad: false }],
+		["the operator left and the next Event's Decks loaded", { reset: true, newerLoad: true }],
+		['a newer load of the same Event answered', { reset: false, newerLoad: true }],
 	])('a load answered after %s changes nothing', async (_, { reset, newerLoad }) => {
 		const store = usePlayerDeckStore();
 		const late = deferred<unknown>();
 		mockFetch.mockReturnValueOnce(late.promise);
 
 		const loading = store.loadByEventId(1);
-		if (reset)
-			store.$reset();
-		const shown = newerLoad
-			? [
-					deck({ id: 20, name: 'Loaded since' }),
-				]
-			: [];
+		if (reset) store.$reset();
+		const shown = newerLoad ? [deck({ id: 20, name: 'Loaded since' })] : [];
 		if (newerLoad) {
 			mockFetch.mockResolvedValueOnce({
 				decks: structuredClone(shown),
@@ -116,9 +102,7 @@ describe('usePlayerDeckStore', () => {
 			await store.loadByEventId(2);
 		}
 		late.resolve({
-			decks: [
-				deck({ name: 'Answered late' }),
-			],
+			decks: [deck({ name: 'Answered late' })],
 		});
 
 		expect(await loading).toBeNull();
@@ -145,7 +129,10 @@ describe('usePlayerDeckStore', () => {
 		const failing = deferred<unknown>();
 		mockFetch.mockReturnValueOnce(failing.promise);
 
-		const load = store.loadByEventId(1).then(answer => answer, () => 'raised');
+		const load = store.loadByEventId(1).then(
+			(answer) => answer,
+			() => 'raised',
+		);
 		if (superseded) {
 			mockFetch.mockReturnValueOnce(deferred<unknown>().promise);
 			void store.loadByEventId(1);
@@ -168,9 +155,7 @@ describe('usePlayerDeckStore', () => {
 			player: { id: 2, archetypeId: 5 },
 		});
 		const store = usePlayerDeckStore();
-		store.decks = [
-			deck(),
-		] as any;
+		store.decks = [deck()] as any;
 
 		await store.reviewDeck(1, 2, 10, 5);
 
@@ -182,9 +167,7 @@ describe('usePlayerDeckStore', () => {
 
 	it('applies reviews received from another realtime client', () => {
 		const store = usePlayerDeckStore();
-		store.decks = [
-			deck(),
-		] as any;
+		store.decks = [deck()] as any;
 		const reviewedDeck = deck({
 			archetypeId: 5,
 			reviewedAt: new Date(),
@@ -198,10 +181,7 @@ describe('usePlayerDeckStore', () => {
 
 	it('drops the cached Deck Lists of every Player whose cards another client resolved, and only theirs (#648)', () => {
 		const store = usePlayerDeckStore();
-		const summaries = [
-			deck(),
-			deck({ id: 11, playerId: 3 }),
-		];
+		const summaries = [deck(), deck({ id: 11, playerId: 3 })];
 		store.decks = structuredClone(summaries) as any;
 
 		store.applyRemoteCardsResolved({
@@ -242,7 +222,7 @@ describe('usePlayerDeckStore', () => {
 		expect(mockApplyArchetypeUpdated).toHaveBeenCalledOnce();
 	});
 
-	it('clears a deck\'s review, returning it and its Player to the submitted deck, and follows up as a review does', async () => {
+	it("clears a deck's review, returning it and its Player to the submitted deck, and follows up as a review does", async () => {
 		const cleared = deck({ archetypeId: null, reviewedAt: null });
 		const player = { id: 2, archetypeId: 5 };
 		mockPlayerStore.players = [player];
@@ -268,7 +248,7 @@ describe('usePlayerDeckStore', () => {
 		expect(mockFeatureMatchStore.loadFeatureMatchesByEventId).toHaveBeenCalledWith(1);
 	});
 
-	it('moves a merged Archetype\'s decks to its survivor, still reviewed, everywhere', () => {
+	it("moves a merged Archetype's decks to its survivor, still reviewed, everywhere", () => {
 		const player = {
 			id: 2,
 			archetypeId: 5,
@@ -356,9 +336,7 @@ describe('usePlayerDeckStore', () => {
 
 		it('changes nothing and follows up on nothing', async () => {
 			const store = usePlayerDeckStore();
-			store.decks = [
-				deck(),
-			] as any;
+			store.decks = [deck()] as any;
 			const review = deferred<unknown>();
 			mockReviewDeck.mockReturnValueOnce(review.promise);
 
@@ -366,9 +344,7 @@ describe('usePlayerDeckStore', () => {
 			let shown!: ReturnType<typeof deck>[];
 			for (const eventId of switches) {
 				store.$reset();
-				shown = [
-					deck({ eventId, name: `Loaded for ${eventId}` }),
-				];
+				shown = [deck({ eventId, name: `Loaded for ${eventId}` })];
 				mockFetch.mockResolvedValueOnce({
 					decks: structuredClone(shown),
 				});

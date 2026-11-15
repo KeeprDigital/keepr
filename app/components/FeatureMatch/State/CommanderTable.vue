@@ -10,24 +10,29 @@ import { seatNumber } from '~~/shared/utils/featureMatchSidePlayer';
  * table, clockwise from the top left, around the turn and the game's outcome.
  * Shared by the Feature Match page and the Feature Match Controls Screen Mode.
  */
-const props = withDefaults(defineProps<{
-	matchId: number;
-	/** What each Seat shows and lets its viewer change; the game's own phase is read here. */
-	config?: PlayerDisplayConfig;
-	/** Scales the controls up for a touch screen. */
-	touch?: boolean;
-	showTurnControls?: boolean;
-	showSeatLabels?: boolean;
-}>(), {
-	touch: false,
-	showTurnControls: true,
-	showSeatLabels: true,
-});
+const props = withDefaults(
+	defineProps<{
+		matchId: number;
+		/** What each Seat shows and lets its viewer change; the game's own phase is read here. */
+		config?: PlayerDisplayConfig;
+		/** Scales the controls up for a touch screen. */
+		touch?: boolean;
+		showTurnControls?: boolean;
+		showSeatLabels?: boolean;
+	}>(),
+	{
+		touch: false,
+		showTurnControls: true,
+		showSeatLabels: true,
+	},
+);
 
 const eventStore = useEventStore();
 const featureMatchStateStore = useFeatureMatchStateStore();
 
-const matchState = computed(() => featureMatchStateStore.featureMatchStates.get(props.matchId) ?? null);
+const matchState = computed(
+	() => featureMatchStateStore.featureMatchStates.get(props.matchId) ?? null,
+);
 
 const {
 	needsFirstPlayerSelection,
@@ -59,9 +64,7 @@ function seatConfig(seat: Seat): PlayerDisplayConfig {
 		mulliganPhase: inMulliganPhase.value,
 		startingHandSize: startingHandSize.value,
 		activePlayerTrackingEnabled: activePlayerTrackingEnabled.value,
-		seatLabel: props.showSeatLabels
-			? `Seat ${seatNumber(seat)}`
-			: undefined,
+		seatLabel: props.showSeatLabels ? `Seat ${seatNumber(seat)}` : undefined,
 	};
 }
 
@@ -75,12 +78,12 @@ const mayDeclareOutcome = computed(() => props.config?.allowGameWinControls ?? t
 
 const outcomeText = computed(() => {
 	const winner = outcome.value?.winner;
-	if (!winner)
-		return 'Draw';
-	const snapshot = followedFeatureMatchSession(props.matchId, featureMatchStateStore)?.sourceSnapshot;
-	return snapshot
-		? `${seatPlayerName(snapshot, winner)} wins`
-		: `Seat ${seatNumber(winner)} wins`;
+	if (!winner) return 'Draw';
+	const snapshot = followedFeatureMatchSession(
+		props.matchId,
+		featureMatchStateStore,
+	)?.sourceSnapshot;
+	return snapshot ? `${seatPlayerName(snapshot, winner)} wins` : `Seat ${seatNumber(winner)} wins`;
 });
 
 function setOutcome(declared: { winner: Seat | null } | null) {
@@ -90,15 +93,8 @@ function setOutcome(declared: { winner: Seat | null } | null) {
 </script>
 
 <template>
-	<div
-		v-if="matchState"
-		class="commander-table-frame"
-		:class="{ 'is-touch': touch }"
-	>
-		<div
-			class="commander-table"
-			:class="{ 'is-touch': touch }"
-		>
+	<div v-if="matchState" class="commander-table-frame" :class="{ 'is-touch': touch }">
+		<div class="commander-table" :class="{ 'is-touch': touch }">
 			<FeatureMatchStateCommanderSeat
 				v-for="seat in SEAT_VALUES"
 				:key="seat"
@@ -115,9 +111,7 @@ function setOutcome(declared: { winner: Seat | null } | null) {
 			/>
 
 			<div class="table-middle">
-				<span v-if="choosingFirst" class="text-sm text-muted">
-					Which Seat goes first?
-				</span>
+				<span v-if="choosingFirst" class="text-sm text-muted"> Which Seat goes first? </span>
 				<FeatureMatchStateTurnCounter
 					v-else-if="showTurnControls && showTurnCounter"
 					:label="turnCounterLabel"

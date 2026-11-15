@@ -27,9 +27,7 @@ export const COUNT_UP_LIMIT_MINUTES_MAX = 600;
  */
 export function countUpOvertimeMs(overMs: number, limitMs: number | null | undefined): number {
 	const overtimeMs = Math.max(0, overMs);
-	return limitMs == null
-		? overtimeMs
-		: Math.min(overtimeMs, limitMs);
+	return limitMs == null ? overtimeMs : Math.min(overtimeMs, limitMs);
 }
 
 // ──────────────── Time Formatting ────────────────
@@ -78,27 +76,24 @@ export function countdownNextChangeInMs(remainingMs: number): number {
  */
 export function normalizeTimeInput(input: string): string | null {
 	const trimmed = input.trim();
-	if (!trimmed)
-		return null;
+	if (!trimmed) return null;
 
 	// If already contains colons, validate and pass through. Range checks must
 	// match parseTimeInput's — every string returned here is canonical, so the
 	// parser must accept it.
 	if (trimmed.includes(':')) {
 		const parts = trimmed.split(':');
-		if ((parts.length !== 2 && parts.length !== 3) || !parts.every(p => DIGITS_ONLY_RE.test(p)))
+		if ((parts.length !== 2 && parts.length !== 3) || !parts.every((p) => DIGITS_ONLY_RE.test(p)))
 			return null;
 		const seconds = Number(parts[parts.length - 1]);
 		const minutes = Number(parts[parts.length - 2]);
-		if (seconds >= 60 || (parts.length === 3 && minutes >= 60))
-			return null;
+		if (seconds >= 60 || (parts.length === 3 && minutes >= 60)) return null;
 		return trimmed;
 	}
 
 	// Strip non-digits for pure numeric input
 	const digits = trimmed.replace(NON_DIGIT_RE, '');
-	if (!digits)
-		return null;
+	if (!digits) return null;
 
 	let mm: string, ss: string, hh: string;
 
@@ -109,29 +104,21 @@ export function normalizeTimeInput(input: string): string | null {
 		case 3:
 			mm = digits.slice(0, 1).padStart(2, '0');
 			ss = digits.slice(1);
-			return Number(ss) >= 60
-				? null
-				: `${mm}:${ss}`;
+			return Number(ss) >= 60 ? null : `${mm}:${ss}`;
 		case 4:
 			mm = digits.slice(0, 2);
 			ss = digits.slice(2);
-			return Number(ss) >= 60
-				? null
-				: `${mm}:${ss}`;
+			return Number(ss) >= 60 ? null : `${mm}:${ss}`;
 		case 5:
 			hh = digits.slice(0, 1);
 			mm = digits.slice(1, 3);
 			ss = digits.slice(3);
-			return (Number(mm) >= 60 || Number(ss) >= 60)
-				? null
-				: `${hh}:${mm}:${ss}`;
+			return Number(mm) >= 60 || Number(ss) >= 60 ? null : `${hh}:${mm}:${ss}`;
 		case 6:
 			hh = digits.slice(0, 2);
 			mm = digits.slice(2, 4);
 			ss = digits.slice(4);
-			return (Number(mm) >= 60 || Number(ss) >= 60)
-				? null
-				: `${hh}:${mm}:${ss}`;
+			return Number(mm) >= 60 || Number(ss) >= 60 ? null : `${hh}:${mm}:${ss}`;
 		default:
 			return null;
 	}
@@ -140,17 +127,14 @@ export function normalizeTimeInput(input: string): string | null {
 /** Parse a time string (mm:ss or h:mm:ss) into milliseconds. Returns null if invalid. */
 export function parseTimeInput(input: string): number | null {
 	const normalized = normalizeTimeInput(input);
-	if (!normalized)
-		return null;
+	if (!normalized) return null;
 
 	const parts = normalized.split(':').map(Number);
-	if (parts.some(p => Number.isNaN(p) || p < 0))
-		return null;
+	if (parts.some((p) => Number.isNaN(p) || p < 0)) return null;
 
 	if (parts.length === 2) {
 		const [minutes, seconds] = parts;
-		if (minutes == null || seconds == null || seconds >= 60)
-			return null;
+		if (minutes == null || seconds == null || seconds >= 60) return null;
 		return (minutes * 60 + seconds) * 1000;
 	}
 
@@ -196,9 +180,7 @@ export function readStoredClock(stored: ClockState): FeatureMatchClock {
 		type: stored.type,
 		durationMs: stored.durationMs,
 		elapsedMs: stored.elapsedMs,
-		startedAt: stored.isRunning
-			? stored.lastStartedAt ?? null
-			: null,
+		startedAt: stored.isRunning ? (stored.lastStartedAt ?? null) : null,
 		countUpAfterCountdown: stored.countUpAfterCountdown,
 		countUpLimitMs: stored.countUpLimitMs ?? null,
 	};
@@ -224,9 +206,7 @@ export function writeStoredClock(clock: FeatureMatchClock): ClockState {
 
 /** The time a clock has run by `now`, never below zero: the one elapsed-time sum. */
 export function getEffectiveElapsedMs(clock: FeatureMatchClock, now: number): number {
-	const runningMs = clock.startedAt === null
-		? 0
-		: now - clock.startedAt;
+	const runningMs = clock.startedAt === null ? 0 : now - clock.startedAt;
 	return Math.max(0, clock.elapsedMs + runningMs);
 }
 
@@ -235,11 +215,8 @@ export function getEffectiveElapsedMs(clock: FeatureMatchClock, now: number): nu
  * once any time has run, or `stopped` before any has.
  */
 export function clockRunState(clock: FeatureMatchClock): 'running' | 'paused' | 'stopped' {
-	if (clock.startedAt !== null)
-		return 'running';
-	return clock.elapsedMs > 0
-		? 'paused'
-		: 'stopped';
+	if (clock.startedAt !== null) return 'running';
+	return clock.elapsedMs > 0 ? 'paused' : 'stopped';
 }
 
 /**
@@ -249,14 +226,14 @@ export function clockRunState(clock: FeatureMatchClock): 'running' | 'paused' | 
  * not. With time left it is `running`, `paused` once any time has run, or
  * `stopped` before any has. An Untimed Match's clock is `untimed`.
  */
-export type FeatureMatchClockState
-	= | 'untimed'
-		| 'stopped'
-		| 'paused'
-		| 'running'
-		| 'run-out'
-		| 'counting-up'
-		| 'holding';
+export type FeatureMatchClockState =
+	| 'untimed'
+	| 'stopped'
+	| 'paused'
+	| 'running'
+	| 'run-out'
+	| 'counting-up'
+	| 'holding';
 
 export interface FeatureMatchClockProjection {
 	state: FeatureMatchClockState;
@@ -283,7 +260,11 @@ export interface FeatureMatchClockProjection {
  * is reached, its last at the end; elapsed time and overtime round down and
  * change on the whole second (ADR-0078). Only a running clock changes.
  */
-export function projectFeatureMatchClock(clock: FeatureMatchClock | null, now: number, untimedLabel: string): FeatureMatchClockProjection {
+export function projectFeatureMatchClock(
+	clock: FeatureMatchClock | null,
+	now: number,
+	untimedLabel: string,
+): FeatureMatchClockProjection {
 	if (!clock) {
 		return {
 			state: 'stopped',
@@ -318,9 +299,7 @@ export function projectFeatureMatchClock(clock: FeatureMatchClock | null, now: n
 			display: formatClockTime(elapsedMs),
 			elapsedMs,
 			remainingMs: null,
-			nextChangeInMs: isRunning
-				? 1000 - (elapsedMs % 1000)
-				: null,
+			nextChangeInMs: isRunning ? 1000 - (elapsedMs % 1000) : null,
 		};
 	}
 
@@ -332,9 +311,7 @@ export function projectFeatureMatchClock(clock: FeatureMatchClock | null, now: n
 			display: formatCountdownTime(remainingMs),
 			elapsedMs,
 			remainingMs,
-			nextChangeInMs: isRunning
-				? countdownNextChangeInMs(remainingMs)
-				: null,
+			nextChangeInMs: isRunning ? countdownNextChangeInMs(remainingMs) : null,
 		};
 	}
 
@@ -357,9 +334,7 @@ export function projectFeatureMatchClock(clock: FeatureMatchClock | null, now: n
 		display: formatClockTime(countUpOvertimeMs(overMs, clock.countUpLimitMs)),
 		elapsedMs,
 		remainingMs: 0,
-		nextChangeInMs: isRunning && !holds
-			? 1000 - (overMs % 1000)
-			: null,
+		nextChangeInMs: isRunning && !holds ? 1000 - (overMs % 1000) : null,
 	};
 }
 
@@ -384,19 +359,24 @@ export function applyClockAdjustment(
 	adjustment: ClockAdjustmentInput,
 ): FeatureMatchClock {
 	const effectiveElapsedMs = getEffectiveElapsedMs(clock, now);
-	const inOvertime = clock.type === 'countdown'
-		&& clock.countUpAfterCountdown
-		&& effectiveElapsedMs >= clock.durationMs;
+	const inOvertime =
+		clock.type === 'countdown' &&
+		clock.countUpAfterCountdown &&
+		effectiveElapsedMs >= clock.durationMs;
 	let currentDisplayMs = effectiveElapsedMs;
 	if (inOvertime)
-		currentDisplayMs = -countUpOvertimeMs(effectiveElapsedMs - clock.durationMs, clock.countUpLimitMs);
+		currentDisplayMs = -countUpOvertimeMs(
+			effectiveElapsedMs - clock.durationMs,
+			clock.countUpLimitMs,
+		);
 	else if (clock.type === 'countdown')
 		currentDisplayMs = Math.max(0, clock.durationMs - effectiveElapsedMs);
 
 	const adjustedDisplayMs = currentDisplayMs + (adjustment.deltaDisplayMs ?? 0);
-	const targetDisplayMs = adjustment.targetDisplayMs === undefined && inOvertime
-		? adjustedDisplayMs
-		: Math.max(0, adjustment.targetDisplayMs ?? adjustedDisplayMs);
+	const targetDisplayMs =
+		adjustment.targetDisplayMs === undefined && inOvertime
+			? adjustedDisplayMs
+			: Math.max(0, adjustment.targetDisplayMs ?? adjustedDisplayMs);
 
 	if (clock.type === 'countdown') {
 		// A negative target is overtime, which is elapsed time past the duration.
@@ -406,18 +386,14 @@ export function applyClockAdjustment(
 			...clock,
 			durationMs,
 			elapsedMs: durationMs - targetDisplayMs,
-			startedAt: clock.startedAt === null
-				? null
-				: now,
+			startedAt: clock.startedAt === null ? null : now,
 		};
 	}
 
 	return {
 		...clock,
 		elapsedMs: targetDisplayMs,
-		startedAt: clock.startedAt === null
-			? null
-			: now,
+		startedAt: clock.startedAt === null ? null : now,
 	};
 }
 
@@ -433,9 +409,7 @@ export function applyClockAdjustment(
 export const clockTransitions = {
 	/** Run a stopped clock from `at`. A running clock keeps the start it has. */
 	start(clock: FeatureMatchClock, at: number): FeatureMatchClock {
-		return clock.startedAt === null
-			? { ...clock, startedAt: at }
-			: clock;
+		return clock.startedAt === null ? { ...clock, startedAt: at } : clock;
 	},
 
 	/** Stop a running clock, keeping the time it has run by `at`. */

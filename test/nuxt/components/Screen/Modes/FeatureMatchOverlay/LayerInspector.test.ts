@@ -18,14 +18,16 @@ const ScreenSettingsToggleStub = defineComponent({
 		modelValue: { type: Boolean, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" data-testid="settings-toggle" @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
+	template:
+		'<button type="button" data-testid="settings-toggle" @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
 });
 
 const UFormFieldStub = defineComponent({
 	props: {
 		label: { type: String, required: false },
 	},
-	template: '<div data-testid="form-field"><span><slot name="label">{{ label }}</slot></span><slot /></div>',
+	template:
+		'<div data-testid="form-field"><span><slot name="label">{{ label }}</slot></span><slot /></div>',
 });
 
 const UInputStub = defineComponent({
@@ -40,7 +42,8 @@ const UInputStub = defineComponent({
 
 const UButtonStub = defineComponent({
 	emits: ['click'],
-	template: '<button type="button" data-testid="u-button" @click="$emit(\'click\', $event)"><slot /></button>',
+	template:
+		'<button type="button" data-testid="u-button" @click="$emit(\'click\', $event)"><slot /></button>',
 });
 
 const GeometryFieldsStub = defineComponent({
@@ -48,16 +51,19 @@ const GeometryFieldsStub = defineComponent({
 		anchor: { type: String, required: true },
 	},
 	emits: ['update:anchor'],
-	template: '<button type="button" data-testid="geometry-anchor" :data-anchor-value="anchor" @click="$emit(\'update:anchor\', \'bottom-right\')">Anchor</button>',
+	template:
+		'<button type="button" data-testid="geometry-anchor" :data-anchor-value="anchor" @click="$emit(\'update:anchor\', \'bottom-right\')">Anchor</button>',
 });
 
-async function mountComponent(overrides: Partial<{
-	config: FeatureMatchOverlayModeConfig;
-	selectedTarget: FeatureMatchOverlaySelectionTarget;
-	updateConfig: FeatureMatchOverlayConfigUpdater;
-	writable: boolean | undefined;
-	stubs: Record<string, unknown>;
-}> = {}) {
+async function mountComponent(
+	overrides: Partial<{
+		config: FeatureMatchOverlayModeConfig;
+		selectedTarget: FeatureMatchOverlaySelectionTarget;
+		updateConfig: FeatureMatchOverlayConfigUpdater;
+		writable: boolean | undefined;
+		stubs: Record<string, unknown>;
+	}> = {},
+) {
 	const updateConfig = overrides.updateConfig ?? vi.fn<FeatureMatchOverlayConfigUpdater>();
 
 	return mount(LayerInspector, {
@@ -69,22 +75,23 @@ async function mountComponent(overrides: Partial<{
 			screen: { id: 1, currentMode: 'feature-match-overlay' } as Screen,
 			eventId: 7,
 			selectedTarget: overrides.selectedTarget ?? { type: 'canvas' },
-			writable: 'writable' in overrides
-				? overrides.writable
-				: true,
+			writable: 'writable' in overrides ? overrides.writable : true,
 		},
 		global: {
 			stubs: {
 				ScreenSettingsToggle: ScreenSettingsToggleStub,
 				ScreenSettingsSection: ScreenSettingsSectionStub,
-				FeatureMatchOverlayFrameStyleCard: defineComponent({ template: '<div data-testid="frame-style-card" />' }),
+				FeatureMatchOverlayFrameStyleCard: defineComponent({
+					template: '<div data-testid="frame-style-card" />',
+				}),
 				GraphicsGeometryFields: GeometryFieldsStub,
 				FeatureMatchOverlaySourceFramingStyleFields: defineComponent({
 					props: {
 						framingStyle: { type: Object, required: false },
 					},
 					emits: ['update'],
-					template: '<button type="button" data-testid="source-framing-style" :data-framing-style="JSON.stringify(framingStyle)" @click="$emit(\'update\', { borderWidth: 6 })" />',
+					template:
+						'<button type="button" data-testid="source-framing-style" :data-framing-style="JSON.stringify(framingStyle)" @click="$emit(\'update\', { borderWidth: 6 })" />',
 				}),
 				UFormField: UFormFieldStub,
 				UInput: UInputStub,
@@ -114,11 +121,14 @@ describe('featureMatchOverlayLayerInspector', () => {
 			writable,
 		});
 
-		expect(wrapper.get('[data-testid="overlay-layer-inspector-fields"]').attributes('disabled') !== undefined).toBe(disabled);
+		expect(
+			wrapper.get('[data-testid="overlay-layer-inspector-fields"]').attributes('disabled') !==
+				undefined,
+		).toBe(disabled);
 	});
 
 	// A Look row edits like any other field: read-only for an observer (#982).
-	it('keeps the Source Item\'s Look inside the read-only fields', async () => {
+	it("keeps the Source Item's Look inside the read-only fields", async () => {
 		const wrapper = await mountComponent({
 			selectedTarget: { type: 'source', itemId: 'main-source' },
 			writable: false,
@@ -136,22 +146,26 @@ describe('featureMatchOverlayLayerInspector', () => {
 			offsets: [3],
 		},
 		{ session: 'a read-only observer', writable: false, offsets: [] },
-	])('lets $session drag a Source Item\'s X label to move it', async ({ writable, offsets }) => {
+	])("lets $session drag a Source Item's X label to move it", async ({ writable, offsets }) => {
 		stubPointerCapture();
 		const updateConfig = vi.fn<FeatureMatchOverlayConfigUpdater>();
 		const wrapper = await mountComponent({
 			updateConfig,
 			selectedTarget: { type: 'source', itemId: 'main-source' },
 			writable,
-			stubs: { GraphicsGeometryFields: false, UINinePointPicker: true, GraphicsGeometryUnitPicker: true },
+			stubs: {
+				GraphicsGeometryFields: false,
+				UINinePointPicker: true,
+				GraphicsGeometryUnitPicker: true,
+			},
 		});
-		const label = wrapper.findAll('[data-number-scrub]').find(handle => handle.text() === 'X')!;
+		const label = wrapper.findAll('[data-number-scrub]').find((handle) => handle.text() === 'X')!;
 
 		await label.trigger('pointerdown', { button: 0, pointerId: 1, clientX: 0 });
 		await label.trigger('pointermove', { pointerId: 1, clientX: 6 });
 
 		const sourceX = (config: Partial<FeatureMatchOverlayModeConfig> | undefined) =>
-			config?.layout?.sources.find(source => source.id === 'main-source')?.x ?? Number.NaN;
+			config?.layout?.sources.find((source) => source.id === 'main-source')?.x ?? Number.NaN;
 		const start = sourceX(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 		expect(updateConfig.mock.calls.map(([patch]) => sourceX(patch) - start)).toEqual(offsets);
 	});
@@ -175,8 +189,9 @@ describe('featureMatchOverlayLayerInspector', () => {
 		await wrapper.find('[data-testid="source-framing-style"]').trigger('click');
 
 		const patch = updateConfig.mock.calls.at(-1)?.[0] as Partial<FeatureMatchOverlayModeConfig>;
-		expect(patch.layout?.sources.find(source => source.id === 'main-source')?.framingStyle)
-			.toMatchObject({ borderWidth: 6 });
+		expect(
+			patch.layout?.sources.find((source) => source.id === 'main-source')?.framingStyle,
+		).toMatchObject({ borderWidth: 6 });
 	});
 
 	it('persists a Source Item anchor selection', async () => {
@@ -189,7 +204,9 @@ describe('featureMatchOverlayLayerInspector', () => {
 		await wrapper.find('[data-testid="geometry-anchor"]').trigger('click');
 
 		const patch = updateConfig.mock.calls.at(-1)?.[0] as Partial<FeatureMatchOverlayModeConfig>;
-		expect(patch.layout?.sources.find(source => source.id === 'main-source')?.anchor).toBe('bottom-right');
+		expect(patch.layout?.sources.find((source) => source.id === 'main-source')?.anchor).toBe(
+			'bottom-right',
+		);
 	});
 
 	it('reports a selection that no longer resolves rather than rendering nothing', async () => {

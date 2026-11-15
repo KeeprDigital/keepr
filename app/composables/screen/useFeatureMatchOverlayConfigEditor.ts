@@ -6,7 +6,9 @@ import type {
 } from '~~/shared/types/screenConfig';
 import * as layoutWriter from '~/modules/feature-match-overlay/layout';
 
-export type FeatureMatchOverlayConfigUpdater = (partial: Partial<FeatureMatchOverlayModeConfig>) => void;
+export type FeatureMatchOverlayConfigUpdater = (
+	partial: Partial<FeatureMatchOverlayModeConfig>,
+) => void;
 
 interface FeatureMatchOverlayConfigEditorOptions {
 	config: Ref<FeatureMatchOverlayModeConfig>;
@@ -24,7 +26,9 @@ interface FeatureMatchOverlayConfigEditorOptions {
  * The shared item tree is written through the compositor's own authoring module,
  * not through here.
  */
-export function useFeatureMatchOverlayConfigEditor(options: FeatureMatchOverlayConfigEditorOptions) {
+export function useFeatureMatchOverlayConfigEditor(
+	options: FeatureMatchOverlayConfigEditorOptions,
+) {
 	const { config, updateConfig } = options;
 
 	function layout() {
@@ -32,8 +36,7 @@ export function useFeatureMatchOverlayConfigEditor(options: FeatureMatchOverlayC
 	}
 
 	function submit(next: ReturnType<typeof layout>) {
-		if (next !== layout())
-			updateConfig({ layout: next });
+		if (next !== layout()) updateConfig({ layout: next });
 	}
 
 	function updateLayout(layoutUpdates: Partial<FeatureMatchOverlayModeConfig['layout']>) {

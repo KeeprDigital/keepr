@@ -17,8 +17,7 @@ export async function verifyStillImageBrowserDecode(
 					width: bitmap.width,
 					height: bitmap.height,
 				};
-			}
-			finally {
+			} finally {
 				bitmap.close();
 			}
 		}
@@ -36,12 +35,10 @@ export async function verifyStillImageBrowserDecode(
 				width: image.naturalWidth,
 				height: image.naturalHeight,
 			};
-		}
-		finally {
+		} finally {
 			URL.revokeObjectURL(objectUrl);
 		}
-	}
-	catch {
+	} catch {
 		return { outcome: 'rejected', sourceDigest };
 	}
 }

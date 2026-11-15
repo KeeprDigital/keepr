@@ -24,18 +24,24 @@ describe('screenCreateModal', () => {
 	it.each([
 		['op', null, 'Standings'],
 		['mtg', 'commander', 'Metagame'],
-	] as const)('offers a %s Event of Variant %s the modes it supports, without %s', (game, variant, withheld) => {
-		Object.assign(mockEventStore.event, { game, variant });
-		const wrapper = mount(ScreenCreateModal, {
-			props: { eventId: 1 },
-			attrs: { open: true },
-			global: {
-				stubs: { ...nuxtUiStubs, ScreenTypeBadge: true },
-			},
-		});
+	] as const)(
+		'offers a %s Event of Variant %s the modes it supports, without %s',
+		(game, variant, withheld) => {
+			Object.assign(mockEventStore.event, { game, variant });
+			const wrapper = mount(ScreenCreateModal, {
+				props: { eventId: 1 },
+				attrs: { open: true },
+				global: {
+					stubs: { ...nuxtUiStubs, ScreenTypeBadge: true },
+				},
+			});
 
-		const options = wrapper.get('select').findAll('option').map(option => option.text());
-		expect(options).toContain('Feature Match Overlay');
-		expect(options).not.toContain(withheld);
-	});
+			const options = wrapper
+				.get('select')
+				.findAll('option')
+				.map((option) => option.text());
+			expect(options).toContain('Feature Match Overlay');
+			expect(options).not.toContain(withheld);
+		},
+	);
 });

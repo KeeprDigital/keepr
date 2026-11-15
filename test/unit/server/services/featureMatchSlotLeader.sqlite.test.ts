@@ -5,7 +5,15 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { mapFeatureMatchToResponse } from '~~/server/mappers/featureMatch';
 import { featureMatchTokenValues } from '~~/shared/featureMatchOverlayValues';
-import { fakeOpCardBulkLookup, knownOpCard, LAW, LUFFY, mockOpWriteBoundaries, NAMI, ZORO } from '~~/test/helpers/opCards';
+import {
+	fakeOpCardBulkLookup,
+	knownOpCard,
+	LAW,
+	LUFFY,
+	mockOpWriteBoundaries,
+	NAMI,
+	ZORO,
+} from '~~/test/helpers/opCards';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 /**
@@ -15,7 +23,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 const runtimeConfig = { bandaiKeeprApiKey: 'test-key', bandaiKeeprApiUrl: 'https://op-api.test' };
 vi.stubGlobal('useRuntimeConfig', () => runtimeConfig);
 
@@ -63,7 +72,8 @@ function side(name: string, sideLeader: OpLeader | null) {
 
 /** Ana on Zoro and Ben on Law, both picked, in a Slot with an active Session. */
 async function stageSession() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'One Piece Regional', game: 'op', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
@@ -114,42 +124,42 @@ async function sessionLeaders(slotId: number, eventId: number) {
 	};
 }
 
-describe('picking a Slot side\'s Leader', () => {
+describe("picking a Slot side's Leader", () => {
 	it.each([
 		{
 			held: 'not yet catalogued',
 			catalogued: [],
-			lookups: [
-				['OP01-016'],
-			],
+			lookups: [['OP01-016']],
 		},
 		{
 			held: 'already catalogued',
 			catalogued: [NAMI],
 			lookups: [],
 		},
-	])('saves a Leader $held to the catalogue, and the side references it by number', async ({ catalogued, lookups }) => {
-		const { eventId, slotId } = await stageSession();
-		for (const leader of catalogued)
-			await pickForAna(eventId, slotId, leader);
-		upstream.reset();
+	])(
+		'saves a Leader $held to the catalogue, and the side references it by number',
+		async ({ catalogued, lookups }) => {
+			const { eventId, slotId } = await stageSession();
+			for (const leader of catalogued) await pickForAna(eventId, slotId, leader);
+			upstream.reset();
 
-		// The form's copy of the card is not what the catalogue keeps: bandai-keepr's answer is.
-		const answer = await pickForAna(eventId, slotId, { ...NAMI, name: 'Nami (stale form)' });
+			// The form's copy of the card is not what the catalogue keeps: bandai-keepr's answer is.
+			const answer = await pickForAna(eventId, slotId, { ...NAMI, name: 'Nami (stale form)' });
 
-		expect(upstream.batches()).toEqual(lookups);
-		expect(await storedSides(slotId)).toEqual([
-			{
-				type: 'op',
-				leader: { number: 'OP01-016' },
-			},
-			{
-				type: 'op',
-				leader: { number: 'OP01-002' },
-			},
-		]);
-		expect(answer.player1Data?.gameData).toEqual({ type: 'op', leader: NAMI });
-	});
+			expect(upstream.batches()).toEqual(lookups);
+			expect(await storedSides(slotId)).toEqual([
+				{
+					type: 'op',
+					leader: { number: 'OP01-016' },
+				},
+				{
+					type: 'op',
+					leader: { number: 'OP01-002' },
+				},
+			]);
+			expect(answer.player1Data?.gameData).toEqual({ type: 'op', leader: NAMI });
+		},
+	);
 
 	it.each([
 		{
@@ -170,10 +180,9 @@ describe('picking a Slot side\'s Leader', () => {
 			configured: false,
 			statusCode: 503,
 		},
-	])('refuses $refused, keeping the side\'s Leader', async ({ leader, configured, statusCode }) => {
+	])("refuses $refused, keeping the side's Leader", async ({ leader, configured, statusCode }) => {
 		const { eventId, slotId } = await stageSession();
-		if (!configured)
-			runtimeConfig.bandaiKeeprApiKey = '';
+		if (!configured) runtimeConfig.bandaiKeeprApiKey = '';
 
 		await expect(pickForAna(eventId, slotId, leader)).rejects.toMatchObject({ statusCode });
 
@@ -190,7 +199,7 @@ describe('picking a Slot side\'s Leader', () => {
 	});
 
 	it.each([
-		{ save: 'clears the side\'s Leader', leader: null },
+		{ save: "clears the side's Leader", leader: null },
 		{ save: 'keeps a catalogued Leader', leader: ZORO },
 	])('$save with no lookup, even with no bandai-keepr configured', async ({ leader }) => {
 		const { eventId, slotId } = await stageSession();
@@ -202,7 +211,7 @@ describe('picking a Slot side\'s Leader', () => {
 		expect(answer.player1Data?.gameData).toEqual({ type: 'op', leader });
 	});
 
-	it('shows on the Overlay\'s Deck, Deck Colours and Leader Image tokens as the picked card', async () => {
+	it("shows on the Overlay's Deck, Deck Colours and Leader Image tokens as the picked card", async () => {
 		const { eventId, slotId } = await stageSession();
 		await pickForAna(eventId, slotId, LUFFY);
 
@@ -214,7 +223,9 @@ describe('picking a Slot side\'s Leader', () => {
 				displayHideZeroDraws: true,
 				displayPositionFormat: 'ordinal',
 			},
-			featureMatch: mapFeatureMatchToResponse((await featureMatchService().findById(slotId, eventId))!),
+			featureMatch: mapFeatureMatchToResponse(
+				(await featureMatchService().findById(slotId, eventId))!,
+			),
 			sourceMatch: null,
 			round: null,
 			phase: null,
@@ -228,22 +239,16 @@ describe('picking a Slot side\'s Leader', () => {
 	});
 });
 
-describe('a Slot side\'s Leader during a Feature Match Session', () => {
-	it('reaches the Session\'s snapshot when changed, without reopening it', async () => {
+describe("a Slot side's Leader during a Feature Match Session", () => {
+	it("reaches the Session's snapshot when changed, without reopening it", async () => {
 		const { eventId, slotId, session } = await stageSession();
 
 		await pickForAna(eventId, slotId, NAMI);
 
 		expect(await sessionLeaders(slotId, eventId)).toEqual({
 			sessionId: session.id,
-			player1: [
-				'Ana',
-				{ type: 'op', leader: NAMI },
-			],
-			player2: [
-				'Ben',
-				{ type: 'op', leader: LAW },
-			],
+			player1: ['Ana', { type: 'op', leader: NAMI }],
+			player2: ['Ben', { type: 'op', leader: LAW }],
 		});
 	});
 
@@ -261,14 +266,8 @@ describe('a Slot side\'s Leader during a Feature Match Session', () => {
 
 		const leaders = await sessionLeaders(slotId, eventId);
 		expect([leaders.player1, leaders.player2]).toEqual([
-			[
-				'Ben',
-				{ type: 'op', leader: LAW },
-			],
-			[
-				'Ana',
-				{ type: 'op', leader: NAMI },
-			],
+			['Ben', { type: 'op', leader: LAW }],
+			['Ana', { type: 'op', leader: NAMI }],
 		]);
 	});
 });

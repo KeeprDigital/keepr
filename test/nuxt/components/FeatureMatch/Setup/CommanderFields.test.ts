@@ -23,13 +23,16 @@ const ATRAXA_2XM: Commander = {
 	collectorNumber: '190',
 };
 
-function mountFields(commanders: Commander[] = [], seat: Partial<MtgPlayerGameData> & { slotId?: number } = {}) {
+function mountFields(
+	commanders: Commander[] = [],
+	seat: Partial<MtgPlayerGameData> & { slotId?: number } = {},
+) {
 	const { slotId, ...gameData } = seat;
 	const updates: MtgPlayerGameData[] = [];
 	const wrapper = mount(CommanderFields, {
 		props: {
 			slotId,
-			'modelValue': { type: 'mtg', commanders, ...gameData } as MtgPlayerGameData,
+			modelValue: { type: 'mtg', commanders, ...gameData } as MtgPlayerGameData,
 			'onUpdate:modelValue': (value: MtgPlayerGameData) => {
 				updates.push(value);
 				void wrapper.setProps({ modelValue: value });
@@ -57,20 +60,20 @@ async function press(wrapper: Wrapper, label: string) {
 }
 
 function labels(wrapper: Wrapper, list: string) {
-	return wrapper.findAll(`ul[aria-label="${list}"] button`).map(button => button.attributes('aria-label'));
+	return wrapper
+		.findAll(`ul[aria-label="${list}"] button`)
+		.map((button) => button.attributes('aria-label'));
 }
 
 function held(wrapper: Wrapper) {
-	return wrapper.findAll('[data-commander]').map(row => row.attributes('data-printing'));
+	return wrapper.findAll('[data-commander]').map((row) => row.attributes('data-printing'));
 }
 
-describe('a Seat\'s Commander picker', () => {
+describe("a Seat's Commander picker", () => {
 	beforeEach(() => {
 		mockFetch.mockReset();
 		mockFetch.mockResolvedValue({
-			data: [
-				scryfallCardOf(ATRAXA),
-			],
+			data: [scryfallCardOf(ATRAXA)],
 		});
 	});
 
@@ -84,14 +87,11 @@ describe('a Seat\'s Commander picker', () => {
 		await search(wrapper, 'atraxa');
 
 		expect(mockFetch.mock.calls.map(([url, options]) => [url, options.query])).toEqual([
-			[
-				SEARCH,
-				{ q: 'atraxa game:paper', unique: 'cards' },
-			],
+			[SEARCH, { q: 'atraxa game:paper', unique: 'cards' }],
 		]);
-		expect(labels(wrapper, 'Cards')).toEqual(['Pick Commander Atraxa, Praetors\' Voice']);
+		expect(labels(wrapper, 'Cards')).toEqual(["Pick Commander Atraxa, Praetors' Voice"]);
 
-		await press(wrapper, 'Pick Commander Atraxa, Praetors\' Voice');
+		await press(wrapper, "Pick Commander Atraxa, Praetors' Voice");
 
 		expect(updates.at(-1)).toEqual({
 			type: 'mtg',
@@ -102,9 +102,7 @@ describe('a Seat\'s Commander picker', () => {
 
 	it('adds a second Commander beside the first, and then offers no search for a third', async () => {
 		mockFetch.mockResolvedValue({
-			data: [
-				scryfallCardOf(TYMNA),
-			],
+			data: [scryfallCardOf(TYMNA)],
 		});
 		const { wrapper, updates } = mountFields([ATRAXA]);
 
@@ -132,54 +130,57 @@ describe('a Seat\'s Commander picker', () => {
 		{
 			card: 'a card that carries it on its faces',
 			answered: {
-				card_faces: [
-					{ oracle_id: 'oracle-atraxa' },
-					{ oracle_id: 'oracle-atraxa' },
-				],
+				card_faces: [{ oracle_id: 'oracle-atraxa' }, { oracle_id: 'oracle-atraxa' }],
 			},
 		},
-	])('changes a held Commander to another printing of $card, in its place', async ({ answered }) => {
-		mockFetch.mockImplementation(async (url: string) => url === SEARCH
-			? {
-					data: [
-						scryfallCardOf(ATRAXA_2XM),
-						scryfallCardOf(ATRAXA),
-					],
-				}
-			: answered);
-		const { wrapper, updates } = mountFields([ATRAXA, TYMNA]);
+	])(
+		'changes a held Commander to another printing of $card, in its place',
+		async ({ answered }) => {
+			mockFetch.mockImplementation(async (url: string) =>
+				url === SEARCH
+					? {
+							data: [scryfallCardOf(ATRAXA_2XM), scryfallCardOf(ATRAXA)],
+						}
+					: answered,
+			);
+			const { wrapper, updates } = mountFields([ATRAXA, TYMNA]);
 
-		await press(wrapper, 'Change printing of Atraxa, Praetors\' Voice');
+			await press(wrapper, "Change printing of Atraxa, Praetors' Voice");
 
-		expect(mockFetch.mock.calls.map(([url, options]) => [url, options.query])).toEqual([
-			[`https://api.scryfall.com/cards/${ATRAXA.scryfallId}`, undefined],
-			[
-				SEARCH,
-				{ q: 'oracleid:oracle-atraxa game:paper', unique: 'prints', order: 'released' },
-			],
-		]);
-		expect(labels(wrapper, 'Printings of Atraxa, Praetors\' Voice')).toEqual(['Pick printing 2XM 190', 'Pick printing CM2 10']);
+			expect(mockFetch.mock.calls.map(([url, options]) => [url, options.query])).toEqual([
+				[`https://api.scryfall.com/cards/${ATRAXA.scryfallId}`, undefined],
+				[SEARCH, { q: 'oracleid:oracle-atraxa game:paper', unique: 'prints', order: 'released' }],
+			]);
+			expect(labels(wrapper, "Printings of Atraxa, Praetors' Voice")).toEqual([
+				'Pick printing 2XM 190',
+				'Pick printing CM2 10',
+			]);
 
-		await press(wrapper, 'Pick printing 2XM 190');
+			await press(wrapper, 'Pick printing 2XM 190');
 
-		expect(updates.at(-1)?.commanders).toEqual([ATRAXA_2XM, TYMNA]);
-		expect(wrapper.find('ul[aria-label="Printings of Atraxa, Praetors\' Voice"]').exists()).toBe(false);
-	});
+			expect(updates.at(-1)?.commanders).toEqual([ATRAXA_2XM, TYMNA]);
+			expect(wrapper.find('ul[aria-label="Printings of Atraxa, Praetors\' Voice"]').exists()).toBe(
+				false,
+			);
+		},
+	);
 
 	it('says so when a held Commander has no other printing to offer', async () => {
-		mockFetch.mockImplementation(async (url: string) => url === SEARCH
-			? {
-					data: [
-						scryfallCardOf(ATRAXA),
-					],
-				}
-			: { oracle_id: 'oracle-atraxa' });
+		mockFetch.mockImplementation(async (url: string) =>
+			url === SEARCH
+				? {
+						data: [scryfallCardOf(ATRAXA)],
+					}
+				: { oracle_id: 'oracle-atraxa' },
+		);
 		const { wrapper } = mountFields([ATRAXA]);
 
-		await press(wrapper, 'Change printing of Atraxa, Praetors\' Voice');
+		await press(wrapper, "Change printing of Atraxa, Praetors' Voice");
 
 		expect(wrapper.find('[data-no-printings]').exists()).toBe(true);
-		expect(wrapper.find('ul[aria-label="Printings of Atraxa, Praetors\' Voice"]').exists()).toBe(false);
+		expect(wrapper.find('ul[aria-label="Printings of Atraxa, Praetors\' Voice"]').exists()).toBe(
+			false,
+		);
 	});
 
 	// Scryfall answers a search that matches nothing with 404.
@@ -207,16 +208,19 @@ describe('a Seat\'s Commander picker', () => {
 	it.each([
 		{ typed: 'two letters', text: 'at', searches: 0 },
 		{ typed: 'three letters', text: 'atr', searches: 1 },
-	])('searches once the operator pauses after typing $typed: $searches', async ({ text, searches }) => {
-		vi.useFakeTimers();
-		const { wrapper } = mountFields();
+	])(
+		'searches once the operator pauses after typing $typed: $searches',
+		async ({ text, searches }) => {
+			vi.useFakeTimers();
+			const { wrapper } = mountFields();
 
-		await wrapper.get('input[aria-label="Search Commanders"]').setValue(text);
-		expect(mockFetch).not.toHaveBeenCalled();
-		await vi.advanceTimersByTimeAsync(300);
+			await wrapper.get('input[aria-label="Search Commanders"]').setValue(text);
+			expect(mockFetch).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(300);
 
-		expect(mockFetch).toHaveBeenCalledTimes(searches);
-	});
+			expect(mockFetch).toHaveBeenCalledTimes(searches);
+		},
+	);
 
 	// ADR-0087: while a Seat holds a Deck List, its Commanders are that list's cards.
 	describe('while the Seat holds a Deck List', () => {
@@ -224,21 +228,18 @@ describe('a Seat\'s Commander picker', () => {
 		const LIST = '/api/events/7/feature-match-slots/3/commander-deck-lists/11';
 
 		beforeEach(() => {
-			mockFetch.mockImplementation(async (path: string) => path === LIST
-				? {
-						id: 11,
-						slotId: 3,
-						sourceText: '',
-						entries: [
-							deckListEntryOf(ashling),
-							deckListEntryOf(animar),
-						],
-					}
-				: {
-						data: [
-							scryfallCardOf(ATRAXA),
-						],
-					});
+			mockFetch.mockImplementation(async (path: string) =>
+				path === LIST
+					? {
+							id: 11,
+							slotId: 3,
+							sourceText: '',
+							entries: [deckListEntryOf(ashling), deckListEntryOf(animar)],
+						}
+					: {
+							data: [scryfallCardOf(ATRAXA)],
+						},
+			);
 		});
 
 		const mountHolding = (commanders: Commander[]) =>
@@ -247,7 +248,7 @@ describe('a Seat\'s Commander picker', () => {
 				featureMatchDeckList: { id: 11, mainboardCount: 98 },
 			});
 
-		it('offers the list\'s cards in place of the card search, and holds the one picked as the list\'s printing', async () => {
+		it("offers the list's cards in place of the card search, and holds the one picked as the list's printing", async () => {
 			const { wrapper, updates } = mountHolding([ASHLING]);
 
 			await search(wrapper, 'a');
@@ -258,18 +259,17 @@ describe('a Seat\'s Commander picker', () => {
 			await press(wrapper, 'Pick Commander Animar, Soul of Elements');
 			expect(updates.at(-1)).toEqual({
 				type: 'mtg',
-				commanders: [
-					ASHLING,
-					ANIMAR,
-				],
+				commanders: [ASHLING, ANIMAR],
 				featureMatchDeckList: { id: 11, mainboardCount: 98 },
 			});
 		});
 
-		it('offers no other printing of a Commander: the printing is the list\'s', () => {
+		it("offers no other printing of a Commander: the printing is the list's", () => {
 			const { wrapper } = mountHolding([ASHLING]);
 
-			expect(wrapper.find(`button[aria-label="Change printing of ${ASHLING.name}"]`).exists()).toBe(false);
+			expect(wrapper.find(`button[aria-label="Change printing of ${ASHLING.name}"]`).exists()).toBe(
+				false,
+			);
 		});
 
 		it('searches every card again once the list is cleared', async () => {

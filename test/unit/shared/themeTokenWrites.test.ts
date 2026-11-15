@@ -57,11 +57,7 @@ describe('a Theme Token value', () => {
 				animationLayer,
 			],
 		],
-		[
-			'an Animation Effect',
-			'animation-effect',
-			{ effect: 'caustics' },
-		],
+		['an Animation Effect', 'animation-effect', { effect: 'caustics' }],
 		[
 			'a typography in a library font',
 			'heading',
@@ -70,21 +66,9 @@ describe('a Theme Token value', () => {
 				font: { kind: 'asset', reference: libraryRevision },
 			},
 		],
-		[
-			'a library image as the logo',
-			'logo',
-			{ kind: 'image', ...libraryRevision },
-		],
-		[
-			'a library silent video as the logo',
-			'logo',
-			{ kind: 'silent-video', ...libraryRevision },
-		],
-		[
-			'no logo',
-			'logo',
-			null,
-		],
+		['a library image as the logo', 'logo', { kind: 'image', ...libraryRevision }],
+		['a library silent video as the logo', 'logo', { kind: 'silent-video', ...libraryRevision }],
+		['no logo', 'logo', null],
 		[
 			'a background of library image and video layers',
 			'background',
@@ -151,70 +135,26 @@ describe('a Theme Token value', () => {
 				scale: { factor: 0, origin: 'center' },
 			},
 		],
-		[
-			'an alignment',
-			'alignment',
-			{ horizontal: 'left', vertical: 'bottom' },
-		],
+		['an alignment', 'alignment', { horizontal: 'left', vertical: 'bottom' }],
 	])('admits %s', (_case, name, value) => {
 		expect(parseThemeTokenValue(name, value)).toEqual({ ok: true, value });
 	});
 
 	it.each([
-		[
-			'a name no token has',
-			'nonsense',
-			'#fff',
-			'unknown-token',
-		],
-		[
-			'a misspelt Mode Token',
-			'standings.nonsense',
-			'#fff',
-			'unknown-token',
-		],
-		[
-			'a colour token given a number',
-			'accent',
-			12,
-			'invalid-value',
-		],
-		[
-			'a dimension below its bound',
-			'inset',
-			-1,
-			'invalid-value',
-		],
-		[
-			'a dimension above its bound',
-			'inset',
-			insetMax + 1,
-			'invalid-value',
-		],
+		['a name no token has', 'nonsense', '#fff', 'unknown-token'],
+		['a misspelt Mode Token', 'standings.nonsense', '#fff', 'unknown-token'],
+		['a colour token given a number', 'accent', 12, 'invalid-value'],
+		['a dimension below its bound', 'inset', -1, 'invalid-value'],
+		['a dimension above its bound', 'inset', insetMax + 1, 'invalid-value'],
 		[
 			'an alignment off either axis',
 			'alignment',
 			{ horizontal: 'middle', vertical: 'top' },
 			'invalid-value',
 		],
-		[
-			'an alignment missing an axis',
-			'alignment',
-			{ horizontal: 'left' },
-			'invalid-value',
-		],
-		[
-			'a typography with a size',
-			'heading',
-			{ ...typography, size: 40 },
-			'invalid-value',
-		],
-		[
-			'a Foundation Token naming another',
-			'accent',
-			{ token: 'divider' },
-			'invalid-value',
-		],
+		['an alignment missing an axis', 'alignment', { horizontal: 'left' }, 'invalid-value'],
+		['a typography with a size', 'heading', { ...typography, size: 40 }, 'invalid-value'],
+		['a Foundation Token naming another', 'accent', { token: 'divider' }, 'invalid-value'],
 		[
 			'a Mode Token naming a Foundation Token of its type',
 			'standings.rise',
@@ -315,9 +255,7 @@ describe('a Theme Token value', () => {
 			{
 				type: 'linear-gradient',
 				angle: 0,
-				stops: [
-					{ color: '#fff', position: 0, opacity: 1 },
-				],
+				stops: [{ color: '#fff', position: 0, opacity: 1 }],
 			},
 			'invalid-value',
 		],
@@ -333,11 +271,11 @@ describe('a Theme Token value', () => {
 });
 
 describe('a Theme Token write', () => {
-	it('stores a Foundation Token\'s value', () => {
+	it("stores a Foundation Token's value", () => {
 		expect(parseThemeTokenWrite('accent', '#ff0000')).toEqual({ ok: true, value: '#ff0000' });
 	});
 
-	it('refuses a Foundation Token\'s invalid value', () => {
+	it("refuses a Foundation Token's invalid value", () => {
 		expect(parseThemeTokenWrite('accent', 12)).toEqual({ ok: false, refusal: 'invalid-value' });
 	});
 
@@ -355,26 +293,28 @@ describe('a Theme Token write', () => {
 	});
 
 	it('refuses a name no token has', () => {
-		expect(parseThemeTokenWrite('standings.nonsense', '#fff')).toEqual({ ok: false, refusal: 'unknown-token' });
+		expect(parseThemeTokenWrite('standings.nonsense', '#fff')).toEqual({
+			ok: false,
+			refusal: 'unknown-token',
+		});
 	});
 
 	// A former token is one its mode declared once: accepted whatever it holds, and never stored.
 	it.each([
 		['a value it once held', 'metagame.chart-series-1', '#ff0000'],
-		[
-			'a reference it once held',
-			'metagame.chart-other',
-			{ token: 'accent' },
-		],
+		['a reference it once held', 'metagame.chart-other', { token: 'accent' }],
 		['a value it could never hold', 'metagame.chart-series-8', 12],
 	])('accepts a former token given %s, and drops it', (_case, name, value) => {
 		expect(parseThemeTokenWrite(name, value)).toEqual({ ok: true, dropped: true });
 	});
 
 	// A table's max width is its mode's config.
-	it.each(['standings.max-width', 'metagame.max-width'])('accepts %s, once a Mode Token, and drops it', (name) => {
-		expect(parseThemeTokenWrite(name, 1200)).toEqual({ ok: true, dropped: true });
-	});
+	it.each(['standings.max-width', 'metagame.max-width'])(
+		'accepts %s, once a Mode Token, and drops it',
+		(name) => {
+			expect(parseThemeTokenWrite(name, 1200)).toEqual({ ok: true, dropped: true });
+		},
+	);
 
 	// The table modes' type and shared chrome read Foundation Tokens.
 	const SHARED_CHROME = [
@@ -391,35 +331,12 @@ describe('a Theme Token write', () => {
 		['standings', SHARED_CHROME],
 		[
 			'metagame',
-			[
-				...SHARED_CHROME,
-				'header-typography',
-				'header-text',
-				'header-divider',
-				'chart-baseline',
-			],
+			[...SHARED_CHROME, 'header-typography', 'header-text', 'header-divider', 'chart-baseline'],
 		],
-		[
-			'pairings',
-			[...SHARED_CHROME, 'result-typography'],
-		],
-		[
-			'player-history',
-			[...SHARED_CHROME, 'outcome-typography'],
-		],
-		[
-			'head-to-head',
-			[...SHARED_CHROME, 'name-typography', 'label-typography'],
-		],
-		[
-			'round-clock',
-			[
-				'surface',
-				'round-name-typography',
-				'round-name-text',
-				'clock-typography',
-			],
-		],
+		['pairings', [...SHARED_CHROME, 'result-typography']],
+		['player-history', [...SHARED_CHROME, 'outcome-typography']],
+		['head-to-head', [...SHARED_CHROME, 'name-typography', 'label-typography']],
+		['round-clock', ['surface', 'round-name-typography', 'round-name-text', 'clock-typography']],
 		// The card modes' too, with their placeholder surface and badge shadow.
 		[
 			'deck',
@@ -487,7 +404,12 @@ describe('a Theme Token write', () => {
 				'profile-text',
 			],
 		],
-	])('accepts each typography and shared chrome token %s once declared, and drops it', (mode, tokens) => {
-		expect(tokens.map(token => parseThemeTokenWrite(`${mode}.${token}`, '#ff0000'))).toEqual(tokens.map(() => ({ ok: true, dropped: true })));
-	});
+	])(
+		'accepts each typography and shared chrome token %s once declared, and drops it',
+		(mode, tokens) => {
+			expect(tokens.map((token) => parseThemeTokenWrite(`${mode}.${token}`, '#ff0000'))).toEqual(
+				tokens.map(() => ({ ok: true, dropped: true })),
+			);
+		},
+	);
 });

@@ -53,11 +53,11 @@ const FIRST_STAGE = [
 
 /** Gate name → the command it runs, the gates that must pass first, and any extra environment. */
 export const GATES = {
-	'prepare': {
+	prepare: {
 		command: ['exec', 'nuxt', 'prepare'],
 		after: [],
 	},
-	'lint': {
+	lint: {
 		command: ['run', 'lint'],
 		after: ['prepare'],
 	},
@@ -119,7 +119,7 @@ export const GATES = {
 		command: ['run', 'accept', 'key-matte'],
 		after: ['accept:animation-effects'],
 	},
-	'build': {
+	build: {
 		command: ['run', 'build'],
 		after: ['prepare'],
 		env: { STREAM_KEEPR_BUILD_DIR: 'node_modules/.cache/nuxt-build' },
@@ -164,8 +164,8 @@ const NOT_TESTS = new Set([
 function changedGates(baseRef) {
 	const changed = ['--changed', baseRef, '--passWithNoTests'];
 	return {
-		'prepare': GATES.prepare,
-		'lint': GATES.lint,
+		prepare: GATES.prepare,
+		lint: GATES.lint,
 		'typecheck:app': GATES['typecheck:app'],
 		'typecheck:test': GATES['typecheck:test'],
 		'typecheck:validator': GATES['typecheck:validator'],
@@ -174,14 +174,7 @@ function changedGates(baseRef) {
 			after: ['prepare'],
 		},
 		'test:nuxt:changed': {
-			command: [
-				'exec',
-				'vitest',
-				'run',
-				'--config',
-				'vitest.nuxt.config.ts',
-				...changed,
-			],
+			command: ['exec', 'vitest', 'run', '--config', 'vitest.nuxt.config.ts', ...changed],
 			after: ['test:unit:changed'],
 		},
 	};
@@ -201,11 +194,8 @@ function changedGates(baseRef) {
  */
 export function selectGates(argv, baseRef = () => changeBase()?.ref) {
 	if (argv.includes('--quick')) {
-		const base = argv.includes('--all')
-			? undefined
-			: baseRef();
-		if (base)
-			return changedGates(base);
+		const base = argv.includes('--all') ? undefined : baseRef();
+		if (base) return changedGates(base);
 		const wanted = new Set(['prepare', ...FIRST_STAGE]);
 		return Object.fromEntries(Object.entries(GATES).filter(([name]) => wanted.has(name)));
 	}
@@ -218,8 +208,7 @@ export function selectGates(argv, baseRef = () => changeBase()?.ref) {
 function signalGroup(child, signal) {
 	try {
 		process.kill(-child.pid, signal);
-	}
-	catch {
+	} catch {
 		// Already gone.
 	}
 }
@@ -228,7 +217,9 @@ export async function main(argv = process.argv) {
 	const gates = selectGates(argv);
 	await mkdir(logDirectory, { recursive: true });
 	if ('test:unit:changed' in gates)
-		process.stdout.write(`verify --quick: checking what this checkout changes since ${changeBase()?.ref}; CI runs everything\n`);
+		process.stdout.write(
+			`verify --quick: checking what this checkout changes since ${changeBase()?.ref}; CI runs everything\n`,
+		);
 
 	const started = Date.now();
 	const passed = new Map();
@@ -238,17 +229,14 @@ export async function main(argv = process.argv) {
 	const { promise: settled, resolve: settle } = Promise.withResolvers();
 
 	function launchReady() {
-		if (failure)
-			return;
+		if (failure) return;
 		for (const [name, gate] of Object.entries(gates)) {
-			if (passed.has(name) || running.has(name))
-				continue;
-			if (!gate.after.every(dependency => passed.has(dependency) || !(dependency in gates)))
+			if (passed.has(name) || running.has(name)) continue;
+			if (!gate.after.every((dependency) => passed.has(dependency) || !(dependency in gates)))
 				continue;
 			launch(name, gate);
 		}
-		if (running.size === 0)
-			settle();
+		if (running.size === 0) settle();
 	}
 
 	function launch(name, gate) {
@@ -289,11 +277,9 @@ export async function main(argv = process.argv) {
 					reason: signal ?? `exit ${code}`,
 					stoppedAt: Date.now(),
 				};
-				for (const other of running.values())
-					signalGroup(other, 'SIGINT');
+				for (const other of running.values()) signalGroup(other, 'SIGINT');
 			}
-			if (running.size === 0)
-				settle();
+			if (running.size === 0) settle();
 		});
 	}
 
@@ -303,8 +289,7 @@ export async function main(argv = process.argv) {
 			reason: 'interrupted',
 			stoppedAt: Date.now(),
 		};
-		for (const child of running.values())
-			signalGroup(child, 'SIGINT');
+		for (const child of running.values()) signalGroup(child, 'SIGINT');
 	};
 	process.once('SIGINT', interrupt);
 	process.once('SIGTERM', interrupt);
@@ -314,8 +299,7 @@ export async function main(argv = process.argv) {
 	// Gates stopped on another's failure get a grace period, then are killed.
 	const killTimer = setInterval(() => {
 		if (failure && Date.now() - failure.stoppedAt > 15_000) {
-			for (const child of running.values())
-				signalGroup(child, 'SIGKILL');
+			for (const child of running.values()) signalGroup(child, 'SIGKILL');
 		}
 	}, 1_000);
 	await settled;
@@ -329,20 +313,22 @@ export async function main(argv = process.argv) {
 		await reapStrandedWorkerd();
 		if (failure.logPath) {
 			const lines = (await readFile(failure.logPath, 'utf8')).trimEnd().split('\n');
-			process.stderr.write(`\n  ✗ ${failure.name} failed (${failure.reason}) after ${seconds(failure.elapsed)}\n`);
-			process.stderr.write(`    full log: ${failure.logPath}\n\n${lines.slice(-LOG_TAIL_LINES).join('\n')}\n`);
-		}
-		else {
+			process.stderr.write(
+				`\n  ✗ ${failure.name} failed (${failure.reason}) after ${seconds(failure.elapsed)}\n`,
+			);
+			process.stderr.write(
+				`    full log: ${failure.logPath}\n\n${lines.slice(-LOG_TAIL_LINES).join('\n')}\n`,
+			);
+		} else {
 			process.stderr.write(`\n  ✗ ${failure.reason}\n`);
 		}
-		process.exitCode = failure.reason === 'interrupted'
-			? 130
-			: 1;
+		process.exitCode = failure.reason === 'interrupted' ? 130 : 1;
 		return;
 	}
 
-	process.stdout.write(`\nverify: ${passed.size} gates passed in ${seconds(Date.now() - started)}\n`);
+	process.stdout.write(
+		`\nverify: ${passed.size} gates passed in ${seconds(Date.now() - started)}\n`,
+	);
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

@@ -11,18 +11,20 @@ let serverTimeRate = 1;
 
 // The shared clock, faked: server time is this browser's, plus an offset a sync
 // may move, running from `NOW` at `serverTimeRate`.
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	isSynced,
-	serverTimeOffset,
-	getServerTime: () => NOW + (Date.now() - NOW) * serverTimeRate + serverTimeOffset.value,
-	deviceDelayFor: serverMs => Math.ceil(serverMs / serverTimeRate),
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		isSynced,
+		serverTimeOffset,
+		getServerTime: () => NOW + (Date.now() - NOW) * serverTimeRate + serverTimeOffset.value,
+		deviceDelayFor: (serverMs) => Math.ceil(serverMs / serverTimeRate),
+	})),
+);
 
 /** Whole seconds of server time, changing as each second is reached. */
 function secondsOf(serverTime: number) {
 	return {
 		value: Math.floor(serverTime / 1000),
-		nextChangeInMs: 1000 - serverTime % 1000,
+		nextChangeInMs: 1000 - (serverTime % 1000),
 	};
 }
 
@@ -49,13 +51,15 @@ describe('useClockProjection', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 		vi.useRealTimers();
 	});
 
 	it('answers anew exactly as its value next changes, wherever in the wait it began', async () => {
 		vi.setSystemTime(NOW + 900);
-		const { result: seconds } = inScope(() => useClockProjection(secondsOf, { whileServerTimeUnknown: 'device-time' }));
+		const { result: seconds } = inScope(() =>
+			useClockProjection(secondsOf, { whileServerTimeUnknown: 'device-time' }),
+		);
 		expect(seconds.value).toBe(1000);
 
 		await vi.advanceTimersByTimeAsync(99);
@@ -69,10 +73,12 @@ describe('useClockProjection', () => {
 
 	it('answers anew when an input its projection reads changes', async () => {
 		const startedAt = ref(NOW);
-		const { result: elapsed } = inScope(() => useClockProjection(
-			serverTime => ({ value: serverTime - startedAt.value, nextChangeInMs: null }),
-			{ whileServerTimeUnknown: 'device-time' },
-		));
+		const { result: elapsed } = inScope(() =>
+			useClockProjection(
+				(serverTime) => ({ value: serverTime - startedAt.value, nextChangeInMs: null }),
+				{ whileServerTimeUnknown: 'device-time' },
+			),
+		);
 		expect(elapsed.value).toBe(0);
 
 		startedAt.value = NOW - 5000;
@@ -82,7 +88,9 @@ describe('useClockProjection', () => {
 
 	// A re-sync moves server time under a wait already begun: the wait is retaken from the new time.
 	it('answers anew when server time re-syncs, and changes on its new boundaries', async () => {
-		const { result: seconds } = inScope(() => useClockProjection(secondsOf, { whileServerTimeUnknown: 'device-time' }));
+		const { result: seconds } = inScope(() =>
+			useClockProjection(secondsOf, { whileServerTimeUnknown: 'device-time' }),
+		);
 
 		serverTimeOffset.value = 5400;
 		expect(seconds.value).toBe(1005);
@@ -97,7 +105,9 @@ describe('useClockProjection', () => {
 	// device's, so the wait is for server time to reach the change, not the device's.
 	it('answers anew as server time reaches the change while a correction is eased in', async () => {
 		serverTimeRate = 1.1;
-		const { result: seconds } = inScope(() => useClockProjection(secondsOf, { whileServerTimeUnknown: 'device-time' }));
+		const { result: seconds } = inScope(() =>
+			useClockProjection(secondsOf, { whileServerTimeUnknown: 'device-time' }),
+		);
 
 		await vi.advanceTimersByTimeAsync(909);
 		expect(seconds.value).toBe(1000);
@@ -108,11 +118,13 @@ describe('useClockProjection', () => {
 	it('shows its declared answer while server time is unknown, and projects once it is known', async () => {
 		isSynced.value = false;
 		const project = vi.fn(secondsOf);
-		const { result: seconds } = inScope(() => useClockProjection(project, {
-			whileServerTimeUnknown: {
-				show: () => -1,
-			},
-		}));
+		const { result: seconds } = inScope(() =>
+			useClockProjection(project, {
+				whileServerTimeUnknown: {
+					show: () => -1,
+				},
+			}),
+		);
 
 		await vi.advanceTimersByTimeAsync(3000);
 		expect(seconds.value).toBe(-1);
@@ -128,7 +140,9 @@ describe('useClockProjection', () => {
 	it('projects on device time while server time is unknown where declared, and anew as the first sync lands', async () => {
 		isSynced.value = false;
 		const project = vi.fn(secondsOf);
-		const { result: seconds } = inScope(() => useClockProjection(project, { whileServerTimeUnknown: 'device-time' }));
+		const { result: seconds } = inScope(() =>
+			useClockProjection(project, { whileServerTimeUnknown: 'device-time' }),
+		);
 		expect(seconds.value).toBe(1000);
 		await vi.advanceTimersByTimeAsync(1000);
 		expect(seconds.value).toBe(1001);
@@ -144,10 +158,14 @@ describe('useClockProjection', () => {
 	it('waits out a change further off than one timer can hold', async () => {
 		const day = 24 * 60 * 60_000;
 		const startsAt = NOW + 30 * day;
-		const project = vi.fn((serverTime: number) => serverTime < startsAt
-			? { value: 'pending', nextChangeInMs: startsAt - serverTime }
-			: { value: 'running', nextChangeInMs: null });
-		const { result: state } = inScope(() => useClockProjection(project, { whileServerTimeUnknown: 'device-time' }));
+		const project = vi.fn((serverTime: number) =>
+			serverTime < startsAt
+				? { value: 'pending', nextChangeInMs: startsAt - serverTime }
+				: { value: 'running', nextChangeInMs: null },
+		);
+		const { result: state } = inScope(() =>
+			useClockProjection(project, { whileServerTimeUnknown: 'device-time' }),
+		);
 		expect(state.value).toBe('pending');
 
 		project.mockClear();
@@ -161,7 +179,9 @@ describe('useClockProjection', () => {
 
 	it('stops answering anew once its owner is disposed', async () => {
 		const project = vi.fn(secondsOf);
-		const { scope } = inScope(() => useClockProjection(project, { whileServerTimeUnknown: 'device-time' }));
+		const { scope } = inScope(() =>
+			useClockProjection(project, { whileServerTimeUnknown: 'device-time' }),
+		);
 
 		scope.stop();
 		project.mockClear();

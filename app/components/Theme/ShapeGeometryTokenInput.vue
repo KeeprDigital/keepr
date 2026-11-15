@@ -26,7 +26,7 @@ function preset(id: ShapeGeometryPresetId) {
 	<GraphicsShapeGeometryFields
 		:geometry="modelValue"
 		size="xs"
-		@update="patch => emit('commit', { ...props.modelValue, ...patch })"
+		@update="(patch) => emit('commit', { ...props.modelValue, ...patch })"
 		@preset="preset"
 	/>
 </template>

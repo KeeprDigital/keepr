@@ -112,7 +112,9 @@ describe('useScryfallBatch', () => {
 		});
 
 		const batch = useScryfallBatch();
-		const cards = Array.from({ length: 9 }, (_, index) => createCard({ name: `Card ${index}`, scryfallId: undefined }));
+		const cards = Array.from({ length: 9 }, (_, index) =>
+			createCard({ name: `Card ${index}`, scryfallId: undefined }),
+		);
 		const request = batch.fetchScryfallCards(cards);
 		await Promise.resolve();
 
@@ -121,7 +123,9 @@ describe('useScryfallBatch', () => {
 
 		releaseRequests();
 		await request;
-		expect(mockFetch.mock.calls.filter(([url]) => url === 'https://api.scryfall.com/cards/named')).toHaveLength(9);
+		expect(
+			mockFetch.mock.calls.filter(([url]) => url === 'https://api.scryfall.com/cards/named'),
+		).toHaveLength(9);
 		expect(maximumActiveRequests).toBe(4);
 	});
 
@@ -132,9 +136,7 @@ describe('useScryfallBatch', () => {
 				.mockRejectedValueOnce(new Error('scryfall 503'))
 				.mockRejectedValueOnce(new Error('scryfall 503'))
 				.mockResolvedValueOnce({
-					data: [
-						{ id: 'abc-123', name: 'Lightning Bolt' },
-					],
+					data: [{ id: 'abc-123', name: 'Lightning Bolt' }],
 				});
 
 			const batch = useScryfallBatch();
@@ -160,8 +162,7 @@ describe('useScryfallBatch', () => {
 			const result = await request;
 			expect(result.degraded).toBe(false);
 			expect(result.cards.has('abc-123')).toBe(true);
-		}
-		finally {
+		} finally {
 			vi.useRealTimers();
 		}
 	});
@@ -170,15 +171,15 @@ describe('useScryfallBatch', () => {
 		vi.useFakeTimers();
 		try {
 			// 76 unique ids → two collection batches (75 + 1).
-			const cards = Array.from({ length: 76 }, (_, index) => createCard({ name: `Card ${index}`, scryfallId: `id-${index}` }));
+			const cards = Array.from({ length: 76 }, (_, index) =>
+				createCard({ name: `Card ${index}`, scryfallId: `id-${index}` }),
+			);
 			mockFetch
 				.mockRejectedValueOnce(new Error('scryfall 503'))
 				.mockRejectedValueOnce(new Error('scryfall 503'))
 				.mockRejectedValueOnce(new Error('scryfall 503'))
 				.mockResolvedValueOnce({
-					data: [
-						{ id: 'id-75', name: 'Card 75' },
-					],
+					data: [{ id: 'id-75', name: 'Card 75' }],
 				});
 
 			const batch = useScryfallBatch();
@@ -191,8 +192,7 @@ describe('useScryfallBatch', () => {
 			expect(mockFetch).toHaveBeenCalledTimes(4);
 			expect(result.degraded).toBe(true);
 			expect(result.cards.has('id-75')).toBe(true);
-		}
-		finally {
+		} finally {
 			vi.useRealTimers();
 		}
 	});
@@ -226,8 +226,7 @@ describe('useScryfallBatch', () => {
 
 			expect(mockFetch).toHaveBeenCalledTimes(3);
 			expect(result.degraded).toBe(true);
-		}
-		finally {
+		} finally {
 			vi.useRealTimers();
 		}
 	});

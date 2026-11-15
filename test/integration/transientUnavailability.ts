@@ -23,7 +23,9 @@ export async function throughTransientUnavailability(
 	request: () => Promise<Response>,
 	options: { attempts: number; sleep?: (milliseconds: number) => Promise<void> },
 ): Promise<Response> {
-	const sleep = options.sleep ?? (milliseconds => new Promise<void>(resolve => setTimeout(resolve, milliseconds)));
+	const sleep =
+		options.sleep ??
+		((milliseconds) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
 	for (let attempt = 1; ; attempt++) {
 		const response = await request();
 		const retryAfter = response.headers.get('retry-after');

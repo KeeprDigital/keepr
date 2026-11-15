@@ -75,16 +75,24 @@ describe('solveCardGrid', () => {
 	const COLUMNS = [null, 1, 4, 20];
 	const MAX_CARD_WIDTHS = [null, 48, 160, 900];
 	const GAPS = [null, 0, 12, 60];
-	const cases = COUNTS.flatMap(count => CANVASES.flatMap(canvas => COLUMNS.flatMap(columns => MAX_CARD_WIDTHS.flatMap(maxCardWidth => GAPS.map(gap => ({
-		count,
-		...canvas,
-		columns,
-		maxCardWidth,
-		gap,
-	}))))));
+	const cases = COUNTS.flatMap((count) =>
+		CANVASES.flatMap((canvas) =>
+			COLUMNS.flatMap((columns) =>
+				MAX_CARD_WIDTHS.flatMap((maxCardWidth) =>
+					GAPS.map((gap) => ({
+						count,
+						...canvas,
+						columns,
+						maxCardWidth,
+						gap,
+					})),
+				),
+			),
+		),
+	);
 
 	/** The case a failure names, as its row title did. */
-	const named = ({ count, width, height, columns, maxCardWidth, gap }: typeof cases[number]) =>
+	const named = ({ count, width, height, columns, maxCardWidth, gap }: (typeof cases)[number]) =>
 		`${count} cards on ${width}×${height}, columns ${columns}, max ${maxCardWidth}, gap ${gap}`;
 
 	// The grid never leaves its space, a max card size holds, and a set column count is kept.
@@ -96,12 +104,17 @@ describe('solveCardGrid', () => {
 
 			expect(grid.cardWidth, which).toBeGreaterThan(0);
 			expect(grid.columns * grid.rows, which).toBeGreaterThanOrEqual(input.count);
-			expect(grid.columns * grid.cardWidth + (grid.columns - 1) * grid.gap, which).toBeLessThanOrEqual(input.width + 1e-6);
-			expect(grid.rows * grid.cardWidth / CARD_ASPECT + (grid.rows - 1) * grid.gap, which).toBeLessThanOrEqual(input.height + 1e-6);
+			expect(
+				grid.columns * grid.cardWidth + (grid.columns - 1) * grid.gap,
+				which,
+			).toBeLessThanOrEqual(input.width + 1e-6);
+			expect(
+				(grid.rows * grid.cardWidth) / CARD_ASPECT + (grid.rows - 1) * grid.gap,
+				which,
+			).toBeLessThanOrEqual(input.height + 1e-6);
 			if (input.maxCardWidth !== null)
 				expect(grid.cardWidth, which).toBeLessThanOrEqual(input.maxCardWidth);
-			if (input.columns !== null)
-				expect(grid.columns, which).toBe(input.columns);
+			if (input.columns !== null) expect(grid.columns, which).toBe(input.columns);
 			if (input.gap !== null)
 				expect(grid.gap, which).toBeCloseTo(Math.min(input.gap, grid.cardWidth));
 		}
@@ -111,8 +124,10 @@ describe('solveCardGrid', () => {
 	it('fills every space with the largest card that fits, short of a side only at the max card size', () => {
 		for (const input of cases) {
 			const grid = solveCardGrid(input);
-			const widthLeft = input.width - (grid.columns * grid.cardWidth + (grid.columns - 1) * grid.gap);
-			const heightLeft = input.height - (grid.rows * grid.cardWidth / CARD_ASPECT + (grid.rows - 1) * grid.gap);
+			const widthLeft =
+				input.width - (grid.columns * grid.cardWidth + (grid.columns - 1) * grid.gap);
+			const heightLeft =
+				input.height - ((grid.rows * grid.cardWidth) / CARD_ASPECT + (grid.rows - 1) * grid.gap);
 			const atMax = input.maxCardWidth !== null && grid.cardWidth === input.maxCardWidth;
 
 			expect(atMax || Math.min(widthLeft, heightLeft) < 1e-6, named(input)).toBe(true);

@@ -30,15 +30,12 @@ const cardPointEntry = computed(() => {
 
 // ── Usage stats ──
 const usageStats = computed(() => {
-	if (!detail.value)
-		return [];
+	if (!detail.value) return [];
 	const d = detail.value;
 	return [
 		{
 			label: 'Inclusion Rate',
-			value: d.inclusionRate != null
-				? `${d.inclusionRate}%`
-				: null,
+			value: d.inclusionRate != null ? `${d.inclusionRate}%` : null,
 		},
 		{ label: 'Avg Copies', value: d.avgCopies },
 		{ label: 'Total Decks', value: d.totalDecks },
@@ -50,14 +47,10 @@ const usageStats = computed(() => {
 
 // ── Fetch ──
 async function fetchDetail() {
-	if (!eventStore.eventId || !cardId.value)
-		return;
+	if (!eventStore.eventId || !cardId.value) return;
 	await runRequest(
-		() => metagameClient.loadCardDetail(
-			eventStore.eventId!,
-			cardId.value,
-			metagameStore.scopeQuery,
-		),
+		() =>
+			metagameClient.loadCardDetail(eventStore.eventId!, cardId.value, metagameStore.scopeQuery),
 		{
 			latestKey: 'detail',
 			loadingRef: loading,
@@ -75,11 +68,15 @@ async function fetchDetail() {
 
 useConsumedEventData(['players']);
 
-watch(() => eventStore.eventId, async (eventId) => {
-	if (eventId && !playerStore.isLoaded) {
-		await playerStore.loadPlayersByEventId(eventId);
-	}
-}, { immediate: true });
+watch(
+	() => eventStore.eventId,
+	async (eventId) => {
+		if (eventId && !playerStore.isLoaded) {
+			await playerStore.loadPlayersByEventId(eventId);
+		}
+	},
+	{ immediate: true },
+);
 
 watch(
 	[
@@ -122,11 +119,17 @@ watch(
 							{{ detail.card.name }}
 						</h2>
 						<div class="flex items-center gap-3 text-sm text-muted flex-wrap">
-							<span v-if="detail.card.cardType">{{ getCardTypeDisplayLabel(detail.card.cardType, { nonbasicLandLabel: true }) }}</span>
+							<span v-if="detail.card.cardType">{{
+								getCardTypeDisplayLabel(detail.card.cardType, { nonbasicLandLabel: true })
+							}}</span>
 							<UBadge v-if="cardPointEntry" color="neutral" variant="soft">
 								{{ cardPointEntry.points }} Points
 							</UBadge>
-							<UBadge v-if="cardPointEntry?.pointedAs === 'companion'" color="neutral" variant="outline">
+							<UBadge
+								v-if="cardPointEntry?.pointedAs === 'companion'"
+								color="neutral"
+								variant="outline"
+							>
 								Companion
 							</UBadge>
 							<MtgManaColorDisplay

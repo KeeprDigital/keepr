@@ -1,4 +1,10 @@
-import type { BoardSelection, MetagameCardSortBy, MetagameConversionMetric, MetagameScope, MetagameSortBy } from '~~/shared/types/enums';
+import type {
+	BoardSelection,
+	MetagameCardSortBy,
+	MetagameConversionMetric,
+	MetagameScope,
+	MetagameSortBy,
+} from '~~/shared/types/enums';
 import type { MetagameCardTypeBucket } from '~~/shared/utils/metagame';
 import { createMetagameReadModelImplementation } from './readModelImplementation';
 
@@ -54,10 +60,26 @@ export function metagameReadModel() {
 
 	return {
 		getSummary(eventId: number, query: MetagameScopeQuery) {
-			return implementation.getSummary(eventId, query.scope, query.topN, query.playerListId, query.minPoints);
+			return implementation.getSummary(
+				eventId,
+				query.scope,
+				query.topN,
+				query.playerListId,
+				query.minPoints,
+			);
 		},
 		getArchetypeBreakdown(eventId: number, query: MetagameArchetypeBreakdownQuery) {
-			return implementation.getArchetypeBreakdown(eventId, query.scope, query.sortBy, query.topN, query.playerListId, query.limit, query.minPoints, query.conversionMetric, query.conversionThreshold);
+			return implementation.getArchetypeBreakdown(
+				eventId,
+				query.scope,
+				query.sortBy,
+				query.topN,
+				query.playerListId,
+				query.limit,
+				query.minPoints,
+				query.conversionMetric,
+				query.conversionThreshold,
+			);
 		},
 		getCardBreakdown(eventId: number, query: MetagameCardBreakdownQuery) {
 			return implementation.getCardBreakdown(
@@ -88,10 +110,23 @@ export function metagameReadModel() {
 			);
 		},
 		getCardDetail(eventId: number, query: MetagameCardDetailQuery) {
-			return implementation.getCardDetail(eventId, query.cardId, query.scope, query.topN, query.playerListId, query.minPoints);
+			return implementation.getCardDetail(
+				eventId,
+				query.cardId,
+				query.scope,
+				query.topN,
+				query.playerListId,
+				query.minPoints,
+			);
 		},
 		getTokenRequirements(eventId: number, query: MetagameTokenRequirementsQuery) {
-			return implementation.getTokenRequirements(eventId, query.scope, query.topN, query.playerListId, query.minPoints);
+			return implementation.getTokenRequirements(
+				eventId,
+				query.scope,
+				query.topN,
+				query.playerListId,
+				query.minPoints,
+			);
 		},
 	};
 }

@@ -62,16 +62,12 @@ describe('featureMatchCounterList', () => {
 			{ type: 'poison', value: 1 },
 			{ type: 'energy', value: 0 },
 		]);
-		expect(await act(wrapper, 'poison', 'remove')).toEqual([
-			{ type: 'energy', value: 2 },
-		]);
+		expect(await act(wrapper, 'poison', 'remove')).toEqual([{ type: 'energy', value: 2 }]);
 	});
 
 	it('offers only the counter types the Player does not already track', async () => {
 		const wrapper = mountCounterList({
-			counters: [
-				{ type: 'energy', value: 2 },
-			],
+			counters: [{ type: 'energy', value: 2 }],
 			availableCounterTypes: [
 				{ key: 'energy', label: 'Energy', icon: 'i-mdi-lightning-bolt' },
 				{ key: 'poison', label: 'Poison', icon: 'i-mdi-skull' },
@@ -79,10 +75,16 @@ describe('featureMatchCounterList', () => {
 		});
 
 		await wrapper.get('[aria-label="Add counter"]').trigger('click');
-		const offered = wrapper.findAll('button').map(button => button.text()).filter(Boolean);
+		const offered = wrapper
+			.findAll('button')
+			.map((button) => button.text())
+			.filter(Boolean);
 		expect(offered).toEqual(['Poison']);
 
-		await wrapper.findAll('button').find(button => button.text() === 'Poison')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Poison')!
+			.trigger('click');
 		expect(playerControls.updateCounters).toHaveBeenLastCalledWith([
 			{ type: 'energy', value: 2 },
 			{ type: 'poison', value: 0 },

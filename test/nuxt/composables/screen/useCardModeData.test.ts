@@ -24,7 +24,8 @@ const mockRealtime = reactive({
 	connectionState: 'connected',
 	tokenError: null as Error | null,
 	onChannel: vi.fn(() => () => {}),
-	onContinuityLost: (channel: string, handler: () => void) => continuity.onContinuityLost(channel, handler),
+	onContinuityLost: (channel: string, handler: () => void) =>
+		continuity.onContinuityLost(channel, handler),
 	onceAttached: (channel: string, handler: () => void) => attachment.onceAttached(channel, handler),
 });
 mockNuxtImport('tryUseRealtime', () => () => mockRealtime);
@@ -72,9 +73,7 @@ describe('useCardModeData', () => {
 			selectedScreenId = screenId;
 		});
 		mockCardStore.loadActiveCard.mockImplementation(async () => {
-			mockCardStore.activeCard = selectedScreenId === SCREEN_ID
-				? serverCard
-				: null;
+			mockCardStore.activeCard = selectedScreenId === SCREEN_ID ? serverCard : null;
 			return 'landed';
 		});
 		mockRealtime.connectionState = 'connected';
@@ -86,7 +85,7 @@ describe('useCardModeData', () => {
 		mockApiFetch.mockResolvedValue({ id: 'card-1', name: 'Lightning Bolt' });
 	});
 
-	it('shows its Screen\'s Card once mounted', async () => {
+	it("shows its Screen's Card once mounted", async () => {
 		serverCard = { name: 'Lightning Bolt' };
 
 		const { card } = mountCardModeData();
@@ -95,14 +94,22 @@ describe('useCardModeData', () => {
 		expect(card.value).toEqual({ name: 'Lightning Bolt' });
 	});
 
-	it('reads the Screen\'s Card through the Screen, not the operator\'s Card path (#604)', async () => {
+	it("reads the Screen's Card through the Screen, not the operator's Card path (#604)", async () => {
 		mountCardModeData();
 		await flushPromises();
 
-		const read = mockCardStore.readActiveCardAsScreenOutput.mock.calls[0]?.[0] as () => Promise<unknown>;
+		const read = mockCardStore.readActiveCardAsScreenOutput.mock
+			.calls[0]?.[0] as () => Promise<unknown>;
 		await expect(read()).resolves.toMatchObject({ name: 'Lightning Bolt' });
-		expect(mockApiFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/card', expect.anything());
-		expect(mockApiFetch.mock.calls.every(([, options]) => !(options as { method?: string } | undefined)?.method)).toBe(true);
+		expect(mockApiFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/card',
+			expect.anything(),
+		);
+		expect(
+			mockApiFetch.mock.calls.every(
+				([, options]) => !(options as { method?: string } | undefined)?.method,
+			),
+		).toBe(true);
 	});
 
 	it('sets loading=false after successful card load', async () => {
@@ -205,8 +212,7 @@ describe('useCardModeData', () => {
 				serverCard = { name: 'Counterspell' };
 				let reachable = false;
 				mockCardStore.loadActiveCard.mockImplementation(async () => {
-					if (!reachable)
-						return 'failed';
+					if (!reachable) return 'failed';
 					mockCardStore.activeCard = serverCard;
 					return 'landed';
 				});
@@ -219,8 +225,7 @@ describe('useCardModeData', () => {
 				reachable = true;
 				await vi.advanceTimersByTimeAsync(SCREEN_MODE_REREAD_MS);
 				expect(mockCardStore.activeCard).toEqual({ name: 'Counterspell' });
-			}
-			finally {
+			} finally {
 				vi.useRealTimers();
 			}
 		});

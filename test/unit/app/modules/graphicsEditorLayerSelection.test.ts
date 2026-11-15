@@ -47,25 +47,27 @@ function layout(): FeatureMatchLayoutConfig {
 const LAYOUT = layout();
 
 function layer(key: string): FeatureMatchLayoutEditorLayer {
-	return key.startsWith('s')
-		? { type: 'source', itemId: key }
-		: { type: 'item', itemId: key };
+	return key.startsWith('s') ? { type: 'source', itemId: key } : { type: 'item', itemId: key };
 }
 
 function selecting(...keys: string[]): LayerSelection<FeatureMatchLayoutEditorLayer> {
-	return keys.reduce<LayerSelection<FeatureMatchLayoutEditorLayer>>((selection, key) => toggleLayer(FEATURE_MATCH_LAYOUT_EDITOR_TREE, LAYOUT, selection, layer(key)), NO_LAYERS);
+	return keys.reduce<LayerSelection<FeatureMatchLayoutEditorLayer>>(
+		(selection, key) =>
+			toggleLayer(FEATURE_MATCH_LAYOUT_EDITOR_TREE, LAYOUT, selection, layer(key)),
+		NO_LAYERS,
+	);
 }
 
 function ids(selection: LayerSelection<FeatureMatchLayoutEditorLayer>) {
 	return {
-		layers: selection.layers.map(entry => entry.itemId),
+		layers: selection.layers.map((entry) => entry.itemId),
 		anchor: selection.anchor?.itemId ?? null,
 	};
 }
 
 describe('feature match layout layer selection', () => {
-	it('orders layers as the layer list does: Graphic Items front to back, each group\'s children beneath it, then Sources front to back', () => {
-		expect(FEATURE_MATCH_LAYOUT_EDITOR_TREE.order(LAYOUT).map(entry => entry.itemId)).toEqual([
+	it("orders layers as the layer list does: Graphic Items front to back, each group's children beneath it, then Sources front to back", () => {
+		expect(FEATURE_MATCH_LAYOUT_EDITOR_TREE.order(LAYOUT).map((entry) => entry.itemId)).toEqual([
 			'a',
 			'a1',
 			'a2',
@@ -142,7 +144,11 @@ describe('feature match layout layer selection', () => {
 			anchor: 'b1',
 		},
 	])('toggling $name', ({ start, toggle, layers, anchor }) => {
-		expect(ids(toggleLayer(FEATURE_MATCH_LAYOUT_EDITOR_TREE, LAYOUT, selecting(...start), layer(toggle)))).toEqual({ layers, anchor });
+		expect(
+			ids(
+				toggleLayer(FEATURE_MATCH_LAYOUT_EDITOR_TREE, LAYOUT, selecting(...start), layer(toggle)),
+			),
+		).toEqual({ layers, anchor });
 	});
 
 	it.each([
@@ -175,7 +181,7 @@ describe('feature match layout layer selection', () => {
 			anchor: 'a1',
 		},
 		{
-			name: 'takes a group beside another group\'s child',
+			name: "takes a group beside another group's child",
 			start: ['a2'],
 			to: 'b',
 			layers: ['a2', 'b'],
@@ -196,14 +202,23 @@ describe('feature match layout layer selection', () => {
 			anchor: 'a1',
 		},
 		{
-			name: 'anchors on the anchor\'s group when it crosses that group too',
+			name: "anchors on the anchor's group when it crosses that group too",
 			start: ['b1'],
 			to: 'a',
 			layers: ['b', 'a'],
 			anchor: 'b',
 		},
 	])('a range $name', ({ start, to, layers, anchor }) => {
-		expect(ids(extendLayerSelection(FEATURE_MATCH_LAYOUT_EDITOR_TREE, LAYOUT, selecting(...start), layer(to)))).toEqual({ layers, anchor });
+		expect(
+			ids(
+				extendLayerSelection(
+					FEATURE_MATCH_LAYOUT_EDITOR_TREE,
+					LAYOUT,
+					selecting(...start),
+					layer(to),
+				),
+			),
+		).toEqual({ layers, anchor });
 	});
 
 	it.each([
@@ -240,13 +255,15 @@ describe('feature match layout layer selection', () => {
 		const selection = selecting('top', 's1');
 		const without = {
 			...LAYOUT,
-			sources: LAYOUT.sources.filter(source => source.id !== 's1'),
+			sources: LAYOUT.sources.filter((source) => source.id !== 's1'),
 		};
 
 		expect(ids(pruneLayerSelection(FEATURE_MATCH_LAYOUT_EDITOR_TREE, without, selection))).toEqual({
 			layers: ['top'],
 			anchor: 'top',
 		});
-		expect(pruneLayerSelection(FEATURE_MATCH_LAYOUT_EDITOR_TREE, LAYOUT, selection)).toBe(selection);
+		expect(pruneLayerSelection(FEATURE_MATCH_LAYOUT_EDITOR_TREE, LAYOUT, selection)).toBe(
+			selection,
+		);
 	});
 });

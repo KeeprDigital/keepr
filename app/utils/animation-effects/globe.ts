@@ -54,15 +54,12 @@ export function createGlobeDelegate(): SceneEffectDelegate<AnimationEffectParams
 	 * same params would show.
 	 */
 	function buildField(three: typeof THREE) {
-		for (const child of [...fieldGroup.children])
-			fieldGroup.remove(child);
+		for (const child of [...fieldGroup.children]) fieldGroup.remove(child);
 		lines?.dispose();
 		dotGeometry?.dispose();
 		dotMaterial?.dispose();
 
-		dotGeometry = current.showPoints
-			? new three.SphereGeometry(0.25, 12, 12)
-			: undefined;
+		dotGeometry = current.showPoints ? new three.SphereGeometry(0.25, 12, 12) : undefined;
 		dotMaterial = current.showPoints
 			? new three.MeshLambertMaterial({ color: current.lineColor })
 			: undefined;
@@ -72,9 +69,10 @@ export function createGlobeDelegate(): SceneEffectDelegate<AnimationEffectParams
 		const spacing = current.spacing;
 		for (let i = 0; i <= n; i++) {
 			for (let j = 0; j <= n; j++) {
-				const holder = current.showPoints && dotGeometry && dotMaterial
-					? new three.Mesh(dotGeometry, dotMaterial)
-					: new three.Object3D();
+				const holder =
+					current.showPoints && dotGeometry && dotMaterial
+						? new three.Mesh(dotGeometry, dotMaterial)
+						: new three.Object3D();
 				holder.position.set((i - n / 2) * spacing, 0, (j - n / 2) * spacing);
 				fieldGroup.add(holder);
 				positions.push(holder.position);
@@ -114,12 +112,20 @@ export function createGlobeDelegate(): SceneEffectDelegate<AnimationEffectParams
 			scene.background = new three.Color(params.backgroundColor);
 
 			fieldGroup = new three.Group();
-			fieldGroup.position.set(FIELD_GROUP_POSITION.x, FIELD_GROUP_POSITION.y, FIELD_GROUP_POSITION.z);
+			fieldGroup.position.set(
+				FIELD_GROUP_POSITION.x,
+				FIELD_GROUP_POSITION.y,
+				FIELD_GROUP_POSITION.z,
+			);
 			scene.add(fieldGroup);
 			buildField(three);
 
 			globeGroup = new three.Group();
-			globeGroup.position.set(GLOBE_GROUP_POSITION.x, GLOBE_GROUP_POSITION.y, GLOBE_GROUP_POSITION.z);
+			globeGroup.position.set(
+				GLOBE_GROUP_POSITION.x,
+				GLOBE_GROUP_POSITION.y,
+				GLOBE_GROUP_POSITION.z,
+			);
 			globeGroup.rotation.x = GLOBE_GROUP_TILT_X;
 			scene.add(globeGroup);
 
@@ -146,24 +152,7 @@ export function createGlobeDelegate(): SceneEffectDelegate<AnimationEffectParams
 			// The pole lines: the axis, and four azimuths of field-line verticals
 			// shrinking outward through the fork's height table.
 			const poleHeights = [
-				17.9,
-				12,
-				8,
-				5,
-				3,
-				2,
-				1.5,
-				1.1,
-				0.8,
-				0.6,
-				0.45,
-				0.3,
-				0.2,
-				0.1,
-				0.05,
-				0.03,
-				0.02,
-				0.01,
+				17.9, 12, 8, 5, 3, 2, 1.5, 1.1, 0.8, 0.6, 0.45, 0.3, 0.2, 0.1, 0.05, 0.03, 0.02, 0.01,
 			];
 			const polePoints: THREE.Vector3[] = [
 				new three.Vector3(0, 30, 0),
@@ -171,8 +160,8 @@ export function createGlobeDelegate(): SceneEffectDelegate<AnimationEffectParams
 			];
 			const azimuths = 4;
 			for (let azimuth = 0; azimuth < azimuths; azimuth++) {
-				const x = 0.15 * Math.cos(azimuth / azimuths * Math.PI * 2);
-				const z = 0.15 * Math.sin(azimuth / azimuths * Math.PI * 2);
+				const x = 0.15 * Math.cos((azimuth / azimuths) * Math.PI * 2);
+				const z = 0.15 * Math.sin((azimuth / azimuths) * Math.PI * 2);
 				poleHeights.forEach((height, index) => {
 					const radius = 6 * (index + 1);
 					polePoints.push(new three.Vector3(x * radius, height, z * radius));
@@ -187,9 +176,9 @@ export function createGlobeDelegate(): SceneEffectDelegate<AnimationEffectParams
 
 			buildSphere(three);
 
-			const ambience = new three.AmbientLight(0xFFFFFF, 0.75);
+			const ambience = new three.AmbientLight(0xffffff, 0.75);
 			scene.add(ambience);
-			const spot = new three.SpotLight(0xFFFFFF, 1);
+			const spot = new three.SpotLight(0xffffff, 1);
 			spot.position.set(0, 200, 0);
 			spot.distance = 400;
 			spot.target = fieldGroup;
@@ -197,16 +186,15 @@ export function createGlobeDelegate(): SceneEffectDelegate<AnimationEffectParams
 		},
 
 		applyParams: ({ three, scene, params }) => {
-			const fieldChanged = params.points !== current.points
-				|| params.spacing !== current.spacing
-				|| params.showPoints !== current.showPoints;
+			const fieldChanged =
+				params.points !== current.points ||
+				params.spacing !== current.spacing ||
+				params.showPoints !== current.showPoints;
 			const sizeChanged = params.size !== current.size;
 			current = params;
 			scene.background = new three.Color(params.backgroundColor);
-			if (fieldChanged)
-				buildField(three);
-			if (sizeChanged)
-				buildSphere(three);
+			if (fieldChanged) buildField(three);
+			if (sizeChanged) buildSphere(three);
 			dotMaterial?.color.set(params.lineColor);
 			sphere?.material.color.set(params.lineColor);
 			ball.material.color.set(params.accentColor);
@@ -234,9 +222,12 @@ export default function createGlobeEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'globe'>,
 ): AnimationEffectInstance<AnimationEffectParams<'globe'>> {
-	return createSceneEffect({
-		three: THREE,
-		host,
-		delegate: createGlobeDelegate(),
-	}, params);
+	return createSceneEffect(
+		{
+			three: THREE,
+			host,
+			delegate: createGlobeDelegate(),
+		},
+		params,
+	);
 }

@@ -46,12 +46,7 @@ function updateSource(source: ScreenMediaSource | null) {
 				@update:model-value="updateSource"
 			/>
 
-			<GraphicsMediaFields
-				:media="media"
-				opacity
-				playback
-				@update="updateMedia"
-			/>
+			<GraphicsMediaFields :media="media" opacity playback @update="updateMedia" />
 		</template>
 	</div>
 </template>

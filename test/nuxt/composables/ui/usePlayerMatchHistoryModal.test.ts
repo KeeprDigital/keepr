@@ -19,7 +19,10 @@ function player(id: number, name: string) {
 
 /** Names the Players each opening showed, with the Player its back button returns to. */
 function openings() {
-	return modal.open.mock.calls.map(([props]) => [props.player.name, props.previousPlayer?.name ?? null]);
+	return modal.open.mock.calls.map(([props]) => [
+		props.player.name,
+		props.previousPlayer?.name ?? null,
+	]);
 }
 
 describe('usePlayerMatchHistoryModal', () => {
@@ -88,8 +91,7 @@ describe('usePlayerMatchHistoryModal', () => {
 		const goBack = modal.open.mock.lastCall![0].onBack;
 		modal.open.mockClear();
 
-		for (let step = 0; step < 3; step++)
-			goBack();
+		for (let step = 0; step < 3; step++) goBack();
 
 		expect(openings()).toEqual([
 			['Bob', 'Alice'],

@@ -27,13 +27,17 @@ export function useScreenThemeSources(): ComputedRef<ScreenThemeSources> {
 	const previewTokens = ref<StoredThemeTokens>();
 
 	function handlePreviewTheme(message: MessageEvent) {
-		if (isGraphicsPreviewThemeMessage(message, { origin: window.location.origin, source: window.parent }))
+		if (
+			isGraphicsPreviewThemeMessage(message, {
+				origin: window.location.origin,
+				source: window.parent,
+			})
+		)
 			previewTokens.value = message.data.tokens ?? undefined;
 	}
 
 	onMounted(() => {
-		if (isPreview?.value)
-			window.addEventListener('message', handlePreviewTheme);
+		if (isPreview?.value) window.addEventListener('message', handlePreviewTheme);
 	});
 	onBeforeUnmount(() => {
 		window.removeEventListener('message', handlePreviewTheme);
@@ -46,6 +50,8 @@ export function useScreenThemeSources(): ComputedRef<ScreenThemeSources> {
 }
 
 /** The Foundation Tokens a graphics host's bound Graphic Items paint from. */
-export function useScreenGraphicThemeTokens(sources: ComputedRef<ScreenThemeSources> = useScreenThemeSources()): ComputedRef<GraphicThemeTokens> {
+export function useScreenGraphicThemeTokens(
+	sources: ComputedRef<ScreenThemeSources> = useScreenThemeSources(),
+): ComputedRef<GraphicThemeTokens> {
 	return computed(() => resolveGraphicThemeTokens(sources.value.theme));
 }

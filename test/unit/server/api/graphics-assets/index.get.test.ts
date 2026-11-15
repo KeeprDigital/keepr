@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { stubH3Event } from '~~/test/helpers/h3Event';
 
-const {
-	mockRequireUserId,
-	mockListGraphicAssets,
-	mockSetResponseHeader,
-} = vi.hoisted(() => ({
+const { mockRequireUserId, mockListGraphicAssets, mockSetResponseHeader } = vi.hoisted(() => ({
 	mockRequireUserId: vi.fn(),
 	mockListGraphicAssets: vi.fn(),
 	mockSetResponseHeader: vi.fn(),
@@ -21,18 +17,22 @@ vi.mock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	}),
 }));
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('setResponseHeader', mockSetResponseHeader);
-vi.stubGlobal('getValidatedQuery', vi.fn(async (
-	event: { query?: Record<string, unknown> },
-	validate: (input: unknown) => unknown,
-) => validate(event.query ?? {})));
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'getValidatedQuery',
+	vi.fn(async (event: { query?: Record<string, unknown> }, validate: (input: unknown) => unknown) =>
+		validate(event.query ?? {}),
+	),
+);
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage?: string; message: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message), input),
+);
 
 function eventWithQuery(query: Record<string, unknown> = {}) {
 	return stubH3Event({ query });

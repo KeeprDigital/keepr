@@ -1,7 +1,11 @@
 import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue';
 import type { Game } from '~~/shared/types/enums';
 import { computed, ref, toValue } from 'vue';
-import { getCardTypeDisplayLabel, getMetagameCardTypeBucket, getMetagameCardTypeBuckets } from '~~/shared/utils/metagame';
+import {
+	getCardTypeDisplayLabel,
+	getMetagameCardTypeBucket,
+	getMetagameCardTypeBuckets,
+} from '~~/shared/utils/metagame';
 
 interface CardFilterEntry {
 	name: string;
@@ -21,7 +25,8 @@ export function useMetagameCardFilters<T extends CardFilterEntry>(
 	const defaultExcludedTypes = options.defaultExcludedTypes ?? [];
 	const search = ref('');
 	const excludedTypes = ref<Set<string>>(new Set(defaultExcludedTypes));
-	const bucketOf = (cardType: string | null) => getMetagameCardTypeBucket(toValue(options.game), cardType);
+	const bucketOf = (cardType: string | null) =>
+		getMetagameCardTypeBucket(toValue(options.game), cardType);
 
 	const uniqueCardTypes = computed(() => {
 		const types = new Set<string>();
@@ -31,10 +36,12 @@ export function useMetagameCardFilters<T extends CardFilterEntry>(
 			}
 		}
 
-		return getMetagameCardTypeBuckets(toValue(options.game)).filter(type => types.has(type));
+		return getMetagameCardTypeBuckets(toValue(options.game)).filter((type) => types.has(type));
 	});
 
-	const visibleExcludedTypes = computed(() => uniqueCardTypes.value.filter(type => excludedTypes.value.has(type)));
+	const visibleExcludedTypes = computed(() =>
+		uniqueCardTypes.value.filter((type) => excludedTypes.value.has(type)),
+	);
 	const hasExclusions = computed(() => visibleExcludedTypes.value.length > 0);
 	const hasFilterOverrides = computed(() => {
 		if (search.value.trim().length > 0) {
@@ -45,7 +52,7 @@ export function useMetagameCardFilters<T extends CardFilterEntry>(
 			return true;
 		}
 
-		return defaultExcludedTypes.some(type => !excludedTypes.value.has(type));
+		return defaultExcludedTypes.some((type) => !excludedTypes.value.has(type));
 	});
 
 	function getTypeLabel(type: string) {
@@ -56,8 +63,7 @@ export function useMetagameCardFilters<T extends CardFilterEntry>(
 		const next = new Set(excludedTypes.value);
 		if (next.has(type)) {
 			next.delete(type);
-		}
-		else {
+		} else {
 			next.add(type);
 		}
 		excludedTypes.value = next;
@@ -72,10 +78,12 @@ export function useMetagameCardFilters<T extends CardFilterEntry>(
 		let currentEntries = entries.value;
 		if (search.value) {
 			const query = search.value.toLowerCase();
-			currentEntries = currentEntries.filter(entry => entry.name.toLowerCase().includes(query));
+			currentEntries = currentEntries.filter((entry) => entry.name.toLowerCase().includes(query));
 		}
 		if (excludedTypes.value.size > 0) {
-			currentEntries = currentEntries.filter(entry => !excludedTypes.value.has(bucketOf(entry.cardType)));
+			currentEntries = currentEntries.filter(
+				(entry) => !excludedTypes.value.has(bucketOf(entry.cardType)),
+			);
 		}
 		return currentEntries;
 	});

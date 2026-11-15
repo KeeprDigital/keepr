@@ -9,7 +9,12 @@ import {
 } from '../../../scripts/assert-built-fonts.mjs';
 
 /** Built CSS is minified, one rule per weight x style x subset; these write it the same way. */
-function face(family: string, weight: string, style = 'normal', src = 'url(./fonts/a.woff2)format("woff2")') {
+function face(
+	family: string,
+	weight: string,
+	style = 'normal',
+	src = 'url(./fonts/a.woff2)format("woff2")',
+) {
 	return `@font-face{font-family:${family};src:${src};font-display:swap;font-weight:${weight};font-style:${style}}`;
 }
 
@@ -24,9 +29,9 @@ const interFaces = [
 	face('Inter', '400', 'italic'),
 	face('Inter', '800', 'italic'),
 ];
-const without = (omit: string) => interFaces.filter(rule => !rule.includes(omit));
+const without = (omit: string) => interFaces.filter((rule) => !rule.includes(omit));
 
-function defects(css: string[], expected: typeof inter[], forbidden: string[] = []) {
+function defects(css: string[], expected: (typeof inter)[], forbidden: string[] = []) {
 	return findFontDefects(parseFontFaces(css.join('')), expected, forbidden);
 }
 
@@ -52,10 +57,7 @@ describe('findFontDefects', () => {
 		},
 		{
 			name: 'no italic declared',
-			css: [
-				face('Oswald', '400'),
-				face('Oswald', '700'),
-			],
+			css: [face('Oswald', '400'), face('Oswald', '700')],
 			expected: [
 				{
 					family: 'Oswald',
@@ -67,10 +69,7 @@ describe('findFontDefects', () => {
 		},
 		{
 			name: 'range face',
-			css: [
-				face('Inter', '100 900'),
-				face('Inter', '100 900', 'italic'),
-			],
+			css: [face('Inter', '100 900'), face('Inter', '100 900', 'italic')],
 			expected: [
 				{
 					...inter,
@@ -90,10 +89,7 @@ describe('findFontDefects', () => {
 		},
 		{
 			name: 'protocol-relative src',
-			css: [
-				...interFaces,
-				face('Inter', '400', 'normal', 'url(//cdn.example/x.woff2)'),
-			],
+			css: [...interFaces, face('Inter', '400', 'normal', 'url(//cdn.example/x.woff2)')],
 			expected: [inter],
 			found: [/^font-remote-url/],
 		},
@@ -108,32 +104,29 @@ describe('findFontDefects', () => {
 		},
 		{
 			name: 'fallback face',
-			css: [...interFaces, '@font-face{font-family:Inter Fallback\\: Arial;src:local(Arial);size-adjust:107%;ascent-override:90%}'],
+			css: [
+				...interFaces,
+				'@font-face{font-family:Inter Fallback\\: Arial;src:local(Arial);size-adjust:107%;ascent-override:90%}',
+			],
 			expected: [inter],
 			found: [],
 		},
 		{
 			name: 'quoted family',
-			css: interFaces.map(rule => rule.replace('Inter', '"Inter"')),
+			css: interFaces.map((rule) => rule.replace('Inter', '"Inter"')),
 			expected: [inter],
 			found: [],
 		},
 		{
 			name: 'forbidden family',
-			css: [
-				...interFaces,
-				face('"MPlantin"', '400'),
-			],
+			css: [...interFaces, face('"MPlantin"', '400')],
 			expected: [inter],
 			forbidden: ['MPlantin'],
 			found: [/^font-forbidden-family: MPlantin/],
 		},
 		{
 			name: 'forbidden family in another case',
-			css: [
-				...interFaces,
-				face('mplantin', '400'),
-			],
+			css: [...interFaces, face('mplantin', '400')],
 			expected: [inter],
 			forbidden: ['MPlantin'],
 			found: [/^font-forbidden-family: mplantin/],
@@ -148,8 +141,7 @@ describe('findFontDefects', () => {
 describe('assertBuiltFonts', () => {
 	const directories: string[] = [];
 	afterEach(() => {
-		for (const root of directories.splice(0))
-			rmSync(root, { recursive: true, force: true });
+		for (const root of directories.splice(0)) rmSync(root, { recursive: true, force: true });
 	});
 	function build(files: Record<string, string>) {
 		const root = mkdtempSync(join(tmpdir(), 'stream-keepr-font-scan-'));
@@ -185,7 +177,10 @@ describe('assertBuiltFonts', () => {
 
 	it.each([
 		['written with url()', '@import url("https://fonts.googleapis.com/css2?family=Inter");'],
-		['minified with no space after @import', '@import"https://fonts.googleapis.com/css2?family=Inter";'],
+		[
+			'minified with no space after @import',
+			'@import"https://fonts.googleapis.com/css2?family=Inter";',
+		],
 	])('finds a remote @import %s in any stylesheet', (_form, importRule) => {
 		const root = build({
 			'_nuxt/entry.css': interFaces.join(''),
@@ -193,11 +188,15 @@ describe('assertBuiltFonts', () => {
 		});
 
 		expect(assertBuiltFonts(root, [inter])).toEqual([
-			expect.stringMatching(/^font-remote-url: .*page\.css imports https:\/\/fonts\.googleapis\.com/),
+			expect.stringMatching(
+				/^font-remote-url: .*page\.css imports https:\/\/fonts\.googleapis\.com/,
+			),
 		]);
 	});
 
 	it('refuses a directory with no stylesheet', () => {
-		expect(() => assertBuiltFonts(build({ 'index.html': '' }), [inter])).toThrow(/^font-nothing-scanned/);
+		expect(() => assertBuiltFonts(build({ 'index.html': '' }), [inter])).toThrow(
+			/^font-nothing-scanned/,
+		);
 	});
 });

@@ -42,11 +42,16 @@ type ClientMethod = keyof typeof sessionClient;
 describe('useFeatureMatchStateStore actions', () => {
 	let store: ReturnType<typeof useFeatureMatchStateStore>;
 
-	const seedState = (overrides?: Partial<FeatureMatchState>, matchId = MATCH_ID) => seed(store, overrides, matchId);
+	const seedState = (overrides?: Partial<FeatureMatchState>, matchId = MATCH_ID) =>
+		seed(store, overrides, matchId);
 	const held = (matchId = MATCH_ID) => store.featureMatchStates.get(matchId)!;
 
 	/** The Session reducer's answer to a command, which a prediction must equal. */
-	function reducerAnswer(state: FeatureMatchState, type: FeatureMatchCommandType, payload: Record<string, number>) {
+	function reducerAnswer(
+		state: FeatureMatchState,
+		type: FeatureMatchCommandType,
+		payload: Record<string, number>,
+	) {
 		return applyFeatureMatchSessionEvent(state, createSourceSnapshot(), type, payload).currentState;
 	}
 
@@ -80,10 +85,7 @@ describe('useFeatureMatchStateStore actions', () => {
 				},
 				act: () => store.startClock(EVENT_ID, MATCH_ID),
 				method: 'startClock',
-				command: [
-					'StartClock',
-					{ at: SERVER_NOW },
-				],
+				command: ['StartClock', { at: SERVER_NOW }],
 			},
 			{
 				name: 'pausing a running clock',
@@ -92,10 +94,7 @@ describe('useFeatureMatchStateStore actions', () => {
 				},
 				act: () => store.pauseClock(EVENT_ID, MATCH_ID),
 				method: 'pauseClock',
-				command: [
-					'PauseClock',
-					{ at: SERVER_NOW },
-				],
+				command: ['PauseClock', { at: SERVER_NOW }],
 			},
 			{
 				name: 'resetting a running clock in extra turns',
@@ -114,10 +113,7 @@ describe('useFeatureMatchStateStore actions', () => {
 				},
 				act: () => store.restartClock(EVENT_ID, MATCH_ID),
 				method: 'restartClock',
-				command: [
-					'RestartClock',
-					{ at: SERVER_NOW },
-				],
+				command: ['RestartClock', { at: SERVER_NOW }],
 			},
 			{
 				name: 'adjusting a running clock',
@@ -126,10 +122,7 @@ describe('useFeatureMatchStateStore actions', () => {
 				},
 				act: () => store.adjustClock(EVENT_ID, MATCH_ID, 60_000),
 				method: 'adjustClock',
-				command: [
-					'AdjustClock',
-					{ at: SERVER_NOW, deltaMs: 60_000 },
-				],
+				command: ['AdjustClock', { at: SERVER_NOW, deltaMs: 60_000 }],
 			},
 			{
 				name: 'setting a clock',
@@ -138,10 +131,7 @@ describe('useFeatureMatchStateStore actions', () => {
 				},
 				act: () => store.setClock(EVENT_ID, MATCH_ID, 60_000),
 				method: 'setClock',
-				command: [
-					'SetClock',
-					{ at: SERVER_NOW, targetMs: 60_000 },
-				],
+				command: ['SetClock', { at: SERVER_NOW, targetMs: 60_000 }],
 			},
 		])('$name shows what the Session reducer answers', async ({ before, act, method, command }) => {
 			const expected = reducerAnswer(seedState(before), ...command);
@@ -164,14 +154,16 @@ describe('useFeatureMatchStateStore actions', () => {
 			expect(sessionClient.pauseClock).not.toHaveBeenCalled();
 		});
 
-		it('a refused command puts the clock back and reports the server\'s sentence', async () => {
+		it("a refused command puts the clock back and reports the server's sentence", async () => {
 			seedState({
 				clock: clock(),
 			});
-			sessionClient.startClock.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'The Session has ended' },
-			}));
+			sessionClient.startClock.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'The Session has ended' },
+				}),
+			);
 
 			await store.startClock(EVENT_ID, MATCH_ID);
 
@@ -182,17 +174,26 @@ describe('useFeatureMatchStateStore actions', () => {
 
 	describe('every clock at once, while the bulk command is out', () => {
 		beforeEach(() => {
-			seedState({
-				clock: clock({ elapsedMs: 1000, durationMs: 1_800_000 }),
-				overtime: { active: true, turnsRemaining: 3, totalTurns: 5 },
-			}, 100);
-			seedState({
-				clock: clock({ elapsedMs: 1000, isRunning: true, lastStartedAt: SERVER_NOW - 1000 }),
-			}, 200);
-			seedState({
-				clock: clock({ type: 'untimed', elapsedMs: 1000 }),
-				overtime: { active: true, turnsRemaining: 3, totalTurns: 5 },
-			}, 300);
+			seedState(
+				{
+					clock: clock({ elapsedMs: 1000, durationMs: 1_800_000 }),
+					overtime: { active: true, turnsRemaining: 3, totalTurns: 5 },
+				},
+				100,
+			);
+			seedState(
+				{
+					clock: clock({ elapsedMs: 1000, isRunning: true, lastStartedAt: SERVER_NOW - 1000 }),
+				},
+				200,
+			);
+			seedState(
+				{
+					clock: clock({ type: 'untimed', elapsedMs: 1000 }),
+					overtime: { active: true, turnsRemaining: 3, totalTurns: 5 },
+				},
+				300,
+			);
 		});
 
 		// A bulk action follows a single one's rules: each Slot shows the reducer's
@@ -206,18 +207,12 @@ describe('useFeatureMatchStateStore actions', () => {
 			{
 				name: 'starting every clock',
 				act: () => store.startAllClocks(EVENT_ID),
-				command: [
-					'StartClock',
-					{ at: SERVER_NOW },
-				],
+				command: ['StartClock', { at: SERVER_NOW }],
 			},
 			{
 				name: 'pausing every clock',
 				act: () => store.pauseAllClocks(EVENT_ID),
-				command: [
-					'PauseClock',
-					{ at: SERVER_NOW },
-				],
+				command: ['PauseClock', { at: SERVER_NOW }],
 			},
 			{
 				name: 'resetting every clock, each keeping its own duration',
@@ -227,27 +222,21 @@ describe('useFeatureMatchStateStore actions', () => {
 			{
 				name: 'restarting every clock',
 				act: () => store.restartAllClocks(EVENT_ID),
-				command: [
-					'RestartClock',
-					{ at: SERVER_NOW },
-				],
+				command: ['RestartClock', { at: SERVER_NOW }],
 			},
 			{
 				name: 'adjusting every clock',
 				act: () => store.adjustAllClocks(EVENT_ID, 60_000),
-				command: [
-					'AdjustClock',
-					{ at: SERVER_NOW, deltaMs: 60_000 },
-				],
+				command: ['AdjustClock', { at: SERVER_NOW, deltaMs: 60_000 }],
 			},
 		])('$name shows on each Slot what the Session reducer answers', async ({ act, command }) => {
 			const untimed = held(300);
-			const expected = [100, 200].map(slotId => reducerAnswer(held(slotId), ...command));
+			const expected = [100, 200].map((slotId) => reducerAnswer(held(slotId), ...command));
 			const answer = pending('bulkClockAction');
 
 			const acting = act();
 
-			expect([100, 200].map(slotId => held(slotId))).toEqual(expected);
+			expect([100, 200].map((slotId) => held(slotId))).toEqual(expected);
 			expect(held(300)).toBe(untimed);
 
 			answer.resolve({ updates: [] });
@@ -259,33 +248,33 @@ describe('useFeatureMatchStateStore actions', () => {
 		it.each([
 			[
 				'a life change',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.updatePlayerFeatureMatchState(EVENT_ID, MATCH_ID, 'player1', { lifeDelta: -3 }),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.updatePlayerFeatureMatchState(EVENT_ID, MATCH_ID, 'player1', { lifeDelta: -3 }),
 				'player1',
 				{ lifeTotal: 17 },
 			],
 			[
 				'a life total',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.updatePlayerFeatureMatchState(EVENT_ID, MATCH_ID, 'player1', { lifeTotal: 10 }),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.updatePlayerFeatureMatchState(EVENT_ID, MATCH_ID, 'player1', { lifeTotal: 10 }),
 				'player1',
 				{ lifeTotal: 10 },
 			],
 			[
 				'counters',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.updatePlayerFeatureMatchState(EVENT_ID, MATCH_ID, 'player1', {
-					counters: [
-						{ type: 'poison', value: 3 },
-					],
-				}),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.updatePlayerFeatureMatchState(EVENT_ID, MATCH_ID, 'player1', {
+						counters: [{ type: 'poison', value: 3 }],
+					}),
 				'player1',
 				{
-					counters: [
-						{ type: 'poison', value: 3 },
-					],
+					counters: [{ type: 'poison', value: 3 }],
 				},
 			],
 			[
 				'setLife',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.setLife(EVENT_ID, MATCH_ID, 'player1', 40),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.setLife(EVENT_ID, MATCH_ID, 'player1', 40),
 				'player1',
 				{ lifeTotal: 40 },
 			],
@@ -338,31 +327,36 @@ describe('useFeatureMatchStateStore actions', () => {
 		it.each([
 			[
 				'selectFirstPlayer',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.selectFirstPlayer(EVENT_ID, MATCH_ID, 'player1'),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.selectFirstPlayer(EVENT_ID, MATCH_ID, 'player1'),
 				{},
 				{ firstPlayer: 'player1', activePlayer: 'player1', turnNumber: 1 },
 			],
 			[
 				'changeFirstPlayer from player1',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.changeFirstPlayer(EVENT_ID, MATCH_ID),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.changeFirstPlayer(EVENT_ID, MATCH_ID),
 				{ firstPlayer: 'player1' },
 				{ firstPlayer: 'player2' },
 			],
 			[
 				'changeFirstPlayer from player2',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.changeFirstPlayer(EVENT_ID, MATCH_ID),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.changeFirstPlayer(EVENT_ID, MATCH_ID),
 				{ firstPlayer: 'player2' },
 				{ firstPlayer: 'player1' },
 			],
 			[
 				'setActivePlayer',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.setActivePlayer(EVENT_ID, MATCH_ID, 'player2'),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.setActivePlayer(EVENT_ID, MATCH_ID, 'player2'),
 				{},
 				{ activePlayer: 'player2' },
 			],
 			[
 				'setTurnNumber',
-				(s: ReturnType<typeof useFeatureMatchStateStore>) => s.setTurnNumber(EVENT_ID, MATCH_ID, 10),
+				(s: ReturnType<typeof useFeatureMatchStateStore>) =>
+					s.setTurnNumber(EVENT_ID, MATCH_ID, 10),
 				{},
 				{ turnNumber: 10 },
 			],
@@ -479,23 +473,34 @@ describe('useFeatureMatchStateStore actions', () => {
 			expect(held().overtime).toMatchObject(nextOvertime);
 		});
 
-		it.each(['nextOvertimeTurn', 'prevOvertimeTurn'] as const)('%s does nothing outside overtime', (step) => {
-			seedState({ activePlayer: 'player1' });
+		it.each(['nextOvertimeTurn', 'prevOvertimeTurn'] as const)(
+			'%s does nothing outside overtime',
+			(step) => {
+				seedState({ activePlayer: 'player1' });
 
-			store[step](EVENT_ID, MATCH_ID);
+				store[step](EVENT_ID, MATCH_ID);
 
-			expect(held().activePlayer).toBe('player1');
-		});
+				expect(held().activePlayer).toBe('player1');
+			},
+		);
 	});
 
 	describe('game lifecycle', () => {
-		it('recordGameWin sends its options and holds the server\'s state', async () => {
+		it("recordGameWin sends its options and holds the server's state", async () => {
 			seedState();
-			sessionClient.recordGameWin.mockResolvedValue(commandResult(createMockFeatureMatchState({ currentGame: 2 })));
+			sessionClient.recordGameWin.mockResolvedValue(
+				commandResult(createMockFeatureMatchState({ currentGame: 2 })),
+			);
 
-			await store.recordGameWin(EVENT_ID, MATCH_ID, 'player1', { resetLife: true, startingLife: 40 });
+			await store.recordGameWin(EVENT_ID, MATCH_ID, 'player1', {
+				resetLife: true,
+				startingLife: 40,
+			});
 
-			expect(sessionClient.recordGameWin).toHaveBeenCalledWith(EVENT_ID, MATCH_ID, 'player1', { resetLife: true, startingLife: 40 });
+			expect(sessionClient.recordGameWin).toHaveBeenCalledWith(EVENT_ID, MATCH_ID, 'player1', {
+				resetLife: true,
+				startingLife: 40,
+			});
 			expect(held().currentGame).toBe(2);
 		});
 
@@ -527,19 +532,21 @@ describe('useFeatureMatchStateStore actions', () => {
 				firstPlayer: 'player2',
 			});
 
-			answer.resolve(commandResult(held(), {
-				sourceSnapshot: {
-					...createSourceSnapshot(),
-					player1: {
-						playerId: null,
-						data: { name: 'Bob' },
-					},
-					player2: {
-						playerId: null,
-						data: { name: 'Alice' },
-					},
-				} as never,
-			}));
+			answer.resolve(
+				commandResult(held(), {
+					sourceSnapshot: {
+						...createSourceSnapshot(),
+						player1: {
+							playerId: null,
+							data: { name: 'Bob' },
+						},
+						player2: {
+							playerId: null,
+							data: { name: 'Alice' },
+						},
+					} as never,
+				}),
+			);
 			await swapping;
 
 			expect(store.featureMatchSessions.get(500)?.sourceSnapshot.player1.data?.name).toBe('Bob');

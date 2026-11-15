@@ -65,12 +65,21 @@ async function mountItem() {
 type Wrapper = Awaited<ReturnType<typeof mountItem>>;
 
 function menuItems(wrapper: Wrapper) {
-	return wrapper.findAllComponents({ name: 'UDropdownMenu' })
-		.flatMap(menu => (menu.props('items') as Array<Array<{ label: string; description?: string; onSelect: (event: Event) => void }>>).flat());
+	return wrapper
+		.findAllComponents({ name: 'UDropdownMenu' })
+		.flatMap((menu) =>
+			(
+				menu.props('items') as Array<
+					Array<{ label: string; description?: string; onSelect: (event: Event) => void }>
+				>
+			).flat(),
+		);
 }
 
 async function choose(wrapper: Wrapper, label: string) {
-	menuItems(wrapper).find(item => item.label === label)!.onSelect(new Event('select'));
+	menuItems(wrapper)
+		.find((item) => item.label === label)!
+		.onSelect(new Event('select'));
 	await flushPromises();
 }
 
@@ -80,10 +89,8 @@ function presence(...cardData: Array<string | undefined>) {
 			4,
 			{
 				count: cardData.length,
-				members: cardData.map(value => ({
-					data: value
-						? { cardData: value }
-						: {},
+				members: cardData.map((value) => ({
+					data: value ? { cardData: value } : {},
 				})),
 			},
 		],
@@ -102,18 +109,14 @@ describe('screen list item — card data health badge (#465)', () => {
 
 		const badge = wrapper.get('[data-testid="card-data-degraded-badge"]');
 		expect(badge.text()).toContain('2');
-		expect(wrapper.get('[data-tooltip*="Scryfall"]').attributes('data-tooltip')).toContain('re-fetching until Scryfall answers');
+		expect(wrapper.get('[data-tooltip*="Scryfall"]').attributes('data-tooltip')).toContain(
+			're-fetching until Scryfall answers',
+		);
 	});
 
 	it.each([
-		[
-			'every reporting output is complete',
-			['complete'],
-		],
-		[
-			'an output reports nothing',
-			[undefined],
-		],
+		['every reporting output is complete', ['complete']],
+		['an output reports nothing', [undefined]],
 	])('shows no badge when %s', async (_, reports) => {
 		presence(...reports);
 
@@ -132,10 +135,8 @@ describe('screen list item — handing out this Screen’s output', () => {
 	beforeEach(() => {
 		capability = 'list-capability';
 		apiFetch.mockReset().mockImplementation(async (path: string) => {
-			if (!String(path).endsWith('/asset-capability'))
-				return {};
-			if (!capability)
-				throw new Error('no capability');
+			if (!String(path).endsWith('/asset-capability')) return {};
+			if (!capability) throw new Error('no capability');
 			return { assetCapability: capability };
 		});
 		toastAdd.mockClear();
@@ -154,7 +155,10 @@ describe('screen list item — handing out this Screen’s output', () => {
 
 		await choose(wrapper, 'Copy output URL');
 
-		expect(copyToClipboard).toHaveBeenCalledWith(accessUrl, expect.objectContaining({ successTitle: 'Output URL copied' }));
+		expect(copyToClipboard).toHaveBeenCalledWith(
+			accessUrl,
+			expect.objectContaining({ successTitle: 'Output URL copied' }),
+		);
 	});
 
 	it('copies nothing, and names why, when asset access cannot be obtained', async () => {
@@ -163,9 +167,14 @@ describe('screen list item — handing out this Screen’s output', () => {
 
 		await choose(wrapper, 'Copy output URL');
 
-		expect(copyToClipboard).toHaveBeenCalledWith('', expect.objectContaining({
-			nothingToCopyDescription: expect.stringContaining('Asset access for this Screen could not be obtained'),
-		}));
+		expect(copyToClipboard).toHaveBeenCalledWith(
+			'',
+			expect.objectContaining({
+				nothingToCopyDescription: expect.stringContaining(
+					'Asset access for this Screen could not be obtained',
+				),
+			}),
+		);
 	});
 
 	it('opens the output at the URL carrying asset access', async () => {
@@ -174,7 +183,10 @@ describe('screen list item — handing out this Screen’s output', () => {
 			location: { href: '' },
 			close: vi.fn(),
 		};
-		vi.stubGlobal('open', vi.fn(() => outputWindow));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => outputWindow),
+		);
 		const wrapper = await mountItem();
 
 		await choose(wrapper, 'Open output');
@@ -189,17 +201,24 @@ describe('screen list item — handing out this Screen’s output', () => {
 			'asset access is refused',
 			() => {
 				capability = null;
-				vi.stubGlobal('open', vi.fn(() => ({
-					opener: {},
-					location: { href: '' },
-					close: vi.fn(),
-				})));
+				vi.stubGlobal(
+					'open',
+					vi.fn(() => ({
+						opener: {},
+						location: { href: '' },
+						close: vi.fn(),
+					})),
+				);
 			},
 			'Asset access for this Screen could not be obtained',
 		],
 		[
 			'the browser blocks the window',
-			() => vi.stubGlobal('open', vi.fn(() => null)),
+			() =>
+				vi.stubGlobal(
+					'open',
+					vi.fn(() => null),
+				),
 			'pop-up',
 		],
 	])('says once why no output opened when %s', async (_, arrange, reason) => {
@@ -208,10 +227,12 @@ describe('screen list item — handing out this Screen’s output', () => {
 
 		await choose(wrapper, 'Open output');
 
-		expect(toastAdd).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-			title: 'Output not opened',
-			description: expect.stringContaining(reason),
-		}));
+		expect(toastAdd).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				title: 'Output not opened',
+				description: expect.stringContaining(reason),
+			}),
+		);
 	});
 
 	// The card prints the bare address, which resolves no media (#231), so both
@@ -219,9 +240,11 @@ describe('screen list item — handing out this Screen’s output', () => {
 	it('names both hand-outs by what they carry, apart from the bare address it prints', async () => {
 		const wrapper = await mountItem();
 
-		const handOuts = menuItems(wrapper).filter(item => ['Copy output URL', 'Open output'].includes(item.label));
+		const handOuts = menuItems(wrapper).filter((item) =>
+			['Copy output URL', 'Open output'].includes(item.label),
+		);
 		expect(handOuts).toHaveLength(2);
-		expect(handOuts.every(item => item.description?.includes('asset access'))).toBe(true);
+		expect(handOuts.every((item) => item.description?.includes('asset access'))).toBe(true);
 		expect(wrapper.text()).toContain(`${window.location.origin}/event/2/screen/stage-left`);
 		expect(wrapper.text()).not.toContain('asset-capability=');
 	});

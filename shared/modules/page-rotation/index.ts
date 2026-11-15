@@ -34,8 +34,7 @@ function rotationInterval(inputs: PageRotationInputs) {
 
 /** The 1-based page a Page Rotation shows at the given instant. */
 export function projectRotationPage(inputs: PageRotationInputs): number {
-	if (inputs.totalPages <= 1)
-		return 1;
+	if (inputs.totalPages <= 1) return 1;
 	return (rotationInterval(inputs).step % inputs.totalPages) + 1;
 }
 
@@ -47,7 +46,11 @@ export function projectRotationPage(inputs: PageRotationInputs): number {
  * Rounded, because the synchronized clock estimate is an RTT-averaged float
  * while a stored anchor is an integer timestamp.
  */
-export function rotationAnchorForPage(inputs: { page: number; pageDurationMs: number; now: number }): number {
+export function rotationAnchorForPage(inputs: {
+	page: number;
+	pageDurationMs: number;
+	now: number;
+}): number {
 	return Math.round(intervalAnchorForStep(inputs.page - 1, inputs.pageDurationMs, inputs.now));
 }
 
@@ -57,8 +60,7 @@ export function rotationAnchorForPage(inputs: { page: number; pageDurationMs: nu
  * instead of polling.
  */
 export function msUntilNextRotationFlip(inputs: PageRotationInputs): number | null {
-	if (inputs.totalPages <= 1)
-		return null;
+	if (inputs.totalPages <= 1) return null;
 	return rotationInterval(inputs).nextStepInMs;
 }
 
@@ -78,7 +80,10 @@ export interface PageRotationDeclaration {
  * its declaration names, or undefined while it is Auto. The Screen Mode
  * Definitions fail to compile unless that field is a number, or an optional one.
  */
-export function rotationPageSize(declaration: PageRotationDeclaration, config: object): number | undefined {
+export function rotationPageSize(
+	declaration: PageRotationDeclaration,
+	config: object,
+): number | undefined {
 	return (config as Record<string, unknown>)[declaration.pageSize] as number | undefined;
 }
 
@@ -88,9 +93,7 @@ export function rotationPageSize(declaration: PageRotationDeclaration, config: o
  * rendering and operator surface pages by, so they agree by construction (#780).
  */
 export function rotationPageCount(rowCount: number, pageSize: number | undefined): number {
-	return pageSize === undefined
-		? 1
-		: Math.max(1, Math.ceil(rowCount / pageSize));
+	return pageSize === undefined ? 1 : Math.max(1, Math.ceil(rowCount / pageSize));
 }
 
 /**
@@ -120,13 +123,10 @@ export function pageRotationEdit<Patch extends object>(
 	now: number,
 ): Patch & { currentPage?: number; rotationAnchor?: number } {
 	const resizesPages = declaration.pageSize in patch;
-	if (!resizesPages && !('autoPageIntervalMs' in patch))
-		return patch;
+	if (!resizesPages && !('autoPageIntervalMs' in patch)) return patch;
 	return {
 		...patch,
-		...(resizesPages
-			? { currentPage: 1 }
-			: {}),
+		...(resizesPages ? { currentPage: 1 } : {}),
 		...(rotation.autoPageEnabled
 			? {
 					rotationAnchor: restartedRotationAnchor(now),

@@ -5,7 +5,7 @@ function read(display: ReturnType<typeof usePlayerDisplayConfig>) {
 }
 
 describe('usePlayerDisplayConfig', () => {
-	it('shows a Player\'s identity, deck and controls, but not their record or LGS, by default', () => {
+	it("shows a Player's identity, deck and controls, but not their record or LGS, by default", () => {
 		expect(read(usePlayerDisplayConfig(undefined))).toEqual({
 			showName: true,
 			showPronouns: true,

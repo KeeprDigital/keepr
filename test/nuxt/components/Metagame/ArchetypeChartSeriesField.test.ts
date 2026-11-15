@@ -14,7 +14,7 @@ const mockRepo = vi.hoisted(() => ({
 	remove: vi.fn(),
 }));
 
-vi.mock('~/modules/event-data/client', async importOriginal => ({
+vi.mock('~/modules/event-data/client', async (importOriginal) => ({
 	...(await importOriginal<typeof import('~~/app/modules/event-data/client')>()),
 	useEventDataResource: () => mockRepo,
 }));
@@ -47,10 +47,7 @@ const ZOO = createMockUiArchetype({
 async function mountField(archetypeId = ZOO.id) {
 	const store = useArchetypeStore();
 	store.$reset();
-	mockRepo.list.mockResolvedValue([
-		{ ...BOROS },
-		{ ...ZOO },
-	]);
+	mockRepo.list.mockResolvedValue([{ ...BOROS }, { ...ZOO }]);
 	const wrapper = mount(ArchetypeChartSeriesField, {
 		props: { eventId: 99, archetypeId },
 		global: { stubs: nuxtUiStubs },
@@ -69,47 +66,40 @@ describe('metagame ArchetypeChartSeriesField', () => {
 	});
 
 	it.each([
-		[
-			'pins a series',
-			ZOO.id,
-			'Series 5',
-			{ chartSeries: 5 },
-			5,
-		],
-		[
-			'clears a pin',
-			BOROS.id,
-			'None',
-			{ chartSeries: null },
-			null,
-		],
-	] as const)('%s through the Archetype write, showing it while the save is pending', async (_case, archetypeId, option, sent, shown) => {
-		const save = deferred<unknown>();
-		mockRepo.update.mockReturnValue(save.promise);
-		const { wrapper, store } = await mountField(archetypeId);
+		['pins a series', ZOO.id, 'Series 5', { chartSeries: 5 }, 5],
+		['clears a pin', BOROS.id, 'None', { chartSeries: null }, null],
+	] as const)(
+		'%s through the Archetype write, showing it while the save is pending',
+		async (_case, archetypeId, option, sent, shown) => {
+			const save = deferred<unknown>();
+			mockRepo.update.mockReturnValue(save.promise);
+			const { wrapper, store } = await mountField(archetypeId);
 
-		const value = [
-			...select(wrapper).element.options,
-		].find(item => item.text.startsWith(option))!.value;
-		await select(wrapper).setValue(value);
+			const value = [...select(wrapper).element.options].find((item) =>
+				item.text.startsWith(option),
+			)!.value;
+			await select(wrapper).setValue(value);
 
-		expect(mockRepo.update).toHaveBeenCalledWith(99, archetypeId, sent);
-		expect(store.archetypes.find(archetype => archetype.id === archetypeId)?.chartSeries).toBe(shown);
-		expect(select(wrapper).element.selectedOptions[0]!.text).toMatch(new RegExp(`^${option}`));
+			expect(mockRepo.update).toHaveBeenCalledWith(99, archetypeId, sent);
+			expect(store.archetypes.find((archetype) => archetype.id === archetypeId)?.chartSeries).toBe(
+				shown,
+			);
+			expect(select(wrapper).element.selectedOptions[0]!.text).toMatch(new RegExp(`^${option}`));
 
-		save.resolve({
-			...store.archetypes.find(archetype => archetype.id === archetypeId),
-			chartSeries: shown,
-		});
-		await flushPromises();
-	});
+			save.resolve({
+				...store.archetypes.find((archetype) => archetype.id === archetypeId),
+				chartSeries: shown,
+			});
+			await flushPromises();
+		},
+	);
 
 	it('names the Archetype already pinning a series beside it', async () => {
 		const { wrapper } = await mountField();
 
-		expect([
-			...select(wrapper).element.options,
-		].map(option => option.text)).toContain('Series 3 (pinned by Boros Energy)');
+		expect([...select(wrapper).element.options].map((option) => option.text)).toContain(
+			'Series 3 (pinned by Boros Energy)',
+		);
 	});
 
 	it.each([
@@ -123,16 +113,20 @@ describe('metagame ArchetypeChartSeriesField', () => {
 		}));
 		const { wrapper } = await mountField();
 
-		await select(wrapper).setValue([
-			...select(wrapper).element.options,
-		].find(option => option.text.startsWith(`Series ${chartSeries}`))!.value);
+		await select(wrapper).setValue(
+			[...select(wrapper).element.options].find((option) =>
+				option.text.startsWith(`Series ${chartSeries}`),
+			)!.value,
+		);
 		await flushPromises();
 
-		const warnings = wrapper.findAll('[data-testid="chart-series-taken"]').map(warning => warning.text());
-		expect(warnings).toEqual(warnedAbout == null
-			? []
-			: [
-					expect.stringContaining(`Series ${chartSeries} is also pinned by ${warnedAbout}`),
-				]);
+		const warnings = wrapper
+			.findAll('[data-testid="chart-series-taken"]')
+			.map((warning) => warning.text());
+		expect(warnings).toEqual(
+			warnedAbout == null
+				? []
+				: [expect.stringContaining(`Series ${chartSeries} is also pinned by ${warnedAbout}`)],
+		);
 	});
 });

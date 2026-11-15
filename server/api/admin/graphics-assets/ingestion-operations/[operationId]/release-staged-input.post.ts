@@ -19,25 +19,25 @@ import { graphicsQueueActionErrorOutcome } from '~~/server/utils/graphicsQueueAc
  * delete landed, and records `staged-input-released` Evidence naming this
  * administrator as actor. Idempotent: a second run answers `already-in-state`.
  */
-export default defineEventHandler(async (event): Promise<{
-	outcome: GraphicsQueueActionOutcome;
-}> => {
-	try {
-		await requireGraphicsAdministrator(event);
-		const operationId = graphicsIngestionOperationId(
-			getRouterParam(event, 'operationId') ?? '',
-		);
-		const library = graphicsAssetLibraryForEvent(event);
-		const released = await library.releaseStrandedStagedInput({
-			operationId,
-			actor: await graphicsAdministratorActor(event),
-		});
-		return { outcome: released.outcome };
-	}
-	catch (error) {
-		const outcome = graphicsQueueActionErrorOutcome(error);
-		if (outcome)
-			return { outcome };
-		return rethrowGraphicsAssetApiError(error, event);
-	}
-});
+export default defineEventHandler(
+	async (
+		event,
+	): Promise<{
+		outcome: GraphicsQueueActionOutcome;
+	}> => {
+		try {
+			await requireGraphicsAdministrator(event);
+			const operationId = graphicsIngestionOperationId(getRouterParam(event, 'operationId') ?? '');
+			const library = graphicsAssetLibraryForEvent(event);
+			const released = await library.releaseStrandedStagedInput({
+				operationId,
+				actor: await graphicsAdministratorActor(event),
+			});
+			return { outcome: released.outcome };
+		} catch (error) {
+			const outcome = graphicsQueueActionErrorOutcome(error);
+			if (outcome) return { outcome };
+			return rethrowGraphicsAssetApiError(error, event);
+		}
+	},
+);

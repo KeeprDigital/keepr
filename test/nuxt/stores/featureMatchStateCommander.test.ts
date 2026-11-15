@@ -66,7 +66,8 @@ describe('a Commander Session in the Feature Match State store', () => {
 		return answer;
 	}
 
-	const answered = (state: FeatureMatchState) => commandResult(state, { sourceSnapshot: snapshot, sequence: 4 });
+	const answered = (state: FeatureMatchState) =>
+		commandResult(state, { sourceSnapshot: snapshot, sequence: 4 });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -74,7 +75,7 @@ describe('a Commander Session in the Feature Match State store', () => {
 		store.$reset();
 	});
 
-	it('shows Commander Damage and the life it cost while its command is out, then the Session\'s answer', async () => {
+	it("shows Commander Damage and the life it cost while its command is out, then the Session's answer", async () => {
 		const opened = hold();
 		const answer = pending('adjustCommanderDamage');
 
@@ -82,22 +83,26 @@ describe('a Commander Session in the Feature Match State store', () => {
 
 		expect(held().player2).toMatchObject({
 			lifeTotal: 35,
-			commanderDamage: [
-				{ seat: 'player1', commander: 1, damage: 5 },
-			],
+			commanderDamage: [{ seat: 'player1', commander: 1, damage: 5 }],
 		});
-		expect(sessionClient.adjustCommanderDamage).toHaveBeenCalledWith(EVENT_ID, MATCH_ID, 'player2', expect.objectContaining(ATRAXA_AT_SEAT_1), 5);
+		expect(sessionClient.adjustCommanderDamage).toHaveBeenCalledWith(
+			EVENT_ID,
+			MATCH_ID,
+			'player2',
+			expect.objectContaining(ATRAXA_AT_SEAT_1),
+			5,
+		);
 
-		answer.resolve(answered({
-			...opened,
-			player2: {
-				...opened.player2,
-				lifeTotal: 34,
-				commanderDamage: [
-					{ seat: 'player1', commander: 1, damage: 6 },
-				],
-			},
-		}));
+		answer.resolve(
+			answered({
+				...opened,
+				player2: {
+					...opened.player2,
+					lifeTotal: 34,
+					commanderDamage: [{ seat: 'player1', commander: 1, damage: 6 }],
+				},
+			}),
+		);
 		await vi.waitFor(() => expect(held().player2.lifeTotal).toBe(34));
 	});
 
@@ -108,7 +113,9 @@ describe('a Commander Session in the Feature Match State store', () => {
 		store.adjustCommanderDamage(EVENT_ID, MATCH_ID, 'player2', ATRAXA_AT_SEAT_1, 5);
 		answer.reject(new Error('refused'));
 
-		await vi.waitFor(() => expect(held().player2).toMatchObject({ lifeTotal: 40, commanderDamage: [] }));
+		await vi.waitFor(() =>
+			expect(held().player2).toMatchObject({ lifeTotal: 40, commanderDamage: [] }),
+		);
 	});
 
 	it('shows a Seat Eliminated while its command is out', () => {

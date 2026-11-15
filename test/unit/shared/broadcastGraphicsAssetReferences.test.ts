@@ -20,7 +20,10 @@ function reference(assetId: string, revisionId: string): GraphicAssetReference {
 	};
 }
 
-function media(id: string, overrides: Partial<MediaGraphicItemConfig> = {}): MediaGraphicItemConfig {
+function media(
+	id: string,
+	overrides: Partial<MediaGraphicItemConfig> = {},
+): MediaGraphicItemConfig {
 	return {
 		type: 'media',
 		id,
@@ -48,38 +51,40 @@ function config(graphics: BroadcastGraphicConfig[]): BroadcastGraphicsModeConfig
 
 describe('broadcastGraphicsGraphicAssetReferences', () => {
 	it('publishes one reference per Media Graphic Item, named by the item that pins it', () => {
-		const references = broadcastGraphicsGraphicAssetReferences(config([
-			{
-				id: 'lower-third',
-				name: 'Lower Third',
-				items: [
-					media('logo'),
-					{
-						type: 'group',
-						id: 'cluster',
-						label: 'cluster',
-						visible: true,
-						anchor: 'top-left',
-						x: 0,
-						y: 0,
-						width: 400,
-						height: 200,
-						arrangement: 'row',
-						padding: 0,
-						gap: 0,
-						align: 'stretch',
-						justify: 'start',
-						clip: false,
-						geometry: squareShapeGeometry(),
-						children: [
-							media('badge', {
-								asset: reference('asset-2', 'revision-2'),
-							}),
-						],
-					},
-				],
-			},
-		]));
+		const references = broadcastGraphicsGraphicAssetReferences(
+			config([
+				{
+					id: 'lower-third',
+					name: 'Lower Third',
+					items: [
+						media('logo'),
+						{
+							type: 'group',
+							id: 'cluster',
+							label: 'cluster',
+							visible: true,
+							anchor: 'top-left',
+							x: 0,
+							y: 0,
+							width: 400,
+							height: 200,
+							arrangement: 'row',
+							padding: 0,
+							gap: 0,
+							align: 'stretch',
+							justify: 'start',
+							clip: false,
+							geometry: squareShapeGeometry(),
+							children: [
+								media('badge', {
+									asset: reference('asset-2', 'revision-2'),
+								}),
+							],
+						},
+					],
+				},
+			]),
+		);
 
 		// The owner slot names the Graphic Item, so a diagnosis points at the item an
 		// author repairs rather than at the Screen.
@@ -98,63 +103,65 @@ describe('broadcastGraphicsGraphicAssetReferences', () => {
 	});
 
 	it('publishes nothing for an item with no asset pinned or for application-owned social icons', () => {
-		const references = broadcastGraphicsGraphicAssetReferences(config([
-			{
-				id: 'bug',
-				name: 'Bug',
-				items: [
-					media('empty', { asset: undefined }),
-					{
-						type: 'social-network-icon',
-						id: 'social-icon',
-						label: 'Social icon',
-						visible: true,
-						anchor: 'top-left',
-						x: 0,
-						y: 0,
-						width: 10,
-						height: 10,
-						network: 'youtube',
-						color: '#ff0000',
-						opacity: 0.8,
-					},
-					{
-						type: 'group',
-						id: 'cluster',
-						label: 'Cluster',
-						visible: true,
-						anchor: 'top-left',
-						x: 0,
-						y: 0,
-						width: 100,
-						height: 100,
-						arrangement: 'row',
-						padding: 0,
-						gap: 0,
-						align: 'stretch',
-						justify: 'start',
-						clip: false,
-						geometry: squareShapeGeometry(),
-						children: [
-							{
-								type: 'social-network-icon',
-								id: 'nested-social-icon',
-								label: 'Nested social icon',
-								visible: true,
-								anchor: 'top-left',
-								x: 0,
-								y: 0,
-								width: 10,
-								height: 10,
-								network: 'bluesky',
-								color: '#1185fe',
-								opacity: 1,
-							},
-						],
-					},
-				],
-			},
-		]));
+		const references = broadcastGraphicsGraphicAssetReferences(
+			config([
+				{
+					id: 'bug',
+					name: 'Bug',
+					items: [
+						media('empty', { asset: undefined }),
+						{
+							type: 'social-network-icon',
+							id: 'social-icon',
+							label: 'Social icon',
+							visible: true,
+							anchor: 'top-left',
+							x: 0,
+							y: 0,
+							width: 10,
+							height: 10,
+							network: 'youtube',
+							color: '#ff0000',
+							opacity: 0.8,
+						},
+						{
+							type: 'group',
+							id: 'cluster',
+							label: 'Cluster',
+							visible: true,
+							anchor: 'top-left',
+							x: 0,
+							y: 0,
+							width: 100,
+							height: 100,
+							arrangement: 'row',
+							padding: 0,
+							gap: 0,
+							align: 'stretch',
+							justify: 'start',
+							clip: false,
+							geometry: squareShapeGeometry(),
+							children: [
+								{
+									type: 'social-network-icon',
+									id: 'nested-social-icon',
+									label: 'Nested social icon',
+									visible: true,
+									anchor: 'top-left',
+									x: 0,
+									y: 0,
+									width: 10,
+									height: 10,
+									network: 'bluesky',
+									color: '#1185fe',
+									opacity: 1,
+								},
+							],
+						},
+					],
+				},
+			]),
+		);
 
 		expect(references).toEqual([]);
 	});
@@ -163,15 +170,15 @@ describe('broadcastGraphicsGraphicAssetReferences', () => {
 		// Visibility is an authoring toggle, not a change of what the Screen publishes.
 		// Dropping a hidden item's reference would remove a revision from the Screen
 		// Output Asset Capability that an author expects to come straight back.
-		const references = broadcastGraphicsGraphicAssetReferences(config([
-			{
-				id: 'bug',
-				name: 'Bug',
-				items: [
-					media('logo', { visible: false }),
-				],
-			},
-		]));
+		const references = broadcastGraphicsGraphicAssetReferences(
+			config([
+				{
+					id: 'bug',
+					name: 'Bug',
+					items: [media('logo', { visible: false })],
+				},
+			]),
+		);
 
 		expect(references).toHaveLength(1);
 	});
@@ -179,15 +186,15 @@ describe('broadcastGraphicsGraphicAssetReferences', () => {
 	it('carries nothing about playback engines on a silent video reference', () => {
 		// Chromium is the only supported engine for transparent video (ADR-0020), so
 		// the index has no engine fact to check.
-		const references = broadcastGraphicsGraphicAssetReferences(config([
-			{
-				id: 'sting',
-				name: 'Sting',
-				items: [
-					media('clip', { mediaKind: 'silent-video' }),
-				],
-			},
-		]));
+		const references = broadcastGraphicsGraphicAssetReferences(
+			config([
+				{
+					id: 'sting',
+					name: 'Sting',
+					items: [media('clip', { mediaKind: 'silent-video' })],
+				},
+			]),
+		);
 
 		expect(references[0]).toEqual({
 			reference: expect.any(Object),
@@ -219,10 +226,12 @@ describe('broadcastGraphicsGraphicAssetReferences', () => {
 			},
 		]);
 
-		expect(sameScreenGraphicAssetReferences(
-			broadcastGraphicsGraphicAssetReferences(forwards),
-			broadcastGraphicsGraphicAssetReferences(backwards),
-		)).toBe(true);
+		expect(
+			sameScreenGraphicAssetReferences(
+				broadcastGraphicsGraphicAssetReferences(forwards),
+				broadcastGraphicsGraphicAssetReferences(backwards),
+			),
+		).toBe(true);
 	});
 
 	it('dispatches to the right mode, and answers nothing for a mode with no configuration', () => {
@@ -231,9 +240,7 @@ describe('broadcastGraphicsGraphicAssetReferences', () => {
 				{
 					id: 'g',
 					name: 'g',
-					items: [
-						media('logo'),
-					],
+					items: [media('logo')],
 				},
 			]),
 		};
@@ -245,54 +252,58 @@ describe('broadcastGraphicsGraphicAssetReferences', () => {
 
 	it('roots every discovered owner slot in its own mode’s namespace', () => {
 		// The prefix is the only thing scoping a write's delete and an output's reads.
-		const references = broadcastGraphicsGraphicAssetReferences(config([
-			{
-				id: 'lower-third',
-				name: 'Lower Third',
-				items: [
-					media('logo'),
-					{
-						type: 'group',
-						id: 'cluster',
-						label: 'cluster',
-						visible: true,
-						anchor: 'top-left',
-						x: 0,
-						y: 0,
-						width: 400,
-						height: 200,
-						arrangement: 'row',
-						padding: 0,
-						gap: 0,
-						align: 'stretch',
-						justify: 'start',
-						clip: false,
-						geometry: squareShapeGeometry(),
-						children: [
-							media('badge', {
-								asset: reference('asset-2', 'revision-2'),
-							}),
-						],
-					},
-				],
-			},
-		]));
+		const references = broadcastGraphicsGraphicAssetReferences(
+			config([
+				{
+					id: 'lower-third',
+					name: 'Lower Third',
+					items: [
+						media('logo'),
+						{
+							type: 'group',
+							id: 'cluster',
+							label: 'cluster',
+							visible: true,
+							anchor: 'top-left',
+							x: 0,
+							y: 0,
+							width: 400,
+							height: 200,
+							arrangement: 'row',
+							padding: 0,
+							gap: 0,
+							align: 'stretch',
+							justify: 'start',
+							clip: false,
+							geometry: squareShapeGeometry(),
+							children: [
+								media('badge', {
+									asset: reference('asset-2', 'revision-2'),
+								}),
+							],
+						},
+					],
+				},
+			]),
+		);
 
 		expect(references).not.toHaveLength(0);
 		for (const item of references)
-			expect(item.ownerSlot.startsWith(graphicAssetReferenceSlotPrefix('broadcast-graphics'))).toBe(true);
+			expect(item.ownerSlot.startsWith(graphicAssetReferenceSlotPrefix('broadcast-graphics'))).toBe(
+				true,
+			);
 	});
 
 	it('gives each referencing Screen Mode a distinct, non-overlapping slot namespace', () => {
 		// Compared without case, as SQLite's `LIKE` compares them.
-		const prefixes = GRAPHIC_ASSET_REFERENCING_SCREEN_MODES
-			.map(mode => graphicAssetReferenceSlotPrefix(mode).toLowerCase());
+		const prefixes = GRAPHIC_ASSET_REFERENCING_SCREEN_MODES.map((mode) =>
+			graphicAssetReferenceSlotPrefix(mode).toLowerCase(),
+		);
 
 		expect(new Set(prefixes).size).toBe(prefixes.length);
 		for (const one of prefixes) {
 			for (const other of prefixes) {
-				if (one !== other)
-					expect(one.startsWith(other)).toBe(false);
+				if (one !== other) expect(one.startsWith(other)).toBe(false);
 			}
 		}
 	});
@@ -325,10 +336,12 @@ describe('broadcastGraphicsGraphicAssetReferences', () => {
 		}
 
 		const referencing: readonly string[] = GRAPHIC_ASSET_REFERENCING_SCREEN_MODES;
-		const nonReferencing = SCREEN_MODE_VALUES.filter(mode => !referencing.includes(mode));
+		const nonReferencing = SCREEN_MODE_VALUES.filter((mode) => !referencing.includes(mode));
 
 		// Every referencing mode is a real Screen Mode.
-		expect(nonReferencing).toHaveLength(SCREEN_MODE_VALUES.length - GRAPHIC_ASSET_REFERENCING_SCREEN_MODES.length);
+		expect(nonReferencing).toHaveLength(
+			SCREEN_MODE_VALUES.length - GRAPHIC_ASSET_REFERENCING_SCREEN_MODES.length,
+		);
 
 		for (const mode of nonReferencing)
 			expect(isGraphicAssetReferencingScreenMode(mode)).toBe(false);

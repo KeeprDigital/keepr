@@ -1,4 +1,9 @@
-import type { BroadcastGraphicConfig, GraphicAnimationRecipe, GraphicContainerAnimation, GraphicItemConfig } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicAnimationRecipe,
+	GraphicContainerAnimation,
+	GraphicItemConfig,
+} from '~~/shared/types/graphics';
 import type { GraphicsPreviewAnimationPlan } from '~/modules/graphics/previewMessages';
 import { describe, expect, it } from 'vitest';
 import { flattenGraphicItems } from '~~/shared/modules/graphics';
@@ -27,29 +32,33 @@ const composition: BroadcastGraphicConfig = {
 				exit: recipe(300, 100),
 			},
 		}),
-		group('team', [
-			shape('name', {
+		group(
+			'team',
+			[
+				shape('name', {
+					animation: {
+						enter: recipe(600),
+					},
+				}),
+				shape('flag', {
+					animation: {
+						enter: recipe(600),
+					},
+				}),
+			],
+			{
 				animation: {
-					enter: recipe(600),
-				},
-			}),
-			shape('flag', {
-				animation: {
-					enter: recipe(600),
-				},
-			}),
-		], {
-			animation: {
-				exit: recipe(500),
-				stagger: {
-					enter: {
-						order: 'list',
-						step: 100,
-						itemIds: ['name', 'flag'],
+					exit: recipe(500),
+					stagger: {
+						enter: {
+							order: 'list',
+							step: 100,
+							itemIds: ['name', 'flag'],
+						},
 					},
 				},
 			},
-		}),
+		),
 	]),
 	animation: {
 		enter: recipe(200),
@@ -76,7 +85,7 @@ function plan(overrides: Partial<GraphicsPreviewAnimationPlan> = {}): GraphicsPr
 }
 
 function owner(previewed: BroadcastGraphicConfig, id: string): GraphicItemConfig | undefined {
-	return flattenGraphicItems(previewed).find(item => item.id === id);
+	return flattenGraphicItems(previewed).find((item) => item.id === id);
 }
 
 describe('resolveGraphicAnimationPreview', () => {
@@ -98,9 +107,7 @@ describe('resolveGraphicAnimationPreview', () => {
 			'one phase of the whole composition',
 			plan({ scope: 'phase', phase: 'exit' }),
 			undefined,
-			[
-				{ phase: 'exit', start: 0, duration: 500 },
-			],
+			[{ phase: 'exit', start: 0, duration: 500 }],
 		],
 		// A host with no update phase runs straight from on-screen to exit.
 		[
@@ -135,24 +142,15 @@ describe('resolveGraphicAnimationPreview', () => {
 			'a group alone, with its own stagger',
 			plan({ itemId: 'team', scope: 'phase' }),
 			undefined,
-			[
-				{ phase: 'enter', start: 0, duration: 700 },
-			],
+			[{ phase: 'enter', start: 0, duration: 700 }],
 		],
 		[
 			'a group child alone, free of its group',
 			plan({ itemId: 'flag', scope: 'phase' }),
 			undefined,
-			[
-				{ phase: 'enter', start: 0, duration: 600 },
-			],
+			[{ phase: 'enter', start: 0, duration: 600 }],
 		],
-		[
-			'an item that is not in the composition',
-			plan({ itemId: 'gone' }),
-			undefined,
-			[],
-		],
+		['an item that is not in the composition', plan({ itemId: 'gone' }), undefined, []],
 	])('times %s', (_case, run, lifecycle, timeline) => {
 		expect(resolveGraphicAnimationPreview(composition, run, lifecycle).timeline).toEqual(timeline);
 	});
@@ -162,11 +160,7 @@ describe('resolveGraphicAnimationPreview', () => {
 	});
 
 	it.each([
-		[
-			'bar',
-			['bar'],
-			undefined,
-		],
+		['bar', ['bar'], undefined],
 		[
 			'team',
 			['team', 'name', 'flag'],
@@ -178,18 +172,16 @@ describe('resolveGraphicAnimationPreview', () => {
 				},
 			},
 		],
-		[
-			'flag',
-			['flag'],
-			undefined,
-		],
+		['flag', ['flag'], undefined],
 	])('moves %s alone, holding every other owner at rest', (itemId, moving, groupStagger) => {
 		const previewed = resolveGraphicAnimationPreview(composition, plan({ itemId })).graphic;
 
 		expect(previewed.animation).toBeUndefined();
 		for (const id of ['bar', 'badge', 'team', 'name', 'flag'])
 			expect(owner(previewed, id)?.animation !== undefined, id).toBe(moving.includes(id));
-		expect((owner(previewed, 'team')?.animation as GraphicContainerAnimation | undefined)?.stagger).toEqual(groupStagger);
+		expect(
+			(owner(previewed, 'team')?.animation as GraphicContainerAnimation | undefined)?.stagger,
+		).toEqual(groupStagger);
 		// Geometry and paint are untouched: only motion is isolated.
 		expect(owner(previewed, 'badge')?.x).toBe(owner(composition, 'badge')?.x);
 	});

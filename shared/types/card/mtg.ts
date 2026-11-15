@@ -75,33 +75,28 @@ export interface ScreenCardWriteResult {
 }
 
 /* ACTION TYPES */
-export type MtgPreviewCardAction
-	= | 'show'
-		| 'clear'
-		| 'flip'
-		| 'rotate'
-		| 'turnOver'
-		| 'counterRotate';
+export type MtgPreviewCardAction =
+	| 'show'
+	| 'clear'
+	| 'flip'
+	| 'rotate'
+	| 'turnOver'
+	| 'counterRotate';
 
-export type MtgActiveCardAction
-	= | 'clear'
-		| 'flip'
-		| 'rotate'
-		| 'turnOver'
-		| 'counterRotate';
+export type MtgActiveCardAction = 'clear' | 'flip' | 'rotate' | 'turnOver' | 'counterRotate';
 
 /* FORMAT TYPES */
-export type MtgFormat
-	= | 'all'
-		| 'standard'
-		| 'pioneer'
-		| 'modern'
-		| 'legacy'
-		| 'vintage'
-		| 'commander'
-		| 'pauper'
-		| 'historic'
-		| 'explorer'
-		| 'alchemy'
-		| 'brawl'
-		| 'token';
+export type MtgFormat =
+	| 'all'
+	| 'standard'
+	| 'pioneer'
+	| 'modern'
+	| 'legacy'
+	| 'vintage'
+	| 'commander'
+	| 'pauper'
+	| 'historic'
+	| 'explorer'
+	| 'alchemy'
+	| 'brawl'
+	| 'token';

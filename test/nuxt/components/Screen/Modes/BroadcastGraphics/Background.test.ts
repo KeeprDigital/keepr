@@ -5,10 +5,12 @@ import Background from '~/components/Screen/Modes/BroadcastGraphics/Background.v
 
 enableAutoUnmount(afterEach);
 
-async function mountCard(props: {
-	background?: BroadcastGraphicsBackgroundConfig;
-	writable?: boolean;
-} = {}) {
+async function mountCard(
+	props: {
+		background?: BroadcastGraphicsBackgroundConfig;
+		writable?: boolean;
+	} = {},
+) {
 	return mount(Background, {
 		props: { writable: true, ...props },
 	});
@@ -35,11 +37,17 @@ describe('screenModesBroadcastGraphicsBackground', () => {
 	it('starts a Screen with no background on the shipped default, switched on', async () => {
 		const wrapper = await mountCard();
 
-		expect(wrapper.find('[data-testid="broadcast-graphics-background-opacity"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="broadcast-graphics-background-opacity"]').exists()).toBe(
+			false,
+		);
 
 		await toggleEnabled(wrapper, true);
 
-		expect(backgroundEmits(wrapper).at(-1)?.[0]).toEqual({ enabled: true, effect: 'fog', opacity: 1 });
+		expect(backgroundEmits(wrapper).at(-1)?.[0]).toEqual({
+			enabled: true,
+			effect: 'fog',
+			opacity: 1,
+		});
 	});
 
 	it('keeps the authored effect and its params when the background is switched off', async () => {
@@ -94,12 +102,16 @@ describe('screenModesBroadcastGraphicsBackground', () => {
 			},
 		});
 
-		wrapper.getComponent({ name: 'ScreenAnimationEffectFields' })
-			.vm
-			.$emit('update:selection', { effect: 'cells' });
+		wrapper
+			.getComponent({ name: 'ScreenAnimationEffectFields' })
+			.vm.$emit('update:selection', { effect: 'cells' });
 		await wrapper.vm.$nextTick();
 
-		expect(backgroundEmits(wrapper).at(-1)?.[0]).toEqual({ enabled: true, effect: 'cells', opacity: 0.4 });
+		expect(backgroundEmits(wrapper).at(-1)?.[0]).toEqual({
+			enabled: true,
+			effect: 'cells',
+			opacity: 0.4,
+		});
 	});
 
 	it('starts over from the defaults for a stored background this build cannot render', async () => {
@@ -107,14 +119,24 @@ describe('screenModesBroadcastGraphicsBackground', () => {
 		// naming an effect this build does not ship starts the card over from the
 		// defaults rather than carrying fields no effect declares into the next write.
 		const wrapper = await mountCard({
-			background: { enabled: true, effect: 'vanta-birds', opacity: 0.4 } as unknown as BroadcastGraphicsBackgroundConfig,
+			background: {
+				enabled: true,
+				effect: 'vanta-birds',
+				opacity: 0.4,
+			} as unknown as BroadcastGraphicsBackgroundConfig,
 		});
 
-		expect(wrapper.find('[data-testid="broadcast-graphics-background-opacity"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="broadcast-graphics-background-opacity"]').exists()).toBe(
+			false,
+		);
 
 		await toggleEnabled(wrapper, true);
 
-		expect(backgroundEmits(wrapper).at(-1)?.[0]).toEqual({ enabled: true, effect: 'fog', opacity: 1 });
+		expect(backgroundEmits(wrapper).at(-1)?.[0]).toEqual({
+			enabled: true,
+			effect: 'fog',
+			opacity: 1,
+		});
 	});
 
 	it('writes nothing without the Graphics Authoring Lease', async () => {
@@ -150,7 +172,9 @@ describe('screenModesBroadcastGraphicsBackground', () => {
 		localStorage.clear();
 		const wrapper = await mountCard({ background });
 
-		const toggle = wrapper.get('[data-testid="broadcast-graphics-background-settings"] button[aria-expanded]');
+		const toggle = wrapper.get(
+			'[data-testid="broadcast-graphics-background-settings"] button[aria-expanded]',
+		);
 		expect(toggle.attributes('aria-expanded')).toBe('false');
 		expect(toggle.text()).toContain('Background');
 		expect(toggle.text()).toContain(summary);

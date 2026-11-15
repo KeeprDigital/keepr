@@ -3,7 +3,11 @@ import type { DropdownMenuItem } from '@nuxt/ui';
 import type { GraphicItemPlacementRefusal } from '~~/shared/modules/graphics';
 import type { GraphicItemKind } from '~~/shared/types/graphics';
 import type { GraphicsEditor } from '~/composables/useGraphicsEditor';
-import type { GraphicsEditorLayer, GraphicsEditorTree, GraphicsLayerListSection } from '~/modules/graphics/editor/host';
+import type {
+	GraphicsEditorLayer,
+	GraphicsEditorTree,
+	GraphicsLayerListSection,
+} from '~/modules/graphics/editor/host';
 import type { LayerDrop } from '~/modules/graphics/editor/layerDrag';
 import {
 	graphicGroupChildDefinitionsForHost,
@@ -88,28 +92,23 @@ interface LayerRow {
 
 function layerRow(layer: L): LayerRow | null {
 	const config = layerConfig(props.tree, props.document, layer);
-	if (!config)
-		return null;
+	if (!config) return null;
 	const location = layerItemLocation(props.tree, props.document, layer);
 	const siblings = location
-		? (location.group?.children ?? location.composition.items).map(item => item.id)
-		: props.tree.owned?.siblings(props.document, layer).map(sibling => props.tree.key(sibling)) ?? [];
-	const index = siblings.indexOf(location
-		? location.item.id
-		: props.tree.key(layer));
+		? (location.group?.children ?? location.composition.items).map((item) => item.id)
+		: (props.tree.owned
+				?.siblings(props.document, layer)
+				.map((sibling) => props.tree.key(sibling)) ?? []);
+	const index = siblings.indexOf(location ? location.item.id : props.tree.key(layer));
 	return {
 		key: props.tree.key(layer),
 		target: layer,
 		label: config.label,
-		kind: location
-			? graphicItemKindLabel(location.item.type)
-			: props.tree.owned?.label ?? '',
+		kind: location ? graphicItemKindLabel(location.item.type) : (props.tree.owned?.label ?? ''),
 		icon: location
 			? graphicItemIcon(location.item.type)
-			: props.tree.owned?.icon ?? 'i-lucide-square',
-		depth: location?.group
-			? 1
-			: 0,
+			: (props.tree.owned?.icon ?? 'i-lucide-square'),
+		depth: location?.group ? 1 : 0,
 		visible: config.visible !== false,
 		isGroup: location?.item.type === 'group',
 		canMoveForward: index >= 0 && index < siblings.length - 1,
@@ -117,21 +116,23 @@ function layerRow(layer: L): LayerRow | null {
 	};
 }
 
-const sectionRows = computed(() => props.sections.map(section => ({
-	section,
-	rows: section.layers.flatMap((layer) => {
-		const row = layerRow(layer);
-		return row
-			? [row]
-			: [];
-	}),
-})));
+const sectionRows = computed(() =>
+	props.sections.map((section) => ({
+		section,
+		rows: section.layers.flatMap((layer) => {
+			const row = layerRow(layer);
+			return row ? [row] : [];
+		}),
+	})),
+);
 
 const allRows = computed(() => sectionRows.value.flatMap(({ rows }) => rows));
 
 const writable = computed(() => props.editor.writable.value);
 const severalSelected = computed(() => props.editor.layers.value.length > 1);
-const canvasSelected = computed(() => props.editor.layers.value.length === 0 && !props.hostSelected);
+const canvasSelected = computed(
+	() => props.editor.layers.value.length === 0 && !props.hostSelected,
+);
 
 /** Whether this session may edit a row now: it holds the lease, and the host does not forbid the layer. */
 function editable(row: LayerRow) {
@@ -143,18 +144,15 @@ function isSelected(row: LayerRow) {
 }
 
 /** The one selected layer's key, or none with none or several. */
-const selectedKey = computed(() => props.editor.layers.value.length === 1
-	? props.tree.key(props.editor.layers.value[0]!)
-	: null);
+const selectedKey = computed(() =>
+	props.editor.layers.value.length === 1 ? props.tree.key(props.editor.layers.value[0]!) : null,
+);
 
 /** A plain click selects the row alone; Shift selects a run, and ⌘ or Ctrl adds or takes out one. */
 function clickRow(event: MouseEvent, row: LayerRow) {
-	if (isSelectionToggle(event))
-		props.editor.toggleSelect(row.target);
-	else if (event.shiftKey)
-		props.editor.extendSelect(row.target);
-	else
-		props.editor.select(row.target);
+	if (isSelectionToggle(event)) props.editor.toggleSelect(row.target);
+	else if (event.shiftKey) props.editor.extendSelect(row.target);
+	else props.editor.select(row.target);
 }
 
 function selectCanvas() {
@@ -167,11 +165,13 @@ function selectCanvas() {
 const addMenu = computed<DropdownMenuItem[][]>(() => {
 	const items: DropdownMenuItem[][] = [];
 	if (props.editor.canAddItem()) {
-		items.push(graphicItemDefinitionsForHost(props.tree.host).map(definition => ({
-			label: definition.label,
-			icon: definition.icon,
-			onSelect: () => props.editor.addItem(definition.kind),
-		})));
+		items.push(
+			graphicItemDefinitionsForHost(props.tree.host).map((definition) => ({
+				label: definition.label,
+				icon: definition.icon,
+				onSelect: () => props.editor.addItem(definition.kind),
+			})),
+		);
 	}
 	const owned = props.tree.owned;
 	const extras: DropdownMenuItem[] = [
@@ -186,17 +186,17 @@ const addMenu = computed<DropdownMenuItem[][]>(() => {
 			: []),
 		...(props.hostAddItems ?? []),
 	];
-	if (extras.length > 0)
-		items.push(extras);
+	if (extras.length > 0) items.push(extras);
 	const group = props.editor.selectedGroup.value;
 	const current = props.editor.selection.value;
 	if (group && current.type !== 'canvas' && props.editor.mayEdit(current as L)) {
 		items.push([
 			{ type: 'label', label: `Add to ${group.label}` },
-			...graphicGroupChildDefinitionsForHost(props.tree.host).map(definition => ({
+			...graphicGroupChildDefinitionsForHost(props.tree.host).map((definition) => ({
 				label: definition.label,
 				icon: definition.icon,
-				onSelect: () => props.editor.addGroupChild(definition.kind as Exclude<GraphicItemKind, 'group'>),
+				onSelect: () =>
+					props.editor.addGroupChild(definition.kind as Exclude<GraphicItemKind, 'group'>),
 			})),
 		]);
 	}
@@ -208,33 +208,28 @@ const addMenu = computed<DropdownMenuItem[][]>(() => {
  * whole selection, as the keyboard does, and any other row for itself.
  */
 function rowTarget(row: LayerRow): L | undefined {
-	return severalSelected.value && isSelected(row)
-		? undefined
-		: row.target;
+	return severalSelected.value && isSelected(row) ? undefined : row.target;
 }
 
 const REFUSALS: Record<GraphicItemPlacementRefusal, string> = {
-	'rotated-into-arranged-group': 'A rotated layer can\'t go into a row or column group',
-	'group-into-group': 'A group can\'t go into another group',
+	'rotated-into-arranged-group': "A rotated layer can't go into a row or column group",
+	'group-into-group': "A group can't go into another group",
 	'not-a-group': 'Only a group takes layers in',
 };
 
 /** "Move to group": the keyboard's way into or out of a Graphic Group (#741). */
 function moveToGroupMenu(row: LayerRow): DropdownMenuItem[][] {
 	const moves = layerGroupMoves(props.tree, props.document, row.target);
-	if (moves.length === 0)
-		return [];
+	if (moves.length === 0) return [];
 	return [
 		[
 			{
 				label: 'Move to group',
 				icon: 'i-lucide-folder-input',
-				children: moves.map(move => ({
+				children: moves.map((move) => ({
 					label: move.label,
 					disabled: move.refusal !== null,
-					description: move.refusal
-						? REFUSALS[move.refusal]
-						: undefined,
+					description: move.refusal ? REFUSALS[move.refusal] : undefined,
 					onSelect: () => props.editor.place(row.target, move.place),
 				})),
 			},
@@ -252,9 +247,7 @@ function groupingMenu(row: LayerRow): DropdownMenuItem[] {
 				icon: 'i-lucide-group',
 				kbds: ['meta', 'g'],
 				disabled: refusal !== null,
-				description: refusal
-					? LAYER_GROUP_REFUSAL_REASONS[refusal]
-					: undefined,
+				description: refusal ? LAYER_GROUP_REFUSAL_REASONS[refusal] : undefined,
 				onSelect: () => props.editor.group(),
 			},
 		];
@@ -332,18 +325,14 @@ function rowMenu(row: LayerRow): DropdownMenuItem[][] {
 const rowElements = new Map<string, HTMLElement>();
 
 function setRowElement(key: string, element: unknown) {
-	if (element instanceof HTMLElement)
-		rowElements.set(key, element);
-	else
-		rowElements.delete(key);
+	if (element instanceof HTMLElement) rowElements.set(key, element);
+	else rowElements.delete(key);
 }
 
 /** The row chosen last, or the canvas with none. */
 const revealKey = computed(() => {
 	const anchor = props.editor.anchor.value;
-	return anchor
-		? props.tree.key(anchor)
-		: 'canvas';
+	return anchor ? props.tree.key(anchor) : 'canvas';
 });
 
 /**
@@ -354,21 +343,21 @@ const revealKey = computed(() => {
  */
 function revealSelectedRow() {
 	const row = rowElements.get(revealKey.value);
-	if (!row)
-		return;
+	if (!row) return;
 	let scroller = row.parentElement;
 	while (scroller && scroller !== document.body) {
 		const overflow = getComputedStyle(scroller).overflowY;
-		if ((overflow === 'auto' || overflow === 'scroll') && scroller.scrollHeight > scroller.clientHeight)
+		if (
+			(overflow === 'auto' || overflow === 'scroll') &&
+			scroller.scrollHeight > scroller.clientHeight
+		)
 			break;
 		scroller = scroller.parentElement;
 	}
-	if (!scroller || scroller === document.body)
-		return;
+	if (!scroller || scroller === document.body) return;
 	const rowBox = row.getBoundingClientRect();
 	const scrollerBox = scroller.getBoundingClientRect();
-	if (rowBox.top < scrollerBox.top)
-		scroller.scrollTop -= scrollerBox.top - rowBox.top + 8;
+	if (rowBox.top < scrollerBox.top) scroller.scrollTop -= scrollerBox.top - rowBox.top + 8;
 	else if (rowBox.bottom > scrollerBox.bottom)
 		scroller.scrollTop += rowBox.bottom - scrollerBox.bottom + 8;
 }
@@ -385,15 +374,12 @@ const draft = ref('');
 let renameInput: HTMLInputElement | null = null;
 
 function setRenameInput(element: unknown) {
-	renameInput = element instanceof HTMLInputElement
-		? element
-		: null;
+	renameInput = element instanceof HTMLInputElement ? element : null;
 }
 
 function startRename(row: LayerRow) {
 	props.editor.select(row.target);
-	if (!editable(row))
-		return;
+	if (!editable(row)) return;
 	renaming.value = row;
 	draft.value = row.label;
 	void nextTick(() => {
@@ -421,25 +407,21 @@ function refocusRow(row: LayerRow) {
  */
 function commitRename(options: { refocus: boolean }) {
 	const row = endRename();
-	if (!row)
-		return;
+	if (!row) return;
 	props.editor.rename(row.target, draft.value);
-	if (options.refocus)
-		refocusRow(row);
+	if (options.refocus) refocusRow(row);
 }
 
 function cancelRename() {
 	const row = endRename();
-	if (row)
-		refocusRow(row);
+	if (row) refocusRow(row);
 }
 
-const rowKeys = computed(() => allRows.value.map(row => row.key));
+const rowKeys = computed(() => allRows.value.map((row) => row.key));
 
 /** A row that leaves the list mid-rename takes its rename with it. */
 watch(rowKeys, (keys) => {
-	if (renaming.value && !keys.includes(renaming.value.key))
-		endRename();
+	if (renaming.value && !keys.includes(renaming.value.key)) endRename();
 });
 
 /**
@@ -447,8 +429,7 @@ watch(rowKeys, (keys) => {
  * renames it. A held Enter repeats, and its repeats are not a second press.
  */
 function rowKeydown(event: KeyboardEvent, row: LayerRow) {
-	if (event.repeat)
-		return;
+	if (event.repeat) return;
 	if (event.key === 'F2' || (event.key === 'Enter' && row.key === selectedKey.value)) {
 		event.preventDefault();
 		startRename(row);
@@ -464,13 +445,11 @@ function rowKeydown(event: KeyboardEvent, row: LayerRow) {
  */
 function renameKeydown(event: KeyboardEvent) {
 	event.stopPropagation();
-	if (event.isComposing)
-		return;
+	if (event.isComposing) return;
 	if (event.key === 'Enter') {
 		event.preventDefault();
 		commitRename({ refocus: true });
-	}
-	else if (event.key === 'Escape') {
+	} else if (event.key === 'Escape') {
 		event.preventDefault();
 		cancelRename();
 	}
@@ -502,17 +481,13 @@ function startDrag(event: DragEvent, row: LayerRow) {
 /** Only a drop that can land is accepted, so a refused one shows the browser's no-drop cursor. */
 function dragOver(event: DragEvent, row: LayerRow) {
 	const from = dragged.value;
-	if (!from)
-		return;
+	if (!from) return;
 	const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
-	const fraction = box.height > 0
-		? (event.clientY - box.top) / box.height
-		: 0;
+	const fraction = box.height > 0 ? (event.clientY - box.top) / box.height : 0;
 	drop.value = layerDropAt(props.tree, props.document, from.target, row.target, fraction);
 	if (drop.value && !drop.value.refusal) {
 		event.preventDefault();
-		if (event.dataTransfer)
-			event.dataTransfer.dropEffect = 'move';
+		if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
 	}
 }
 
@@ -524,22 +499,19 @@ function endDrag() {
 
 /** A row that leaves the list mid-drag fires no dragend, so its drag ends here. */
 watch(rowKeys, (keys) => {
-	if (dragged.value && !keys.includes(dragged.value.key))
-		endDrag();
+	if (dragged.value && !keys.includes(dragged.value.key)) endDrag();
 });
 
 /** The gaps between rows keep the drop the last row showed, so releasing there lands it. */
 function dragOverSection(event: DragEvent) {
-	if (dragged.value && drop.value && !drop.value.refusal)
-		event.preventDefault();
+	if (dragged.value && drop.value && !drop.value.refusal) event.preventDefault();
 }
 
 function dropOn(event: DragEvent) {
 	const from = dragged.value;
 	const landing = drop.value;
 	endDrag();
-	if (!from || !landing || landing.refusal)
-		return;
+	if (!from || !landing || landing.refusal) return;
 	event.preventDefault();
 	props.editor.place(from.target, landing.place);
 }
@@ -551,9 +523,7 @@ function leaveList(event: DragEvent) {
 		drop.value = null;
 }
 
-const dropRefusal = computed(() => drop.value?.refusal
-	? REFUSALS[drop.value.refusal]
-	: null);
+const dropRefusal = computed(() => (drop.value?.refusal ? REFUSALS[drop.value.refusal] : null));
 
 /**
  * The drop indicator a row shows: a line at an edge, a ring round a group taking
@@ -561,19 +531,20 @@ const dropRefusal = computed(() => drop.value?.refusal
  * child. Red where the drop is refused. Whole class names, for Tailwind to find.
  */
 const DROP_INDICATOR_CLASSES: Record<LayerDrop<L>['edge'], { open: string; refused: string }> = {
-	'top': {
+	top: {
 		open: 'shadow-[inset_0_2px_0_var(--ui-primary)]',
 		refused: 'shadow-[inset_0_2px_0_var(--ui-error)]',
 	},
-	'bottom': {
+	bottom: {
 		open: 'shadow-[inset_0_-2px_0_var(--ui-primary)]',
 		refused: 'shadow-[inset_0_-2px_0_var(--ui-error)]',
 	},
 	'below-group': {
 		open: 'relative after:absolute after:-left-4 after:right-0 after:bottom-0 after:h-0.5 after:bg-primary',
-		refused: 'relative after:absolute after:-left-4 after:right-0 after:bottom-0 after:h-0.5 after:bg-error',
+		refused:
+			'relative after:absolute after:-left-4 after:right-0 after:bottom-0 after:h-0.5 after:bg-error',
 	},
-	'inside': {
+	inside: {
 		open: 'ring-2 ring-primary',
 		refused: 'ring-2 ring-error',
 	},
@@ -581,12 +552,9 @@ const DROP_INDICATOR_CLASSES: Record<LayerDrop<L>['edge'], { open: string; refus
 
 function dropIndicatorClass(row: LayerRow) {
 	const landing = drop.value;
-	if (landing?.row !== row.key)
-		return '';
+	if (landing?.row !== row.key) return '';
 	const classes = DROP_INDICATOR_CLASSES[landing.edge];
-	return landing.refusal
-		? classes.refused
-		: classes.open;
+	return landing.refusal ? classes.refused : classes.open;
 }
 </script>
 
@@ -594,12 +562,8 @@ function dropIndicatorClass(row: LayerRow) {
 	<div class="relative space-y-3" data-testid="layer-list" @dragleave="leaveList">
 		<div class="flex items-center justify-between gap-2">
 			<div>
-				<p class="text-sm font-semibold">
-					Layers
-				</p>
-				<p class="text-xs text-muted">
-					Front at the top
-				</p>
+				<p class="text-sm font-semibold">Layers</p>
+				<p class="text-xs text-muted">Front at the top</p>
 			</div>
 			<UDropdownMenu :items="writable ? addMenu : []" :content="{ align: 'end' }">
 				<UButton
@@ -650,12 +614,14 @@ function dropIndicatorClass(row: LayerRow) {
 					<div
 						v-for="row in rows"
 						:key="row.key"
-						:ref="element => setRowElement(row.key, element)"
+						:ref="(element) => setRowElement(row.key, element)"
 						role="row"
 						:aria-selected="isSelected(row)"
 						class="group flex items-center gap-1 rounded-md border pr-1 transition"
 						:class="[
-							isSelected(row) ? 'border-primary/60 bg-primary/10' : 'border-transparent hover:bg-elevated/60',
+							isSelected(row)
+								? 'border-primary/60 bg-primary/10'
+								: 'border-transparent hover:bg-elevated/60',
 							row.depth === 1 ? 'ml-4' : '',
 							row.visible && dragged?.key !== row.key ? '' : 'opacity-60',
 							dropIndicatorClass(row),
@@ -686,13 +652,17 @@ function dropIndicatorClass(row: LayerRow) {
 									data-testid="layer-rename"
 									@keydown="renameKeydown"
 									@blur="commitRename({ refocus: false })"
-								>
+								/>
 							</div>
 							<button
 								v-else
 								type="button"
 								class="flex min-w-0 flex-1 select-none items-center gap-2 py-1.5 pl-2 text-left"
-								:title="editable(row) ? `${row.label} · ${row.kind} — double-click or F2 to rename` : `${row.label} · ${row.kind}`"
+								:title="
+									editable(row)
+										? `${row.label} · ${row.kind} — double-click or F2 to rename`
+										: `${row.label} · ${row.kind}`
+								"
 								data-testid="layer-select"
 								@click="clickRow($event, row)"
 								@dblclick="startRename(row)"
@@ -722,7 +692,11 @@ function dropIndicatorClass(row: LayerRow) {
 						<div
 							role="gridcell"
 							class="shrink-0"
-							:class="editor.isLocked(row.target) || (editable(row) && isSelected(row)) ? 'flex' : 'hidden group-hover:flex group-focus-within:flex'"
+							:class="
+								editor.isLocked(row.target) || (editable(row) && isSelected(row))
+									? 'flex'
+									: 'hidden group-hover:flex group-focus-within:flex'
+							"
 						>
 							<UButton
 								size="xs"
@@ -760,17 +734,23 @@ function dropIndicatorClass(row: LayerRow) {
 				Background
 			</p>
 			<button
-				:ref="element => setRowElement('canvas', element)"
+				:ref="(element) => setRowElement('canvas', element)"
 				type="button"
 				class="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition"
-				:class="canvasSelected ? 'border-primary/60 bg-primary/10' : 'border-transparent hover:bg-elevated/60'"
+				:class="
+					canvasSelected
+						? 'border-primary/60 bg-primary/10'
+						: 'border-transparent hover:bg-elevated/60'
+				"
 				:aria-current="canvasSelected ? 'true' : undefined"
 				data-testid="layer-canvas"
 				@click="selectCanvas"
 			>
 				<UIcon name="i-lucide-panels-top-left" class="size-4 shrink-0 text-muted" />
 				<span class="min-w-0 flex-1 truncate text-sm">Canvas</span>
-				<span class="shrink-0 text-[0.6875rem] text-dimmed">{{ canvasWidth }}×{{ canvasHeight }}</span>
+				<span class="shrink-0 text-[0.6875rem] text-dimmed"
+					>{{ canvasWidth }}×{{ canvasHeight }}</span
+				>
 			</button>
 		</div>
 	</div>

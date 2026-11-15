@@ -56,27 +56,29 @@ export interface GraphicsObjectStoreUnavailable {
 	};
 }
 
-export type BeginGraphicsMultipartOutcome = {
-	outcome: 'started';
-	upload: GraphicsMultipartUpload;
-} | GraphicsObjectStoreUnavailable;
+export type BeginGraphicsMultipartOutcome =
+	| {
+			outcome: 'started';
+			upload: GraphicsMultipartUpload;
+	  }
+	| GraphicsObjectStoreUnavailable;
 
-export type ResumeGraphicsMultipartOutcome
-	= | { outcome: 'resumed'; upload: GraphicsMultipartUpload }
-		| GraphicsObjectStoreUnavailable;
+export type ResumeGraphicsMultipartOutcome =
+	| { outcome: 'resumed'; upload: GraphicsMultipartUpload }
+	| GraphicsObjectStoreUnavailable;
 
-export type UploadGraphicsMultipartPartOutcome
-	= | { outcome: 'uploaded'; part: GraphicsMultipartPart }
-		| GraphicsObjectStoreUnavailable;
+export type UploadGraphicsMultipartPartOutcome =
+	| { outcome: 'uploaded'; part: GraphicsMultipartPart }
+	| GraphicsObjectStoreUnavailable;
 
-export type CompleteGraphicsMultipartOutcome
-	= | { outcome: 'created'; object: GraphicsObjectMetadata }
-		| GraphicsObjectStoreUnavailable;
+export type CompleteGraphicsMultipartOutcome =
+	| { outcome: 'created'; object: GraphicsObjectMetadata }
+	| GraphicsObjectStoreUnavailable;
 
-export type DeleteGraphicsObjectOutcome
-	= | { outcome: 'deleted' }
-		| { outcome: 'missing' }
-		| GraphicsObjectStoreUnavailable;
+export type DeleteGraphicsObjectOutcome =
+	| { outcome: 'deleted' }
+	| { outcome: 'missing' }
+	| GraphicsObjectStoreUnavailable;
 
 /**
  * Aborting is reclamation, so an upload the store no longer holds is the state
@@ -85,20 +87,20 @@ export type DeleteGraphicsObjectOutcome
  * checkpoint naming a gone upload can only be cleared by the 24h sweep — every
  * retry re-aborts it and refuses. Only `unavailable` leaves work behind. #293.
  */
-export type AbortGraphicsMultipartOutcome
-	= | { outcome: 'aborted' }
-		| { outcome: 'missing' }
-		| GraphicsObjectStoreUnavailable;
+export type AbortGraphicsMultipartOutcome =
+	| { outcome: 'aborted' }
+	| { outcome: 'missing' }
+	| GraphicsObjectStoreUnavailable;
 
-export type CreateImmutableGraphicsObjectOutcome
-	= | { outcome: 'created'; object: GraphicsObjectMetadata }
-		| { outcome: 'already-exists'; object: GraphicsObjectMetadata }
-		| GraphicsObjectStoreUnavailable;
+export type CreateImmutableGraphicsObjectOutcome =
+	| { outcome: 'created'; object: GraphicsObjectMetadata }
+	| { outcome: 'already-exists'; object: GraphicsObjectMetadata }
+	| GraphicsObjectStoreUnavailable;
 
-export type GraphicsObjectMetadataOutcome
-	= | { outcome: 'available'; object: GraphicsObjectMetadata }
-		| { outcome: 'missing' }
-		| GraphicsObjectStoreUnavailable;
+export type GraphicsObjectMetadataOutcome =
+	| { outcome: 'available'; object: GraphicsObjectMetadata }
+	| { outcome: 'missing' }
+	| GraphicsObjectStoreUnavailable;
 
 export interface GraphicsObjectRange {
 	offset: number;
@@ -106,13 +108,13 @@ export interface GraphicsObjectRange {
 	completeLength: number;
 }
 
-export type ReadGraphicsObjectOutcome
-	= | {
-		outcome: 'available';
-		object: GraphicsObjectMetadata;
-		body: ReadableStream<Uint8Array>;
-		range: GraphicsObjectRange;
-	}
+export type ReadGraphicsObjectOutcome =
+	| {
+			outcome: 'available';
+			object: GraphicsObjectMetadata;
+			body: ReadableStream<Uint8Array>;
+			range: GraphicsObjectRange;
+	  }
 	| { outcome: 'missing' }
 	| GraphicsObjectStoreUnavailable;
 
@@ -126,9 +128,9 @@ export interface GraphicsObjectStoreListing {
 	cursor?: string;
 }
 
-export type ListGraphicsObjectsOutcome
-	= | { outcome: 'listed'; listing: GraphicsObjectStoreListing }
-		| GraphicsObjectStoreUnavailable;
+export type ListGraphicsObjectsOutcome =
+	| { outcome: 'listed'; listing: GraphicsObjectStoreListing }
+	| GraphicsObjectStoreUnavailable;
 
 export interface GraphicsObjectStoreHealth {
 	checkHealth: () => Promise<{ outcome: 'healthy' } | GraphicsObjectStoreUnavailable>;
@@ -136,13 +138,20 @@ export interface GraphicsObjectStoreHealth {
 
 interface GraphicsObjectStoreAccess extends GraphicsObjectStoreHealth {
 	readMetadata: (identity: GraphicsObjectIdentity) => Promise<GraphicsObjectMetadataOutcome>;
-	read: (identity: GraphicsObjectIdentity, range?: { offset: number; length: number }) => Promise<ReadGraphicsObjectOutcome>;
+	read: (
+		identity: GraphicsObjectIdentity,
+		range?: { offset: number; length: number },
+	) => Promise<ReadGraphicsObjectOutcome>;
 	/**
 	 * One bounded page of stored objects. This is the only way the library can
 	 * observe bytes the catalogue never recorded, so it is deliberately a
 	 * paginated read rather than an enumeration of the whole store.
 	 */
-	list: (input?: { prefix?: string; cursor?: string; limit?: number }) => Promise<ListGraphicsObjectsOutcome>;
+	list: (input?: {
+		prefix?: string;
+		cursor?: string;
+		limit?: number;
+	}) => Promise<ListGraphicsObjectsOutcome>;
 	delete: (identity: GraphicsObjectIdentity) => Promise<DeleteGraphicsObjectOutcome>;
 }
 
@@ -151,7 +160,9 @@ interface GraphicsObjectStoreAccess extends GraphicsObjectStoreHealth {
  * completion operation, so callers cannot overwrite a digest-owned identity.
  */
 export interface GraphicsCanonicalObjectStore extends GraphicsObjectStoreAccess {
-	createImmutable: (input: CreateImmutableGraphicsObjectInput) => Promise<CreateImmutableGraphicsObjectOutcome>;
+	createImmutable: (
+		input: CreateImmutableGraphicsObjectInput,
+	) => Promise<CreateImmutableGraphicsObjectOutcome>;
 }
 
 /**
@@ -159,9 +170,16 @@ export interface GraphicsCanonicalObjectStore extends GraphicsObjectStoreAccess 
  * resumable multipart transfer before validation and canonical publication.
  */
 export interface GraphicsStagingObjectStore extends GraphicsObjectStoreAccess {
-	createImmutable: (input: CreateImmutableGraphicsObjectInput) => Promise<CreateImmutableGraphicsObjectOutcome>;
-	beginMultipart: (input: Pick<CreateImmutableGraphicsObjectInput, 'identity' | 'metadata'>) => Promise<BeginGraphicsMultipartOutcome>;
-	resumeMultipart: (identity: GraphicsObjectIdentity, uploadId: GraphicsMultipartUploadIdentity) => Promise<ResumeGraphicsMultipartOutcome>;
+	createImmutable: (
+		input: CreateImmutableGraphicsObjectInput,
+	) => Promise<CreateImmutableGraphicsObjectOutcome>;
+	beginMultipart: (
+		input: Pick<CreateImmutableGraphicsObjectInput, 'identity' | 'metadata'>,
+	) => Promise<BeginGraphicsMultipartOutcome>;
+	resumeMultipart: (
+		identity: GraphicsObjectIdentity,
+		uploadId: GraphicsMultipartUploadIdentity,
+	) => Promise<ResumeGraphicsMultipartOutcome>;
 	uploadPart: (input: {
 		upload: GraphicsMultipartUpload;
 		partNumber: number;
@@ -174,21 +192,21 @@ export interface GraphicsStagingObjectStore extends GraphicsObjectStoreAccess {
 	abortMultipart: (upload: GraphicsMultipartUpload) => Promise<AbortGraphicsMultipartOutcome>;
 }
 
-export type GraphicsCanonicalObjectStoreOperation
-	= | 'health'
-		| 'create'
-		| 'metadata'
-		| 'read'
-		| 'list'
-		| 'delete';
+export type GraphicsCanonicalObjectStoreOperation =
+	| 'health'
+	| 'create'
+	| 'metadata'
+	| 'read'
+	| 'list'
+	| 'delete';
 
-export type GraphicsStagingObjectStoreOperation
-	= | GraphicsCanonicalObjectStoreOperation
-		| 'multipart-start'
-		| 'multipart-resume'
-		| 'multipart-upload-part'
-		| 'multipart-complete'
-		| 'multipart-abort';
+export type GraphicsStagingObjectStoreOperation =
+	| GraphicsCanonicalObjectStoreOperation
+	| 'multipart-start'
+	| 'multipart-resume'
+	| 'multipart-upload-part'
+	| 'multipart-complete'
+	| 'multipart-abort';
 
 export interface InMemoryGraphicsObjectStoreControls<
 	Operation extends GraphicsStagingObjectStoreOperation,
@@ -198,13 +216,11 @@ export interface InMemoryGraphicsObjectStoreControls<
 	injectTransientFailure: (operation: Operation, count?: number) => void;
 }
 
-export type InMemoryGraphicsCanonicalObjectStore
-	= GraphicsCanonicalObjectStore
-		& InMemoryGraphicsObjectStoreControls<GraphicsCanonicalObjectStoreOperation>;
+export type InMemoryGraphicsCanonicalObjectStore = GraphicsCanonicalObjectStore &
+	InMemoryGraphicsObjectStoreControls<GraphicsCanonicalObjectStoreOperation>;
 
-export type InMemoryGraphicsStagingObjectStore
-	= GraphicsStagingObjectStore
-		& InMemoryGraphicsObjectStoreControls<GraphicsStagingObjectStoreOperation>;
+export type InMemoryGraphicsStagingObjectStore = GraphicsStagingObjectStore &
+	InMemoryGraphicsObjectStoreControls<GraphicsStagingObjectStoreOperation>;
 
 export class GraphicsObjectInputError extends Error {}
 
@@ -225,28 +241,33 @@ export function createBoundedByteStream(
 	if (options.byteLength > options.maximumByteLength)
 		throw new GraphicsObjectInputError('Byte stream exceeds its maximum byte length');
 
-	const source = input instanceof Uint8Array
-		? new ReadableStream<Uint8Array>({
-				start(controller) {
-					controller.enqueue(input);
-					controller.close();
-				},
-			})
-		: input;
+	const source =
+		input instanceof Uint8Array
+			? new ReadableStream<Uint8Array>({
+					start(controller) {
+						controller.enqueue(input);
+						controller.close();
+					},
+				})
+			: input;
 
 	let observedByteLength = 0;
-	const boundedBody = source.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
-		transform(chunk, controller) {
-			observedByteLength += chunk.byteLength;
-			if (observedByteLength > options.maximumByteLength)
-				throw new GraphicsObjectInputError('Byte stream exceeded its maximum byte length');
-			controller.enqueue(chunk);
-		},
-		flush() {
-			if (observedByteLength !== options.byteLength)
-				throw new GraphicsObjectInputError(`Byte stream length mismatch: expected ${options.byteLength}, received ${observedByteLength}`);
-		},
-	}));
+	const boundedBody = source.pipeThrough(
+		new TransformStream<Uint8Array, Uint8Array>({
+			transform(chunk, controller) {
+				observedByteLength += chunk.byteLength;
+				if (observedByteLength > options.maximumByteLength)
+					throw new GraphicsObjectInputError('Byte stream exceeded its maximum byte length');
+				controller.enqueue(chunk);
+			},
+			flush() {
+				if (observedByteLength !== options.byteLength)
+					throw new GraphicsObjectInputError(
+						`Byte stream length mismatch: expected ${options.byteLength}, received ${observedByteLength}`,
+					);
+			},
+		}),
+	);
 
 	return {
 		body: boundedBody,
@@ -263,27 +284,24 @@ export function boundedByteStreamWithDeadline(
 		throw new GraphicsObjectInputError('Byte stream timeout must be a positive safe integer');
 	return {
 		...bytes,
-		body: bytes.body.pipeThrough(
-			new TransformStream<Uint8Array, Uint8Array>(),
-			{
-				signal: AbortSignal.timeout(timeoutMilliseconds),
-			},
-		),
+		body: bytes.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>(), {
+			signal: AbortSignal.timeout(timeoutMilliseconds),
+		}),
 	};
 }
 
 export function rethrowGraphicsObjectInputError(error: unknown): void {
 	let current = error;
 	while (current instanceof Error) {
-		if (current instanceof GraphicsObjectInputError)
-			throw current;
+		if (current instanceof GraphicsObjectInputError) throw current;
 		current = current.cause;
 	}
 }
 
-export function validateRequestedRange(range: { offset: number; length: number } | undefined): void {
-	if (!range)
-		return;
+export function validateRequestedRange(
+	range: { offset: number; length: number } | undefined,
+): void {
+	if (!range) return;
 	if (!Number.isSafeInteger(range.offset) || range.offset < 0)
 		throw new GraphicsObjectInputError('Range offset must be a non-negative safe integer');
 	if (!Number.isSafeInteger(range.length) || range.length <= 0)
@@ -309,8 +327,7 @@ export async function consumeBoundedByteStream(bytes: BoundedByteStream): Promis
 
 	while (true) {
 		const { done, value } = await reader.read();
-		if (done)
-			break;
+		if (done) break;
 		observedByteLength += value.byteLength;
 		if (observedByteLength > bytes.maximumByteLength)
 			throw new GraphicsObjectInputError('Byte stream exceeded its maximum byte length');
@@ -318,7 +335,9 @@ export async function consumeBoundedByteStream(bytes: BoundedByteStream): Promis
 	}
 
 	if (observedByteLength !== bytes.byteLength)
-		throw new GraphicsObjectInputError(`Byte stream length mismatch: expected ${bytes.byteLength}, received ${observedByteLength}`);
+		throw new GraphicsObjectInputError(
+			`Byte stream length mismatch: expected ${bytes.byteLength}, received ${observedByteLength}`,
+		);
 
 	const result = new Uint8Array(observedByteLength);
 	let offset = 0;

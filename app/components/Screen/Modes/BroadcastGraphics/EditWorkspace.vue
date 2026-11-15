@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { BroadcastGraphicsBackgroundConfig } from '~~/shared/animationEffects';
-import type { BroadcastGraphicConfig, GraphicChannelConfig, GraphicRect } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicChannelConfig,
+	GraphicRect,
+} from '~~/shared/types/graphics';
 import type { GraphicsAuthoringLeaseStatus } from '~/composables/screen/useGraphicsAuthoringLease';
 import type { GraphicsSelectionTarget } from '~/modules/graphics/selection';
 import type { Screen } from '~/types';
@@ -80,13 +84,15 @@ const emit = defineEmits<{
 	 * any membership the change releases or assigns — one write, because deleting a
 	 * lane and releasing its members must never be two.
 	 */
-	'update:channels': [next: { channels?: GraphicChannelConfig[]; graphics?: BroadcastGraphicConfig[] }];
+	'update:channels': [
+		next: { channels?: GraphicChannelConfig[]; graphics?: BroadcastGraphicConfig[] },
+	];
 	/** The Screen's one background: its effect, its params, and whether it shows. */
 	'update:background': [background: BroadcastGraphicsBackgroundConfig];
 	'update:selectedTarget': [target: GraphicsSelectionTarget];
-	'takeOver': [];
+	takeOver: [];
 	/** Re-send the failed save's still-held updates. */
-	'retrySave': [];
+	retrySave: [];
 }>();
 
 /**
@@ -95,8 +101,8 @@ const emit = defineEmits<{
  * Saving copies one finished design, not the Screen's whole stack, so the library
  * offers exactly the graphic the author is looking at.
  */
-const selectedGraphic = computed(() =>
-	props.graphics.find(graphic => graphic.id === props.selectedGraphicId) ?? null,
+const selectedGraphic = computed(
+	() => props.graphics.find((graphic) => graphic.id === props.selectedGraphicId) ?? null,
 );
 
 /**
@@ -134,12 +140,17 @@ const playoutNow = useBroadcastGraphicsPlayoutClock(
 	() => props.graphics,
 	() => props.channels,
 );
-const onAirGraphicIds = computed(() => new Set(sessionStore.onAirGraphicIds(
-	props.screen.id,
-	props.graphics,
-	playoutNow.value,
-	props.channels,
-)));
+const onAirGraphicIds = computed(
+	() =>
+		new Set(
+			sessionStore.onAirGraphicIds(
+				props.screen.id,
+				props.graphics,
+				playoutNow.value,
+				props.channels,
+			),
+		),
+);
 
 /** A placement is a new Broadcast Graphic, and the author is put straight on it. */
 function selectPlacedGraphic(graphicId: string) {
@@ -183,20 +194,20 @@ const toast = useToast();
 const host = broadcastGraphicsEditorHost({
 	graphics: () => props.graphics,
 	channels: () => props.channels,
-	write: graphics => emit('update:graphics', graphics),
+	write: (graphics) => emit('update:graphics', graphics),
 	selectedGraphicId: () => props.selectedGraphicId,
 	canvasWidth: () => props.canvasWidth,
 	canvasHeight: () => props.canvasHeight,
 	writable: holdsLease,
 	held: placing,
 	onAir: mayBeOnAir,
-	onStepWithheld: step => toast.add({
-		title: step === 'undo'
-			? 'Nothing undone'
-			: 'Nothing redone',
-		description: 'That step changes a Broadcast Graphic that may be on air. It is kept until the graphic is off air.',
-		color: 'warning',
-	}),
+	onStepWithheld: (step) =>
+		toast.add({
+			title: step === 'undo' ? 'Nothing undone' : 'Nothing redone',
+			description:
+				'That step changes a Broadcast Graphic that may be on air. It is kept until the graphic is off air.',
+			color: 'warning',
+		}),
 });
 const editor = useGraphicsEditor(host);
 const { layers } = editor;
@@ -212,8 +223,7 @@ provide(NUMBER_SCRUB_GESTURE, {
 
 /** A placement undoes as one step: the stack from before it is recorded as it starts. */
 watch(placing, (isPlacing) => {
-	if (isPlacing)
-		editor.checkpoint();
+	if (isPlacing) editor.checkpoint();
 });
 
 /*
@@ -227,55 +237,57 @@ function editorTarget(): GraphicsSelectionTarget | null {
 	if (selected.length === 1)
 		return { type: 'item', graphicId: selected[0]!.graphicId, itemId: selected[0]!.itemId };
 	const anchor = editor.anchor.value;
-	if (selected.length > 1 && anchor)
-		return { type: 'graphic', graphicId: anchor.graphicId };
+	if (selected.length > 1 && anchor) return { type: 'graphic', graphicId: anchor.graphicId };
 	// No layer left: a removed item gives way to its graphic, as long as it stands.
 	const stale = props.selectedTarget;
-	if (stale.type !== 'item')
-		return null;
-	return props.graphics.some(graphic => graphic.id === stale.graphicId)
+	if (stale.type !== 'item') return null;
+	return props.graphics.some((graphic) => graphic.id === stale.graphicId)
 		? { type: 'graphic', graphicId: stale.graphicId }
 		: { type: 'canvas' };
 }
 
-watch(layers, () => {
-	const target = editorTarget();
-	if (target && graphicsSelectionKey(target) !== graphicsSelectionKey(props.selectedTarget))
-		emit('update:selectedTarget', target);
-}, { flush: 'sync' });
+watch(
+	layers,
+	() => {
+		const target = editorTarget();
+		if (target && graphicsSelectionKey(target) !== graphicsSelectionKey(props.selectedTarget))
+			emit('update:selectedTarget', target);
+	},
+	{ flush: 'sync' },
+);
 
-watch(() => props.selectedTarget, (target) => {
-	const selected = layers.value;
-	if (target.type === 'item') {
-		const one = selected.length === 1
-			&& selected[0]!.graphicId === target.graphicId
-			&& selected[0]!.itemId === target.itemId;
-		if (!one)
-			editor.select({ type: 'item', graphicId: target.graphicId, itemId: target.itemId });
-		return;
-	}
-	const keep = target.type === 'graphic'
-		&& selected.length > 1
-		&& selected.every(layer => layer.graphicId === target.graphicId);
-	if (selected.length > 0 && !keep)
-		editor.select(CANVAS_SELECTION);
-}, { immediate: true });
+watch(
+	() => props.selectedTarget,
+	(target) => {
+		const selected = layers.value;
+		if (target.type === 'item') {
+			const one =
+				selected.length === 1 &&
+				selected[0]!.graphicId === target.graphicId &&
+				selected[0]!.itemId === target.itemId;
+			if (!one) editor.select({ type: 'item', graphicId: target.graphicId, itemId: target.itemId });
+			return;
+		}
+		const keep =
+			target.type === 'graphic' &&
+			selected.length > 1 &&
+			selected.every((layer) => layer.graphicId === target.graphicId);
+		if (selected.length > 0 && !keep) editor.select(CANVAS_SELECTION);
+	},
+	{ immediate: true },
+);
 
 /** A Broadcast Graphic selected from its row, or none with the canvas. */
 function selectGraphic(graphicId: string | null) {
-	emit('update:selectedTarget', graphicId
-		? { type: 'graphic', graphicId }
-		: { type: 'canvas' });
+	emit('update:selectedTarget', graphicId ? { type: 'graphic', graphicId } : { type: 'canvas' });
 }
 
 /** A click in the preview selects what it hits alone; a ⌘- or Ctrl-click adds an item or takes it out. */
 function selectInPreview(target: GraphicsSelectionTarget, toggle = false) {
 	if (target.type === 'item') {
 		const layer = { type: 'item', graphicId: target.graphicId, itemId: target.itemId } as const;
-		if (toggle)
-			editor.toggleSelect(layer);
-		else
-			editor.select(layer);
+		if (toggle) editor.toggleSelect(layer);
+		else editor.select(layer);
 		return;
 	}
 	editor.select(CANVAS_SELECTION);
@@ -283,15 +295,17 @@ function selectInPreview(target: GraphicsSelectionTarget, toggle = false) {
 }
 
 /** Each selected layer's stored rectangle, for the panel that edits several. */
-const selectedRects = computed(() => layers.value.flatMap((layer) => {
-	const rect = layerConfig(host.tree, props.graphics, layer);
-	return rect
-		? [rect]
-		: [];
-}));
+const selectedRects = computed(() =>
+	layers.value.flatMap((layer) => {
+		const rect = layerConfig(host.tree, props.graphics, layer);
+		return rect ? [rect] : [];
+	}),
+);
 
 /** Whether the Broadcast Graphic the inspector shows may be on air, and so is not edited. */
-const selectedOnAir = computed(() => selectedGraphic.value !== null && !editor.mayEditComposition(selectedGraphic.value));
+const selectedOnAir = computed(
+	() => selectedGraphic.value !== null && !editor.mayEditComposition(selectedGraphic.value),
+);
 
 /**
  * Where the preview's canvas handles go (#1101), with the lines they snap to:
@@ -299,12 +313,14 @@ const selectedOnAir = computed(() => selectedGraphic.value !== null && !editor.m
  * snap guides show to an observer, during a placement, or over a graphic that
  * may be on air.
  */
-const selectionFrame = computed(() => canAuthor.value && !selectedOnAir.value
-	? editor.selectionFrame.value
-	: null);
-const selectionLabel = computed(() => severalSelected.value
-	? `${layers.value.length} layers`
-	: layers.value[0] && layerConfig(host.tree, props.graphics, layers.value[0])?.label);
+const selectionFrame = computed(() =>
+	canAuthor.value && !selectedOnAir.value ? editor.selectionFrame.value : null,
+);
+const selectionLabel = computed(() =>
+	severalSelected.value
+		? `${layers.value.length} layers`
+		: layers.value[0] && layerConfig(host.tree, props.graphics, layers.value[0])?.label,
+);
 
 // A canvas drag is bracketed as one gesture, so it undoes as one step however
 // long it pauses; the key coalesces frames arriving outside one.
@@ -359,8 +375,12 @@ function rotate(rotation: number, gesture: number) {
 			</UFieldGroup>
 		</div>
 
-		<div class="grid min-h-[calc(100vh-18rem)] items-start gap-4 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)_minmax(19rem,24rem)] 2xl:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)_minmax(24rem,30rem)]">
-			<section class="min-w-0 rounded-lg border border-default/70 bg-default p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+		<div
+			class="grid min-h-[calc(100vh-18rem)] items-start gap-4 xl:grid-cols-[minmax(15rem,18rem)_minmax(0,1fr)_minmax(19rem,24rem)] 2xl:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)_minmax(24rem,30rem)]"
+		>
+			<section
+				class="min-w-0 rounded-lg border border-default/70 bg-default p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto"
+			>
 				<BroadcastGraphicsLayerList
 					:graphics="graphics"
 					:editor="editor"
@@ -473,7 +493,9 @@ function rotate(rotation: number, gesture: number) {
 				/>
 			</section>
 
-			<section class="min-w-0 rounded-lg border border-default/70 bg-default p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto">
+			<section
+				class="min-w-0 rounded-lg border border-default/70 bg-default p-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto"
+			>
 				<GraphicsMultiLayerInspector
 					v-if="severalSelected"
 					:rects="selectedRects"
@@ -483,8 +505,8 @@ function rotate(rotation: number, gesture: number) {
 					:can-distribute="editor.canDistribute()"
 					@update="editor.setLayersGeometry"
 					@group="editor.group()"
-					@align="edge => editor.align(edge)"
-					@distribute="axis => editor.distribute(axis)"
+					@align="(edge) => editor.align(edge)"
+					@distribute="(axis) => editor.distribute(axis)"
 				/>
 				<template v-else>
 					<UAlert
@@ -494,9 +516,11 @@ function rotate(rotation: number, gesture: number) {
 						variant="soft"
 						icon="i-lucide-radio"
 						:title="playoutDisconnected ? 'Playout unknown' : 'On air'"
-						:description="playoutDisconnected
-							? 'Whether this Broadcast Graphic is on air cannot be known until the connection returns, so it cannot be edited until then.'
-							: 'This Broadcast Graphic is composing into a program output, so it cannot be edited until it is off air.'"
+						:description="
+							playoutDisconnected
+								? 'Whether this Broadcast Graphic is on air cannot be known until the connection returns, so it cannot be edited until then.'
+								: 'This Broadcast Graphic is composing into a program output, so it cannot be edited until it is off air.'
+						"
 						data-testid="edit-on-air-notice"
 					/>
 					<GraphicsCompositorInspector

@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
 	}
 
 	const nameOf = (talentId: number | null) =>
-		found.talents.find(talent => talent.id === talentId)?.name ?? '';
+		found.talents.find((talent) => talent.id === talentId)?.name ?? '';
 
 	setResponseHeader(event, 'access-control-allow-origin', '*');
 	setResponseHeader(event, 'cache-control', 'no-store');

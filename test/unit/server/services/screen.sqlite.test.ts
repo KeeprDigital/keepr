@@ -9,7 +9,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // configuration rather than replacing it.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -19,10 +20,15 @@ vi.doMock('~~/server/db', () => ({ db }));
 const { screenService } = await import('~~/server/services/screen');
 
 let eventId: number;
-const capability = { assetCapabilitySeed: 'seed-1', assetCapabilityVersion: 1, assetCapabilityDigest: 'digest-1' };
+const capability = {
+	assetCapabilitySeed: 'seed-1',
+	assetCapabilityVersion: 1,
+	assetCapabilityDigest: 'digest-1',
+};
 
 beforeAll(async () => {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	eventId = event!.id;
@@ -60,20 +66,36 @@ describe('screenService', () => {
 
 	it('rotates the capability only from the version the caller read', async () => {
 		const screen = await createScreen();
-		const next = { assetCapabilitySeed: 'seed-2', assetCapabilityVersion: 2, assetCapabilityDigest: 'rotated-digest' };
+		const next = {
+			assetCapabilitySeed: 'seed-2',
+			assetCapabilityVersion: 2,
+			assetCapabilityDigest: 'rotated-digest',
+		};
 
-		expect(await screenService().replaceAssetCapability(screen.id, eventId, next, 1)).toMatchObject(next);
-		await expect(screenService().replaceAssetCapability(screen.id, eventId, { ...next, assetCapabilityVersion: 3 }, 1))
-			.rejects
-			.toMatchObject({ statusCode: 409 });
+		expect(await screenService().replaceAssetCapability(screen.id, eventId, next, 1)).toMatchObject(
+			next,
+		);
+		await expect(
+			screenService().replaceAssetCapability(
+				screen.id,
+				eventId,
+				{ ...next, assetCapabilityVersion: 3 },
+				1,
+			),
+		).rejects.toMatchObject({ statusCode: 409 });
 		expect(await screenService().replaceAssetCapability(999_999, eventId, next, 2)).toBeUndefined();
 	});
 
 	it('writes only on the version it read, advancing it', async () => {
 		const screen = await createScreen();
 
-		expect(await screenService().update(screen.id, eventId, { name: 'Renamed' }, 0)).toMatchObject({ name: 'Renamed', stateVersion: 1 });
-		await expect(screenService().update(screen.id, eventId, { name: 'Stale' }, 0)).rejects.toMatchObject({ statusCode: 409 });
+		expect(await screenService().update(screen.id, eventId, { name: 'Renamed' }, 0)).toMatchObject({
+			name: 'Renamed',
+			stateVersion: 1,
+		});
+		await expect(
+			screenService().update(screen.id, eventId, { name: 'Stale' }, 0),
+		).rejects.toMatchObject({ statusCode: 409 });
 		expect((await stored(screen.id)).name).toBe('Renamed');
 		expect(await screenService().update(999_999, eventId, { name: 'Missing' }, 0)).toBeUndefined();
 	});
@@ -82,15 +104,22 @@ describe('screenService', () => {
 		const screen = await createScreen();
 
 		await screenService().update(screen.id, eventId, { name: 'With Companion' }, 0, [
-			db.update(schema.events).set({ name: 'Touched By Companion' }).where(eq(schema.events.id, eventId)),
+			db
+				.update(schema.events)
+				.set({ name: 'Touched By Companion' })
+				.where(eq(schema.events.id, eventId)),
 		]);
 
-		expect((await db.query.events.findFirst({
-			where: eq(schema.events.id, eventId),
-		}))?.name).toBe('Touched By Companion');
+		expect(
+			(
+				await db.query.events.findFirst({
+					where: eq(schema.events.id, eventId),
+				})
+			)?.name,
+		).toBe('Touched By Companion');
 	});
 
-	it('merges a mode\'s configuration into what is stored', async () => {
+	it("merges a mode's configuration into what is stored", async () => {
 		const screen = await createScreen({
 			modeConfigs: {
 				standings: { pageSize: 8, showRecord: true },

@@ -2,7 +2,12 @@
 import type { StandingsColumnKey } from '~~/shared/types/enums';
 import type { Player } from '~/types';
 import { getMtgGameData } from '~~/shared/utils/gameData';
-import { foundationTokenVar, foundationTypographyStyle, modeMotionVars, modeTokenVar } from '~/modules/screen-mode';
+import {
+	foundationTokenVar,
+	foundationTypographyStyle,
+	modeMotionVars,
+	modeTokenVar,
+} from '~/modules/screen-mode';
 
 const {
 	config,
@@ -74,9 +79,7 @@ function getCellStyle(key: StandingsColumnKey, player: Player) {
 
 /** A Position Change cell's direction, which its colour reads from. */
 function positionChangeKind(key: StandingsColumnKey, player: Player) {
-	return key === 'positionChange'
-		? positionChangeOf(player).kind
-		: undefined;
+	return key === 'positionChange' ? positionChangeOf(player).kind : undefined;
 }
 
 function getDeckColors(player: Player) {
@@ -108,9 +111,7 @@ const rowLayoutStyle = useTableRowLayout(useTemplateRef<HTMLElement>('tableRef')
 // Centred, and no wider than the config's max width; Auto fills the Screen.
 const contentStyle = computed(() => ({
 	width: '100%',
-	maxWidth: config.value.maxWidth === undefined
-		? undefined
-		: `${config.value.maxWidth}px`,
+	maxWidth: config.value.maxWidth === undefined ? undefined : `${config.value.maxWidth}px`,
 	marginInline: 'auto',
 }));
 
@@ -142,15 +143,22 @@ const displayStyle = {
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
-		<div class="standings-display broadcast-table-display flex flex-col h-full w-full" :style="displayStyle">
-			<div data-testid="standings-content" class="standings-content broadcast-table-content flex flex-col h-full w-full" :style="contentStyle">
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
+		<div
+			class="standings-display broadcast-table-display flex flex-col h-full w-full"
+			:style="displayStyle"
+		>
+			<div
+				data-testid="standings-content"
+				class="standings-content broadcast-table-content flex flex-col h-full w-full"
+				:style="contentStyle"
+			>
 				<!-- Header -->
-				<div v-if="config.showHeader" class="standings-header broadcast-table-title" :style="titleDividerStyle">
+				<div
+					v-if="config.showHeader"
+					class="standings-header broadcast-table-title"
+					:style="titleDividerStyle"
+				>
 					<h2 :style="titleStyle">
 						{{ headerText }}
 					</h2>

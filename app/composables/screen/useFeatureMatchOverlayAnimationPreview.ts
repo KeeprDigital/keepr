@@ -2,7 +2,10 @@ import type { Ref } from 'vue';
 import type { GraphicThemeTokens } from '~~/shared/modules/graphics';
 import type { BroadcastGraphicConfig } from '~~/shared/types/graphics';
 import type { GraphicsPreviewAnimationPlan } from '~/modules/graphics/previewMessages';
-import { FEATURE_MATCH_LAYOUT_ANIMATION_PHASES, FEATURE_MATCH_LAYOUT_COMPOSITION_ID } from '~~/shared/featureMatchLayoutComposition';
+import {
+	FEATURE_MATCH_LAYOUT_ANIMATION_PHASES,
+	FEATURE_MATCH_LAYOUT_COMPOSITION_ID,
+} from '~~/shared/featureMatchLayoutComposition';
 import { paintBroadcastGraphicThemeBindings } from '~~/shared/modules/graphics';
 import { resolveGraphicAnimationPreview } from '~/modules/graphics/animationPreview';
 import {
@@ -33,8 +36,7 @@ export function useFeatureMatchOverlayAnimationPreview(
 
 	const resolvedRun = computed(() => {
 		const current = plan.value;
-		if (!current || current.graphicId !== FEATURE_MATCH_LAYOUT_COMPOSITION_ID)
-			return null;
+		if (!current || current.graphicId !== FEATURE_MATCH_LAYOUT_COMPOSITION_ID) return null;
 		// Painted first, so a phase bound to a Theme token is timed by what it shows.
 		return resolveGraphicAnimationPreview(
 			paintBroadcastGraphicThemeBindings(composition.value, themeTokens.value),
@@ -43,18 +45,22 @@ export function useFeatureMatchOverlayAnimationPreview(
 		);
 	});
 	const { position } = useGraphicAnimationPreviewClock(
-		computed(() => resolvedRun.value ? plan.value : null),
+		computed(() => (resolvedRun.value ? plan.value : null)),
 		computed(() => resolvedRun.value?.timeline ?? []),
 	);
 
 	function handleMessage(message: MessageEvent) {
-		if (isGraphicsPreviewAnimationMessage(message, { origin: window.location.origin, source: window.parent }))
+		if (
+			isGraphicsPreviewAnimationMessage(message, {
+				origin: window.location.origin,
+				source: window.parent,
+			})
+		)
 			plan.value = readGraphicsPreviewAnimationPlan(message.data.plan);
 	}
 
 	onMounted(() => {
-		if (isPreview?.value)
-			window.addEventListener('message', handleMessage);
+		if (isPreview?.value) window.addEventListener('message', handleMessage);
 	});
 	onBeforeUnmount(() => window.removeEventListener('message', handleMessage));
 
@@ -62,8 +68,6 @@ export function useFeatureMatchOverlayAnimationPreview(
 		/** The composition as the run composes it: one item's motion isolated, or as authored. */
 		composition: computed(() => resolvedRun.value?.graphic ?? composition.value),
 		/** The composition's lifecycle phases for the compositor, or nothing at rest. */
-		animation: computed(() => position.value
-			? [position.value]
-			: undefined),
+		animation: computed(() => (position.value ? [position.value] : undefined)),
 	};
 }

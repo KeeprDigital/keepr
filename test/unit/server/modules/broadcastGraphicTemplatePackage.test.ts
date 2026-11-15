@@ -76,8 +76,7 @@ async function withGraphicItemDefinitionAt<T>(
 	definition.configurationVersion = configurationVersion;
 	try {
 		return await work();
-	}
-	finally {
+	} finally {
 		definition.configurationVersion = implemented;
 	}
 }
@@ -122,12 +121,14 @@ describe('a `.skgraphic` Template Package crossing an installation boundary', ()
 			canonical: createInMemoryCanonicalGraphicsObjectStore(),
 		});
 
-		await expect(unwired.initiateTemplatePackagePreflight({
-			idempotencyKey: `preflight-unwired-${++sequence}`,
-			initiatedBy: 'package-author',
-			sourceFileName: 'lower-third.skgraphic',
-			declaredByteLength: 1024,
-		})).rejects.toThrow(/payload registry/);
+		await expect(
+			unwired.initiateTemplatePackagePreflight({
+				idempotencyKey: `preflight-unwired-${++sequence}`,
+				initiatedBy: 'package-author',
+				sourceFileName: 'lower-third.skgraphic',
+				declaredByteLength: 1024,
+			}),
+		).rejects.toThrow(/payload registry/);
 	});
 
 	it('accepts a package whose Template really is a Broadcast Graphic', async () => {
@@ -135,7 +136,7 @@ describe('a `.skgraphic` Template Package crossing an installation boundary', ()
 
 		const report = reportOf(await preflight(await createLibrary('receiver'), archive));
 
-		expect(report.issues.filter(issue => issue.severity === 'error')).toEqual([]);
+		expect(report.issues.filter((issue) => issue.severity === 'error')).toEqual([]);
 		expect(report.outcome).not.toBe('rejected');
 	});
 
@@ -146,26 +147,31 @@ describe('a `.skgraphic` Template Package crossing an installation boundary', ()
 		expect(parts.template).toEqual(document);
 		expect(parts.manifest.packagedAssets).toHaveLength(1);
 		expect(JSON.stringify(parts)).not.toContain('socialProfiles');
-		expect(parts.manifest.applicationCapabilities).toEqual(expect.arrayContaining([
-			expect.objectContaining({
-				capability: 'host-vocabulary',
-				identity: 'social-profile-projection',
-				configurationVersion: 1,
-			}),
-			expect.objectContaining({
-				capability: 'graphic-item-definition',
-				identity: 'social-network-icon',
-				configurationVersion: 2,
-			}),
-		]));
+		expect(parts.manifest.applicationCapabilities).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					capability: 'host-vocabulary',
+					identity: 'social-profile-projection',
+					configurationVersion: 1,
+				}),
+				expect.objectContaining({
+					capability: 'graphic-item-definition',
+					identity: 'social-network-icon',
+					configurationVersion: 2,
+				}),
+			]),
+		);
 		const report = reportOf(await preflight(await createLibrary('projection-receiver'), archive));
-		expect(report.issues.filter(issue => issue.severity === 'error')).toEqual([]);
+		expect(report.issues.filter((issue) => issue.severity === 'error')).toEqual([]);
 	});
 
 	it('refuses a Template document that is not a Broadcast Graphic, before anything is installed', async () => {
 		const { archive } = await exportedPackage();
 		const parts = readTemplatePackageParts(archive);
-		parts.template = { ...(parts.template as Record<string, unknown>), items: 'not a list of items' };
+		parts.template = {
+			...(parts.template as Record<string, unknown>),
+			items: 'not a list of items',
+		};
 
 		const receiver = await createLibrary('receiver');
 		const before = await receiver.listGraphicAssets({});
@@ -173,12 +179,14 @@ describe('a `.skgraphic` Template Package crossing an installation boundary', ()
 		const report = reportOf(operation);
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'invalid-template-document')).toBe(true);
+		expect(report.issues.some((issue) => issue.code === 'invalid-template-document')).toBe(true);
 		// Terminal, because nothing about the package changes on a retry.
-		expect(report.issues.every(issue => !issue.retryable)).toBe(true);
+		expect(report.issues.every((issue) => !issue.retryable)).toBe(true);
 		expect(operation.stage).toBe('failed');
 		const after = await receiver.listGraphicAssets({});
-		expect(after.map((asset: GraphicAsset) => asset.id)).toEqual(before.map((asset: GraphicAsset) => asset.id));
+		expect(after.map((asset: GraphicAsset) => asset.id)).toEqual(
+			before.map((asset: GraphicAsset) => asset.id),
+		);
 	});
 
 	it.each([
@@ -200,27 +208,35 @@ describe('a `.skgraphic` Template Package crossing an installation boundary', ()
 			version: 2,
 			exported: exportedProjectedPackage,
 		},
-	])('refuses $capability at a configuration version this installation does not implement', async ({ identity, version, exported }) => {
-		const { archive } = await exported();
-		const parts = readTemplatePackageParts(archive);
-		parts.manifest.applicationCapabilities = parts.manifest.applicationCapabilities.map(
-			declaration => declaration.identity === identity
-				? { ...declaration, configurationVersion: version }
-				: declaration,
-		);
+	])(
+		'refuses $capability at a configuration version this installation does not implement',
+		async ({ identity, version, exported }) => {
+			const { archive } = await exported();
+			const parts = readTemplatePackageParts(archive);
+			parts.manifest.applicationCapabilities = parts.manifest.applicationCapabilities.map(
+				(declaration) =>
+					declaration.identity === identity
+						? { ...declaration, configurationVersion: version }
+						: declaration,
+			);
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+			const report = reportOf(
+				await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+			);
 
-		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'unsupported-application-capability')).toBe(true);
-	});
+			expect(report.outcome).toBe('rejected');
+			expect(
+				report.issues.some((issue) => issue.code === 'unsupported-application-capability'),
+			).toBe(true);
+		},
+	);
 
 	// The sending side: the manifest declares the version the shared Definition states, not a literal.
 	it('declares each Graphic Item Definition at the configuration version this installation implements', async () => {
 		const { archive } = await withGraphicItemDefinitionAt('media', 2, exportedPackage);
 		const declarations = readTemplatePackageParts(archive).manifest.applicationCapabilities;
 		const declarationFor = (identity: string) =>
-			declarations.find(declaration => declaration.identity === identity)?.configurationVersion;
+			declarations.find((declaration) => declaration.identity === identity)?.configurationVersion;
 
 		expect(declarationFor('media')).toBe(2);
 		// Per Definition, not one number for the package: the kinds that did not move
@@ -232,28 +248,42 @@ describe('a `.skgraphic` Template Package crossing an installation boundary', ()
 		const report = reportOf(await preflight(await createLibrary('receiver'), archive));
 
 		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue => issue.code === 'unsupported-application-capability')).toBe(true);
+		expect(report.issues.some((issue) => issue.code === 'unsupported-application-capability')).toBe(
+			true,
+		);
 	});
 
 	// A version stated nowhere was checked against nothing, so an undeclared capability is refused.
 	it.each([
 		{ capability: 'Graphic Item Definition', identity: 'media', exported: exportedPackage },
-		{ capability: 'Social Profile Projection', identity: 'social-profile-projection', exported: exportedProjectedPackage },
-	])('refuses a $capability the Template uses and the package never declares', async ({ identity, exported }) => {
-		const { archive } = await exported();
-		const parts = readTemplatePackageParts(archive);
-		parts.manifest.applicationCapabilities = parts.manifest.applicationCapabilities.filter(
-			declaration => declaration.identity !== identity,
-		);
+		{
+			capability: 'Social Profile Projection',
+			identity: 'social-profile-projection',
+			exported: exportedProjectedPackage,
+		},
+	])(
+		'refuses a $capability the Template uses and the package never declares',
+		async ({ identity, exported }) => {
+			const { archive } = await exported();
+			const parts = readTemplatePackageParts(archive);
+			parts.manifest.applicationCapabilities = parts.manifest.applicationCapabilities.filter(
+				(declaration) => declaration.identity !== identity,
+			);
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+			const report = reportOf(
+				await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+			);
 
-		expect(report.outcome).toBe('rejected');
-		expect(report.issues.some(issue =>
-			issue.code === 'unsupported-application-capability'
-			&& issue.message.includes('never declares'),
-		)).toBe(true);
-	});
+			expect(report.outcome).toBe('rejected');
+			expect(
+				report.issues.some(
+					(issue) =>
+						issue.code === 'unsupported-application-capability' &&
+						issue.message.includes('never declares'),
+				),
+			).toBe(true);
+		},
+	);
 
 	// Over-declaration costs one check; refusing it would reject installable packages.
 	it('accepts a package declaring a supported capability its Template no longer uses', async () => {
@@ -269,9 +299,11 @@ describe('a `.skgraphic` Template Package crossing an installation boundary', ()
 			},
 		];
 
-		const report = reportOf(await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)));
+		const report = reportOf(
+			await preflight(await createLibrary('receiver'), writeTemplatePackage(parts)),
+		);
 
-		expect(report.issues.filter(issue => issue.severity === 'error')).toEqual([]);
+		expect(report.issues.filter((issue) => issue.severity === 'error')).toEqual([]);
 	});
 });
 
@@ -281,9 +313,11 @@ describe('a `.skgraphic` Template Package and the Theme', () => {
 		const { document, archive } = await exportedPackage();
 		const travelled = readTemplatePackageParts(archive).template as BroadcastGraphicConfig;
 
-		expect(travelled.items.map(item => item.themeBindings)).toEqual(document.items.map(item => item.themeBindings));
-		expect(travelled.items.some(item => item.themeBindings)).toBe(true);
+		expect(travelled.items.map((item) => item.themeBindings)).toEqual(
+			document.items.map((item) => item.themeBindings),
+		);
+		expect(travelled.items.some((item) => item.themeBindings)).toBe(true);
 		const report = reportOf(await preflight(await createLibrary('theme-receiver'), archive));
-		expect(report.issues.filter(issue => issue.severity === 'error')).toEqual([]);
+		expect(report.issues.filter((issue) => issue.severity === 'error')).toEqual([]);
 	});
 });

@@ -15,7 +15,7 @@ const emit = defineEmits<{
 const TOP_N_PRESETS = [8, 16, 32];
 
 const conversionItems = computed(() => [
-	...TOP_N_PRESETS.map(n => ({ label: `Top ${n}`, value: `topN:${n}` })),
+	...TOP_N_PRESETS.map((n) => ({ label: `Top ${n}`, value: `topN:${n}` })),
 	{ label: 'Top N…', value: 'topN' },
 	{ label: 'Minimum Points…', value: 'minPoints' },
 ]);
@@ -28,17 +28,21 @@ const bounds = computed(() => CONVERSION_THRESHOLD_BOUNDS[props.conversionMetric
 const customTopN = ref(false);
 
 const currentValue = computed(() => {
-	if (props.conversionMetric === 'minPoints')
-		return 'minPoints';
+	if (props.conversionMetric === 'minPoints') return 'minPoints';
 	return !customTopN.value && TOP_N_PRESETS.includes(props.conversionThreshold)
 		? `topN:${props.conversionThreshold}`
 		: 'topN';
 });
 
-const showThresholdInput = computed(() => currentValue.value === 'topN' || currentValue.value === 'minPoints');
+const showThresholdInput = computed(
+	() => currentValue.value === 'topN' || currentValue.value === 'minPoints',
+);
 
 /** The target `metric` names, keeping the threshold where that metric's bounds allow it. */
-function withMetric(conversionMetric: ConversionTarget['conversionMetric'], threshold = props.conversionThreshold): ConversionTarget {
+function withMetric(
+	conversionMetric: ConversionTarget['conversionMetric'],
+	threshold = props.conversionThreshold,
+): ConversionTarget {
 	const { min, max } = CONVERSION_THRESHOLD_BOUNDS[conversionMetric];
 	return {
 		conversionMetric,
@@ -49,15 +53,13 @@ function withMetric(conversionMetric: ConversionTarget['conversionMetric'], thre
 function onTargetChange(value: string) {
 	customTopN.value = value === 'topN';
 
-	if (value === 'topN' || value === 'minPoints')
-		emit('update', withMetric(value));
+	if (value === 'topN' || value === 'minPoints') emit('update', withMetric(value));
 	else if (value.startsWith('topN:'))
 		emit('update', withMetric('topN', Number.parseInt(value.split(':')[1]!)));
 }
 
 function onThresholdChange(value: number | null | undefined) {
-	if (value == null || Number.isNaN(Number(value)))
-		return;
+	if (value == null || Number.isNaN(Number(value))) return;
 	emit('update', withMetric(props.conversionMetric, Number(value)));
 }
 </script>
@@ -80,7 +82,9 @@ function onThresholdChange(value: number | null | undefined) {
 			:min="bounds.min"
 			:max="bounds.max"
 			class="w-28"
-			:aria-label="conversionMetric === 'topN' ? 'Conversion top N placement' : 'Conversion minimum points'"
+			:aria-label="
+				conversionMetric === 'topN' ? 'Conversion top N placement' : 'Conversion minimum points'
+			"
 			@update:model-value="onThresholdChange"
 		/>
 	</div>

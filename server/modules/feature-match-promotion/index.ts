@@ -1,14 +1,29 @@
 import type { BatchItem } from 'drizzle-orm/batch';
-import type { FeatureMatchNoteDiscardConfirmation, FeatureMatchPromotionResponse } from '~~/shared/api';
+import type {
+	FeatureMatchNoteDiscardConfirmation,
+	FeatureMatchPromotionResponse,
+} from '~~/shared/api';
 import { db } from '~~/server/db';
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
 import { featureMatchService } from '~~/server/services/featureMatch';
-import { buildAssignmentDisplacementGuardQuery, buildUpsertAssignmentQueries, featureMatchAssignmentService, isAssignmentDisplacementGuardViolation } from '~~/server/services/featureMatchAssignment';
+import {
+	buildAssignmentDisplacementGuardQuery,
+	buildUpsertAssignmentQueries,
+	featureMatchAssignmentService,
+	isAssignmentDisplacementGuardViolation,
+} from '~~/server/services/featureMatchAssignment';
 import { featureMatchStateService } from '~~/server/services/featureMatchState';
-import { buildMatchPromotionPlan, isMatchPromotionPlanStaleViolation, matchService } from '~~/server/services/match';
+import {
+	buildMatchPromotionPlan,
+	isMatchPromotionPlanStaleViolation,
+	matchService,
+} from '~~/server/services/match';
 import { playerFeatureMatchSyncService } from '~~/server/services/playerFeatureMatchSync';
 import { StateConflictError } from '~~/server/utils/errors';
-import { hasExactNoteDiscardConfirmation, throwFeatureMatchNoteDiscardRequired } from '~~/server/utils/featureMatchNoteDiscard';
+import {
+	hasExactNoteDiscardConfirmation,
+	throwFeatureMatchNoteDiscardRequired,
+} from '~~/server/utils/featureMatchNoteDiscard';
 import { decidePromotion } from './decision';
 
 /**
@@ -20,11 +35,10 @@ import { decidePromotion } from './decision';
  * indexes a promotion batch writes through.
  */
 function isDuplicateSlotMatchViolation(error: unknown): boolean {
-	const message = error instanceof Error
-		? error.message
-		: '';
-	return message.includes('UNIQUE constraint failed')
-		&& message.includes('feature_match_slots.match_id');
+	const message = error instanceof Error ? error.message : '';
+	return (
+		message.includes('UNIQUE constraint failed') && message.includes('feature_match_slots.match_id')
+	);
 }
 
 interface PromoteMatchToSlotInput {
@@ -72,16 +86,12 @@ export function featureMatchPromotionModule() {
 			assignments.findByRoundAndSlot(eventId, match.roundId, slotId),
 			assignments.findByRoundAndMatch(eventId, match.roundId, matchId),
 		]);
-		const assignmentToDisplace = displacedAssignment?.matchId !== matchId
-			? displacedAssignment
-			: undefined;
+		const assignmentToDisplace =
+			displacedAssignment?.matchId !== matchId ? displacedAssignment : undefined;
 		const hasExactConfirmation = assignmentToDisplace
 			? hasExactNoteDiscardConfirmation(assignmentToDisplace, confirmedNoteDiscards)
 			: false;
-		if (
-			assignmentToDisplace?.note?.trim()
-			&& !hasExactConfirmation
-		) {
+		if (assignmentToDisplace?.note?.trim() && !hasExactConfirmation) {
 			await throwFeatureMatchNoteDiscardRequired(eventId, assignmentToDisplace);
 		}
 		if (confirmedNoteDiscards.length > 0 && !hasExactConfirmation) {
@@ -125,8 +135,7 @@ export function featureMatchPromotionModule() {
 		];
 		try {
 			await db.batch(batchQueries as [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]);
-		}
-		catch (error) {
+		} catch (error) {
 			// The plan is computed from reads, so a promotion that lost to a
 			// concurrent one arrives here as its plan fence, or the one-Slot-per-Match
 			// index behind it, aborting the batch — and, because the batch is one
@@ -135,8 +144,7 @@ export function featureMatchPromotionModule() {
 			// `409` they can act on instead of a `500`.
 			if (isDuplicateSlotMatchViolation(error) || isMatchPromotionPlanStaleViolation(error))
 				throw new StateConflictError('Feature match slot', slotId);
-			if (!isAssignmentDisplacementGuardViolation(error))
-				throw error;
+			if (!isAssignmentDisplacementGuardViolation(error)) throw error;
 
 			const current = await assignments.findByRoundAndSlot(eventId, match.roundId, slotId);
 			if (current?.matchId !== matchId && current?.note?.trim())
@@ -147,17 +155,23 @@ export function featureMatchPromotionModule() {
 		// Decide this promotion's outcome from what its commit left, before
 		// anything is published (#576, #577). The Assignment is read before the
 		// Slot, so a move that carried the Assignment off shows as a lost promotion.
-		const committedAssignment = await assignments.findByRoundAndSlot(eventId, match.roundId, slotId);
-		const committedSlot = await slots.findById(slotId, eventId);
-		const decision = decidePromotion({
+		const committedAssignment = await assignments.findByRoundAndSlot(
+			eventId,
+			match.roundId,
 			slotId,
-			matchId,
-			continuedAssignment: incomingAssignment,
-			displacedAssignment: assignmentToDisplace,
-			clearedSlotIds: plan.clearedSlots.map(cleared => cleared.id),
-		}, { slot: committedSlot, assignment: committedAssignment });
-		if (decision.outcome === 'lost')
-			throw new StateConflictError('Feature match slot', slotId);
+		);
+		const committedSlot = await slots.findById(slotId, eventId);
+		const decision = decidePromotion(
+			{
+				slotId,
+				matchId,
+				continuedAssignment: incomingAssignment,
+				displacedAssignment: assignmentToDisplace,
+				clearedSlotIds: plan.clearedSlots.map((cleared) => cleared.id),
+			},
+			{ slot: committedSlot, assignment: committedAssignment },
+		);
+		if (decision.outcome === 'lost') throw new StateConflictError('Feature match slot', slotId);
 		if (decision.outcome === 'failed')
 			throw createError({ statusCode: 500, message: decision.message });
 
@@ -173,22 +187,36 @@ export function featureMatchPromotionModule() {
 		// intermediate session CAS that cannot compose into the batch. It
 		// announces nothing itself, and a fault is answered only once the
 		// committed promotion has been published, so peers still learn of it.
-		const reverseSync = await playerFeatureMatchSyncService().syncMatchesFromPlayersAfterCommit(
-			eventId,
-			[match.player1Id, match.player2Id].filter((playerId): playerId is number => playerId != null),
-		).then(() => ({ faulted: false as const }), (error: unknown) => ({ faulted: true as const, error }));
+		const reverseSync = await playerFeatureMatchSyncService()
+			.syncMatchesFromPlayersAfterCommit(
+				eventId,
+				[match.player1Id, match.player2Id].filter(
+					(playerId): playerId is number => playerId != null,
+				),
+			)
+			.then(
+				() => ({ faulted: false as const }),
+				(error: unknown) => ({ faulted: true as const, error }),
+			);
 
 		const [currentSlots, currentAssignment] = await Promise.all([
 			slots.findByEventId(eventId),
 			assignments.findById(eventId, decision.assignment.id),
 		]);
-		const publication = decision.publication({ slots: currentSlots, assignment: currentAssignment, openedSessions: opened });
+		const publication = decision.publication({
+			slots: currentSlots,
+			assignment: currentAssignment,
+			openedSessions: opened,
+		});
 		if (publication.outcome === 'failed')
 			throw createError({ statusCode: 500, message: publication.message });
 
-		await eventData.featureMatchSlotPromoted({ eventId, messages: publication.messages, originConnectionId });
-		if (reverseSync.faulted)
-			throw reverseSync.error;
+		await eventData.featureMatchSlotPromoted({
+			eventId,
+			messages: publication.messages,
+			originConnectionId,
+		});
+		if (reverseSync.faulted) throw reverseSync.error;
 		return publication.response;
 	}
 

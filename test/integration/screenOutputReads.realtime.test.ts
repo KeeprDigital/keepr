@@ -20,67 +20,82 @@ describe('a capability-only Screen Output on its Screen channel', () => {
 	beforeAll(async () => {
 		const event = await $fetch<{ id: number }>('/api/events', {
 			method: 'POST',
-			body: { name: 'Screen Output Channel Event', game: 'mtg', featureMatchOrientation: 'vertical' },
+			body: {
+				name: 'Screen Output Channel Event',
+				game: 'mtg',
+				featureMatchOrientation: 'vertical',
+			},
 		});
 		eventId = event.id;
 
 		screen = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens`, {
 			method: 'POST',
-			body: { name: 'Output standings', slug: `output-channel-standings-${eventId}`, currentMode: 'standings' },
+			body: {
+				name: 'Output standings',
+				slug: `output-channel-standings-${eventId}`,
+				currentMode: 'standings',
+			},
 		});
-		capability = (await $fetch<{ assetCapability: string }>(
-			`/api/events/${eventId}/screens/${screen.id}/asset-capability`,
-		)).assetCapability;
+		capability = (
+			await $fetch<{ assetCapability: string }>(
+				`/api/events/${eventId}/screens/${screen.id}/asset-capability`,
+			)
+		).assetCapability;
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	// The Screen's own channel names what its mode shows changed; the output re-reads it through its Screen.
-	it.skipIf(!integrationRealtimeConfigured)('is told on its own channel that its mode\'s data changed', async () => {
-		const realtime = new Ably.Realtime({
-			authCallback: (_params, callback) => {
-				anonymousFetch(`/api/realtime/token?eventId=${eventId}`, {
-					headers: { authorization: `Bearer ${capability}` },
-				})
-					.then(async response => callback(null, await response.json()), error => callback(error, null));
-			},
-		});
-		const channel = realtime.channels.get(screenRealtimeChannel(eventId, screen.id));
-		let timeout: ReturnType<typeof setTimeout> | undefined;
-
-		try {
-			let told!: (message: InboundMessage) => void;
-			const heard = new Promise<InboundMessage>((resolve) => {
-				told = resolve;
+	it.skipIf(!integrationRealtimeConfigured)(
+		"is told on its own channel that its mode's data changed",
+		async () => {
+			const realtime = new Ably.Realtime({
+				authCallback: (_params, callback) => {
+					anonymousFetch(`/api/realtime/token?eventId=${eventId}`, {
+						headers: { authorization: `Bearer ${capability}` },
+					}).then(
+						async (response) => callback(null, await response.json()),
+						(error) => callback(error, null),
+					);
+				},
 			});
-			await channel.subscribe('output:modeDataChanged', told);
+			const channel = realtime.channels.get(screenRealtimeChannel(eventId, screen.id));
+			let timeout: ReturnType<typeof setTimeout> | undefined;
 
-			await $fetch(`/api/events/${eventId}/players`, {
-				method: 'POST',
-				body: { name: 'Heard On The Screen Channel' },
-			});
+			try {
+				let told!: (message: InboundMessage) => void;
+				const heard = new Promise<InboundMessage>((resolve) => {
+					told = resolve;
+				});
+				await channel.subscribe('output:modeDataChanged', told);
 
-			const message = await Promise.race([
-				heard,
-				new Promise<never>((_resolve, reject) => {
-					timeout = setTimeout(() => reject(new Error('Timed out waiting for output:modeDataChanged')), LOAD_TOLERANT_WAIT_MS);
-				}),
-			]);
-			expect(message.data).toMatchObject({
-				eventId,
-				screenId: screen.id,
-				causes: ['player'],
-			});
-		}
-		finally {
-			if (timeout)
-				clearTimeout(timeout);
-			realtime.close();
-		}
-	});
+				await $fetch(`/api/events/${eventId}/players`, {
+					method: 'POST',
+					body: { name: 'Heard On The Screen Channel' },
+				});
+
+				const message = await Promise.race([
+					heard,
+					new Promise<never>((_resolve, reject) => {
+						timeout = setTimeout(
+							() => reject(new Error('Timed out waiting for output:modeDataChanged')),
+							LOAD_TOLERANT_WAIT_MS,
+						);
+					}),
+				]);
+				expect(message.data).toMatchObject({
+					eventId,
+					screenId: screen.id,
+					causes: ['player'],
+				});
+			} finally {
+				if (timeout) clearTimeout(timeout);
+				realtime.close();
+			}
+		},
+	);
 });

@@ -16,10 +16,7 @@ const { mockFetch } = vi.hoisted(() => ({
 mockNuxtImport('$fetch', () => mockFetch);
 mockNuxtImport('useEventStore', () => () => ({ eventId: 7 }));
 mockNuxtImport('useFeatureMatchStore', () => () => ({
-	featureMatches: [
-		{ id: 90 },
-		{ id: 91 },
-	],
+	featureMatches: [{ id: 90 }, { id: 91 }],
 }));
 
 const LIST_PATH = '/api/events/7/op-unresolved-deck-cards';
@@ -61,10 +58,8 @@ let listed: OpUnresolvedDeckCard[] = [];
 let searched: unknown = { available: true, items: [], total: 0 };
 
 function route(path: string, options?: { method?: string; body?: unknown; query?: unknown }) {
-	if (path === LIST_PATH)
-		return Promise.resolve(listed);
-	if (path === '/api/events/7/op-cards')
-		return Promise.resolve(searched);
+	if (path === LIST_PATH) return Promise.resolve(listed);
+	if (path === '/api/events/7/op-cards') return Promise.resolve(searched);
 	throw new Error(`unexpected ${options?.method ?? 'GET'} ${path}`);
 }
 
@@ -78,7 +73,7 @@ function row(wrapper: ReturnType<typeof mountList>, number: string) {
 	return wrapper.get(`[data-unresolved-number="${number}"]`);
 }
 
-describe('an OP Event\'s Unresolved Deck Cards', () => {
+describe("an OP Event's Unresolved Deck Cards", () => {
 	beforeEach(() => {
 		listed = [MISPRINT, UNKNOWN_LEADER];
 		searched = { available: true, items: [], total: 0 };
@@ -91,36 +86,37 @@ describe('an OP Event\'s Unresolved Deck Cards', () => {
 		await flushPromises();
 
 		expect(row(wrapper, 'OP91-040').get('[data-copies]').text()).toContain('5');
-		expect(row(wrapper, 'OP91-040').findAll('[data-holder]').map(holder => holder.text())).toEqual([
-			'4x ana',
-			'1x Feature Match 2: Cora',
-		]);
+		expect(
+			row(wrapper, 'OP91-040')
+				.findAll('[data-holder]')
+				.map((holder) => holder.text()),
+		).toEqual(['4x ana', '1x Feature Match 2: Cora']);
 		expect(row(wrapper, 'OP13-097').get('[data-holder]').attributes('data-as-leader')).toBe('true');
 	});
 
 	it.each([
 		['still unknown, so the list stays', null, 2],
-		[
-			'now known, so it leaves the list',
-			{ number: 'OP91-040', name: 'Usopp' },
-			1,
-		],
+		['now known, so it leaves the list', { number: 'OP91-040', name: 'Usopp' }, 1],
 	])('retries a number through the bulk lookup: %s', async (_case, card, remaining) => {
 		const wrapper = mountList();
 		await flushPromises();
 		const retrying = deferred<unknown>();
-		mockFetch.mockImplementation((path: string, options?: { method?: string }) => options?.method === 'POST'
-			? retrying.promise
-			: route(path, options));
+		mockFetch.mockImplementation((path: string, options?: { method?: string }) =>
+			options?.method === 'POST' ? retrying.promise : route(path, options),
+		);
 
 		await row(wrapper, 'OP91-040').get('button[aria-label="Retry OP91-040"]').trigger('click');
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith(`${LIST_PATH}/OP91-040/retry`, expect.objectContaining({ method: 'POST' }));
-		expect(row(wrapper, 'OP91-040').get('button[aria-label="Retry OP91-040"]').attributes('aria-busy')).toBe('true');
+		expect(mockFetch).toHaveBeenCalledWith(
+			`${LIST_PATH}/OP91-040/retry`,
+			expect.objectContaining({ method: 'POST' }),
+		);
+		expect(
+			row(wrapper, 'OP91-040').get('button[aria-label="Retry OP91-040"]').attributes('aria-busy'),
+		).toBe('true');
 
-		if (card)
-			listed = [UNKNOWN_LEADER];
+		if (card) listed = [UNKNOWN_LEADER];
 		retrying.resolve({
 			number: 'OP91-040',
 			card,
@@ -134,9 +130,7 @@ describe('an OP Event\'s Unresolved Deck Cards', () => {
 	it('resolves a number to a card picked from a bandai-keepr search, and leaves the list', async () => {
 		searched = {
 			available: true,
-			items: [
-				opCardSummary({ number: 'OP01-040', name: 'Usopp', category: 'character' }),
-			],
+			items: [opCardSummary({ number: 'OP01-040', name: 'Usopp', category: 'character' })],
 			total: 1,
 		};
 		const wrapper = mountList();
@@ -147,21 +141,29 @@ describe('an OP Event\'s Unresolved Deck Cards', () => {
 		await wrapper.get('form[aria-label="Search bandai-keepr for OP91-040"]').trigger('submit');
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/events/7/op-cards', expect.objectContaining({
-			query: { q: 'Usopp' },
-		}));
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/events/7/op-cards',
+			expect.objectContaining({
+				query: { q: 'Usopp' },
+			}),
+		);
 		const resolving = deferred<unknown>();
-		mockFetch.mockImplementation((path: string, options?: { method?: string }) => options?.method === 'PUT'
-			? resolving.promise
-			: route(path, options));
+		mockFetch.mockImplementation((path: string, options?: { method?: string }) =>
+			options?.method === 'PUT' ? resolving.promise : route(path, options),
+		);
 		await wrapper.get('button[aria-label="Resolve OP91-040 to OP01-040"]').trigger('click');
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith(`${LIST_PATH}/OP91-040`, expect.objectContaining({
-			method: 'PUT',
-			body: { cardNumber: 'OP01-040' },
-		}));
-		expect(wrapper.get('button[aria-label="Resolve OP91-040 to OP01-040"]').attributes('aria-busy')).toBe('true');
+		expect(mockFetch).toHaveBeenCalledWith(
+			`${LIST_PATH}/OP91-040`,
+			expect.objectContaining({
+				method: 'PUT',
+				body: { cardNumber: 'OP01-040' },
+			}),
+		);
+		expect(
+			wrapper.get('button[aria-label="Resolve OP91-040 to OP01-040"]').attributes('aria-busy'),
+		).toBe('true');
 
 		listed = [UNKNOWN_LEADER];
 		resolving.resolve({
@@ -171,20 +173,16 @@ describe('an OP Event\'s Unresolved Deck Cards', () => {
 		});
 		await flushPromises();
 
-		expect(wrapper.findAll('[data-unresolved-number]').map(item => item.attributes('data-unresolved-number'))).toEqual(['OP13-097']);
+		expect(
+			wrapper
+				.findAll('[data-unresolved-number]')
+				.map((item) => item.attributes('data-unresolved-number')),
+		).toEqual(['OP13-097']);
 	});
 
 	it.each([
-		[
-			'a card number',
-			'op01-040',
-			{ number: 'OP01-040' },
-		],
-		[
-			'a name',
-			'Usopp',
-			{ q: 'Usopp' },
-		],
+		['a card number', 'op01-040', { number: 'OP01-040' }],
+		['a name', 'Usopp', { q: 'Usopp' }],
 	])('searches bandai-keepr by %s', async (_case, term, query) => {
 		const wrapper = mountList();
 		await flushPromises();
@@ -194,7 +192,10 @@ describe('an OP Event\'s Unresolved Deck Cards', () => {
 		await wrapper.get('form[aria-label="Search bandai-keepr for OP91-040"]').trigger('submit');
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/events/7/op-cards', expect.objectContaining({ query }));
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/events/7/op-cards',
+			expect.objectContaining({ query }),
+		);
 	});
 
 	it('says card data is unavailable when no bandai-keepr is configured', async () => {

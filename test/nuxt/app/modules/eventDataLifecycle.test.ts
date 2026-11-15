@@ -23,7 +23,7 @@ function createHarness() {
 		repository,
 		entityLabel: 'Item',
 		eventFilter: (item, currentEventId) => item.eventId === currentEventId,
-		remoteScopeFilter: item => !loadedRoundId.value || item.roundId === loadedRoundId.value,
+		remoteScopeFilter: (item) => !loadedRoundId.value || item.roundId === loadedRoundId.value,
 		onMutation,
 		onReset,
 	});
@@ -44,9 +44,7 @@ describe('event data lifecycle module', () => {
 
 	it('loads Event-scoped items and owns loaded state', async () => {
 		const harness = createHarness();
-		const data = [
-			{ id: 1, eventId: 10, name: 'One' },
-		];
+		const data = [{ id: 1, eventId: 10, name: 'One' }];
 		harness.repository.list.mockResolvedValue(data);
 
 		await harness.lifecycle.loadByEventId(10);
@@ -60,25 +58,17 @@ describe('event data lifecycle module', () => {
 		const harness = createHarness();
 		const first = deferred<Item[]>();
 		const second = deferred<Item[]>();
-		harness.repository.list
-			.mockReturnValueOnce(first.promise)
-			.mockReturnValueOnce(second.promise);
+		harness.repository.list.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
 
 		const firstLoad = harness.lifecycle.loadByEventId(10);
 		const secondLoad = harness.lifecycle.loadByEventId(20);
-		second.resolve([
-			{ id: 2, eventId: 20, name: 'Current' },
-		]);
+		second.resolve([{ id: 2, eventId: 20, name: 'Current' }]);
 		await secondLoad;
-		first.resolve([
-			{ id: 1, eventId: 10, name: 'Stale' },
-		]);
+		first.resolve([{ id: 1, eventId: 10, name: 'Stale' }]);
 		await firstLoad;
 
 		expect(harness.lifecycle.currentEventId.value).toBe(20);
-		expect(harness.lifecycle.items.value).toEqual([
-			{ id: 2, eventId: 20, name: 'Current' },
-		]);
+		expect(harness.lifecycle.items.value).toEqual([{ id: 2, eventId: 20, name: 'Current' }]);
 	});
 
 	it('invalidates an in-flight load when reset', async () => {
@@ -88,9 +78,7 @@ describe('event data lifecycle module', () => {
 
 		const load = harness.lifecycle.loadByEventId(10);
 		harness.lifecycle.reset();
-		pending.resolve([
-			{ id: 1, eventId: 10, name: 'Stale' },
-		]);
+		pending.resolve([{ id: 1, eventId: 10, name: 'Stale' }]);
 		await load;
 
 		expect(harness.lifecycle.currentEventId.value).toBeNull();
@@ -116,7 +104,9 @@ describe('event data lifecycle module', () => {
 			const harness = createHarness();
 			harness.repository.list.mockRejectedValue(new Error('Network unavailable'));
 
-			await expect(harness.lifecycle.loadByEventId(10, { failure: 'raise' })).rejects.toThrow('Network unavailable');
+			await expect(harness.lifecycle.loadByEventId(10, { failure: 'raise' })).rejects.toThrow(
+				'Network unavailable',
+			);
 
 			expect(harness.lifecycle.error.value).toBe('Network unavailable');
 			expect(harness.lifecycle.listLoading.value).toBe(false);
@@ -125,7 +115,8 @@ describe('event data lifecycle module', () => {
 		it.each([
 			{
 				superseded: 'a newer load',
-				supersede: (harness: ReturnType<typeof createHarness>) => void harness.lifecycle.loadByEventId(10),
+				supersede: (harness: ReturnType<typeof createHarness>) =>
+					void harness.lifecycle.loadByEventId(10),
 				loading: true,
 			},
 			{
@@ -133,21 +124,24 @@ describe('event data lifecycle module', () => {
 				supersede: (harness: ReturnType<typeof createHarness>) => harness.lifecycle.reset(),
 				loading: false,
 			},
-		])('answers null once $superseded superseded it, and shows no error', async ({ supersede, loading }) => {
-			const harness = createHarness();
-			const failing = deferred<Item[]>();
-			harness.repository.list
-				.mockReturnValueOnce(failing.promise)
-				.mockReturnValueOnce(deferred<Item[]>().promise);
+		])(
+			'answers null once $superseded superseded it, and shows no error',
+			async ({ supersede, loading }) => {
+				const harness = createHarness();
+				const failing = deferred<Item[]>();
+				harness.repository.list
+					.mockReturnValueOnce(failing.promise)
+					.mockReturnValueOnce(deferred<Item[]>().promise);
 
-			const load = harness.lifecycle.loadByEventId(10, { failure: 'raise' });
-			supersede(harness);
-			failing.reject(new Error('Network unavailable'));
+				const load = harness.lifecycle.loadByEventId(10, { failure: 'raise' });
+				supersede(harness);
+				failing.reject(new Error('Network unavailable'));
 
-			await expect(load).resolves.toBeNull();
-			expect(harness.lifecycle.error.value).toBeNull();
-			expect(harness.lifecycle.listLoading.value).toBe(loading);
-		});
+				await expect(load).resolves.toBeNull();
+				expect(harness.lifecycle.error.value).toBeNull();
+				expect(harness.lifecycle.listLoading.value).toBe(loading);
+			},
+		);
 	});
 
 	it('creates, updates, and deletes through the lifecycle interface', async () => {
@@ -162,9 +156,7 @@ describe('event data lifecycle module', () => {
 		await harness.lifecycle.update(10, 1, { name: 'Updated' });
 		await harness.lifecycle.remove(10, 2);
 
-		expect(harness.lifecycle.items.value).toEqual([
-			{ id: 1, eventId: 10, name: 'Updated' },
-		]);
+		expect(harness.lifecycle.items.value).toEqual([{ id: 1, eventId: 10, name: 'Updated' }]);
 		expect(harness.onMutation).toHaveBeenCalledTimes(3);
 	});
 
@@ -189,9 +181,7 @@ describe('event data lifecycle module', () => {
 
 		const renaming = harness.lifecycle.update(10, 1, { name: 'Renamed' });
 
-		expect(harness.lifecycle.items.value).toEqual([
-			{ ...item, name: 'Renamed' },
-		]);
+		expect(harness.lifecycle.items.value).toEqual([{ ...item, name: 'Renamed' }]);
 
 		refused.reject(new Error('Name is taken'));
 
@@ -260,14 +250,8 @@ describe('event data lifecycle module', () => {
 	 * lifetime of its own even though its id is the one the write named (#606).
 	 */
 	describe.each([
-		[
-			'Event B',
-			[20],
-		],
-		[
-			'Event A, loaded again since',
-			[20, 10],
-		],
+		['Event B', [20]],
+		['Event A, loaded again since', [20, 10]],
 	])('a write answered after the collection moved on to %s', (_, switches) => {
 		const original = { id: 1, eventId: 10, name: 'One' };
 
@@ -278,9 +262,7 @@ describe('event data lifecycle module', () => {
 		async function switchAway(harness: ReturnType<typeof createHarness>) {
 			let shown!: Item[];
 			for (const eventId of switches) {
-				shown = [
-					{ id: 1, eventId, name: `One as loaded for ${eventId}` },
-				];
+				shown = [{ id: 1, eventId, name: `One as loaded for ${eventId}` }];
 				harness.lifecycle.reset();
 				harness.repository.list.mockResolvedValueOnce(structuredClone(shown));
 				await harness.lifecycle.loadByEventId(eventId);
@@ -339,10 +321,7 @@ describe('event data lifecycle module', () => {
 
 		it('a late delete removes nothing and its failure restores nothing', async () => {
 			const harness = createHarness();
-			harness.lifecycle.items.value = [
-				original,
-				{ id: 2, eventId: 10, name: 'Two' },
-			];
+			harness.lifecycle.items.value = [original, { id: 2, eventId: 10, name: 'Two' }];
 			const succeeded = deferred<unknown>();
 			const failed = deferred<never>();
 			harness.repository.remove
@@ -372,7 +351,7 @@ describe('event data lifecycle module', () => {
 		const lifecycle = useEventDataLifecycle<Item, { name: string }, { name: string }>({
 			repository,
 			entityLabel: 'Item',
-			admit: item => item.name !== 'Behind',
+			admit: (item) => item.name !== 'Behind',
 		});
 		const held = [
 			{ id: 1, eventId: 10, name: 'Held' },
@@ -400,9 +379,7 @@ describe('event data lifecycle module', () => {
 
 	it('resets lifecycle state and calls reset hook', async () => {
 		const harness = createHarness();
-		harness.repository.list.mockResolvedValue([
-			{ id: 1, eventId: 10, name: 'One' },
-		]);
+		harness.repository.list.mockResolvedValue([{ id: 1, eventId: 10, name: 'One' }]);
 		await harness.lifecycle.loadByEventId(10);
 
 		harness.lifecycle.reset();

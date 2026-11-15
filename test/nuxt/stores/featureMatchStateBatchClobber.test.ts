@@ -1,4 +1,7 @@
-import type { FeatureMatchSessionResponse, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSessionResponse,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -102,38 +105,41 @@ describe('useFeatureMatchStateStore batched flush clobber regression', () => {
 		store = useFeatureMatchStateStore();
 		store.$reset();
 		vi.clearAllMocks();
-		store.featureMatchStates.set(MATCH_ID, createMockFeatureMatchState({
-			player1: {
-				lifeTotal: 20,
-				gameWins: 0,
-				counters: [],
-				sideboardRevealed: false,
-			},
-			player2: {
-				lifeTotal: 20,
-				gameWins: 0,
-				counters: [],
-				sideboardRevealed: false,
-			},
-		}));
+		store.featureMatchStates.set(
+			MATCH_ID,
+			createMockFeatureMatchState({
+				player1: {
+					lifeTotal: 20,
+					gameWins: 0,
+					counters: [],
+					sideboardRevealed: false,
+				},
+				player2: {
+					lifeTotal: 20,
+					gameWins: 0,
+					counters: [],
+					sideboardRevealed: false,
+				},
+			}),
+		);
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
 	});
 
-	it('does not let player1\'s flush clobber player2\'s still-pending optimistic life total', async () => {
+	it("does not let player1's flush clobber player2's still-pending optimistic life total", async () => {
 		let resolvePlayer1!: (result: ReturnType<typeof commandResult>) => void;
 		let resolvePlayer2!: (result: ReturnType<typeof commandResult>) => void;
 
-		mockRepo.updatePlayerFeatureMatchState.mockImplementation((_eventId: number, _matchId: number, player: string) => {
-			return new Promise((resolve) => {
-				if (player === 'player1')
-					resolvePlayer1 = resolve;
-				else
-					resolvePlayer2 = resolve;
-			});
-		});
+		mockRepo.updatePlayerFeatureMatchState.mockImplementation(
+			(_eventId: number, _matchId: number, player: string) => {
+				return new Promise((resolve) => {
+					if (player === 'player1') resolvePlayer1 = resolve;
+					else resolvePlayer2 = resolve;
+				});
+			},
+		);
 
 		store.adjustLife(EVENT_ID, MATCH_ID, 'player1', -3);
 		store.adjustLife(EVENT_ID, MATCH_ID, 'player2', -5);
@@ -208,8 +214,7 @@ describe('useFeatureMatchStateStore batched flush clobber regression', () => {
 		});
 		mockRepo.updatePlayerFeatureMatchState.mockResolvedValue(commandResult(confirmed, 4));
 
-		for (let i = 0; i < 10; i++)
-			store.adjustLife(EVENT_ID, MATCH_ID, 'player1', -1);
+		for (let i = 0; i < 10; i++) store.adjustLife(EVENT_ID, MATCH_ID, 'player1', -1);
 
 		expect(store.featureMatchStates.get(MATCH_ID)!.player1.lifeTotal).toBe(10);
 		expect(mockRepo.updatePlayerFeatureMatchState).not.toHaveBeenCalled();

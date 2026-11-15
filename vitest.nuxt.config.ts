@@ -1,6 +1,14 @@
 import { defineVitestConfig } from '@nuxt/test-utils/config';
 import { defineConfig } from 'vitest/config';
-import { heldToRunSlots, hideLoadTolerantWaitFrame, LOAD_TOLERANT_BAIL_AFTER_FAILURES, LOAD_TOLERANT_HOOK_TIMEOUT_MS, LOAD_TOLERANT_TEST_TIMEOUT_MS, nuxtCoverageConfig, nuxtRerunTriggers } from './vitest.shared.ts';
+import {
+	heldToRunSlots,
+	hideLoadTolerantWaitFrame,
+	LOAD_TOLERANT_BAIL_AFTER_FAILURES,
+	LOAD_TOLERANT_HOOK_TIMEOUT_MS,
+	LOAD_TOLERANT_TEST_TIMEOUT_MS,
+	nuxtCoverageConfig,
+	nuxtRerunTriggers,
+} from './vitest.shared.ts';
 
 const nuxtVitestConfig = defineVitestConfig({
 	test: {
@@ -40,10 +48,7 @@ const nuxtVitestConfig = defineVitestConfig({
 
 export default defineConfig(async (env) => {
 	const config = await nuxtVitestConfig(env);
-	config.plugins = [
-		...(config.plugins ?? []),
-		heldToRunSlots('Nuxt tests'),
-	];
+	config.plugins = [...(config.plugins ?? []), heldToRunSlots('Nuxt tests')];
 	// Ahead of the test-utils entry, which `defineVitestConfig` puts first and
 	// which mounts the app that prints Vue's Suspense notice; see the file.
 	// The credential guard first of all, before anything can start a child (#619).

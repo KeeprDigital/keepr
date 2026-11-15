@@ -55,29 +55,32 @@ function issue(
  */
 const MAXIMUM_REPORTED_SCHEMA_ISSUES = 10;
 
-function readFeatureMatchLayoutDocument(document: unknown):
+function readFeatureMatchLayoutDocument(
+	document: unknown,
+):
 	| { outcome: 'read'; document: FeatureMatchLayoutConfig }
 	| { outcome: 'rejected'; issues: TemplatePackagePayloadIssue[] } {
 	const parsed = featureMatchLayoutConfigSchema.safeParse(document);
-	if (parsed.success)
-		return { outcome: 'read', document: parsed.data as FeatureMatchLayoutConfig };
+	if (parsed.success) return { outcome: 'read', document: parsed.data as FeatureMatchLayoutConfig };
 
 	const problems = parsed.error.issues;
-	const reported = problems.slice(0, MAXIMUM_REPORTED_SCHEMA_ISSUES).map(problem =>
-		issue(
-			'invalid-template-document',
-			problem.path.length > 0
-				? problem.path.join('.')
-				: undefined,
-			problem.message,
-		),
-	);
+	const reported = problems
+		.slice(0, MAXIMUM_REPORTED_SCHEMA_ISSUES)
+		.map((problem) =>
+			issue(
+				'invalid-template-document',
+				problem.path.length > 0 ? problem.path.join('.') : undefined,
+				problem.message,
+			),
+		);
 	if (problems.length > reported.length) {
-		reported.push(issue(
-			'invalid-template-document',
-			undefined,
-			`The Template document has ${problems.length} validation problems; the first ${reported.length} are reported`,
-		));
+		reported.push(
+			issue(
+				'invalid-template-document',
+				undefined,
+				`The Template document has ${problems.length} validation problems; the first ${reported.length} are reported`,
+			),
+		);
 	}
 	return { outcome: 'rejected', issues: reported };
 }
@@ -87,8 +90,7 @@ export const featureMatchLayoutTemplatePackagePayload: TemplatePackagePayload = 
 
 	readInstallableDocument(document) {
 		const read = readFeatureMatchLayoutDocument(document);
-		if (read.outcome === 'rejected')
-			return read;
+		if (read.outcome === 'rejected') return read;
 		// Assets are deliberately not re-derived: the envelope already reconciles the
 		// document's Graphic Asset References against the packaged assets, in the
 		// sender's identities, and doing it twice in two vocabularies is how the two
@@ -114,7 +116,5 @@ export function readInstalledFeatureMatchLayoutDocument(
 	document: unknown,
 ): FeatureMatchLayoutConfig | undefined {
 	const read = readFeatureMatchLayoutDocument(document);
-	return read.outcome === 'read'
-		? read.document
-		: undefined;
+	return read.outcome === 'read' ? read.document : undefined;
 }

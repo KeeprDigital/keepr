@@ -8,7 +8,9 @@ import type { TcgPlusImportedPlayer, TcgPlusImportHeldPlayer } from '~~/shared/t
  * confirm.
  */
 const eventStore = useEventStore();
-const { status, fileName, preview, answer, error, choose, confirm, dismiss } = useTcgPlusImport(() => eventStore.eventId);
+const { status, fileName, preview, answer, error, choose, confirm, dismiss } = useTcgPlusImport(
+	() => eventStore.eventId,
+);
 
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 
@@ -17,8 +19,7 @@ function onFileChosen(event: Event) {
 	const file = input.files?.[0];
 	// Cleared straight away so choosing the same file again still fires a change.
 	input.value = '';
-	if (file)
-		void choose(file);
+	if (file) void choose(file);
 }
 
 const busy = computed(() => status.value === 'previewing' || status.value === 'importing');
@@ -28,63 +29,70 @@ function incomingLabel(player: TcgPlusImportedPlayer) {
 }
 
 function heldLabel(player: TcgPlusImportHeldPlayer) {
-	return player.memberNumber
-		? `${player.shownAs} (${player.memberNumber})`
-		: player.shownAs;
+	return player.memberNumber ? `${player.shownAs} (${player.memberNumber})` : player.shownAs;
 }
 
-const changeGroups = computed(() => preview.value
-	? [
-			{
-				key: 'added',
-				title: 'Players to add',
-				labels: preview.value.added.map(incomingLabel),
-			},
-			{
-				key: 'deckListChanged',
-				title: 'Deck Lists that change',
-				labels: preview.value.deckListChanged.map(heldLabel),
-			},
-			{
-				key: 'deactivated',
-				title: 'Players to mark inactive',
-				labels: preview.value.deactivated.map(heldLabel),
-			},
-		]
-	: []);
+const changeGroups = computed(() =>
+	preview.value
+		? [
+				{
+					key: 'added',
+					title: 'Players to add',
+					labels: preview.value.added.map(incomingLabel),
+				},
+				{
+					key: 'deckListChanged',
+					title: 'Deck Lists that change',
+					labels: preview.value.deckListChanged.map(heldLabel),
+				},
+				{
+					key: 'deactivated',
+					title: 'Players to mark inactive',
+					labels: preview.value.deactivated.map(heldLabel),
+				},
+			]
+		: [],
+);
 
 const warningGroups = computed(() => {
 	const warnings = preview.value?.warnings;
-	if (!warnings)
-		return [];
+	if (!warnings) return [];
 	return [
 		{
 			key: 'ruleBreaches',
 			title: 'Deck rule breaches',
 			description: 'Imported as they are.',
-			lines: warnings.ruleBreaches.map(breach => `${incomingLabel(breach)}: ${breach.warnings.map(warning => warning.message).join(' ')}`),
+			lines: warnings.ruleBreaches.map(
+				(breach) =>
+					`${incomingLabel(breach)}: ${breach.warnings.map((warning) => warning.message).join(' ')}`,
+			),
 		},
 		{
 			key: 'unknownCards',
 			title: 'Unknown card numbers',
 			description: 'Kept as numbers only, to resolve on the Cards page.',
-			lines: warnings.unknownCards.map(card => `${card.number}, in ${card.playerCount} Deck List${card.playerCount === 1
-				? ''
-				: 's'}`),
+			lines: warnings.unknownCards.map(
+				(card) =>
+					`${card.number}, in ${card.playerCount} Deck List${card.playerCount === 1 ? '' : 's'}`,
+			),
 		},
 		{
 			key: 'handEditConflicts',
 			title: 'Hand-edited Deck Lists kept',
-			description: 'The export differs; use the imported Deck List from the Players page to take it.',
+			description:
+				'The export differs; use the imported Deck List from the Players page to take it.',
 			lines: warnings.handEditConflicts.map(heldLabel),
 		},
 		{
 			key: 'possibleDuplicates',
 			title: 'Possible duplicates',
 			description: 'A Player added by hand shares a Nickname in the export. Nothing is merged.',
-			lines: warnings.possibleDuplicates.map(duplicate => `${heldLabel(duplicate)} and ${duplicate.nickname} (${duplicate.incomingMemberNumber})`),
+			lines: warnings.possibleDuplicates.map(
+				(duplicate) =>
+					`${heldLabel(duplicate)} and ${duplicate.nickname} (${duplicate.incomingMemberNumber})`,
+			),
 		},
-	].filter(group => group.lines.length > 0);
+	].filter((group) => group.lines.length > 0);
 });
 </script>
 
@@ -101,8 +109,9 @@ const warningGroups = computed(() => {
 					</template>
 					<div class="flex flex-col gap-3">
 						<p class="text-sm text-muted">
-							Choose the deck list export from Bandai TCG+. You'll see what it changes before anything is saved.
-							A re-import updates Players by member number and keeps names you gave and Deck Lists you edited.
+							Choose the deck list export from Bandai TCG+. You'll see what it changes before
+							anything is saved. A re-import updates Players by member number and keeps names you
+							gave and Deck Lists you edited.
 						</p>
 						<div class="flex flex-wrap items-center gap-2">
 							<input
@@ -112,7 +121,7 @@ const warningGroups = computed(() => {
 								class="hidden"
 								aria-label="TCG+ export file"
 								@change="onFileChosen"
-							>
+							/>
 							<UButton
 								icon="i-lucide-upload"
 								:loading="status === 'previewing'"
@@ -131,7 +140,9 @@ const warningGroups = computed(() => {
 					color="error"
 					variant="subtle"
 					icon="i-lucide-circle-x"
-					:title="preview ? 'The import failed; nothing was saved' : 'The export could not be previewed'"
+					:title="
+						preview ? 'The import failed; nothing was saved' : 'The export could not be previewed'
+					"
 					:description="error"
 					data-tcgplus-error
 				/>
@@ -148,7 +159,9 @@ const warningGroups = computed(() => {
 
 				<UCard v-if="preview">
 					<template #header>
-						<span class="text-sm font-semibold" data-preview-player-count>{{ preview.playerCount }} Players in the export</span>
+						<span class="text-sm font-semibold" data-preview-player-count
+							>{{ preview.playerCount }} Players in the export</span
+						>
 					</template>
 					<div class="flex flex-col gap-4">
 						<section
@@ -157,10 +170,11 @@ const warningGroups = computed(() => {
 							:data-preview-group="group.key"
 							:data-count="group.labels.length"
 						>
-							<h3 class="text-sm font-medium">
-								{{ group.title }}: {{ group.labels.length }}
-							</h3>
-							<ul v-if="group.labels.length > 0" class="mt-1 max-h-40 overflow-y-auto text-sm text-muted">
+							<h3 class="text-sm font-medium">{{ group.title }}: {{ group.labels.length }}</h3>
+							<ul
+								v-if="group.labels.length > 0"
+								class="mt-1 max-h-40 overflow-y-auto text-sm text-muted"
+							>
 								<li v-for="label in group.labels" :key="label">
 									{{ label }}
 								</li>
@@ -168,9 +182,7 @@ const warningGroups = computed(() => {
 						</section>
 
 						<section data-preview-leaders>
-							<h3 class="text-sm font-medium">
-								Leaders
-							</h3>
+							<h3 class="text-sm font-medium">Leaders</h3>
 							<ul class="mt-1 flex flex-col gap-1 text-sm">
 								<li
 									v-for="leader in preview.leaders"
@@ -183,7 +195,11 @@ const warningGroups = computed(() => {
 									<span class="w-8 text-right tabular-nums">{{ leader.playerCount }}</span>
 									<span class="w-20 text-muted">{{ leader.number }}</span>
 									<span class="min-w-0 flex-1 truncate">{{ leader.name ?? 'Unknown card' }}</span>
-									<OpColorDisplay v-if="leader.colors.length > 0" :colors="leader.colors" size="sm" />
+									<OpColorDisplay
+										v-if="leader.colors.length > 0"
+										:colors="leader.colors"
+										size="sm"
+									/>
 								</li>
 							</ul>
 						</section>
@@ -210,12 +226,7 @@ const warningGroups = computed(() => {
 					</div>
 					<template #footer>
 						<div class="flex justify-end gap-2">
-							<UButton
-								color="neutral"
-								variant="ghost"
-								:disabled="busy"
-								@click="dismiss"
-							>
+							<UButton color="neutral" variant="ghost" :disabled="busy" @click="dismiss">
 								Cancel
 							</UButton>
 							<UButton

@@ -65,14 +65,16 @@ export interface ResolvedGraphicSource {
  * derived selection has to match, which is what stops a mis-declared relationship
  * resolving an entity of the wrong shape into the catalog.
  */
-const RELATION_RESULT_KIND: Partial<Record<
-	GraphicSourceSelectionKind,
-	Partial<Record<GraphicSourceRelation, GraphicSourceSelectionKind>>
->> = {
-	'event': { commentator1: 'talent', commentator2: 'talent' },
-	'player': { archetype: 'archetype' },
-	'round': { phase: 'phase' },
-	'match': { player1: 'player', player2: 'player', round: 'round' },
+const RELATION_RESULT_KIND: Partial<
+	Record<
+		GraphicSourceSelectionKind,
+		Partial<Record<GraphicSourceRelation, GraphicSourceSelectionKind>>
+	>
+> = {
+	event: { commentator1: 'talent', commentator2: 'talent' },
+	player: { archetype: 'archetype' },
+	round: { phase: 'phase' },
+	match: { player1: 'player', player2: 'player', round: 'round' },
 	'feature-match-slot': {
 		player1: 'player',
 		player2: 'player',
@@ -90,9 +92,13 @@ const COMMANDER_RELATIONS: readonly GraphicSourceRelation[] = ['player3', 'playe
  * on an Event of this Variant: a Slot's third and fourth Seats are a Commander
  * Event's alone, and an Event naming no Variant is not one.
  */
-export function graphicSourceRelations(kind: GraphicSourceSelectionKind, variant?: Variant | null): GraphicSourceRelation[] {
-	return (Object.keys(RELATION_RESULT_KIND[kind] ?? {}) as GraphicSourceRelation[])
-		.filter(relation => variant === 'commander' || !COMMANDER_RELATIONS.includes(relation));
+export function graphicSourceRelations(
+	kind: GraphicSourceSelectionKind,
+	variant?: Variant | null,
+): GraphicSourceRelation[] {
+	return (Object.keys(RELATION_RESULT_KIND[kind] ?? {}) as GraphicSourceRelation[]).filter(
+		(relation) => variant === 'commander' || !COMMANDER_RELATIONS.includes(relation),
+	);
 }
 
 /**
@@ -143,17 +149,15 @@ function derivesFrom(
 	key: string,
 	ancestorKey: string,
 ): boolean {
-	const byKey = new Map(sources.map(source => [source.key, source]));
+	const byKey = new Map(sources.map((source) => [source.key, source]));
 	const seen = new Set<string>([key]);
 	let current = byKey.get(key)?.from?.sourceKey;
 
 	while (current !== undefined) {
-		if (current === ancestorKey)
-			return true;
+		if (current === ancestorKey) return true;
 		// An already-authored cycle stops the walk rather than spinning in it: this
 		// function answers a question about a broken declaration as readily as a sound one.
-		if (seen.has(current))
-			return false;
+		if (seen.has(current)) return false;
 		seen.add(current);
 		current = byKey.get(current)?.from?.sourceKey;
 	}
@@ -175,16 +179,17 @@ export function graphicSourceDerivationOptions(
 	key: string,
 	variant?: Variant | null,
 ): GraphicSourceDerivation[] {
-	const declaration = sources.find(source => source.key === key);
-	if (!declaration)
-		return [];
+	const declaration = sources.find((source) => source.key === key);
+	if (!declaration) return [];
 
-	return sources.flatMap(parent =>
+	return sources.flatMap((parent) =>
 		parent.key === key || derivesFrom(sources, parent.key, key)
 			? []
 			: graphicSourceRelations(parent.kind, variant)
-					.filter(relation => graphicSourceRelationKind(parent.kind, relation) === declaration.kind)
-					.map(relation => ({ sourceKey: parent.key, relation })),
+					.filter(
+						(relation) => graphicSourceRelationKind(parent.kind, relation) === declaration.kind,
+					)
+					.map((relation) => ({ sourceKey: parent.key, relation })),
 	);
 }
 
@@ -195,8 +200,9 @@ export function canDeriveGraphicSource(
 	from: GraphicSourceDerivation,
 	variant?: Variant | null,
 ): boolean {
-	return graphicSourceDerivationOptions(sources, key, variant)
-		.some(option => option.sourceKey === from.sourceKey && option.relation === from.relation);
+	return graphicSourceDerivationOptions(sources, key, variant).some(
+		(option) => option.sourceKey === from.sourceKey && option.relation === from.relation,
+	);
 }
 
 /** A Player as one side of a Match's production snapshot. */
@@ -204,9 +210,7 @@ function matchSidePlayer(
 	match: GraphicBindingMatch,
 	relation: 'player1' | 'player2',
 ): GraphicBindingPlayer | undefined {
-	const data = relation === 'player1'
-		? match.player1Data
-		: match.player2Data;
+	const data = relation === 'player1' ? match.player1Data : match.player2Data;
 	return data ?? undefined;
 }
 
@@ -222,17 +226,14 @@ function slotSidePlayer(
 	relation: Seat,
 ): GraphicBindingPlayer | undefined {
 	const snapshot = slot.activeSession?.sourceSnapshot;
-	return (snapshot
-		? snapshot[relation]?.data
-		: slot[SLOT_SEAT_DATA_KEY[relation]]) ?? undefined;
+	return (snapshot ? snapshot[relation]?.data : slot[SLOT_SEAT_DATA_KEY[relation]]) ?? undefined;
 }
 
 function entityById<TEntity>(
 	table: Readonly<Record<number, TEntity>>,
 	id: number | null | undefined,
 ): TEntity | undefined {
-	if (typeof id !== 'number' || !Number.isFinite(id))
-		return undefined;
+	if (typeof id !== 'number' || !Number.isFinite(id)) return undefined;
 	return table[id];
 }
 
@@ -246,11 +247,9 @@ function followRelation(
 	switch (parentKind) {
 		case 'event': {
 			const event = data.event;
-			if (!event)
-				return undefined;
-			const talentId = relation === 'commentator1'
-				? event.commentator1TalentId
-				: event.commentator2TalentId;
+			if (!event) return undefined;
+			const talentId =
+				relation === 'commentator1' ? event.commentator1TalentId : event.commentator2TalentId;
 			return entityById(data.talents, talentId);
 		}
 		case 'player': {
@@ -263,14 +262,12 @@ function followRelation(
 		}
 		case 'match': {
 			const match = parentEntity as GraphicBindingMatch;
-			if (relation === 'round')
-				return entityById(data.rounds, match.roundId);
+			if (relation === 'round') return entityById(data.rounds, match.roundId);
 			return matchSidePlayer(match, relation as 'player1' | 'player2');
 		}
 		case 'feature-match-slot': {
 			const slot = parentEntity as GraphicBindingFeatureMatchSlot;
-			if (relation === 'match')
-				return entityById(data.matches, slot.matchId);
+			if (relation === 'match') return entityById(data.matches, slot.matchId);
 			return slotSidePlayer(slot, relation as Seat);
 		}
 		default:
@@ -318,7 +315,7 @@ export function resolveGraphicSourceSelections(
 	selections: GraphicSourceSelectionsState,
 	data: GraphicBindingDataSet,
 ): Record<string, ResolvedGraphicSource> {
-	const byKey = new Map((declarations ?? []).map(declaration => [declaration.key, declaration]));
+	const byKey = new Map((declarations ?? []).map((declaration) => [declaration.key, declaration]));
 	const resolved: Record<string, ResolvedGraphicSource> = {};
 
 	function resolveOne(
@@ -336,12 +333,10 @@ export function resolveGraphicSourceSelections(
 		// Unreachable while the relation table stays acyclic — the kind check below
 		// refuses any loop first — and kept deliberately, because a future relation whose
 		// result kind closes a cycle would otherwise recurse until the stack gave out.
-		if (visiting.has(declaration.key))
-			return { key: declaration.key, kind: declaration.kind };
+		if (visiting.has(declaration.key)) return { key: declaration.key, kind: declaration.kind };
 
 		const parent = byKey.get(declaration.from.sourceKey);
-		if (!parent)
-			return { key: declaration.key, kind: declaration.kind };
+		if (!parent) return { key: declaration.key, kind: declaration.kind };
 
 		// A relationship the parent kind does not offer, or one whose result is not the
 		// kind this selection declares, resolves nothing: the catalog would otherwise
@@ -384,8 +379,7 @@ export function resolveGraphicInputBindings(
 	data: GraphicBindingDataSet,
 ): Record<string, GraphicInputValue> {
 	const bindings = graphic.bindings ?? [];
-	if (bindings.length === 0)
-		return {};
+	if (bindings.length === 0) return {};
 
 	const sources = resolveGraphicSourceSelections(graphic.sources, selections, data);
 	const declarations = graphic.inputs ?? [];
@@ -398,22 +392,23 @@ export function resolveGraphicInputBindings(
 	// leniency lives in `isGraphicBindingFieldCompatible`, not here.)
 
 	for (const binding of bindings) {
-		const declaration = declarations.find(entry => entry.key === binding.inputKey);
+		const declaration = declarations.find((entry) => entry.key === binding.inputKey);
 		const source = sources[binding.sourceKey];
-		if (!declaration || !source || source.entity === undefined)
-			continue;
+		if (!declaration || !source || source.entity === undefined) continue;
 
 		const field = graphicBindingField(source.kind, binding.fieldId);
 		// A binding whose field this Event's game does not offer, or whose type the
 		// Graphic Input cannot hold, resolves nothing rather than something coerced.
-		if (!field || field.type !== declaration.type)
-			continue;
-		if (field.game !== undefined && field.game !== game)
-			continue;
+		if (!field || field.type !== declaration.type) continue;
+		if (field.game !== undefined && field.game !== game) continue;
 
-		const value = resolveGraphicBindingField(source.kind, binding.fieldId, source.entity as never, data);
-		if (value !== undefined)
-			bound[binding.inputKey] = value;
+		const value = resolveGraphicBindingField(
+			source.kind,
+			binding.fieldId,
+			source.entity as never,
+			data,
+		);
+		if (value !== undefined) bound[binding.inputKey] = value;
 	}
 
 	return bound;

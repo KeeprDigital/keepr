@@ -3,7 +3,10 @@ import type { ThemeSummary } from '~~/shared/types/theme';
 import type { Event } from '~/types';
 import { eventKind } from '~~/shared/config/games';
 import { EVENT_CANVAS_SIDE_BOUNDS } from '~~/shared/eventCanvas';
-import { fromFeatureMatchDefaults, toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
+import {
+	fromFeatureMatchDefaults,
+	toFeatureMatchDefaults,
+} from '~~/shared/types/featureMatchDefaults';
 
 // Event Presentation Settings: what an Event sets once for every Screen it has.
 // Its Theme, its Event Canvas, and its on-air wording and formatting, which stay
@@ -46,9 +49,7 @@ const { formData, isDirty, reset, save, saving } = useEventConfigForm({
 		...(themeId === undefined
 			? {}
 			: {
-					themeId: themeId === DEFAULT_THEME
-						? null
-						: themeId,
+					themeId: themeId === DEFAULT_THEME ? null : themeId,
 				}),
 	}),
 });
@@ -62,8 +63,14 @@ function validate(): boolean {
 	errors.value = {};
 	for (const [side, label] of CANVAS_SIDES) {
 		const value = formData.value[side];
-		if (typeof value !== 'number' || !Number.isInteger(value) || value < EVENT_CANVAS_SIDE_BOUNDS.min || value > EVENT_CANVAS_SIDE_BOUNDS.max)
-			errors.value[side] = `${label} must be between ${EVENT_CANVAS_SIDE_BOUNDS.min} and ${EVENT_CANVAS_SIDE_BOUNDS.max} pixels`;
+		if (
+			typeof value !== 'number' ||
+			!Number.isInteger(value) ||
+			value < EVENT_CANVAS_SIDE_BOUNDS.min ||
+			value > EVENT_CANVAS_SIDE_BOUNDS.max
+		)
+			errors.value[side] =
+				`${label} must be between ${EVENT_CANVAS_SIDE_BOUNDS.min} and ${EVENT_CANVAS_SIDE_BOUNDS.max} pixels`;
 	}
 	return Object.keys(errors.value).length === 0;
 }
@@ -74,8 +81,7 @@ const repository = useThemeRepository();
 onMounted(async () => {
 	try {
 		themes.value = await repository.list();
-	}
-	catch (error) {
+	} catch (error) {
 		console.error('Failed to load Themes:', error);
 		themesUnavailable.value = true;
 	}
@@ -84,15 +90,12 @@ onMounted(async () => {
 const themeItems = computed(() => {
 	const items = [
 		{ label: 'Default Theme', value: DEFAULT_THEME },
-		...themes.value.map(theme => ({ label: theme.name, value: theme.id })),
+		...themes.value.map((theme) => ({ label: theme.name, value: theme.id })),
 	];
 	// The Event's own Theme stays nameable while the library loads.
 	const selected = formData.value.themeId;
-	return selected && !items.some(item => item.value === selected)
-		? [
-				...items,
-				{ label: 'Selected Theme', value: selected },
-			]
+	return selected && !items.some((item) => item.value === selected)
+		? [...items, { label: 'Selected Theme', value: selected }]
 		: items;
 });
 </script>
@@ -122,20 +125,14 @@ const themeItems = computed(() => {
 
 				<div class="flex max-sm:flex-col justify-between items-start gap-4">
 					<div>
-						<p class="text-sm font-medium">
-							Canvas
-						</p>
+						<p class="text-sm font-medium">Canvas</p>
 						<p class="text-sm text-muted">
-							The coordinate space every Screen of this Event is laid out in. Each Screen Output scales it to fit its window, so a 4K browser source renders the same layout sharper.
+							The coordinate space every Screen of this Event is laid out in. Each Screen Output
+							scales it to fit its window, so a 4K browser source renders the same layout sharper.
 						</p>
 					</div>
 					<div class="flex gap-2 w-64">
-						<UFormField
-							name="canvasWidth"
-							label="Width"
-							:error="errors.canvasWidth"
-							class="flex-1"
-						>
+						<UFormField name="canvasWidth" label="Width" :error="errors.canvasWidth" class="flex-1">
 							<UInputNumber
 								v-model="formData.canvasWidth"
 								:min="EVENT_CANVAS_SIDE_BOUNDS.min"
@@ -165,7 +162,11 @@ const themeItems = computed(() => {
 					description="Character(s) to use between wins, losses, and draws."
 					class="flex max-sm:flex-col justify-between items-start gap-4"
 				>
-					<USelect v-model="formData.displayRecordSeparator" class="w-64" :items="RECORD_SEPARATOR_SELECT_OPTIONS" />
+					<USelect
+						v-model="formData.displayRecordSeparator"
+						class="w-64"
+						:items="RECORD_SEPARATOR_SELECT_OPTIONS"
+					/>
 				</UFormField>
 
 				<UFormField
@@ -174,7 +175,11 @@ const themeItems = computed(() => {
 					description="How player positions are shown."
 					class="flex max-sm:flex-col justify-between items-start gap-4"
 				>
-					<USelect v-model="formData.displayPositionFormat" class="w-64" :items="POSITION_FORMAT_SELECT_OPTIONS" />
+					<USelect
+						v-model="formData.displayPositionFormat"
+						class="w-64"
+						:items="POSITION_FORMAT_SELECT_OPTIONS"
+					/>
 				</UFormField>
 
 				<USeparator />

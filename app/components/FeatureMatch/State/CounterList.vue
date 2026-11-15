@@ -4,25 +4,31 @@ import type { CounterState } from '~~/shared/types/featureMatchState';
 import type { CounterTypeConfig } from '~~/shared/types/game';
 import { getCounterTypeConfigs } from '~~/shared/config/games';
 
-const props = withDefaults(defineProps<{
-	matchId: number;
-	player: Seat;
-	counters: CounterState[];
-	/** Scales up buttons and text for touch-screen use */
-	touch?: boolean;
-	/** Number of columns to use for touch-screen layouts */
-	touchColumns?: 1 | 2 | 3;
-	/** Keeps counters visible but removes interaction affordances */
-	readonly?: boolean;
-	/** Counter types this player can add; omitted falls back to game defaults */
-	availableCounterTypes?: CounterTypeConfig[];
-}>(), {
-	touch: false,
-	touchColumns: 1,
-	readonly: false,
-});
+const props = withDefaults(
+	defineProps<{
+		matchId: number;
+		player: Seat;
+		counters: CounterState[];
+		/** Scales up buttons and text for touch-screen use */
+		touch?: boolean;
+		/** Number of columns to use for touch-screen layouts */
+		touchColumns?: 1 | 2 | 3;
+		/** Keeps counters visible but removes interaction affordances */
+		readonly?: boolean;
+		/** Counter types this player can add; omitted falls back to game defaults */
+		availableCounterTypes?: CounterTypeConfig[];
+	}>(),
+	{
+		touch: false,
+		touchColumns: 1,
+		readonly: false,
+	},
+);
 
-const playerControls = usePlayerControls(() => props.matchId, () => props.player);
+const playerControls = usePlayerControls(
+	() => props.matchId,
+	() => props.player,
+);
 const eventStore = useEventStore();
 
 const counterTypeConfigs = computed(() => {
@@ -30,9 +36,7 @@ const counterTypeConfigs = computed(() => {
 		return props.availableCounterTypes;
 	}
 	const game = eventStore.event?.game;
-	return game
-		? getCounterTypeConfigs(game)
-		: [];
+	return game ? getCounterTypeConfigs(game) : [];
 });
 
 const showAddMenu = ref(false);
@@ -48,15 +52,14 @@ const configByKey = computed(() => {
 
 // Available counter types to add (excluding already added ones)
 const addableCounterTypes = computed(() => {
-	const existing = new Set(props.counters.map(c => c.type));
-	return counterTypeConfigs.value.filter(config => !existing.has(config.key));
+	const existing = new Set(props.counters.map((c) => c.type));
+	return counterTypeConfigs.value.filter((config) => !existing.has(config.key));
 });
 
 function handleCounterChange(index: number, delta: number) {
 	const updated = [...props.counters];
 	const counter = updated[index];
-	if (!counter)
-		return;
+	if (!counter) return;
 
 	const newValue = Math.max(0, counter.value + delta);
 	updated[index] = { ...counter, value: newValue };
@@ -66,8 +69,7 @@ function handleCounterChange(index: number, delta: number) {
 function handleReset(index: number) {
 	const updated = [...props.counters];
 	const counter = updated[index];
-	if (!counter)
-		return;
+	if (!counter) return;
 
 	updated[index] = { ...counter, value: 0 };
 	playerControls.updateCounters(updated);
@@ -80,10 +82,7 @@ function handleRemove(index: number) {
 }
 
 function addCounter(key: string) {
-	const updated = [
-		...props.counters,
-		{ type: key, value: 0 },
-	];
+	const updated = [...props.counters, { type: key, value: 0 }];
 	playerControls.updateCounters(updated);
 	showAddMenu.value = false;
 }
@@ -106,9 +105,7 @@ const touchGridClass = computed(() => {
 
 const addButtonClass = computed(() => {
 	if (props.touch) {
-		return props.touchColumns > 1
-			? 'col-span-full justify-self-center'
-			: 'justify-self-center';
+		return props.touchColumns > 1 ? 'col-span-full justify-self-center' : 'justify-self-center';
 	}
 
 	return 'md:col-span-2 md:justify-self-center';
@@ -124,7 +121,14 @@ const addButtonClass = computed(() => {
 			:config="configByKey.get(counter.type)"
 			:touch="touch"
 			:readonly="readonly"
-			:class="touch ? '' : { 'md:col-span-2 md:justify-self-center': index === counters.length - 1 && counters.length % 2 === 1 }"
+			:class="
+				touch
+					? ''
+					: {
+							'md:col-span-2 md:justify-self-center':
+								index === counters.length - 1 && counters.length % 2 === 1,
+						}
+			"
 			@change="(delta) => handleCounterChange(index, delta)"
 			@reset="handleReset(index)"
 			@remove="handleRemove(index)"

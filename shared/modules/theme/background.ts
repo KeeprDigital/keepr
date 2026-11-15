@@ -4,7 +4,10 @@ import type { ThemeColor } from './composites';
 import { z } from 'zod';
 import { animationEffectSelectionSchema } from '../../animationEffects';
 import { MEDIA_FIT_VALUES } from '../../types/graphicItem';
-import { MAX_GRAPHIC_MEDIA_PLAYBACK_RATE, MIN_GRAPHIC_MEDIA_PLAYBACK_RATE } from '../../types/graphics';
+import {
+	MAX_GRAPHIC_MEDIA_PLAYBACK_RATE,
+	MIN_GRAPHIC_MEDIA_PLAYBACK_RATE,
+} from '../../types/graphics';
 import { remoteMediaUrlRefusal } from '../../utils/remoteMediaUrl';
 import { linearGradientFillSchema, literalColorSchema, themeColorSchema } from './composites';
 
@@ -20,17 +23,29 @@ import { linearGradientFillSchema, literalColorSchema, themeColorSchema } from '
  * a read still resolves (`storedThemeBackgroundLayerStackSchema`); once
  * resolved the stack is a Screen's.
  */
-export type ThemeBackgroundLayer<C = ThemeColor>
-	= | Exclude<BackgroundLayer, ColorBackgroundLayer>
-		| (Omit<ColorBackgroundLayer, 'color'> & { color: C });
+export type ThemeBackgroundLayer<C = ThemeColor> =
+	| Exclude<BackgroundLayer, ColorBackgroundLayer>
+	| (Omit<ColorBackgroundLayer, 'color'> & { color: C });
 
 const opacitySchema = z.number().finite().min(0).max(1);
 
 /** One exact Graphic Asset Revision, as a document names it. */
-export const graphicAssetReferenceSchema = z.object({
-	assetId: z.string().trim().min(1).max(100).transform(value => value as GraphicAssetId),
-	revisionId: z.string().trim().min(1).max(100).transform(value => value as GraphicAssetRevisionId),
-}).strict();
+export const graphicAssetReferenceSchema = z
+	.object({
+		assetId: z
+			.string()
+			.trim()
+			.min(1)
+			.max(100)
+			.transform((value) => value as GraphicAssetId),
+		revisionId: z
+			.string()
+			.trim()
+			.min(1)
+			.max(100)
+			.transform((value) => value as GraphicAssetRevisionId),
+	})
+	.strict();
 
 /**
  * `videoCompatibility` as documents recorded it before ADR-0020: accepted so a
@@ -49,11 +64,13 @@ export const retiredVideoCompatibilitySchema = z
  * empty means unset (ADR-0021). The rule and its wording live in
  * `remoteMediaUrlRefusal`, which the editor shows before a save is attempted.
  */
-const remoteMediaUrlSchema = z.string().max(2000).superRefine((value, context) => {
-	const refusal = remoteMediaUrlRefusal(value);
-	if (refusal !== undefined)
-		context.addIssue({ code: 'custom', message: refusal });
-});
+const remoteMediaUrlSchema = z
+	.string()
+	.max(2000)
+	.superRefine((value, context) => {
+		const refusal = remoteMediaUrlRefusal(value);
+		if (refusal !== undefined) context.addIssue({ code: 'custom', message: refusal });
+	});
 
 /**
  * A Screen Media Source: an exact Graphics Asset Library revision or a Remote
@@ -62,15 +79,19 @@ const remoteMediaUrlSchema = z.string().max(2000).superRefine((value, context) =
  * shaped as a media Graphic Input value is.
  */
 export const screenMediaSourceSchema = z.discriminatedUnion('kind', [
-	z.object({
-		kind: z.literal('asset'),
-		...graphicAssetReferenceSchema.shape,
-		videoCompatibility: retiredVideoCompatibilitySchema,
-	}).strict(),
-	z.object({
-		kind: z.literal('url'),
-		url: remoteMediaUrlSchema,
-	}).strict(),
+	z
+		.object({
+			kind: z.literal('asset'),
+			...graphicAssetReferenceSchema.shape,
+			videoCompatibility: retiredVideoCompatibilitySchema,
+		})
+		.strict(),
+	z
+		.object({
+			kind: z.literal('url'),
+			url: remoteMediaUrlSchema,
+		})
+		.strict(),
 ]);
 
 /**
@@ -91,11 +112,12 @@ const LEGACY_SCREEN_MEDIA_PLAYBACK_RATE = { min: 0.1, max: 16 } as const;
  * unrelated. Anything outside the old bounds was never storable and is refused.
  */
 export const screenMediaPlaybackRateSchema = z.preprocess(
-	value => typeof value === 'number'
-		&& value >= LEGACY_SCREEN_MEDIA_PLAYBACK_RATE.min
-		&& value <= LEGACY_SCREEN_MEDIA_PLAYBACK_RATE.max
-		? Math.min(MAX_GRAPHIC_MEDIA_PLAYBACK_RATE, Math.max(MIN_GRAPHIC_MEDIA_PLAYBACK_RATE, value))
-		: value,
+	(value) =>
+		typeof value === 'number' &&
+		value >= LEGACY_SCREEN_MEDIA_PLAYBACK_RATE.min &&
+		value <= LEGACY_SCREEN_MEDIA_PLAYBACK_RATE.max
+			? Math.min(MAX_GRAPHIC_MEDIA_PLAYBACK_RATE, Math.max(MIN_GRAPHIC_MEDIA_PLAYBACK_RATE, value))
+			: value,
 	z.number().finite().min(MIN_GRAPHIC_MEDIA_PLAYBACK_RATE).max(MAX_GRAPHIC_MEDIA_PLAYBACK_RATE),
 );
 
@@ -119,35 +141,45 @@ const layerShape = {
 
 function layerSchema<C extends z.ZodType>(colorSchema: C) {
 	return z.discriminatedUnion('type', [
-		z.object({
-			...layerShape,
-			type: z.literal('color'),
-			color: colorSchema,
-		}).strict(),
-		z.object({
-			...layerShape,
-			type: z.literal('gradient'),
-			gradient: layerGradientSchema,
-		}).strict(),
-		z.object({
-			...layerShape,
-			type: z.literal('image'),
-			source: screenMediaSourceSchema,
-			fit: z.enum(MEDIA_FIT_VALUES),
-		}).strict(),
-		z.object({
-			...layerShape,
-			type: z.literal('video'),
-			source: screenMediaSourceSchema,
-			fit: z.enum(MEDIA_FIT_VALUES),
-			playbackRate: screenMediaPlaybackRateSchema,
-			loop: z.boolean(),
-		}).strict(),
-		z.object({
-			...layerShape,
-			type: z.literal('animation'),
-			animation: animationEffectSelectionSchema,
-		}).strict(),
+		z
+			.object({
+				...layerShape,
+				type: z.literal('color'),
+				color: colorSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...layerShape,
+				type: z.literal('gradient'),
+				gradient: layerGradientSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...layerShape,
+				type: z.literal('image'),
+				source: screenMediaSourceSchema,
+				fit: z.enum(MEDIA_FIT_VALUES),
+			})
+			.strict(),
+		z
+			.object({
+				...layerShape,
+				type: z.literal('video'),
+				source: screenMediaSourceSchema,
+				fit: z.enum(MEDIA_FIT_VALUES),
+				playbackRate: screenMediaPlaybackRateSchema,
+				loop: z.boolean(),
+			})
+			.strict(),
+		z
+			.object({
+				...layerShape,
+				type: z.literal('animation'),
+				animation: animationEffectSelectionSchema,
+			})
+			.strict(),
 	]);
 }
 
@@ -173,10 +205,11 @@ const MAX_BACKGROUND_LAYERS = 20;
  * per-stack rule keeps the per-Screen invariant. Liftable if a show needs two.
  */
 function layerStackSchema<C extends z.ZodType>(colorSchema: C) {
-	return z.array(layerSchema(colorSchema))
+	return z
+		.array(layerSchema(colorSchema))
 		.max(MAX_BACKGROUND_LAYERS)
 		.refine(
-			layers => layers.filter(layer => layer.type === 'animation').length <= 1,
+			(layers) => layers.filter((layer) => layer.type === 'animation').length <= 1,
 			'A Background Layer stack carries at most one animation layer',
 		);
 }

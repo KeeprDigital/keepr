@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { CARD_TYPE_BUCKET_ORDER, getCardTypeBucket, getCardTypeBucketOrder, getCardTypeDisplayLabel, getMetagameCardTypeBuckets, isMetagameColumnOffered, isMetagameSortOffered, metagameCardImageUrl } from '~~/shared/utils/metagame';
+import {
+	CARD_TYPE_BUCKET_ORDER,
+	getCardTypeBucket,
+	getCardTypeBucketOrder,
+	getCardTypeDisplayLabel,
+	getMetagameCardTypeBuckets,
+	isMetagameColumnOffered,
+	isMetagameSortOffered,
+	metagameCardImageUrl,
+} from '~~/shared/utils/metagame';
 
 describe('metagame card type display helpers', () => {
 	it('maps canonical type lines to coarse display buckets', () => {
@@ -13,7 +22,7 @@ describe('metagame card type display helpers', () => {
 	// A land of a second type is a Land, as `isLandCardType` reads it; only a
 	// creature land (Dryad Arbor) is counted with the creatures.
 	it.each([
-		{ cardType: 'Enchantment Land — Urza\'s Saga', bucket: 'Land' },
+		{ cardType: "Enchantment Land — Urza's Saga", bucket: 'Land' },
 		{ cardType: 'Artifact Land', bucket: 'Land' },
 		{ cardType: 'Land Creature — Forest Dryad', bucket: 'Creature' },
 		{ cardType: 'Artifact // Land', bucket: 'Artifact' },
@@ -23,17 +32,21 @@ describe('metagame card type display helpers', () => {
 	});
 
 	it('supports metagame-specific land labeling without changing the bucket', () => {
-		expect(getCardTypeDisplayLabel('Land — Island Mountain', { nonbasicLandLabel: true })).toBe('Nonbasic Land');
+		expect(getCardTypeDisplayLabel('Land — Island Mountain', { nonbasicLandLabel: true })).toBe(
+			'Nonbasic Land',
+		);
 		expect(getCardTypeDisplayLabel('Land — Island Mountain')).toBe('Land');
 	});
 
 	it('orders a card by its type bucket: creatures before spells, lands last of the three', () => {
-		expect(getCardTypeBucketOrder('Creature — Human')).toBeLessThan(getCardTypeBucketOrder('Instant'));
+		expect(getCardTypeBucketOrder('Creature — Human')).toBeLessThan(
+			getCardTypeBucketOrder('Instant'),
+		);
 		expect(getCardTypeBucketOrder('Instant')).toBeLessThan(getCardTypeBucketOrder('Land'));
 	});
 });
 
-describe('what each Card Game\'s Metagame offers', () => {
+describe("what each Card Game's Metagame offers", () => {
 	// An OP Metagame reads participation only, and its cards no mana cost or Sideboard (ADR-0074).
 	it.each([
 		['winRate', false],
@@ -69,11 +82,8 @@ describe('what each Card Game\'s Metagame offers', () => {
 
 	it.each([
 		['mtg', CARD_TYPE_BUCKET_ORDER],
-		[
-			'op',
-			['Character', 'Event', 'Stage'],
-		],
-	] as const)('groups a %s Metagame\'s cards by %j', (game, buckets) => {
+		['op', ['Character', 'Event', 'Stage']],
+	] as const)("groups a %s Metagame's cards by %j", (game, buckets) => {
 		expect(getMetagameCardTypeBuckets(game)).toEqual(buckets);
 	});
 
@@ -86,10 +96,7 @@ describe('what each Card Game\'s Metagame offers', () => {
 			{ imageUrl: null, scryfallId: 'abcdef' },
 			'https://cards.scryfall.io/normal/front/a/b/abcdef.jpg',
 		],
-		[
-			{ scryfallId: null },
-			null,
-		],
+		[{ scryfallId: null }, null],
 	])('images the card %j by %s', (card, url) => {
 		expect(metagameCardImageUrl(card)).toBe(url);
 	});

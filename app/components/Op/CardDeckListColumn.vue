@@ -15,9 +15,11 @@ const playerStore = usePlayerStore();
 const { openPlayerDeckList } = usePlayerDeckListModal();
 
 /** A linked Player's Deck List opens read-only, as the Metagame opens it; a pasted one has no Player to open. */
-const linkedPlayer = computed(() => props.playerData?.playerId == null
-	? null
-	: playerStore.players.find(player => player.id === props.playerData!.playerId) ?? null);
+const linkedPlayer = computed(() =>
+	props.playerData?.playerId == null
+		? null
+		: (playerStore.players.find((player) => player.id === props.playerData!.playerId) ?? null),
+);
 
 function isLeaderEntry(entry: OpDeckListEntry, leaderNumber: string | null) {
 	return entry.number === leaderNumber || entry.card?.category === 'leader';
@@ -25,30 +27,28 @@ function isLeaderEntry(entry: OpDeckListEntry, leaderNumber: string | null) {
 
 const leaderEntries = computed(() => {
 	const deckList = props.playerData?.deckList;
-	return deckList?.entries.filter(entry => isLeaderEntry(entry, deckList.leaderNumber)) ?? [];
+	return deckList?.entries.filter((entry) => isLeaderEntry(entry, deckList.leaderNumber)) ?? [];
 });
 
 const mainboardEntries = computed(() => {
 	const deckList = props.playerData?.deckList;
-	return deckList?.entries.filter(entry => !isLeaderEntry(entry, deckList.leaderNumber)) ?? [];
+	return deckList?.entries.filter((entry) => !isLeaderEntry(entry, deckList.leaderNumber)) ?? [];
 });
 
-const leaderName = computed(() => props.playerData?.leader?.name
-	?? leaderEntries.value[0]?.card?.name
-	?? leaderEntries.value[0]?.number
-	?? null);
+const leaderName = computed(
+	() =>
+		props.playerData?.leader?.name ??
+		leaderEntries.value[0]?.card?.name ??
+		leaderEntries.value[0]?.number ??
+		null,
+);
 </script>
 
 <template>
 	<div class="flex flex-col">
 		<!-- No player -->
 		<template v-if="!playerData">
-			<UIEmptyState
-				variant="inline"
-				icon="i-lucide-user-x"
-				title="No player"
-				class="flex-1"
-			/>
+			<UIEmptyState variant="inline" icon="i-lucide-user-x" title="No player" class="flex-1" />
 		</template>
 
 		<template v-else>

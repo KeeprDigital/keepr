@@ -83,9 +83,7 @@ function buildOverrideResolution(
 }
 
 function lookupErrorMessage(error: unknown): string {
-	return error instanceof Error
-		? error.message
-		: String(error);
+	return error instanceof Error ? error.message : String(error);
 }
 
 export function importedMtgCardResolverService() {
@@ -107,7 +105,10 @@ export function importedMtgCardResolverService() {
 		const overrides = await eventCardNameOverrideService().listResolvedByEvent(eventId);
 		const overrideMap = new Map<string, DbMtgCard>();
 		for (const override of overrides) {
-			overrideMap.set(createOverrideLookupKey(override.inputName, override.inputSetCode), override.card);
+			overrideMap.set(
+				createOverrideLookupKey(override.inputName, override.inputSetCode),
+				override.card,
+			);
 		}
 
 		const pendingExactLookups: ImportedMtgCardIdentifier[] = [];
@@ -131,8 +132,7 @@ export function importedMtgCardResolverService() {
 			suppressNotFoundErrors: true,
 			stopOnError: true,
 		});
-		if (exactLookup.errors.length > 0)
-			throw new ImportedMtgCardLookupError(exactLookup.errors);
+		if (exactLookup.errors.length > 0) throw new ImportedMtgCardLookupError(exactLookup.errors);
 
 		const fuzzyLookups: ImportedMtgCardIdentifier[] = [];
 		for (const card of pendingExactLookups) {
@@ -157,24 +157,18 @@ export function importedMtgCardResolverService() {
 			let fuzzyData: ScryfallCardData | null = null;
 			try {
 				fuzzyData = await fetchScryfallCardByName({ fuzzy: card.name, setCode: card.setCode });
-			}
-			catch (error) {
+			} catch (error) {
 				if (!isScryfallNotFoundError(error)) {
-					throw new ImportedMtgCardLookupError([
-						lookupErrorMessage(error),
-					]);
+					throw new ImportedMtgCardLookupError([lookupErrorMessage(error)]);
 				}
 			}
 
 			if (!fuzzyData && card.setCode) {
 				try {
 					fuzzyData = await fetchScryfallCardByName({ fuzzy: card.name });
-				}
-				catch (error) {
+				} catch (error) {
 					if (!isScryfallNotFoundError(error)) {
-						throw new ImportedMtgCardLookupError([
-							lookupErrorMessage(error),
-						]);
+						throw new ImportedMtgCardLookupError([lookupErrorMessage(error)]);
 					}
 					fuzzyData = null;
 				}
@@ -211,9 +205,8 @@ export function importedMtgCardResolverService() {
 		for (let index = 0; index < fuzzyLookups.length; index += FUZZY_LOOKUP_CONCURRENCY) {
 			const chunk = fuzzyLookups.slice(index, index + FUZZY_LOOKUP_CONCURRENCY);
 			const settled = await Promise.allSettled(chunk.map(resolveFuzzyCard));
-			const failed = settled.find(result => result.status === 'rejected');
-			if (failed?.status === 'rejected')
-				throw failed.reason;
+			const failed = settled.find((result) => result.status === 'rejected');
+			if (failed?.status === 'rejected') throw failed.reason;
 			for (const result of settled) {
 				if (result.status === 'fulfilled')
 					resolutions.set(result.value.key, result.value.resolution);

@@ -1,6 +1,11 @@
 import type { DeckCompanion } from '../types/deckCompanion';
 import type { DeckListCompartment, PointsSystem } from '../types/enums';
-import type { HighlanderDeckSummary, HighlanderDuplicateCard, HighlanderPointedCard, HighlanderUnknownCard } from '../types/highlander';
+import type {
+	HighlanderDeckSummary,
+	HighlanderDuplicateCard,
+	HighlanderPointedCard,
+	HighlanderUnknownCard,
+} from '../types/highlander';
 import { SEVEN_POINT_HIGHLANDER } from '../highlander/7-point-highlander';
 import { RESERVE_LIST_ORACLE_ID_SET } from '../mtg/reserve-list';
 
@@ -48,7 +53,7 @@ function getPointEntries(system: PointsSystem): Map<string, PointEntry> {
 	switch (system) {
 		case '7ph':
 			return new Map(
-				SEVEN_POINT_HIGHLANDER.entries.map(entry => [
+				SEVEN_POINT_HIGHLANDER.entries.map((entry) => [
 					entry.oracleId,
 					{
 						name: entry.name,
@@ -74,15 +79,21 @@ function isBasicLand(cardType: string | null, name: string): boolean {
 }
 
 function getUniqueCompartments(compartments: Set<DeckListCompartment>): DeckListCompartment[] {
-	return (['mainboard', 'sideboard'] as const).filter(compartment => compartments.has(compartment));
+	return (['mainboard', 'sideboard'] as const).filter((compartment) =>
+		compartments.has(compartment),
+	);
 }
 
 function sortPointedCards(cards: HighlanderPointedCard[]): HighlanderPointedCard[] {
-	return [...cards].sort((left, right) => right.points - left.points || left.name.localeCompare(right.name));
+	return [...cards].sort(
+		(left, right) => right.points - left.points || left.name.localeCompare(right.name),
+	);
 }
 
 function sortDuplicateCards(cards: HighlanderDuplicateCard[]): HighlanderDuplicateCard[] {
-	return [...cards].sort((left, right) => right.quantity - left.quantity || left.name.localeCompare(right.name));
+	return [...cards].sort(
+		(left, right) => right.quantity - left.quantity || left.name.localeCompare(right.name),
+	);
 }
 
 function sortUnknownCards(cards: HighlanderUnknownCard[]): HighlanderUnknownCard[] {
@@ -108,7 +119,10 @@ export function getPointsByOracleId(system: PointsSystem): Map<string, number> {
 	return pointsByOracleId;
 }
 
-export function getPointEntryByOracleId(system: PointsSystem, oracleId: string): PointEntryInfo | null {
+export function getPointEntryByOracleId(
+	system: PointsSystem,
+	oracleId: string,
+): PointEntryInfo | null {
 	const entry = getPointEntries(system).get(oracleId);
 	if (!entry) {
 		return null;
@@ -134,10 +148,7 @@ export function evaluateHighlanderDeck(
 
 	for (const card of deckCards) {
 		if (!card.oracleId) {
-			unknownByName.set(card.name, new Set([
-				...(unknownByName.get(card.name) ?? []),
-				'oracleId',
-			]));
+			unknownByName.set(card.name, new Set([...(unknownByName.get(card.name) ?? []), 'oracleId']));
 		}
 
 		if (card.oracleId) {
@@ -186,45 +197,40 @@ export function evaluateHighlanderDeck(
 				pointedAs: 'companion',
 			});
 		}
-	}
-	else if (companion && !companion.oracleId) {
-		unknownByName.set(companion.name, new Set([
-			...(unknownByName.get(companion.name) ?? []),
-			'oracleId',
-		]));
+	} else if (companion && !companion.oracleId) {
+		unknownByName.set(
+			companion.name,
+			new Set([...(unknownByName.get(companion.name) ?? []), 'oracleId']),
+		);
 	}
 
 	const unknownCards = sortUnknownCards(
-		[
-			...unknownByName.entries(),
-		].map(([name, missing]) => ({
+		[...unknownByName.entries()].map(([name, missing]) => ({
 			name,
 			missing: [...missing].sort(),
 		})),
 	);
 
-	const hasReserveListCards = unknownCards.length > 0
-		? null
-		: deckCards.some(card => card.oracleId != null && RESERVE_LIST_ORACLE_ID_SET.has(card.oracleId))
-			|| (companion?.oracleId != null && RESERVE_LIST_ORACLE_ID_SET.has(companion.oracleId));
-	const maxPoints = hasReserveListCards == null
-		? null
-		: hasReserveListCards
-			? 7
-			: 8;
+	const hasReserveListCards =
+		unknownCards.length > 0
+			? null
+			: deckCards.some(
+					(card) => card.oracleId != null && RESERVE_LIST_ORACLE_ID_SET.has(card.oracleId),
+				) ||
+				(companion?.oracleId != null && RESERVE_LIST_ORACLE_ID_SET.has(companion.oracleId));
+	const maxPoints = hasReserveListCards == null ? null : hasReserveListCards ? 7 : 8;
 	const duplicateCards = sortDuplicateCards(
-		[
-			...oracleGroups.values(),
-		]
-			.filter(group => !group.isBasicLand && group.quantity > 1)
-			.map(group => ({ name: group.name, quantity: group.quantity })),
+		[...oracleGroups.values()]
+			.filter((group) => !group.isBasicLand && group.quantity > 1)
+			.map((group) => ({ name: group.name, quantity: group.quantity })),
 	);
 
-	const status = unknownCards.length > 0
-		? 'unknown'
-		: duplicateCards.length > 0 || (maxPoints != null && points > maxPoints)
-			? 'illegal'
-			: 'legal';
+	const status =
+		unknownCards.length > 0
+			? 'unknown'
+			: duplicateCards.length > 0 || (maxPoints != null && points > maxPoints)
+				? 'illegal'
+				: 'legal';
 
 	return {
 		system,
@@ -232,9 +238,7 @@ export function evaluateHighlanderDeck(
 		points,
 		maxPoints,
 		hasReserveListCards,
-		pointedCards: sortPointedCards([
-			...pointedCards.values(),
-		]),
+		pointedCards: sortPointedCards([...pointedCards.values()]),
 		duplicateCards,
 		unknownCards,
 	};
@@ -250,9 +254,11 @@ export function formatHighlanderPointsLabel(highlander: HighlanderDeckSummary): 
 export function formatHighlanderIssueSummary(highlander: HighlanderDeckSummary): string {
 	const parts: string[] = [];
 	if (highlander.duplicateCards.length > 0) {
-		parts.push(`${highlander.duplicateCards.length} duplicate${highlander.duplicateCards.length === 1
-			? ''
-			: 's'}`);
+		parts.push(
+			`${highlander.duplicateCards.length} duplicate${
+				highlander.duplicateCards.length === 1 ? '' : 's'
+			}`,
+		);
 	}
 	if (highlander.maxPoints != null && highlander.points > highlander.maxPoints) {
 		parts.push(`${highlander.points}/${highlander.maxPoints} Points`);
@@ -263,14 +269,18 @@ export function formatHighlanderIssueSummary(highlander: HighlanderDeckSummary):
 	return parts.join(', ');
 }
 
-export function formatHighlanderCompartmentNote(compartments: DeckListCompartment[]): string | null {
+export function formatHighlanderCompartmentNote(
+	compartments: DeckListCompartment[],
+): string | null {
 	if (compartments.length === 1 && compartments[0] === 'sideboard') {
 		return 'Sideboard';
 	}
 	return null;
 }
 
-export function formatHighlanderPointedCardNote(card: Pick<HighlanderPointedCard, 'pointedAs' | 'compartments'>): string | null {
+export function formatHighlanderPointedCardNote(
+	card: Pick<HighlanderPointedCard, 'pointedAs' | 'compartments'>,
+): string | null {
 	if (card.pointedAs === 'companion') {
 		return 'Companion';
 	}

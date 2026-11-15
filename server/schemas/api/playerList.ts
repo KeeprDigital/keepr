@@ -31,24 +31,31 @@ export const updatePlayerListSchema = createUpdateSchema(playerLists)
 
 // ── Member Management Schemas ──
 
-const playerIdListSchema = z.array(z.number().int().positive())
+const playerIdListSchema = z
+	.array(z.number().int().positive())
 	.min(1)
 	.max(500)
-	.refine(playerIds => new Set(playerIds).size === playerIds.length, {
+	.refine((playerIds) => new Set(playerIds).size === playerIds.length, {
 		message: 'playerIds must not contain duplicates',
 	});
 
-export const addMembersSchema = z.object({
-	playerIds: playerIdListSchema,
-}).strict();
+export const addMembersSchema = z
+	.object({
+		playerIds: playerIdListSchema,
+	})
+	.strict();
 
-export const batchRemoveMembersSchema = z.object({
-	playerIds: playerIdListSchema,
-}).strict();
+export const batchRemoveMembersSchema = z
+	.object({
+		playerIds: playerIdListSchema,
+	})
+	.strict();
 
-export const reorderMembersSchema = z.object({
-	playerIds: playerIdListSchema,
-}).strict();
+export const reorderMembersSchema = z
+	.object({
+		playerIds: playerIdListSchema,
+	})
+	.strict();
 
 // ── Route Params ──
 

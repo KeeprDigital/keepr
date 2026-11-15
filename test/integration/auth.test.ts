@@ -1,6 +1,9 @@
 import { hashPassword } from 'better-auth/crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { AUTH_SESSION_EXPIRES_IN_SECONDS, AUTH_SESSION_UPDATE_AGE_SECONDS } from '../../server/utils/authOptions';
+import {
+	AUTH_SESSION_EXPIRES_IN_SECONDS,
+	AUTH_SESSION_UPDATE_AGE_SECONDS,
+} from '../../server/utils/authOptions';
 import { fetch, url } from './client';
 import { executeIntegrationD1, queryIntegrationD1 } from './integrationD1';
 
@@ -25,7 +28,7 @@ const FIXTURE_PASSWORD = 'integration-password-393';
 function cookieHeaderFrom(response: Awaited<ReturnType<typeof fetch>>): string {
 	return response.headers
 		.getSetCookie()
-		.map(cookie => cookie.split(';')[0])
+		.map((cookie) => cookie.split(';')[0])
 		.join('; ');
 }
 
@@ -38,25 +41,26 @@ function cookieHeaderFrom(response: Awaited<ReturnType<typeof fetch>>): string {
  * spawned server's random port has to be admitted by a loopback pattern rather
  * than by a fixed name (#410).
  */
-async function postJson(path: string, body: unknown, cookie?: string, origin: string | null = url('/')) {
+async function postJson(
+	path: string,
+	body: unknown,
+	cookie?: string,
+	origin: string | null = url('/'),
+) {
 	return fetch(path, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			...(cookie
-				? { Cookie: cookie }
-				: {}),
-			...(origin === null
-				? {}
-				: { Origin: origin }),
+			...(cookie ? { Cookie: cookie } : {}),
+			...(origin === null ? {} : { Origin: origin }),
 		},
 		body: JSON.stringify(body),
 	});
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const EXPIRES_IN_DAYS = AUTH_SESSION_EXPIRES_IN_SECONDS * 1000 / DAY_MS;
-const UPDATE_AGE_DAYS = AUTH_SESSION_UPDATE_AGE_SECONDS * 1000 / DAY_MS;
+const EXPIRES_IN_DAYS = (AUTH_SESSION_EXPIRES_IN_SECONDS * 1000) / DAY_MS;
+const UPDATE_AGE_DAYS = (AUTH_SESSION_UPDATE_AGE_SECONDS * 1000) / DAY_MS;
 
 /** The session cookie, under either name a server can give it (see `client.ts`). */
 const SESSION_TOKEN_COOKIE = /^(?:__Secure-)?better-auth\.session_token=/;
@@ -83,7 +87,10 @@ async function ageSession(token: string, days: number) {
 }
 
 async function sessionExpiry(token: string): Promise<number | undefined> {
-	const [row] = await queryIntegrationD1<{ expires_at: number }>('SELECT expires_at FROM session WHERE token = ?', [token]);
+	const [row] = await queryIntegrationD1<{ expires_at: number }>(
+		'SELECT expires_at FROM session WHERE token = ?',
+		[token],
+	);
 	return row?.expires_at;
 }
 
@@ -102,9 +109,7 @@ async function getSession(cookie: string) {
 	// A sessionless answer is the JSON literal `null`; an empty body means the
 	// same thing and must not read as a parse failure.
 	const text = await response.text();
-	return text
-		? JSON.parse(text)
-		: null;
+	return text ? JSON.parse(text) : null;
 }
 
 describe('auth foundation', () => {
@@ -126,7 +131,7 @@ describe('auth foundation', () => {
 			password: FIXTURE_PASSWORD,
 		});
 		expect(signIn.status).toBe(200);
-		const signInBody = await signIn.json() as { user: { id: string; email: string } };
+		const signInBody = (await signIn.json()) as { user: { id: string; email: string } };
 		expect(signInBody.user).toMatchObject({ id: FIXTURE_USER_ID, email: FIXTURE_EMAIL });
 
 		const cookie = cookieHeaderFrom(signIn);
@@ -151,16 +156,16 @@ describe('auth foundation', () => {
 	 * Every built server sets the `__Secure-`, `Secure` one instead
 	 * (`useSecureCookies` in `server/utils/authOptions.ts`, #451).
 	 */
-	it('sets the dev server\'s session cookie unprefixed and not Secure', async () => {
+	it("sets the dev server's session cookie unprefixed and not Secure", async () => {
 		const signIn = await postJson('/api/auth/sign-in/email', {
 			email: FIXTURE_EMAIL,
 			password: FIXTURE_PASSWORD,
 		});
 		expect(signIn.status).toBe(200);
 
-		const session = signIn.headers.getSetCookie().find(set => SESSION_TOKEN_COOKIE.test(set));
+		const session = signIn.headers.getSetCookie().find((set) => SESSION_TOKEN_COOKIE.test(set));
 		expect(session).toMatch(/^better-auth\.session_token=/);
-		expect(session!.split(';').map(part => part.trim().toLowerCase())).not.toContain('secure');
+		expect(session!.split(';').map((part) => part.trim().toLowerCase())).not.toContain('secure');
 	});
 
 	/**
@@ -236,7 +241,7 @@ describe('auth foundation', () => {
 	 * the row slid forward and the renewed cookie went nowhere, and a tab left open
 	 * for a week lost a cookie the server was still honouring.
 	 */
-	it('renews an aged Session\'s cookie on an ordinary API request and keeps admitting it past the original expiry', async () => {
+	it("renews an aged Session's cookie on an ordinary API request and keeps admitting it past the original expiry", async () => {
 		const signIn = await postJson('/api/auth/sign-in/email', {
 			email: FIXTURE_EMAIL,
 			password: FIXTURE_PASSWORD,
@@ -252,7 +257,7 @@ describe('auth foundation', () => {
 
 		const renewing = await ordinaryApiRequest(cookie);
 		expect(renewing.status).toBe(200);
-		const renewal = renewing.headers.getSetCookie().filter(set => SESSION_TOKEN_COOKIE.test(set));
+		const renewal = renewing.headers.getSetCookie().filter((set) => SESSION_TOKEN_COOKIE.test(set));
 		expect(renewal).toHaveLength(1);
 		expect(renewal[0]).toMatch(new RegExp(`Max-Age=${AUTH_SESSION_EXPIRES_IN_SECONDS}(;|$)`, 'i'));
 		expect(sessionTokenFrom(renewal[0]!)).toBe(token);
@@ -297,10 +302,9 @@ describe('auth foundation', () => {
 		expect(await sessionExpiry(token)).toBeUndefined();
 		// The dead cookie is expired on the refusal too, now that a read's cookies
 		// reach the response whatever the boundary then answers.
-		expect(idle.headers.getSetCookie().filter(set => SESSION_TOKEN_COOKIE.test(set)))
-			.toEqual([
-				expect.stringMatching(/Max-Age=0(;|$)/i),
-			]);
+		expect(idle.headers.getSetCookie().filter((set) => SESSION_TOKEN_COOKIE.test(set))).toEqual([
+			expect.stringMatching(/Max-Age=0(;|$)/i),
+		]);
 
 		const another = await postJson('/api/auth/sign-in/email', {
 			email: FIXTURE_EMAIL,

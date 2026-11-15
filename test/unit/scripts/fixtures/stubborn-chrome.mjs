@@ -18,21 +18,19 @@ import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 
-const option = name => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
+const option = (name) =>
+	process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 
 const profile = option('user-data-dir');
 for (const name of ['SIGINT', 'SIGTERM']) {
 	process.on(name, () => {
-		if (profile !== undefined)
-			appendFileSync(join(profile, 'signals-received'), `${name}\n`);
+		if (profile !== undefined) appendFileSync(join(profile, 'signals-received'), `${name}\n`);
 	});
 }
 const said = option('say');
-if (said !== undefined)
-	process.stderr.write(`${said}\n`);
+if (said !== undefined) process.stderr.write(`${said}\n`);
 const exit = option('exit');
-if (exit !== undefined)
-	process.exit(Number(exit));
+if (exit !== undefined) process.exit(Number(exit));
 // `--silent` stands in for a browser too slow to announce itself at all.
 if (!process.argv.includes('--silent'))
 	process.stderr.write('\nDevTools listening on ws://127.0.0.1:9/devtools/browser/stubborn\n');

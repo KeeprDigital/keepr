@@ -5,7 +5,10 @@
 // Mode Definitions, which already import that module.
 
 import type { FoundationTokenDefinition, ThemeTokenValue } from './modules/theme/tokens';
-import type { AnyDeclaredModeTokenDefinition, FoundationTokenName } from './modules/theme/vocabulary';
+import type {
+	AnyDeclaredModeTokenDefinition,
+	FoundationTokenName,
+} from './modules/theme/vocabulary';
 import type { ThemeTokenWriteRefusal } from './types/theme';
 import { themeTokenValueSchema } from './modules/theme/tokens';
 import { FOUNDATION_TOKENS } from './modules/theme/vocabulary';
@@ -18,10 +21,14 @@ const MODE_TOKENS: Readonly<Record<string, AnyDeclaredModeTokenDefinition>> = Ob
 	...SCREEN_MODE_VALUES.map(screenModeTokens),
 );
 
-const FORMER_TOKENS: ReadonlySet<string> = new Set(SCREEN_MODE_VALUES.flatMap(screenModeFormerTokens));
+const FORMER_TOKENS: ReadonlySet<string> = new Set(
+	SCREEN_MODE_VALUES.flatMap(screenModeFormerTokens),
+);
 for (const name of FORMER_TOKENS) {
 	if (Object.hasOwn(MODE_TOKENS, name))
-		throw new Error(`Theme Token "${name}" cannot be both a Mode Token and a former token of its mode.`);
+		throw new Error(
+			`Theme Token "${name}" cannot be both a Mode Token and a former token of its mode.`,
+		);
 }
 
 /**
@@ -33,23 +40,22 @@ export function isFormerThemeToken(name: string): boolean {
 	return FORMER_TOKENS.has(name);
 }
 
-export type ThemeTokenDefinitionOf
-	= | { tier: 'foundation'; definition: FoundationTokenDefinition }
-		| { tier: 'mode'; definition: AnyDeclaredModeTokenDefinition };
+export type ThemeTokenDefinitionOf =
+	| { tier: 'foundation'; definition: FoundationTokenDefinition }
+	| { tier: 'mode'; definition: AnyDeclaredModeTokenDefinition };
 
 /** The Theme Token `name` names, with its tier, or undefined for a name no token has now. */
 export function themeTokenDefinition(name: string): ThemeTokenDefinitionOf | undefined {
 	if (Object.hasOwn(FOUNDATION_TOKENS, name))
 		return { tier: 'foundation', definition: FOUNDATION_TOKENS[name as FoundationTokenName] };
-	if (Object.hasOwn(MODE_TOKENS, name))
-		return { tier: 'mode', definition: MODE_TOKENS[name]! };
+	if (Object.hasOwn(MODE_TOKENS, name)) return { tier: 'mode', definition: MODE_TOKENS[name]! };
 	return undefined;
 }
 
-export type ThemeTokenWrite
-	= | { ok: true; dropped?: false; value: ThemeTokenValue }
-		| { ok: true; dropped: true }
-		| { ok: false; refusal: ThemeTokenWriteRefusal };
+export type ThemeTokenWrite =
+	| { ok: true; dropped?: false; value: ThemeTokenValue }
+	| { ok: true; dropped: true }
+	| { ok: false; refusal: ThemeTokenWriteRefusal };
 
 /**
  * A value `name` may be stored as, in a Theme or a Screen Theme Override, or
@@ -63,11 +69,9 @@ export type ThemeTokenWrite
  * there is nothing to store.
  */
 export function parseThemeTokenValue(name: string, value: unknown): ThemeTokenWrite {
-	if (isFormerThemeToken(name))
-		return { ok: true, dropped: true };
+	if (isFormerThemeToken(name)) return { ok: true, dropped: true };
 	const token = themeTokenDefinition(name);
-	if (!token)
-		return { ok: false, refusal: 'unknown-token' };
+	if (!token) return { ok: false, refusal: 'unknown-token' };
 
 	const literal = themeTokenValueSchema(token.definition).safeParse(value);
 	return literal.success

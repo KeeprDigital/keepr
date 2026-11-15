@@ -16,7 +16,6 @@ const SUSPENSE_NOTICE = '<Suspense> is an experimental feature and its API will 
 
 const info = console.info.bind(console);
 console.info = (...data: unknown[]) => {
-	if (data.length === 1 && data[0] === SUSPENSE_NOTICE)
-		return;
+	if (data.length === 1 && data[0] === SUSPENSE_NOTICE) return;
 	info(...data);
 };

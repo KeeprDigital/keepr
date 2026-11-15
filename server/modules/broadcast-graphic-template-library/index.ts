@@ -77,8 +77,7 @@ function installedEntry(
 	// or counted, so it is left out of the library rather than listed as an entry
 	// that fails on use. Preflight refuses one on the way in, so this is the
 	// backstop for a row that predates that check or was written by something else.
-	if (!document)
-		return undefined;
+	if (!document) return undefined;
 	const installedAt = new Date(template.installedAt);
 	return {
 		id: template.id,
@@ -113,7 +112,7 @@ export async function listBroadcastGraphicTemplateLibrary(
 		}),
 	]);
 	return [
-		...authored.map(template => ({
+		...authored.map((template) => ({
 			id: template.id,
 			name: template.name,
 			description: template.description,
@@ -123,7 +122,7 @@ export async function listBroadcastGraphicTemplateLibrary(
 			createdAt: template.createdAt,
 			updatedAt: template.updatedAt,
 		})),
-		...installed.map(installedEntry).filter(entry => entry !== undefined),
+		...installed.map(installedEntry).filter((entry) => entry !== undefined),
 	].sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
 }
 
@@ -151,14 +150,13 @@ export async function findBroadcastGraphicTemplateLibraryEntry(
 			updatedAt: authored.updatedAt,
 		};
 	}
-	const installed = await graphicsAssetLibraryForEvent(event)
-		.findInstalledGraphicsTemplate({ templateId });
+	const installed = await graphicsAssetLibraryForEvent(event).findInstalledGraphicsTemplate({
+		templateId,
+	});
 	// A Feature Match Layout Template is a real Installed Graphics Template and a
 	// perfectly valid identity — it is simply not an entry in *this* library, and
 	// answering with it would hand a caller a document it cannot place.
-	return installed?.kind === 'broadcast-graphic'
-		? installedEntry(installed)
-		: undefined;
+	return installed?.kind === 'broadcast-graphic' ? installedEntry(installed) : undefined;
 }
 
 export function broadcastGraphicTemplateLibrarySummary(

@@ -34,7 +34,5 @@ export function screenOutputRealtimeClientId(screenId: number): string {
  */
 export function realtimeChannelEventId(channel: string): number | null {
 	const match = /^(?:event|screen):(\d+)(?::|$)/.exec(channel);
-	return match
-		? Number(match[1])
-		: null;
+	return match ? Number(match[1]) : null;
 }

@@ -103,7 +103,11 @@ const pickers = computed(() =>
 
 const socialProfileProjectionControls = computed(() => {
 	const selections = sessionStore.sourceSelections(props.screen.id, props.graphic.id);
-	const resolved = resolveSocialProfileProjectionAcceptances(props.graphic, selections, dataSet.value);
+	const resolved = resolveSocialProfileProjectionAcceptances(
+		props.graphic,
+		selections,
+		dataSet.value,
+	);
 	return (props.graphic.socialProfileProjections ?? []).map((declaration) => {
 		const state = sessionStore.projectedSocialProfileProjectionState(
 			props.screen.id,
@@ -115,39 +119,59 @@ const socialProfileProjectionControls = computed(() => {
 		return {
 			declaration,
 			state,
-			pending: ['entering', 'on-air', 'updating'].includes(props.playoutState)
-				&& (declaration.updatePolicy ?? 'staged') === 'staged'
-				&& !sameSocialProfileProjectionAcceptance(state, resolved[declaration.key]),
+			pending:
+				['entering', 'on-air', 'updating'].includes(props.playoutState) &&
+				(declaration.updatePolicy ?? 'staged') === 'staged' &&
+				!sameSocialProfileProjectionAcceptance(state, resolved[declaration.key]),
 		};
 	});
 });
 
 function socialProfileOptions(projectionKey: string) {
 	const state = socialProfileProjectionControls.value.find(
-		control => control.declaration.key === projectionKey,
+		(control) => control.declaration.key === projectionKey,
 	)?.state;
-	return state?.acceptedProfiles.map(profile => ({
-		label: `${profile.networkLabel} — @${profile.handle}`,
-		value: profile.network,
-	})) ?? [];
+	return (
+		state?.acceptedProfiles.map((profile) => ({
+			label: `${profile.networkLabel} — @${profile.handle}`,
+			value: profile.network,
+		})) ?? []
+	);
 }
 
 function selectSocialProfile(projectionKey: string, value: unknown) {
-	const state = socialProfileProjectionControls.value.find(control => control.declaration.key === projectionKey)?.state;
-	const network = state?.acceptedProfiles.find(profile => profile.network === value)?.network;
-	if (!network || props.disconnected)
-		return;
-	void sessionStore.selectSocialProfile(props.eventId, props.screen.id, props.graphic.id, projectionKey, network);
+	const state = socialProfileProjectionControls.value.find(
+		(control) => control.declaration.key === projectionKey,
+	)?.state;
+	const network = state?.acceptedProfiles.find((profile) => profile.network === value)?.network;
+	if (!network || props.disconnected) return;
+	void sessionStore.selectSocialProfile(
+		props.eventId,
+		props.screen.id,
+		props.graphic.id,
+		projectionKey,
+		network,
+	);
 }
 
 function previousSocialProfile(projectionKey: string) {
 	if (!props.disconnected)
-		void sessionStore.previousSocialProfile(props.eventId, props.screen.id, props.graphic.id, projectionKey);
+		void sessionStore.previousSocialProfile(
+			props.eventId,
+			props.screen.id,
+			props.graphic.id,
+			projectionKey,
+		);
 }
 
 function nextSocialProfile(projectionKey: string) {
 	if (!props.disconnected)
-		void sessionStore.nextSocialProfile(props.eventId, props.screen.id, props.graphic.id, projectionKey);
+		void sessionStore.nextSocialProfile(
+			props.eventId,
+			props.screen.id,
+			props.graphic.id,
+			projectionKey,
+		);
 }
 
 function setSocialProfileAutomatic(projectionKey: string, automatic: boolean) {
@@ -162,13 +186,14 @@ function setSocialProfileAutomatic(projectionKey: string, automatic: boolean) {
 	}
 }
 
-function socialProfileTiming(control: typeof socialProfileProjectionControls.value[number]): string {
+function socialProfileTiming(
+	control: (typeof socialProfileProjectionControls.value)[number],
+): string {
 	const { dwellMs, transition, transitionDurationMs } = control.declaration;
-	const dwell = dwellMs % 1000 === 0
-		? `${dwellMs / 1000} ${dwellMs === 1000
-			? 'second'
-			: 'seconds'}`
-		: `${dwellMs} ms`;
+	const dwell =
+		dwellMs % 1000 === 0
+			? `${dwellMs / 1000} ${dwellMs === 1000 ? 'second' : 'seconds'}`
+			: `${dwellMs} ms`;
 	const transitionLabel = transition[0]!.toUpperCase() + transition.slice(1);
 	return `${dwell} · ${transitionLabel} · ${transitionDurationMs} ms`;
 }
@@ -185,11 +210,13 @@ function selectedSource(sourceKey: string): number | undefined {
  * or the operator's selections move. The server resolves the same bindings when it
  * accepts; this is what an operator watches in the meantime.
  */
-const boundValues = computed(() => resolveGraphicInputBindings(
-	props.graphic,
-	sessionStore.sourceSelections(props.screen.id, props.graphic.id),
-	dataSet.value,
-));
+const boundValues = computed(() =>
+	resolveGraphicInputBindings(
+		props.graphic,
+		sessionStore.sourceSelections(props.screen.id, props.graphic.id),
+		dataSet.value,
+	),
+);
 
 const traces = computed<GraphicInputTrace[]>(() =>
 	sessionStore.inputTraces(props.screen.id, props.graphic, boundValues.value),
@@ -203,8 +230,11 @@ const traces = computed<GraphicInputTrace[]>(() =>
  * nobody would see arrive; editing it instead changes the working values its next Take
  * accepts, which is the same rule as editing an off graphic.
  */
-const isOnAir = computed(() =>
-	props.playoutState === 'entering' || props.playoutState === 'on-air' || props.playoutState === 'updating',
+const isOnAir = computed(
+	() =>
+		props.playoutState === 'entering' ||
+		props.playoutState === 'on-air' ||
+		props.playoutState === 'updating',
 );
 
 /**
@@ -229,9 +259,10 @@ const OFF_AIR_NOTES: Partial<Record<GraphicPlayoutState, string>> = {
  * value differs from the accepted one. Offering the action then would offer an
  * acceptance that provably accepts nothing.
  */
-const hasStagedChanges = computed(() =>
-	traces.value.some(trace => trace.pending && trace.effective.availability.available)
-	|| socialProfileProjectionControls.value.some(control => control.pending),
+const hasStagedChanges = computed(
+	() =>
+		traces.value.some((trace) => trace.pending && trace.effective.availability.available) ||
+		socialProfileProjectionControls.value.some((control) => control.pending),
 );
 
 /**
@@ -240,7 +271,7 @@ const hasStagedChanges = computed(() =>
  * Shown before the operator presses Take rather than only as the refusal, so the
  * missing value is a thing to fix rather than a surprise on air.
  */
-const blockingInputs = computed(() => traces.value.filter(trace => trace.blocksTake));
+const blockingInputs = computed(() => traces.value.filter((trace) => trace.blocksTake));
 
 function draftValue(trace: GraphicInputTrace): GraphicInputValue {
 	return fieldValue(trace);
@@ -271,15 +302,11 @@ function editDraft(key: string, value: GraphicInputValue) {
  * is exactly what `fieldValue` puts in the control, for both kinds of input.
  */
 function commit(key: string, value?: GraphicInputValue) {
-	const next = value === undefined
-		? drafts.value[key]
-		: value;
-	if (next === undefined)
-		return;
+	const next = value === undefined ? drafts.value[key] : value;
+	if (next === undefined) return;
 
-	const trace = traces.value.find(entry => entry.declaration.key === key);
-	if (!trace || props.disconnected)
-		return;
+	const trace = traces.value.find((entry) => entry.declaration.key === key);
+	if (!trace || props.disconnected) return;
 
 	if (trace.binding) {
 		void sessionStore.setOverride(
@@ -290,8 +317,7 @@ function commit(key: string, value?: GraphicInputValue) {
 			next,
 			trace.effective.value,
 		);
-	}
-	else {
+	} else {
 		void sessionStore.setInput(
 			props.eventId,
 			props.screen.id,
@@ -324,9 +350,7 @@ function clearOverride(key: string) {
  */
 function selectionIdOf(value: unknown): number | null {
 	const id = Number(value);
-	return Number.isInteger(id) && id > 0
-		? id
-		: null;
+	return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 /** Why the last revision an operator chose for one media Graphic Input was not written. */
@@ -358,8 +382,10 @@ function mediaSelectionKey(inputKey: string): string {
  * imply.
  */
 const MEDIA_REFUSALS: Record<'missing' | 'unavailable', string> = {
-	missing: 'Missing Graphic Asset Reference — that revision no longer exists, so it was not staged.',
-	unavailable: 'Unavailable Graphic Asset Content — that revision’s bytes are temporarily unavailable, so it was not staged. Try again.',
+	missing:
+		'Missing Graphic Asset Reference — that revision no longer exists, so it was not staged.',
+	unavailable:
+		'Unavailable Graphic Asset Content — that revision’s bytes are temporarily unavailable, so it was not staged. Try again.',
 };
 
 /**
@@ -380,15 +406,10 @@ const MEDIA_REFUSALS: Record<'missing' | 'unavailable', string> = {
  * this surface and the Live workspace's banner cannot come to disagree about it.
  */
 function mediaRefusal(inputKey: string): string | undefined {
-	if (mediaRefusals.value[inputKey])
-		return mediaRefusals.value[inputKey];
+	if (mediaRefusals.value[inputKey]) return mediaRefusals.value[inputKey];
 	const code = sessionStore.inputRefusal(props.screen.id, props.graphic.id, inputKey);
-	const outcome = code === undefined
-		? undefined
-		: graphicAssetRefusalOutcome(code);
-	return outcome === undefined
-		? undefined
-		: MEDIA_REFUSALS[outcome];
+	const outcome = code === undefined ? undefined : graphicAssetRefusalOutcome(code);
+	return outcome === undefined ? undefined : MEDIA_REFUSALS[outcome];
 }
 
 /**
@@ -406,10 +427,8 @@ async function selectMedia(key: string, reference: GraphicAssetReference) {
 	let status: GraphicAssetReferenceStatus;
 	try {
 		status = await graphicAssetReferenceStatus(reference);
-	}
-	catch (caught) {
-		if (flight.stale)
-			return;
+	} catch (caught) {
+		if (flight.stale) return;
 
 		// An ended session is not the library saying anything about this revision,
 		// and it is the one failure retrying cannot fix. Reported in the terms the
@@ -418,13 +437,15 @@ async function selectMedia(key: string, reference: GraphicAssetReference) {
 		// surface holds no authorship instance to record the refusal on, and it
 		// wants one settled sentence about the media whatever refused it, where
 		// that seam answers about the request.
-		refuseMedia(key, graphicsAuthorSignedOut(caught)
-			? GRAPHICS_AUTHOR_SIGNED_OUT_MESSAGE
-			: MEDIA_REFUSALS.unavailable);
+		refuseMedia(
+			key,
+			graphicsAuthorSignedOut(caught)
+				? GRAPHICS_AUTHOR_SIGNED_OUT_MESSAGE
+				: MEDIA_REFUSALS.unavailable,
+		);
 		return;
 	}
-	if (flight.stale)
-		return;
+	if (flight.stale) return;
 
 	if (status.outcome !== 'available') {
 		refuseMedia(key, MEDIA_REFUSALS[status.outcome]);
@@ -442,9 +463,7 @@ function refuseMedia(key: string, reason: string) {
 
 /** The media kind a Graphic Input declares, which is the only kind its picker offers. */
 function mediaKindOf(trace: GraphicInputTrace): GraphicMediaKind {
-	return trace.declaration.type === 'media'
-		? trace.declaration.mediaKind
-		: 'image';
+	return trace.declaration.type === 'media' ? trace.declaration.mediaKind : 'image';
 }
 
 /**
@@ -460,13 +479,17 @@ function mediaKindOf(trace: GraphicInputTrace): GraphicMediaKind {
  */
 function mediaValueOf(trace: GraphicInputTrace): GraphicAssetReference | undefined {
 	const value = fieldValue(trace);
-	return isMediaGraphicInputValue(value)
-		? value
-		: undefined;
+	return isMediaGraphicInputValue(value) ? value : undefined;
 }
 
 function selectSource(sourceKey: string, selectionId: number | null) {
-	void sessionStore.selectSource(props.eventId, props.screen.id, props.graphic.id, sourceKey, selectionId);
+	void sessionStore.selectSource(
+		props.eventId,
+		props.screen.id,
+		props.graphic.id,
+		sourceKey,
+		selectionId,
+	);
 }
 
 function update(cut: boolean) {
@@ -475,20 +498,16 @@ function update(cut: boolean) {
 
 function choiceOptions(trace: GraphicInputTrace) {
 	return trace.declaration.type === 'choice'
-		? trace.declaration.options.map(option => ({ label: option.label, value: option.value }))
+		? trace.declaration.options.map((option) => ({ label: option.label, value: option.value }))
 		: [];
 }
 
 /** One value as an operator reads it, or the word for its absence. */
 function displayValue(trace: GraphicInputTrace, value: GraphicInputValue): string {
-	if (value === null || value === undefined)
-		return '—';
-	if (trace.declaration.type === 'toggle')
-		return value ? 'On' : 'Off';
+	if (value === null || value === undefined) return '—';
+	if (trace.declaration.type === 'toggle') return value ? 'On' : 'Off';
 	if (trace.declaration.type === 'media') {
-		return typeof value === 'object'
-			? `${value.assetId}@${value.revisionId}`
-			: '—';
+		return typeof value === 'object' ? `${value.assetId}@${value.revisionId}` : '—';
 	}
 	return graphicInputTextValue(trace.declaration, value) || String(value);
 }
@@ -503,15 +522,16 @@ const STATUS_LABELS: Record<GraphicInputTrace['status'], string> = {
 	stale: 'Stale',
 };
 
-const STATUS_COLORS: Record<GraphicInputTrace['status'], 'error' | 'warning' | 'neutral' | 'info'> = {
-	manual: 'neutral',
-	bound: 'neutral',
-	overridden: 'info',
-	pending: 'warning',
-	unavailable: 'error',
-	superseded: 'warning',
-	stale: 'warning',
-};
+const STATUS_COLORS: Record<GraphicInputTrace['status'], 'error' | 'warning' | 'neutral' | 'info'> =
+	{
+		manual: 'neutral',
+		bound: 'neutral',
+		overridden: 'info',
+		pending: 'warning',
+		unavailable: 'error',
+		superseded: 'warning',
+		stale: 'warning',
+	};
 
 /**
  * The Graphic Inputs whose last edit from this session was refused because another
@@ -521,23 +541,27 @@ const STATUS_COLORS: Record<GraphicInputTrace['status'], 'error' | 'warning' | '
  * did not land, the field now shows the value that did, and the fix is to look and
  * decide again rather than to retry blindly.
  */
-const refreshedInputs = computed(() => traces.value.filter(trace => trace.status === 'superseded'));
+const refreshedInputs = computed(() =>
+	traces.value.filter((trace) => trace.status === 'superseded'),
+);
 
 /** The value a field starts from: its override while one masks, otherwise what is staged. */
 function fieldValue(trace: GraphicInputTrace): GraphicInputValue {
-	if (trace.declaration.key in drafts.value)
-		return drafts.value[trace.declaration.key]!;
+	if (trace.declaration.key in drafts.value) return drafts.value[trace.declaration.key]!;
 	return trace.effective.value;
 }
 
 // A new selection starts from the authoritative working values rather than from
 // whatever the previously selected graphic had typed into it — and a refusal the
 // library gave about that graphic's revision says nothing about this one's.
-watch(() => props.graphic.id, () => {
-	drafts.value = {};
-	mediaRefusals.value = {};
-	mediaSelectionFlights.supersedeAll();
-});
+watch(
+	() => props.graphic.id,
+	() => {
+		drafts.value = {};
+		mediaRefusals.value = {};
+		mediaSelectionFlights.supersedeAll();
+	},
+);
 
 /**
  * A control that has gone speaks for nothing.
@@ -578,14 +602,12 @@ onBeforeUnmount(() => {
  * make impossible, reproduced in the browser.
  */
 watch(
-	() => refreshedInputs.value.map(trace => trace.declaration.key),
+	() => refreshedInputs.value.map((trace) => trace.declaration.key),
 	(keys) => {
-		if (keys.length === 0)
-			return;
+		if (keys.length === 0) return;
 
 		const refreshed = { ...drafts.value };
-		for (const key of keys)
-			delete refreshed[key];
+		for (const key of keys) delete refreshed[key];
 		drafts.value = refreshed;
 	},
 );
@@ -594,7 +616,9 @@ watch(
 <template>
 	<ScreenSettingsSection title="Live Control" :default-open="true">
 		<UIEmptyState
-			v-if="traces.length === 0 && pickers.length === 0 && socialProfileProjectionControls.length === 0"
+			v-if="
+				traces.length === 0 && pickers.length === 0 && socialProfileProjectionControls.length === 0
+			"
 			icon="i-lucide-sliders-horizontal"
 			title="No Graphic Inputs"
 			description="This Broadcast Graphic declares no operator values."
@@ -663,8 +687,14 @@ watch(
 				:data-social-profile-projection="control.declaration.key"
 			>
 				<div class="mb-2 flex min-w-0 items-center gap-2">
-					<span class="min-w-0 flex-1 truncate text-sm font-medium">{{ control.declaration.label }}</span>
-					<UBadge size="xs" variant="soft" :color="control.state?.acceptedProfiles.length ? 'success' : 'warning'">
+					<span class="min-w-0 flex-1 truncate text-sm font-medium">{{
+						control.declaration.label
+					}}</span>
+					<UBadge
+						size="xs"
+						variant="soft"
+						:color="control.state?.acceptedProfiles.length ? 'success' : 'warning'"
+					>
 						{{ control.state?.acceptedProfiles.length ? 'Available' : 'Unavailable' }}
 					</UBadge>
 					<UBadge
@@ -718,7 +748,9 @@ watch(
 						:model-value="control.state?.automatic !== false"
 						:disabled="disconnected || !control.state"
 						:data-testid="`live-control-social-profile-automatic-${control.declaration.key}`"
-						@update:model-value="setSocialProfileAutomatic(control.declaration.key, Boolean($event))"
+						@update:model-value="
+							setSocialProfileAutomatic(control.declaration.key, Boolean($event))
+						"
 					/>
 				</div>
 				<p class="mt-2 text-xs text-muted" data-testid="live-control-social-profile-timing">
@@ -741,7 +773,7 @@ watch(
 				variant="soft"
 				icon="i-lucide-users"
 				title="Another operator got there first"
-				:description="`${refreshedInputs.map(trace => trace.declaration.label).join(', ')} changed while you were editing, so your change was not applied. These fields now show the accepted value.`"
+				:description="`${refreshedInputs.map((trace) => trace.declaration.label).join(', ')} changed while you were editing, so your change was not applied. These fields now show the accepted value.`"
 			/>
 
 			<UAlert
@@ -751,7 +783,7 @@ watch(
 				variant="soft"
 				icon="i-lucide-triangle-alert"
 				title="Take is blocked"
-				:description="`${blockingInputs.map(trace => trace.declaration.label).join(', ')} must have a value before this Broadcast Graphic can go on air.`"
+				:description="`${blockingInputs.map((trace) => trace.declaration.label).join(', ')} must have a value before this Broadcast Graphic can go on air.`"
 			/>
 
 			<div
@@ -762,13 +794,10 @@ watch(
 				:data-graphic-input-status="trace.status"
 			>
 				<div class="mb-2 flex min-w-0 items-center gap-2">
-					<span class="min-w-0 flex-1 truncate text-sm font-medium">{{ trace.declaration.label }}</span>
-					<UBadge
-						v-if="trace.declaration.required"
-						size="xs"
-						variant="soft"
-						color="neutral"
-					>
+					<span class="min-w-0 flex-1 truncate text-sm font-medium">{{
+						trace.declaration.label
+					}}</span>
+					<UBadge v-if="trace.declaration.required" size="xs" variant="soft" color="neutral">
 						Required
 					</UBadge>
 					<UBadge
@@ -794,7 +823,9 @@ watch(
 				/>
 				<UInputNumber
 					v-else-if="trace.declaration.type === 'number'"
-					:model-value="typeof draftValue(trace) === 'number' ? Number(draftValue(trace)) : undefined"
+					:model-value="
+						typeof draftValue(trace) === 'number' ? Number(draftValue(trace)) : undefined
+					"
 					class="w-full"
 					size="sm"
 					:disabled="disconnected"
@@ -811,7 +842,9 @@ watch(
 				/>
 				<USelect
 					v-else-if="trace.declaration.type === 'choice'"
-					:model-value="typeof draftValue(trace) === 'string' ? String(draftValue(trace)) : undefined"
+					:model-value="
+						typeof draftValue(trace) === 'string' ? String(draftValue(trace)) : undefined
+					"
 					:items="choiceOptions(trace)"
 					class="w-full"
 					size="sm"
@@ -839,7 +872,8 @@ watch(
 						<span
 							class="min-w-0 flex-1 truncate text-xs text-muted"
 							:data-testid="`live-control-field-${trace.declaration.key}`"
-						>{{ displayValue(trace, draftValue(trace)) }}</span>
+							>{{ displayValue(trace, draftValue(trace)) }}</span
+						>
 						<UButton
 							size="xs"
 							variant="ghost"
@@ -875,9 +909,11 @@ watch(
 					class="mt-1 text-xs text-error"
 					data-testid="live-control-unavailable"
 				>
-					{{ trace.status === 'stale'
-						? `${trace.effective.availability.reason} — program is still showing the last accepted value.`
-						: trace.effective.availability.reason }}
+					{{
+						trace.status === 'stale'
+							? `${trace.effective.availability.reason} — program is still showing the last accepted value.`
+							: trace.effective.availability.reason
+					}}
 				</p>
 
 				<div v-if="trace.override" class="mt-1 flex items-center gap-2">
@@ -895,25 +931,25 @@ watch(
 
 				<dl class="mt-2 grid grid-cols-3 gap-2 text-xs">
 					<div>
-						<dt class="text-muted">
-							Bound
-						</dt>
+						<dt class="text-muted">Bound</dt>
 						<dd class="truncate" data-testid="live-control-bound">
-							{{ trace.bound ? displayValue(trace, trace.bound.value) : (trace.binding ? 'Unresolved' : '—') }}
+							{{
+								trace.bound
+									? displayValue(trace, trace.bound.value)
+									: trace.binding
+										? 'Unresolved'
+										: '—'
+							}}
 						</dd>
 					</div>
 					<div>
-						<dt class="text-muted">
-							Staged
-						</dt>
+						<dt class="text-muted">Staged</dt>
 						<dd class="truncate" data-testid="live-control-working">
 							{{ displayValue(trace, trace.effective.value) }}
 						</dd>
 					</div>
 					<div>
-						<dt class="text-muted">
-							On air
-						</dt>
+						<dt class="text-muted">On air</dt>
 						<dd class="truncate" data-testid="live-control-accepted">
 							{{ displayValue(trace, trace.accepted.value) }}
 						</dd>

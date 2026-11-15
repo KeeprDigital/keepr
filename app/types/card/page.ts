@@ -10,8 +10,9 @@ export interface CardMatchup {
 }
 
 /** The id `matchup` names when it is of `kind`; a Slot id is never read as a Match id, nor the reverse. */
-export function matchupIdOf(matchup: CardMatchup | null | undefined, kind: CardMatchup['kind']): number | null {
-	return matchup?.kind === kind
-		? matchup.id
-		: null;
+export function matchupIdOf(
+	matchup: CardMatchup | null | undefined,
+	kind: CardMatchup['kind'],
+): number | null {
+	return matchup?.kind === kind ? matchup.id : null;
 }

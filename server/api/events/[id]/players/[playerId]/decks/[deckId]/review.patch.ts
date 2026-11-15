@@ -14,7 +14,11 @@ const reviewBodySchema = z.object({
 });
 
 export default defineEventHandler(async (event) => {
-	const { id: eventId, playerId, deckId } = await getValidatedRouterParams(event, reviewParamsSchema.parse);
+	const {
+		id: eventId,
+		playerId,
+		deckId,
+	} = await getValidatedRouterParams(event, reviewParamsSchema.parse);
 	const { archetypeId } = await readValidatedBody(event, reviewBodySchema.parse);
 
 	return await playerUpdateModule().reviewPlayerDeck({

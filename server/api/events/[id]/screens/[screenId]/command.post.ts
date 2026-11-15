@@ -3,7 +3,11 @@ import { screenCommandSchema, screenParamsSchema } from '~~/server/schemas/api/s
 import { screenService } from '~~/server/services/screen';
 import { publishScreenCommand } from '~~/server/utils/ably';
 
-async function assertTrustedScreenCommandBoundary(_event: H3Event, _eventId: number, _screenId: number) {
+async function assertTrustedScreenCommandBoundary(
+	_event: H3Event,
+	_eventId: number,
+	_screenId: number,
+) {
 	// This route is intentionally limited to the current trusted admin surface.
 	//
 	// It said "when auth is introduced" until #396, and auth is introduced: the

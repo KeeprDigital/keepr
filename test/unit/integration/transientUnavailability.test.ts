@@ -18,10 +18,11 @@ function unavailable(seconds = '5') {
 	});
 }
 
-describe('the integration suite\'s retry of a transient 503', () => {
+describe("the integration suite's retry of a transient 503", () => {
 	it('re-sends after the interval the server asked for, and returns the next answer', async () => {
 		const sleep = vi.fn(async () => {});
-		const request = vi.fn()
+		const request = vi
+			.fn()
 			.mockResolvedValueOnce(unavailable('2'))
 			.mockResolvedValue(new Response('{}', { status: 200 }));
 

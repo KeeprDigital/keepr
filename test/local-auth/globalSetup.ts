@@ -8,15 +8,21 @@ import { integrationEventIdBlocks, resetIntegrationWranglerState } from '../inte
 import { localAuthServerEnv } from './serverEnv';
 
 const PERSIST_DIR = '.wrangler/state/local-auth-integration';
-const disableFsWatchImport = fileURLToPath(new URL('../integration/disable-fs-watch.mjs', import.meta.url));
-const nodeOptions = [process.env.NODE_OPTIONS, '--import', disableFsWatchImport].filter(Boolean).join(' ');
+const disableFsWatchImport = fileURLToPath(
+	new URL('../integration/disable-fs-watch.mjs', import.meta.url),
+);
+const nodeOptions = [process.env.NODE_OPTIONS, '--import', disableFsWatchImport]
+	.filter(Boolean)
+	.join(' ');
 
 export async function setup() {
-	const slots = await acquireRunSlots({ want: RUN_SLOT_COSTS['local-auth'], label: 'local-auth suite' });
+	const slots = await acquireRunSlots({
+		want: RUN_SLOT_COSTS['local-auth'],
+		label: 'local-auth suite',
+	});
 	try {
 		return await startLocalAuthServer(slots.release);
-	}
-	catch (error) {
+	} catch (error) {
 		slots.release();
 		throw error;
 	}
@@ -27,7 +33,9 @@ async function startLocalAuthServer(releaseSlots: () => void) {
 	const warmingStarted = Date.now();
 	const warmed = await warmChromium();
 	if (warmed)
-		process.stdout.write(`local-auth: first launch of ${warmed} took ${Date.now() - warmingStarted} ms\n`);
+		process.stdout.write(
+			`local-auth: first launch of ${warmed} took ${Date.now() - warmingStarted} ms\n`,
+		);
 	await resetIntegrationWranglerState(PERSIST_DIR);
 	// Its own Event-id block, as each integration server has (#630): were the
 	// server ever given an Ably key, its Event would still not be `event:1`.

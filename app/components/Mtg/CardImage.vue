@@ -21,27 +21,22 @@ let showTimer: ReturnType<typeof setTimeout> | null = null;
 const mode = computed(() => mtgCardDisplayModes[props.displayMode]);
 
 const canPreviewBack = computed(() => {
-	return props.card.imageData.back
-		&& mode.value.turnoverable
-		&& frontLoaded.value
-		&& backLoaded.value;
+	return (
+		props.card.imageData.back && mode.value.turnoverable && frontLoaded.value && backLoaded.value
+	);
 });
 
 const scaleFactor = computed(() => {
-	if (!show.value)
-		return 1;
+	if (!show.value) return 1;
 
 	const isRotated = props.display.rotated && mode.value.rotatable;
 	const isCounterRotated = props.display.counterRotated && mode.value.counterRotatable;
 
-	return (isRotated || isCounterRotated)
-		? 61 / 85
-		: 1;
+	return isRotated || isCounterRotated ? 61 / 85 : 1;
 });
 
 function selected() {
-	if (mode.value.selectable)
-		emit('selected', previewingBack.value);
+	if (mode.value.selectable) emit('selected', previewingBack.value);
 }
 
 onMounted(() => {
@@ -52,8 +47,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	if (showTimer)
-		clearTimeout(showTimer);
+	if (showTimer) clearTimeout(showTimer);
 });
 </script>
 
@@ -75,11 +69,11 @@ onBeforeUnmount(() => {
 			<div
 				class="card"
 				:class="{
-					'flipped': show && display.flipped,
-					'rotated': show && mode.rotatable && display.rotated,
+					flipped: show && display.flipped,
+					rotated: show && mode.rotatable && display.rotated,
 					'counter-rotated': show && mode.counterRotatable && display.counterRotated,
 					'turned-over': (show || initialTurnedOver) && (display.turnedOver || previewingBack),
-					'animated': mode.animated,
+					animated: mode.animated,
 				}"
 			>
 				<div class="face front">
@@ -91,10 +85,7 @@ onBeforeUnmount(() => {
 						@load="frontLoaded = true"
 					/>
 				</div>
-				<div
-					v-if="card.imageData.back"
-					class="face back"
-				>
+				<div v-if="card.imageData.back" class="face back">
 					<NuxtImg
 						class="image"
 						:src="card.imageData.back.normal"
@@ -104,10 +95,7 @@ onBeforeUnmount(() => {
 					/>
 				</div>
 			</div>
-			<MtgCardImageTurnover
-				v-if="canPreviewBack"
-				@preview-back="previewingBack = $event"
-			/>
+			<MtgCardImageTurnover v-if="canPreviewBack" @preview-back="previewingBack = $event" />
 		</div>
 	</div>
 </template>

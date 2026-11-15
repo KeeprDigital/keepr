@@ -6,7 +6,10 @@ import type { PlayerManuallyEditedField } from '~~/shared/types/enums';
 import { and, asc, eq, getTableColumns, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { playerListMembers, playerLists, players } from '~~/server/db/schema';
-import { buildClearDeckSourcePlayersQuery, buildReleaseManualBracketPlayersQuery } from '~~/server/services/screen';
+import {
+	buildClearDeckSourcePlayersQuery,
+	buildReleaseManualBracketPlayersQuery,
+} from '~~/server/services/screen';
 import { chunkJsonRows, selectForInsert } from '~~/server/utils/db';
 import { pickManualWritable } from '~~/server/utils/provenance';
 import { PLAYER_MANUALLY_EDITED_FIELD_VALUES } from '~~/shared/types/enums';
@@ -43,11 +46,12 @@ function meleeValueUnlessManuallyEdited(field: PlayerManuallyEditedField) {
  * as a whole-form save does, is not an edit.
  */
 function markManuallyEditedFields(data: Partial<Pick<DbPlayer, PlayerManuallyEditedField>>) {
-	const changed = PLAYER_MANUALLY_EDITED_FIELD_VALUES
-		.filter(field => data[field] !== undefined)
-		.map(field => sql`select ${field} as value where ${players[field]} is not ${data[field] ?? null}`);
-	if (changed.length === 0)
-		return {};
+	const changed = PLAYER_MANUALLY_EDITED_FIELD_VALUES.filter(
+		(field) => data[field] !== undefined,
+	).map(
+		(field) => sql`select ${field} as value where ${players[field]} is not ${data[field] ?? null}`,
+	);
+	if (changed.length === 0) return {};
 	return {
 		manuallyEditedFields: sql`(select json_group_array(value) from (
 			select value from json_each(coalesce(${players.manuallyEditedFields}, '[]'))
@@ -75,17 +79,13 @@ function buildBulkPlayerUpsertQueries(
 	] as const;
 	const grouped = new Map<string, PlayerInsertData[]>();
 	for (const data of dataList) {
-		const mask = updateFields.map(field => data[field] !== undefined
-			? '1'
-			: '0').join('');
+		const mask = updateFields.map((field) => (data[field] !== undefined ? '1' : '0')).join('');
 		const rows = grouped.get(mask) ?? [];
 		rows.push(data);
 		grouped.set(mask, rows);
 	}
 
-	return [
-		...grouped.values(),
-	].flatMap((group) => {
+	return [...grouped.values()].flatMap((group) => {
 		const example = group[0]!;
 		const written = {
 			name: meleeValueUnlessManuallyEdited('name'),
@@ -148,75 +148,97 @@ function buildBulkPlayerUpsertQueries(
 		const columns = getTableColumns(players);
 		const changed = sql.join(
 			(Object.keys(written) as Array<keyof typeof written>)
-				.filter(field => field !== 'lastSeenAt')
-				.map(field => sql`${sql.raw(`"players"."${columns[field].name}"`)} is not (${written[field]})`),
+				.filter((field) => field !== 'lastSeenAt')
+				.map(
+					(field) =>
+						sql`${sql.raw(`"players"."${columns[field].name}"`)} is not (${written[field]})`,
+				),
 			sql` or `,
 		);
 		const set = {
 			...written,
 			updatedAt: sql`case when ${changed} then ${writeAt.getTime()} else "players"."updated_at" end`,
 		};
-		return chunkJsonRows(group.map(data => ({
-			...data,
-			lastSeenAt: data.lastSeenAt?.getTime(),
-		}))).map(payload => db
-			.insert(players)
-			.select(selectForInsert(players, {
-				id: sql`null`,
-				eventId: sql`json_extract(value, '$.eventId')`,
-				name: sql`json_extract(value, '$.name')`,
-				nickname: sql`json_extract(value, '$.nickname')`,
-				pronouns: sql`json_extract(value, '$.pronouns')`,
-				externalId: sql`json_extract(value, '$.externalId')`,
-				externalSource: sql`json_extract(value, '$.externalSource')`,
-				externalStatus: sql`json_extract(value, '$.externalStatus')`,
-				isActive: sql`coalesce(json_extract(value, '$.isActive'), 1)`,
-				lastSeenAt: sql`json_extract(value, '$.lastSeenAt')`,
-				wins: sql`json_extract(value, '$.wins')`,
-				losses: sql`json_extract(value, '$.losses')`,
-				draws: sql`json_extract(value, '$.draws')`,
-				position: sql`json_extract(value, '$.position')`,
-				points: sql`json_extract(value, '$.points')`,
-				archetypeId: sql`null`,
-				lgs: sql`json_extract(value, '$.lgs')`,
-				gameData: sql`json_extract(value, '$.gameData')`,
-				manuallyEditedFields: sql`null`,
-				createdAt: sql`${writeAtMs}`,
-				updatedAt: sql`${writeAtMs}`,
-			}, sql`from json_each(${payload}) where true`))
-			.onConflictDoUpdate({
-				target: [players.eventId, players.externalId, players.externalSource],
-				set,
-			})
-			.returning());
+		return chunkJsonRows(
+			group.map((data) => ({
+				...data,
+				lastSeenAt: data.lastSeenAt?.getTime(),
+			})),
+		).map((payload) =>
+			db
+				.insert(players)
+				.select(
+					selectForInsert(
+						players,
+						{
+							id: sql`null`,
+							eventId: sql`json_extract(value, '$.eventId')`,
+							name: sql`json_extract(value, '$.name')`,
+							nickname: sql`json_extract(value, '$.nickname')`,
+							pronouns: sql`json_extract(value, '$.pronouns')`,
+							externalId: sql`json_extract(value, '$.externalId')`,
+							externalSource: sql`json_extract(value, '$.externalSource')`,
+							externalStatus: sql`json_extract(value, '$.externalStatus')`,
+							isActive: sql`coalesce(json_extract(value, '$.isActive'), 1)`,
+							lastSeenAt: sql`json_extract(value, '$.lastSeenAt')`,
+							wins: sql`json_extract(value, '$.wins')`,
+							losses: sql`json_extract(value, '$.losses')`,
+							draws: sql`json_extract(value, '$.draws')`,
+							position: sql`json_extract(value, '$.position')`,
+							points: sql`json_extract(value, '$.points')`,
+							archetypeId: sql`null`,
+							lgs: sql`json_extract(value, '$.lgs')`,
+							gameData: sql`json_extract(value, '$.gameData')`,
+							manuallyEditedFields: sql`null`,
+							createdAt: sql`${writeAtMs}`,
+							updatedAt: sql`${writeAtMs}`,
+						},
+						sql`from json_each(${payload}) where true`,
+					),
+				)
+				.onConflictDoUpdate({
+					target: [players.eventId, players.externalId, players.externalSource],
+					set,
+				})
+				.returning(),
+		);
 	});
 }
 
-function playerIdentityKey(row: Pick<PlayerInsertData, 'eventId' | 'externalId' | 'externalSource'>): string | null {
+function playerIdentityKey(
+	row: Pick<PlayerInsertData, 'eventId' | 'externalId' | 'externalSource'>,
+): string | null {
 	return row.externalId && row.externalSource
 		? `${row.eventId}\u0000${row.externalSource}\u0000${row.externalId}`
 		: null;
 }
 
 function buildExistingPlayerQueries(dataList: PlayerInsertData[]): BatchItem<'sqlite'>[] {
-	const identities = dataList.flatMap(data => data.externalId && data.externalSource
-		? [
-				{ eventId: data.eventId, externalId: data.externalId, externalSource: data.externalSource },
-			]
-		: []);
-	return chunkJsonRows(identities).map(payload => db
-		.select({
-			eventId: players.eventId,
-			externalId: players.externalId,
-			externalSource: players.externalSource,
-		})
-		.from(players)
-		.where(sql`exists (
+	const identities = dataList.flatMap((data) =>
+		data.externalId && data.externalSource
+			? [
+					{
+						eventId: data.eventId,
+						externalId: data.externalId,
+						externalSource: data.externalSource,
+					},
+				]
+			: [],
+	);
+	return chunkJsonRows(identities).map((payload) =>
+		db
+			.select({
+				eventId: players.eventId,
+				externalId: players.externalId,
+				externalSource: players.externalSource,
+			})
+			.from(players).where(sql`exists (
 			select 1 from json_each(${payload}) incoming
 			where cast(json_extract(incoming.value, '$.eventId') as integer) = ${players.eventId}
 				and json_extract(incoming.value, '$.externalId') = ${players.externalId}
 				and json_extract(incoming.value, '$.externalSource') = ${players.externalSource}
-		)`));
+		)`),
+	);
 }
 
 export function playerService() {
@@ -227,8 +249,7 @@ export function playerService() {
 	};
 
 	const findAll = async (params: FindAllParams = {}) => {
-		if (!params.eventId)
-			return [];
+		if (!params.eventId) return [];
 
 		if (params.listId) {
 			return await db
@@ -238,45 +259,48 @@ export function playerService() {
 				.from(players)
 				.innerJoin(playerListMembers, eq(players.id, playerListMembers.playerId))
 				.innerJoin(playerLists, eq(playerListMembers.listId, playerLists.id))
-				.where(and(
-					eq(players.eventId, params.eventId),
-					eq(playerListMembers.listId, params.listId),
-					eq(playerLists.eventId, params.eventId),
-					...(params.includeInactive
-						? []
-						: [
-								eq(players.isActive, true),
-							]),
-				))
+				.where(
+					and(
+						eq(players.eventId, params.eventId),
+						eq(playerListMembers.listId, params.listId),
+						eq(playerLists.eventId, params.eventId),
+						...(params.includeInactive ? [] : [eq(players.isActive, true)]),
+					),
+				)
 				.orderBy(sql`${players.position} IS NULL`, asc(players.position), asc(players.id));
 		}
 
 		return await db
 			.select()
 			.from(players)
-			.where(and(
-				eq(players.eventId, params.eventId),
-				...(params.includeInactive
-					? []
-					: [
-							eq(players.isActive, true),
-						]),
-			))
+			.where(
+				and(
+					eq(players.eventId, params.eventId),
+					...(params.includeInactive ? [] : [eq(players.isActive, true)]),
+				),
+			)
 			.orderBy(sql`${players.position} IS NULL`, asc(players.position), asc(players.id));
 	};
 
 	const create = async (eventId: number, data: CreatePlayerInput): Promise<DbPlayer> => {
-		const [newPlayer] = await db.insert(players).values({
-			...pickManualWritable('players', data),
-			eventId,
-		}).returning();
+		const [newPlayer] = await db
+			.insert(players)
+			.values({
+				...pickManualWritable('players', data),
+				eventId,
+			})
+			.returning();
 		if (!newPlayer) {
 			throw new Error('Failed to create player');
 		}
 		return newPlayer;
 	};
 
-	const update = async (id: number, eventId: number, data: UpdatePlayerInput): Promise<DbPlayer | undefined> => {
+	const update = async (
+		id: number,
+		eventId: number,
+		data: UpdatePlayerInput,
+	): Promise<DbPlayer | undefined> => {
 		const manualData = pickManualWritable('players', data);
 		const [updatedPlayer] = await db
 			.update(players)
@@ -295,7 +319,10 @@ export function playerService() {
 	 * selecting them and every Manual Bracket Seed naming them. Answers the
 	 * Archetype they held, if any.
 	 */
-	const remove = async (id: number, eventId: number): Promise<{ deleted: boolean; archetypeId: number | null; clearedScreens: DbScreen[] }> => {
+	const remove = async (
+		id: number,
+		eventId: number,
+	): Promise<{ deleted: boolean; archetypeId: number | null; clearedScreens: DbScreen[] }> => {
 		const [deckSourceScreens, deleted, bracketScreens] = await db.batch([
 			buildClearDeckSourcePlayersQuery(eventId, [id]),
 			db
@@ -307,12 +334,15 @@ export function playerService() {
 
 		// A Screen both releases rewrote answers once, at the later version.
 		const clearedScreens = [
-			...new Map([
-				...deckSourceScreens,
-				...bracketScreens,
-			].map(screen => [screen.id, screen])).values(),
+			...new Map(
+				[...deckSourceScreens, ...bracketScreens].map((screen) => [screen.id, screen]),
+			).values(),
 		];
-		return { deleted: deleted.length > 0, archetypeId: deleted[0]?.archetypeId ?? null, clearedScreens };
+		return {
+			deleted: deleted.length > 0,
+			archetypeId: deleted[0]?.archetypeId ?? null,
+			clearedScreens,
+		};
 	};
 
 	/**
@@ -329,19 +359,17 @@ export function playerService() {
 
 		const existingQueries = buildExistingPlayerQueries(dataList);
 		const upsertQueries = buildBulkPlayerUpsertQueries(dataList, new Date());
-		const queries = [
-			...existingQueries,
-			...upsertQueries,
-		];
+		const queries = [...existingQueries, ...upsertQueries];
 
 		// Execute all queries in a single batch (atomic in D1)
 		// Cast needed because batch expects a non-empty tuple type
-		const batchResults = await db.batch(queries as [typeof queries[0], ...typeof queries]);
+		const batchResults = await db.batch(queries as [(typeof queries)[0], ...typeof queries]);
 
 		// Flatten results and count created vs updated
 		const existingKeys = new Set(
-			(batchResults.slice(0, existingQueries.length).flat() as PlayerInsertData[])
-				.flatMap(row => playerIdentityKey(row) ?? []),
+			(batchResults.slice(0, existingQueries.length).flat() as PlayerInsertData[]).flatMap(
+				(row) => playerIdentityKey(row) ?? [],
+			),
 		);
 		const allPlayers = batchResults.slice(existingQueries.length).flat() as DbPlayer[];
 		const created = allPlayers.filter((player) => {
@@ -390,37 +418,33 @@ export function playerService() {
 		const deactivateMissingQuery = db
 			.update(players)
 			.set({ isActive: false, updatedAt: seenAt })
-			.where(and(
-				eq(players.eventId, eventId),
-				eq(players.externalSource, 'melee'),
-				eq(players.isActive, true),
-				or(isNull(players.lastSeenAt), ne(players.lastSeenAt, seenAt)),
-			))
+			.where(
+				and(
+					eq(players.eventId, eventId),
+					eq(players.externalSource, 'melee'),
+					eq(players.isActive, true),
+					or(isNull(players.lastSeenAt), ne(players.lastSeenAt, seenAt)),
+				),
+			)
 			.returning({ id: players.id });
-		const queries = [
-			...existingQueries,
-			...upsertQueries,
-			deactivateMissingQuery,
-		];
-		const batchResults = await db.batch(queries as [typeof queries[0], ...typeof queries]);
+		const queries = [...existingQueries, ...upsertQueries, deactivateMissingQuery];
+		const batchResults = await db.batch(queries as [(typeof queries)[0], ...typeof queries]);
 		const existingKeys = new Set(
-			(batchResults.slice(0, existingQueries.length).flat() as PlayerInsertData[])
-				.flatMap(row => playerIdentityKey(row) ?? []),
+			(batchResults.slice(0, existingQueries.length).flat() as PlayerInsertData[]).flatMap(
+				(row) => playerIdentityKey(row) ?? [],
+			),
 		);
-		const upsertedPlayers = batchResults.slice(
-			existingQueries.length,
-			existingQueries.length + upsertQueries.length,
-		).flat() as DbPlayer[];
+		const upsertedPlayers = batchResults
+			.slice(existingQueries.length, existingQueries.length + upsertQueries.length)
+			.flat() as DbPlayer[];
 		const deactivatedRows = (batchResults.at(-1) ?? []) as Array<{ id: number }>;
 		let created = 0;
 		let updated = 0;
 		for (const player of upsertedPlayers) {
 			const key = playerIdentityKey(player);
-			if (key == null || !existingKeys.has(key))
-				created++;
+			if (key == null || !existingKeys.has(key)) created++;
 			// The upsert moves a revision only when it changed the Player.
-			else if (new Date(player.updatedAt).getTime() === seenAt.getTime())
-				updated++;
+			else if (new Date(player.updatedAt).getTime() === seenAt.getTime()) updated++;
 		}
 
 		return {
@@ -432,16 +456,12 @@ export function playerService() {
 	};
 
 	const countByIds = async (eventId: number, playerIds: number[]): Promise<number> => {
-		if (playerIds.length === 0)
-			return 0;
+		if (playerIds.length === 0) return 0;
 
 		const results = await db
 			.select({ id: players.id })
 			.from(players)
-			.where(and(
-				eq(players.eventId, eventId),
-				inArray(players.id, playerIds),
-			));
+			.where(and(eq(players.eventId, eventId), inArray(players.id, playerIds)));
 
 		return results.length;
 	};

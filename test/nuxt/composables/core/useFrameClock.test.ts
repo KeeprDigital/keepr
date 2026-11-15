@@ -12,14 +12,18 @@ describe('useFrameClock', () => {
 	/** Run the one frame waiting, as the browser would. */
 	function runFrame() {
 		const [[id, callback] = []] = frames;
-		if (id === undefined || !callback)
-			throw new Error('no frame is waiting');
+		if (id === undefined || !callback) throw new Error('no frame is waiting');
 		frames.delete(id);
 		callback(0);
 	}
 
 	function frameClock() {
-		return scope.run(() => useFrameClock(() => instant, () => moving))!;
+		return scope.run(() =>
+			useFrameClock(
+				() => instant,
+				() => moving,
+			),
+		)!;
 	}
 
 	beforeEach(() => {
@@ -27,11 +31,17 @@ describe('useFrameClock', () => {
 		moving = true;
 		frames = new Map();
 		let nextId = 0;
-		vi.stubGlobal('requestAnimationFrame', vi.fn((callback: FrameRequestCallback) => {
-			frames.set(++nextId, callback);
-			return nextId;
-		}));
-		vi.stubGlobal('cancelAnimationFrame', vi.fn((id: number) => frames.delete(id)));
+		vi.stubGlobal(
+			'requestAnimationFrame',
+			vi.fn((callback: FrameRequestCallback) => {
+				frames.set(++nextId, callback);
+				return nextId;
+			}),
+		);
+		vi.stubGlobal(
+			'cancelAnimationFrame',
+			vi.fn((id: number) => frames.delete(id)),
+		);
 		scope = effectScope();
 	});
 
@@ -75,10 +85,15 @@ describe('useFrameClock', () => {
 
 	it('asks whether anything moves at the instant it has just read', () => {
 		const asked: number[] = [];
-		const clock = scope.run(() => useFrameClock(() => instant, (now) => {
-			asked.push(now);
-			return false;
-		}))!;
+		const clock = scope.run(() =>
+			useFrameClock(
+				() => instant,
+				(now) => {
+					asked.push(now);
+					return false;
+				},
+			),
+		)!;
 		clock.start();
 
 		instant = 1_000_250;

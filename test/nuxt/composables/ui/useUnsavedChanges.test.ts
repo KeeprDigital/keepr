@@ -79,16 +79,19 @@ describe('useUnsavedChanges', () => {
 		it.each([
 			['confirms', true],
 			['cancels', false],
-		])('asks before leaving a dirty page, and leaves only when the operator confirms (%s)', async (_, confirmed) => {
-			mockOpenFn.mockReturnValueOnce({
-				result: Promise.resolve(confirmed),
-			});
-			const { registerDirtyState } = useUnsavedChanges();
-			registerDirtyState(ref(true));
+		])(
+			'asks before leaving a dirty page, and leaves only when the operator confirms (%s)',
+			async (_, confirmed) => {
+				mockOpenFn.mockReturnValueOnce({
+					result: Promise.resolve(confirmed),
+				});
+				const { registerDirtyState } = useUnsavedChanges();
+				registerDirtyState(ref(true));
 
-			await expect(capturedRouteLeaveGuard!()).resolves.toBe(confirmed);
-			expect(mockOpenFn).toHaveBeenCalledOnce();
-		});
+				await expect(capturedRouteLeaveGuard!()).resolves.toBe(confirmed);
+				expect(mockOpenFn).toHaveBeenCalledOnce();
+			},
+		);
 
 		it('leaves a clean page without asking', async () => {
 			useUnsavedChanges().registerDirtyState(ref(false));

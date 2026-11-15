@@ -9,10 +9,12 @@ export function useRealtimeMessageGate(connectionId: MaybeRef<string | undefined
 		return !!data?.originConnectionId && data.originConnectionId === resolvedConnectionId;
 	}
 
-	function accept<T extends MessageType>(type: T, handler: (data: MessageData<T>) => void | Promise<void>): RealtimeHandler<T> {
+	function accept<T extends MessageType>(
+		type: T,
+		handler: (data: MessageData<T>) => void | Promise<void>,
+	): RealtimeHandler<T> {
 		return (data) => {
-			if (isSelfOrigin(data))
-				return;
+			if (isSelfOrigin(data)) return;
 
 			try {
 				const result = handler(data);
@@ -21,8 +23,7 @@ export function useRealtimeMessageGate(connectionId: MaybeRef<string | undefined
 						console.warn(`Failed to handle realtime message "${type}":`, err);
 					});
 				}
-			}
-			catch (err) {
+			} catch (err) {
 				console.warn(`Failed to handle realtime message "${type}":`, err);
 			}
 		};

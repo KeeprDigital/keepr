@@ -48,7 +48,10 @@ describe('mtgCardHistory', () => {
 	it('clears the history, then closes', async () => {
 		const wrapper = mountHistory();
 
-		await wrapper.findAll('button').find(button => button.text() === 'Clear')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Clear')!
+			.trigger('click');
 
 		expect(cardStore.clearHistory).toHaveBeenCalledOnce();
 		expect(wrapper.emitted('close')).toHaveLength(1);

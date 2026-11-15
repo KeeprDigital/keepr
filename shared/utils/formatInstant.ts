@@ -6,7 +6,5 @@
  * real answer rather than a blank, so it is named rather than left empty.
  */
 export function formatInstant(instant: string | null | undefined): string {
-	return instant
-		? new Date(instant).toLocaleString()
-		: 'None';
+	return instant ? new Date(instant).toLocaleString() : 'None';
 }

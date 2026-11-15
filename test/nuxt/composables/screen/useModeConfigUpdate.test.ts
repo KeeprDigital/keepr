@@ -14,7 +14,7 @@ const mockScreenStore = {
 			modeConfigs: {
 				'feature-match': { featureMatchId: 5 },
 				// A Standings Page Rotation running from a manual selection of page 3.
-				'standings': {
+				standings: {
 					autoPageEnabled: true,
 					rowsPerPage: 4,
 					currentPage: 3,
@@ -45,14 +45,18 @@ describe('useModeConfigUpdate', () => {
 	});
 
 	it('shows the stored config, then an edit at once, and saves the edit after the debounce', async () => {
-		const { config, updateConfig } = useModeConfigUpdate(1, 1, 'feature-match', { debounceMs: 100 });
+		const { config, updateConfig } = useModeConfigUpdate(1, 1, 'feature-match', {
+			debounceMs: 100,
+		});
 		expect(config.value.featureMatchId).toBe(5);
 
 		updateConfig({ featureMatchId: 10 } as any);
 		expect(config.value.featureMatchId).toBe(10);
 
 		await vi.advanceTimersByTimeAsync(200);
-		expect(mockUpdateModeConfig).toHaveBeenCalledWith(1, 1, 'feature-match', { featureMatchId: 10 });
+		expect(mockUpdateModeConfig).toHaveBeenCalledWith(1, 1, 'feature-match', {
+			featureMatchId: 10,
+		});
 	});
 
 	it('a display reset of a paginated mode restarts its Page Rotation from page 1', async () => {
@@ -78,13 +82,16 @@ describe('useModeConfigUpdate', () => {
 	it.each([
 		{ mode: 'feature-match-overlay' as const, ready: false, writes: 0 },
 		{ mode: 'standings' as const, ready: true, writes: 1 },
-	])('a display reset of $mode before its Event loads is ready: $ready', async ({ mode, ready, writes }) => {
-		mockEventStore.event = null;
-		const { resetConfig, resetReady } = useModeConfigUpdate(1, 1, mode, { debounceMs: 100 });
+	])(
+		'a display reset of $mode before its Event loads is ready: $ready',
+		async ({ mode, ready, writes }) => {
+			mockEventStore.event = null;
+			const { resetConfig, resetReady } = useModeConfigUpdate(1, 1, mode, { debounceMs: 100 });
 
-		expect(resetReady.value).toBe(ready);
-		resetConfig();
-		await vi.advanceTimersByTimeAsync(200);
-		expect(mockUpdateModeConfig).toHaveBeenCalledTimes(writes);
-	});
+			expect(resetReady.value).toBe(ready);
+			resetConfig();
+			await vi.advanceTimersByTimeAsync(200);
+			expect(mockUpdateModeConfig).toHaveBeenCalledTimes(writes);
+		},
+	);
 });

@@ -3,7 +3,13 @@ import type { DropdownMenuItem } from '@nuxt/ui';
 import type { Player } from '~/types';
 import { EVENT_PAGE_OFFERED_TO } from '~~/shared/config/games';
 import { playerLabel } from '~~/shared/utils/playerName';
-import { LazyPlayerCreateModal, LazyPlayerListCreateModal, LazyPlayerListEditModal, LazyPlayerOpDeckListModal, LazyUIConfirmDeleteModal } from '#components';
+import {
+	LazyPlayerCreateModal,
+	LazyPlayerListCreateModal,
+	LazyPlayerListEditModal,
+	LazyPlayerOpDeckListModal,
+	LazyUIConfirmDeleteModal,
+} from '#components';
 import { useConsumedEventData } from '~/modules/event-data/resync';
 
 definePageMeta({
@@ -24,7 +30,8 @@ const { openPlayerDeckList } = usePlayerDeckListModal();
 const { openPlayerEdit } = usePlayerEditModal();
 usePlayerMatchHistoryLink(() => playerStore.players);
 const { sendToFirstDeckScreen, sendToScreen: sendDeckToScreen } = useSendDeckToScreen();
-const { sendToFirstPlayerHistoryScreen, sendToScreen: sendPlayerHistoryToScreen } = useSendPlayerHistoryToScreen();
+const { sendToFirstPlayerHistoryScreen, sendToScreen: sendPlayerHistoryToScreen } =
+	useSendPlayerHistoryToScreen();
 const { runRequest } = useRequestFeedback();
 const { reportMeleeOperation } = useMeleeOperationFeedback();
 
@@ -36,10 +43,12 @@ const activeListId = ref<number | null>(null);
 const selectedRoundId = ref<number | undefined>(undefined);
 const standingsLoading = ref(false);
 const standingsError = ref<string | null>(null);
-const selectedRound = computed(() => selectedRoundId.value
-	? roundStore.getRoundById(selectedRoundId.value)
-	: null);
-const selectedRoundCanSync = computed(() => !!(eventStore.event?.meleeEnabled && selectedRound.value?.externalSource === 'melee'));
+const selectedRound = computed(() =>
+	selectedRoundId.value ? roundStore.getRoundById(selectedRoundId.value) : null,
+);
+const selectedRoundCanSync = computed(
+	() => !!(eventStore.event?.meleeEnabled && selectedRound.value?.externalSource === 'melee'),
+);
 
 const roundOptions = computed(() => {
 	const options: Array<{ label: string; value: number | undefined }> = [
@@ -60,7 +69,14 @@ const roundOptions = computed(() => {
 const hasRoundOptions = computed(() => roundOptions.value.length > 1);
 
 // Fetch standings snapshot when a round is selected
-interface StandingsEntry { playerId: number; wins: number | null; losses: number | null; draws: number | null; position: number | null; points: number | null }
+interface StandingsEntry {
+	playerId: number;
+	wins: number | null;
+	losses: number | null;
+	draws: number | null;
+	position: number | null;
+	points: number | null;
+}
 const standingsMap = ref<Map<number, StandingsEntry> | null>(null);
 
 // Every pick runs under one `latestKey`, "Current" included, so a read for a Round
@@ -71,16 +87,20 @@ async function loadSelectedRoundStandings() {
 
 	standingsError.value = null;
 	await runRequest(
-		async () => roundId && currentEventId
-			? await $fetch<{ standings: StandingsEntry[] }>(`/api/events/${currentEventId}/standings?roundId=${roundId}`)
-			: { standings: null },
+		async () =>
+			roundId && currentEventId
+				? await $fetch<{ standings: StandingsEntry[] }>(
+						`/api/events/${currentEventId}/standings?roundId=${roundId}`,
+					)
+				: { standings: null },
 		{
 			latestKey: 'round-standings',
 			loadingRef: standingsLoading,
 			success: false,
 			error: false,
 			onSuccess: ({ standings }) => {
-				standingsMap.value = standings && new Map(standings.map(entry => [entry.playerId, entry]));
+				standingsMap.value =
+					standings && new Map(standings.map((entry) => [entry.playerId, entry]));
 			},
 			onFailure: () => {
 				standingsMap.value = null;
@@ -97,7 +117,9 @@ const searchQuery = ref('');
 const globalFilter = refDebounced(searchQuery, 200);
 
 // Access PlayerList selection state via template ref
-const playerList = useTemplateRef<{ selectedPlayerIds: number[]; clearSelection: () => void }>('playerList');
+const playerList = useTemplateRef<{ selectedPlayerIds: number[]; clearSelection: () => void }>(
+	'playerList',
+);
 const selectedPlayerIds = computed<number[]>(() => playerList.value?.selectedPlayerIds ?? []);
 
 // Players to display (filtered by active list, with standings override merged in)
@@ -107,18 +129,16 @@ const displayedPlayers = computed(() => {
 	// Filter by active list membership
 	if (activeListId.value !== null) {
 		const memberIds = playerListStore.getCachedMemberIds(activeListId.value);
-		if (!memberIds)
-			return [];
+		if (!memberIds) return [];
 		const idSet = new Set(memberIds);
-		players = players.filter(p => idSet.has(p.id));
+		players = players.filter((p) => idSet.has(p.id));
 	}
 
 	// Merge standings override when a round is selected.
 	// If the selected round has not had standings cached yet, keep the base player list
 	// rather than showing everyone with blank records.
 	const override = standingsMap.value;
-	if (!selectedRoundId.value || !override || override.size === 0)
-		return players;
+	if (!selectedRoundId.value || !override || override.size === 0) return players;
 
 	return players.map((player) => {
 		const snapshot = override.get(player.id);
@@ -144,46 +164,53 @@ const displayedPlayers = computed(() => {
 	});
 });
 
-const { eventId, initialLoading, initialError, retry } = useEventPageLoading([
-	{
-		consumes: 'players',
-		isLoaded: () => playerStore.isLoaded,
-		isLoading: () => playerStore.loading,
-		load: id => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+const { eventId, initialLoading, initialError, retry } = useEventPageLoading(
+	[
+		{
+			consumes: 'players',
+			isLoaded: () => playerStore.isLoaded,
+			isLoading: () => playerStore.loading,
+			load: (id) => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+		},
+		{
+			consumes: 'playerLists',
+			isLoaded: () => playerListStore.isLoaded,
+			isLoading: () => playerListStore.loading,
+			load: (id) => playerListStore.loadByEventId(id, { failure: 'raise' }),
+		},
+		{
+			consumes: 'phases',
+			isLoaded: () => phaseStore.isLoaded,
+			isLoading: () => phaseStore.loading,
+			load: (id) => phaseStore.loadPhasesByEventId(id, { failure: 'raise' }),
+		},
+		{
+			consumes: 'rounds',
+			isLoaded: () => roundStore.isLoaded,
+			isLoading: () => roundStore.loading,
+			load: (id) => roundStore.loadRoundsByEventId(id, { failure: 'raise' }),
+		},
+	],
+	async (id) => {
+		if (!screenStore.isLoaded || screenStore.currentEventId !== id) {
+			await screenStore.loadScreensByEventId(id);
+		}
 	},
-	{
-		consumes: 'playerLists',
-		isLoaded: () => playerListStore.isLoaded,
-		isLoading: () => playerListStore.loading,
-		load: id => playerListStore.loadByEventId(id, { failure: 'raise' }),
-	},
-	{
-		consumes: 'phases',
-		isLoaded: () => phaseStore.isLoaded,
-		isLoading: () => phaseStore.loading,
-		load: id => phaseStore.loadPhasesByEventId(id, { failure: 'raise' }),
-	},
-	{
-		consumes: 'rounds',
-		isLoaded: () => roundStore.isLoaded,
-		isLoading: () => roundStore.loading,
-		load: id => roundStore.loadRoundsByEventId(id, { failure: 'raise' }),
-	},
-], async (id) => {
-	if (!screenStore.isLoaded || screenStore.currentEventId !== id) {
-		await screenStore.loadScreensByEventId(id);
-	}
-});
+);
 
 // Screens load after the entries above, for the Screen pickers.
 useConsumedEventData(['screens']);
 
 const hasPlayers = computed(() => playerStore.players.length > 0);
-const pageState = computed(() => initialError.value
-	? 'ready'
-	: initialLoading.value
-		? 'loading'
-		: (hasPlayers.value ? 'ready' : 'empty'));
+const pageState = computed(() =>
+	initialError.value
+		? 'ready'
+		: initialLoading.value
+			? 'loading'
+			: hasPlayers.value
+				? 'ready'
+				: 'empty',
+);
 
 // ── List Tab Handlers ──
 
@@ -231,8 +258,7 @@ function handleEditDeckList(player: Player) {
 }
 
 async function handleDeletePlayer(player: Player) {
-	if (!eventId.value)
-		return;
+	if (!eventId.value) return;
 
 	const deleteModal = overlay.create(LazyUIConfirmDeleteModal);
 	const confirmed = await deleteModal.open({
@@ -240,21 +266,16 @@ async function handleDeletePlayer(player: Player) {
 		itemName: playerLabel(player),
 	}).result;
 
-	if (!confirmed)
-		return;
+	if (!confirmed) return;
 
-	await runRequest(
-		() => playerStore.removePlayer(eventId.value!, player.id),
-		{
-			success: { title: 'Player deleted', color: 'success' },
-			error: { title: 'Failed to delete player', color: 'error' },
-		},
-	);
+	await runRequest(() => playerStore.removePlayer(eventId.value!, player.id), {
+		success: { title: 'Player deleted', color: 'success' },
+		error: { title: 'Failed to delete player', color: 'error' },
+	});
 }
 
 async function handleSyncSelectedRound() {
-	if (!eventId.value || !selectedRound.value)
-		return;
+	if (!eventId.value || !selectedRound.value) return;
 
 	const roundId = selectedRound.value.id;
 	await reportMeleeOperation(() => meleeStore.syncSpecificRound(roundId), {
@@ -269,22 +290,18 @@ async function handleSyncSelectedRound() {
 
 async function handleSendDeckToScreen(playerId: number, screenId?: number) {
 	if (screenId) {
-		const screen = screenStore.screens.find(s => s.id === screenId);
-		if (screen)
-			await sendDeckToScreen(playerId, screen);
-	}
-	else {
+		const screen = screenStore.screens.find((s) => s.id === screenId);
+		if (screen) await sendDeckToScreen(playerId, screen);
+	} else {
 		await sendToFirstDeckScreen(playerId);
 	}
 }
 
 async function handleSendMatchHistoryToScreen(playerId: number, screenId?: number) {
 	if (screenId) {
-		const screen = screenStore.screens.find(s => s.id === screenId);
-		if (screen)
-			await sendPlayerHistoryToScreen(playerId, screen);
-	}
-	else {
+		const screen = screenStore.screens.find((s) => s.id === screenId);
+		if (screen) await sendPlayerHistoryToScreen(playerId, screen);
+	} else {
 		await sendToFirstPlayerHistoryScreen(playerId);
 	}
 }
@@ -292,32 +309,26 @@ async function handleSendMatchHistoryToScreen(playerId: number, screenId?: numbe
 // ── List Membership Handlers ──
 
 async function handleAddToList(listId: number, playerIds: number[]) {
-	if (!eventId.value)
-		return;
+	if (!eventId.value) return;
 	await playerListStore.addMembers(eventId.value, listId, playerIds);
 }
 
 async function handleRemoveFromList(listId: number, playerIds: number[]) {
-	if (!eventId.value)
-		return;
+	if (!eventId.value) return;
 	await playerListStore.batchRemoveMembers(eventId.value, listId, playerIds);
 }
 
 // ── Bulk Action Handlers ──
 
 const bulkAddToListItems = computed<DropdownMenuItem[][]>(() => {
-	const items = playerListStore.lists.map(list => ({
+	const items = playerListStore.lists.map((list) => ({
 		label: list.name,
 		icon: 'i-lucide-list' as const,
 		onSelect: () => handleBulkAddToList(list.id),
 	}));
 
 	if (items.length === 0) {
-		return [
-			[
-				{ label: 'No lists created', disabled: true },
-			],
-		];
+		return [[{ label: 'No lists created', disabled: true }]];
 	}
 
 	return [items];
@@ -346,12 +357,7 @@ async function handleBulkRemoveFromList() {
 		empty-description="Create a player to get started."
 	>
 		<template #actions>
-			<UButton
-				icon="i-lucide-user-plus"
-				@click="handleCreatePlayer"
-			>
-				Create Player
-			</UButton>
+			<UButton icon="i-lucide-user-plus" @click="handleCreatePlayer"> Create Player </UButton>
 		</template>
 
 		<template #toolbar>
@@ -359,19 +365,12 @@ async function handleBulkRemoveFromList() {
 				<template #left>
 					<!-- Bulk actions (replaces tabs when selections are active) -->
 					<div v-if="selectedPlayerIds.length > 0" class="flex items-center gap-3">
-						<span class="text-sm font-medium">
-							{{ selectedPlayerIds.length }} selected
-						</span>
+						<span class="text-sm font-medium"> {{ selectedPlayerIds.length }} selected </span>
 
 						<USeparator orientation="vertical" class="h-4" />
 
 						<UDropdownMenu :items="bulkAddToListItems">
-							<UButton
-								variant="ghost"
-								size="xs"
-								icon="i-lucide-list-plus"
-								label="Add to List"
-							/>
+							<UButton variant="ghost" size="xs" icon="i-lucide-list-plus" label="Add to List" />
 						</UDropdownMenu>
 
 						<UButton
@@ -421,7 +420,11 @@ async function handleBulkRemoveFromList() {
 				<template #right>
 					<UISearchInput
 						v-model="searchQuery"
-						:placeholder="eventStore.event?.game === 'op' ? 'Search by name, Nickname or member number...' : 'Search by name or deck...'"
+						:placeholder="
+							eventStore.event?.game === 'op'
+								? 'Search by name, Nickname or member number...'
+								: 'Search by name or deck...'
+						"
 						aria-label="Search players"
 					/>
 					<UButton
@@ -491,9 +494,7 @@ async function handleBulkRemoveFromList() {
 		</template>
 
 		<template #empty-actions>
-			<UButton icon="i-lucide-user-plus" @click="handleCreatePlayer">
-				Create Player
-			</UButton>
+			<UButton icon="i-lucide-user-plus" @click="handleCreatePlayer"> Create Player </UButton>
 		</template>
 	</UICollectionPage>
 </template>

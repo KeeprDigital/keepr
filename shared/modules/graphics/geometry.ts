@@ -19,8 +19,10 @@ export interface GraphicAnchorPointDefinition extends NinePointDefinition {
 
 export const GRAPHIC_ANCHOR_POINTS: readonly GraphicAnchorPointDefinition[] = NINE_POINTS;
 
-export function resolveGraphicAnchorPoint(value: GraphicAnchorPoint | undefined): GraphicAnchorPointDefinition {
-	return GRAPHIC_ANCHOR_POINTS.find(point => point.value === value) ?? GRAPHIC_ANCHOR_POINTS[0]!;
+export function resolveGraphicAnchorPoint(
+	value: GraphicAnchorPoint | undefined,
+): GraphicAnchorPointDefinition {
+	return GRAPHIC_ANCHOR_POINTS.find((point) => point.value === value) ?? GRAPHIC_ANCHOR_POINTS[0]!;
 }
 
 function roundGeometry(value: number): number {
@@ -37,8 +39,8 @@ export function graphicAnchorTransformOrigin(anchor: GraphicAnchorPoint | undefi
 export function anchoredGraphicPosition(rect: GraphicRect, anchor: GraphicAnchorPoint | undefined) {
 	const point = resolveGraphicAnchorPoint(anchor);
 	return {
-		x: roundGeometry(rect.x + (rect.width * point.x)),
-		y: roundGeometry(rect.y + (rect.height * point.y)),
+		x: roundGeometry(rect.x + rect.width * point.x),
+		y: roundGeometry(rect.y + rect.height * point.y),
 	};
 }
 
@@ -52,11 +54,11 @@ export function moveGraphicRectToAnchoredPosition(
 	const point = resolveGraphicAnchorPoint(anchor);
 	if (axis === 'x') {
 		return {
-			x: roundGeometry(value - (rect.width * point.x)),
+			x: roundGeometry(value - rect.width * point.x),
 		};
 	}
 	return {
-		y: roundGeometry(value - (rect.height * point.y)),
+		y: roundGeometry(value - rect.height * point.y),
 	};
 }
 
@@ -67,14 +69,14 @@ export function resizeGraphicRectFromAnchor(
 	anchor: GraphicAnchorPoint | undefined,
 ): GraphicRect {
 	const point = resolveGraphicAnchorPoint(anchor);
-	const fixedX = rect.x + (rect.width * point.x);
-	const fixedY = rect.y + (rect.height * point.y);
+	const fixedX = rect.x + rect.width * point.x;
+	const fixedY = rect.y + rect.height * point.y;
 	const width = Math.max(0, Math.round(size.width ?? rect.width));
 	const height = Math.max(0, Math.round(size.height ?? rect.height));
 
 	return {
-		x: roundGeometry(fixedX - (width * point.x)),
-		y: roundGeometry(fixedY - (height * point.y)),
+		x: roundGeometry(fixedX - width * point.x),
+		y: roundGeometry(fixedY - height * point.y),
 		width,
 		height,
 	};
@@ -91,17 +93,9 @@ export function alignGraphicRect(
 	edge: 'start' | 'center' | 'end',
 	container: { width: number; height: number },
 ): Partial<GraphicRect> {
-	const total = axis === 'x'
-		? container.width
-		: container.height;
-	const size = axis === 'x'
-		? rect.width
-		: rect.height;
-	const start = edge === 'start'
-		? 0
-		: edge === 'end'
-			? total - size
-			: (total - size) / 2;
+	const total = axis === 'x' ? container.width : container.height;
+	const size = axis === 'x' ? rect.width : rect.height;
+	const start = edge === 'start' ? 0 : edge === 'end' ? total - size : (total - size) / 2;
 	return {
 		[axis]: roundGeometry(start),
 	};
@@ -115,17 +109,12 @@ export function displayGeometryValue(
 	isPosition = false,
 ): number {
 	if (unit === 'percent') {
-		return total > 0
-			? roundGeometry((pixels / total) * 100)
-			: 0;
+		return total > 0 ? roundGeometry((pixels / total) * 100) : 0;
 	}
 	if (unit === 'grid') {
-		if (total <= 0)
-			return 0;
+		if (total <= 0) return 0;
 		const grid = (pixels / total) * 32;
-		return roundGeometry(isPosition
-			? grid - 16
-			: grid);
+		return roundGeometry(isPosition ? grid - 16 : grid);
 	}
 	return roundGeometry(pixels);
 }
@@ -136,9 +125,7 @@ export function displayGeometryValue(
  */
 export function geometryUnitInputStep(unit: GeometryUnit): { step: number; stepSnapping: boolean } {
 	return {
-		step: unit === 'grid'
-			? 0.01
-			: 1,
+		step: unit === 'grid' ? 0.01 : 1,
 		stepSnapping: unit === 'px',
 	};
 }
@@ -150,14 +137,10 @@ export function parseGeometryValue(
 	unit: GeometryUnit,
 	isPosition = false,
 ): number {
-	if (!Number.isFinite(value))
-		return 0;
-	if (unit === 'percent')
-		return Math.round((value / 100) * total);
+	if (!Number.isFinite(value)) return 0;
+	if (unit === 'percent') return Math.round((value / 100) * total);
 	if (unit === 'grid') {
-		return Math.round(((isPosition
-			? value + 16
-			: value) / 32) * total);
+		return Math.round(((isPosition ? value + 16 : value) / 32) * total);
 	}
 	return Math.round(value);
 }

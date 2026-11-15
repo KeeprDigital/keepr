@@ -20,11 +20,13 @@ import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { INTEGRATION_GRAPHICS_ADMIN_TOKEN } from './helpers';
 import { expectOperationResult } from './responseStatus';
 
-const transparentPixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const transparentPixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 /**
  * Integration suites share one database, and identical bytes deduplicate across
@@ -32,11 +34,13 @@ const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0
  * suite uses keeps this suite's content digests to itself.
  */
 function pngWithTextChunks(count: number) {
-	return Uint8Array.from(Buffer.concat([
-		transparentPixelPng.slice(0, -12),
-		...Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[],
-		transparentPixelPng.slice(-12),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			transparentPixelPng.slice(0, -12),
+			...(Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[]),
+			transparentPixelPng.slice(-12),
+		]),
+	);
 }
 
 const retentionPixelPng = pngWithTextChunks(30);
@@ -77,14 +81,11 @@ describe('the Graphics Asset Library retention API', () => {
 				}),
 			},
 		);
-		return await fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
-			{
-				method: 'PUT',
-				headers: { ...authorHeaders, 'content-type': 'image/png' },
-				body: bytes,
-			},
-		).then(expectOperationResult);
+		return await fetch(`/api/graphics-assets/ingestion-operations/${initiated.id}/content`, {
+			method: 'PUT',
+			headers: { ...authorHeaders, 'content-type': 'image/png' },
+			body: bytes,
+		}).then(expectOperationResult);
 	}
 
 	async function replace(assetId: string, idempotencyKey: string) {
@@ -102,14 +103,11 @@ describe('the Graphics Asset Library retention API', () => {
 				},
 			},
 		);
-		return await fetch(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
-			{
-				method: 'PUT',
-				headers: { ...authorHeaders, 'content-type': 'image/png' },
-				body: retentionReplacementPng,
-			},
-		).then(expectOperationResult);
+		return await fetch(`/api/graphics-assets/ingestion-operations/${initiated.id}/content`, {
+			method: 'PUT',
+			headers: { ...authorHeaders, 'content-type': 'image/png' },
+			body: retentionReplacementPng,
+		}).then(expectOperationResult);
 	}
 
 	it('keeps retention deadlines on the administrator surface', async () => {
@@ -154,8 +152,8 @@ describe('the Graphics Asset Library retention API', () => {
 		if (supersededRetention.policy !== 'unreferenced-superseded')
 			throw new Error('Superseded revision should carry a pruning deadline');
 		expect(
-			new Date(supersededRetention.pruneAfter).getTime()
-				- new Date(supersededRetention.unreferencedSince).getTime(),
+			new Date(supersededRetention.pruneAfter).getTime() -
+				new Date(supersededRetention.unreferencedSince).getTime(),
 		).toBe(GRAPHICS_RETENTION_GUARANTEES.supersededRevisionMilliseconds);
 
 		await $fetch(`/api/graphics-assets/${assetId}/lifecycle-actions`, {
@@ -167,11 +165,10 @@ describe('the Graphics Asset Library retention API', () => {
 			`/api/graphics-assets/${assetId}/retention`,
 			{ headers: authorHeaders },
 		);
-		if (trashed.lifecycle.state !== 'trashed')
-			throw new Error('Graphic Asset should be Trashed');
+		if (trashed.lifecycle.state !== 'trashed') throw new Error('Graphic Asset should be Trashed');
 		expect(
-			new Date(trashed.lifecycle.recoverableUntil).getTime()
-				- new Date(trashed.lifecycle.trashedAt).getTime(),
+			new Date(trashed.lifecycle.recoverableUntil).getTime() -
+				new Date(trashed.lifecycle.trashedAt).getTime(),
 		).toBe(GRAPHICS_RETENTION_GUARANTEES.trashRecoveryMilliseconds);
 		expect(trashed.revisions[0]!.retention).toMatchObject({ policy: 'pruning-frozen' });
 
@@ -181,13 +178,15 @@ describe('the Graphics Asset Library retention API', () => {
 		);
 		expect(overview.guarantees).toEqual({ ...GRAPHICS_RETENTION_GUARANTEES });
 		expect(overview.guaranteesShortenedUnderPressure).toBe(false);
-		expect(overview.trashedAssets).toEqual(expect.arrayContaining([
-			expect.objectContaining({
-				assetId,
-				recoverableUntil: trashed.lifecycle.recoverableUntil,
-				referenceCount: 0,
-			}),
-		]));
+		expect(overview.trashedAssets).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					assetId,
+					recoverableUntil: trashed.lifecycle.recoverableUntil,
+					referenceCount: 0,
+				}),
+			]),
+		);
 
 		// A sweep at ordinary time reclaims nothing whose window is still open.
 		const swept = await $fetch<GraphicsRetentionSweepResult>(
@@ -200,10 +199,11 @@ describe('the Graphics Asset Library retention API', () => {
 			expiredIncompleteTransfers: 0,
 			expiredCompletedInput: 0,
 		});
-		await expect($fetch<GraphicAssetRetentionView>(
-			`/api/graphics-assets/${assetId}/retention`,
-			{ headers: authorHeaders },
-		)).resolves.toMatchObject({
+		await expect(
+			$fetch<GraphicAssetRetentionView>(`/api/graphics-assets/${assetId}/retention`, {
+				headers: authorHeaders,
+			}),
+		).resolves.toMatchObject({
 			lifecycle: { state: 'trashed' },
 		});
 
@@ -254,10 +254,12 @@ describe('the Graphics Asset Library retention API', () => {
 			reason: 'early-purge',
 		});
 
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Early purge logo', lifecycleStates: 'active,retired,trashed' },
-		})).resolves.toEqual([]);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Early purge logo', lifecycleStates: 'active,retired,trashed' },
+			}),
+		).resolves.toEqual([]);
 		const restored = await fetch(`/api/graphics-assets/${assetId}/lifecycle-actions`, {
 			method: 'POST',
 			headers: { ...authorHeaders, 'content-type': 'application/json' },
@@ -272,73 +274,64 @@ describe('the Graphics Asset Library retention API', () => {
 				query: { category: 'graphic-asset-purged' },
 			},
 		);
-		expect(evidence.entries).toEqual(expect.arrayContaining([
-			expect.objectContaining({
-				category: 'graphic-asset-purged',
-				subject: { kind: 'graphic-asset', id: assetId },
-				outcome: 'graphic-asset-purged',
-				reason: 'early-purge',
-			}),
-		]));
+		expect(evidence.entries).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					category: 'graphic-asset-purged',
+					subject: { kind: 'graphic-asset', id: assetId },
+					outcome: 'graphic-asset-purged',
+					reason: 'early-purge',
+				}),
+			]),
+		);
 	});
 
 	it('reads the ledger by group, actor, correlation, and cursor', async () => {
-		const page = await $fetch<GraphicsAssetEvidencePage>(
-			'/api/admin/graphics-assets/evidence',
-			{
-				headers: administratorHeaders,
-				query: { group: 'lifecycle', limit: 1 },
-			},
-		);
+		const page = await $fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
+			headers: administratorHeaders,
+			query: { group: 'lifecycle', limit: 1 },
+		});
 		expect(page.entries).toHaveLength(1);
 		const entry = page.entries[0]!;
 		// A group names a set of categories, so the entry it found is one of them
 		// rather than whatever happened to be newest.
-		expect(GRAPHICS_EVIDENCE_CATEGORY_GROUPS.lifecycle as readonly string[])
-			.toContain(entry.category);
+		expect(GRAPHICS_EVIDENCE_CATEGORY_GROUPS.lifecycle as readonly string[]).toContain(
+			entry.category,
+		);
 		expect(page.newer).toBeNull();
 		expect(page.older).toEqual({ recordedAt: entry.recordedAt, id: entry.id });
 
 		// Turning one page and coming back lands on the entry it started from,
 		// which an offset that shifted under a concurrent sweep would not.
-		const older = await $fetch<GraphicsAssetEvidencePage>(
-			'/api/admin/graphics-assets/evidence',
-			{
-				headers: administratorHeaders,
-				query: {
-					group: 'lifecycle',
-					limit: 1,
-					cursorRecordedAt: page.older!.recordedAt,
-					cursorId: page.older!.id,
-				},
+		const older = await $fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
+			headers: administratorHeaders,
+			query: {
+				group: 'lifecycle',
+				limit: 1,
+				cursorRecordedAt: page.older!.recordedAt,
+				cursorId: page.older!.id,
 			},
-		);
+		});
 		expect(older.entries[0]!.id).not.toBe(entry.id);
-		const back = await $fetch<GraphicsAssetEvidencePage>(
-			'/api/admin/graphics-assets/evidence',
-			{
-				headers: administratorHeaders,
-				query: {
-					group: 'lifecycle',
-					limit: 1,
-					direction: 'newer',
-					cursorRecordedAt: older.newer!.recordedAt,
-					cursorId: older.newer!.id,
-				},
+		const back = await $fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
+			headers: administratorHeaders,
+			query: {
+				group: 'lifecycle',
+				limit: 1,
+				direction: 'newer',
+				cursorRecordedAt: older.newer!.recordedAt,
+				cursorId: older.newer!.id,
 			},
-		);
+		});
 		expect(back.entries[0]!.id).toBe(entry.id);
 
-		await expect($fetch<GraphicsAssetEvidencePage>(
-			'/api/admin/graphics-assets/evidence',
-			{
+		await expect(
+			$fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
 				headers: administratorHeaders,
 				query: { actor: entry.actor, limit: 5 },
-			},
-		)).resolves.toMatchObject({
-			entries: expect.arrayContaining([
-				expect.objectContaining({ actor: entry.actor }),
-			]),
+			}),
+		).resolves.toMatchObject({
+			entries: expect.arrayContaining([expect.objectContaining({ actor: entry.actor })]),
 		});
 		const correlated = await $fetch<GraphicsAssetEvidencePage>(
 			'/api/admin/graphics-assets/evidence',
@@ -353,18 +346,27 @@ describe('the Graphics Asset Library retention API', () => {
 
 		// Half a subject filter and half a cursor are both refused, because each
 		// would answer a different question from the one that was asked.
-		expect((await fetch(
-			'/api/admin/graphics-assets/evidence?subjectKind=graphic-asset',
-			{ headers: administratorHeaders },
-		)).status).toBe(400);
-		expect((await fetch(
-			'/api/admin/graphics-assets/evidence?cursorId=entry',
-			{ headers: administratorHeaders },
-		)).status).toBe(400);
-		expect((await fetch(
-			'/api/admin/graphics-assets/evidence?group=not-a-group',
-			{ headers: administratorHeaders },
-		)).status).toBe(400);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/evidence?subjectKind=graphic-asset', {
+					headers: administratorHeaders,
+				})
+			).status,
+		).toBe(400);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/evidence?cursorId=entry', {
+					headers: administratorHeaders,
+				})
+			).status,
+		).toBe(400);
+		expect(
+			(
+				await fetch('/api/admin/graphics-assets/evidence?group=not-a-group', {
+					headers: administratorHeaders,
+				})
+			).status,
+		).toBe(400);
 	});
 
 	it('never stores or displays anything the ledger promised to keep out', async () => {
@@ -375,24 +377,19 @@ describe('the Graphics Asset Library retention API', () => {
 		//
 		// Quarantine and ingestion expiry are absent on purpose: both need days
 		// to elapse, which only the controlled-clock module tests can offer.
-		const page = await $fetch<GraphicsAssetEvidencePage>(
-			'/api/admin/graphics-assets/evidence',
-			{
-				headers: administratorHeaders,
-				query: { limit: 500 },
-			},
-		);
+		const page = await $fetch<GraphicsAssetEvidencePage>('/api/admin/graphics-assets/evidence', {
+			headers: administratorHeaders,
+			query: { limit: 500 },
+		});
 		expect(page.entries.length).toBeGreaterThan(0);
-		const covered = new Set(page.entries.flatMap(entry =>
-			GRAPHICS_EVIDENCE_CATEGORY_GROUP_VALUES.filter(group =>
-				(GRAPHICS_EVIDENCE_CATEGORY_GROUPS[group] as readonly string[])
-					.includes(entry.category))));
-		for (const group of [
-			'lifecycle',
-			'pruning',
-			'purge',
-			'restoration',
-		] as const)
+		const covered = new Set(
+			page.entries.flatMap((entry) =>
+				GRAPHICS_EVIDENCE_CATEGORY_GROUP_VALUES.filter((group) =>
+					(GRAPHICS_EVIDENCE_CATEGORY_GROUPS[group] as readonly string[]).includes(entry.category),
+				),
+			),
+		);
+		for (const group of ['lifecycle', 'pruning', 'purge', 'restoration'] as const)
 			expect([...covered], `no Evidence from the ${group} group`).toContain(group);
 
 		const serialised = JSON.stringify(page);

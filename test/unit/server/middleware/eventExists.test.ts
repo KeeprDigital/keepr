@@ -9,9 +9,14 @@ vi.mock('~~/server/services/event', () => ({
 
 const mockGetRequestURL = vi.fn();
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getRequestURL', mockGetRequestURL);
-vi.stubGlobal('createError', (input: { statusCode: number; message: string }) => Object.assign(new Error(input.message), input));
+vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
+	Object.assign(new Error(input.message), input),
+);
 
 const handler = (await import('~~/server/middleware/event-exists')).default;
 

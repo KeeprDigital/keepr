@@ -156,9 +156,7 @@ describe('syncMatchesFromMelee', () => {
 			formatExternalId: 'standard',
 		};
 		const archetype = { id: 5, name: 'Control', colors: 'WU' };
-		const listed = [
-			meleeMatch('reported'),
-		];
+		const listed = [meleeMatch('reported')];
 		mockFetchMatchesByRound.mockResolvedValue(listed);
 		mockFindAll.mockResolvedValue([player]);
 		mockListDecksByEvent.mockResolvedValue([manualDeck, deck]);
@@ -167,26 +165,22 @@ describe('syncMatchesFromMelee', () => {
 		await syncMatchesFromMelee(1, eventData, round as any, phase as any);
 
 		expect(mockFindArchetypesByIds).toHaveBeenCalledWith(1, [5]);
-		expect(mockMapMeleeMatchesToDbRows).toHaveBeenCalledWith(listed, 10, 1, expect.objectContaining({
-			playerDecksByPlayerId: new Map([
-				[
-					7,
-					[deck],
-				],
-			]),
-			archetypesById: new Map([
-				[5, archetype],
-			]),
-			roundFormatExternalId: 'standard',
-			warnings: [],
-		}));
+		expect(mockMapMeleeMatchesToDbRows).toHaveBeenCalledWith(
+			listed,
+			10,
+			1,
+			expect.objectContaining({
+				playerDecksByPlayerId: new Map([[7, [deck]]]),
+				archetypesById: new Map([[5, archetype]]),
+				roundFormatExternalId: 'standard',
+				warnings: [],
+			}),
+		);
 	});
 
 	it('maps standings through the Melee source identity when another source has the same ID', async () => {
 		const round = { ...testRounds[0], externalId: '100', externalSource: 'melee' as const };
-		const reported = [
-			meleeMatch('reported'),
-		];
+		const reported = [meleeMatch('reported')];
 		mockFetchMatchesByRound.mockResolvedValue(reported);
 		mockFindAll.mockResolvedValue([
 			{ id: 6, externalId: '42', externalSource: 'manual' },
@@ -205,23 +199,30 @@ describe('syncMatchesFromMelee', () => {
 
 		await syncMatchesFromMelee(1, eventData, round as any, null);
 
-		expect(mockReplaceRoundSnapshot).toHaveBeenCalledWith(expect.objectContaining({
-			standings: [
-				{
-					playerId: 7,
-					wins: 4,
-					losses: 1,
-					draws: 0,
-					position: 3,
-					points: 12,
-				},
-			],
-		}));
-		expect(mockMapMeleeMatchesToDbRows).toHaveBeenCalledWith(reported, 10, 1, expect.objectContaining({
-			playerMap: expect.objectContaining({
-				get: expect.any(Function),
+		expect(mockReplaceRoundSnapshot).toHaveBeenCalledWith(
+			expect.objectContaining({
+				standings: [
+					{
+						playerId: 7,
+						wins: 4,
+						losses: 1,
+						draws: 0,
+						position: 3,
+						points: 12,
+					},
+				],
 			}),
-		}));
+		);
+		expect(mockMapMeleeMatchesToDbRows).toHaveBeenCalledWith(
+			reported,
+			10,
+			1,
+			expect.objectContaining({
+				playerMap: expect.objectContaining({
+					get: expect.any(Function),
+				}),
+			}),
+		);
 		const mapperContext = mockMapMeleeMatchesToDbRows.mock.calls[0]![3];
 		expect(mapperContext.playerMap.get('melee\u000042')).toMatchObject({ id: 7 });
 		expect(mapperContext.playerMap.get('manual\u000042')).toMatchObject({ id: 6 });
@@ -229,12 +230,8 @@ describe('syncMatchesFromMelee', () => {
 
 	it('rejects unknown or duplicate standing participants before replacement', async () => {
 		const round = { ...testRounds[0], externalId: '100', externalSource: 'melee' as const };
-		mockFetchMatchesByRound.mockResolvedValue([
-			meleeMatch('reported'),
-		]);
-		mockFindAll.mockResolvedValue([
-			{ id: 7, externalId: '42', externalSource: 'melee' },
-		]);
+		mockFetchMatchesByRound.mockResolvedValue([meleeMatch('reported')]);
+		mockFindAll.mockResolvedValue([{ id: 7, externalId: '42', externalSource: 'melee' }]);
 		mockFetchStandingsByRound.mockResolvedValue([
 			{
 				TeamId: 99,
@@ -246,7 +243,9 @@ describe('syncMatchesFromMelee', () => {
 			},
 		]);
 
-		await expect(syncMatchesFromMelee(1, eventData, round as any, null)).rejects.toThrow('unknown Melee participant 99');
+		await expect(syncMatchesFromMelee(1, eventData, round as any, null)).rejects.toThrow(
+			'unknown Melee participant 99',
+		);
 		expect(mockReplaceRoundSnapshot).not.toHaveBeenCalled();
 
 		mockFetchStandingsByRound.mockResolvedValue([
@@ -268,7 +267,9 @@ describe('syncMatchesFromMelee', () => {
 			},
 		]);
 
-		await expect(syncMatchesFromMelee(1, eventData, round as any, null)).rejects.toThrow('Duplicate Melee Round standing participant 42');
+		await expect(syncMatchesFromMelee(1, eventData, round as any, null)).rejects.toThrow(
+			'Duplicate Melee Round standing participant 42',
+		);
 		expect(mockReplaceRoundSnapshot).not.toHaveBeenCalled();
 	});
 
@@ -282,7 +283,11 @@ describe('syncMatchesFromMelee', () => {
 			externalSource: 'melee' as const,
 			lastSyncedAt: null,
 		};
-		const notFound = new MeleeTransportError('Melee.gg API request failed with status 404', 'http', 404);
+		const notFound = new MeleeTransportError(
+			'Melee.gg API request failed with status 404',
+			'http',
+			404,
+		);
 		mockFetchMatchesByRound.mockRejectedValue(notFound);
 		mockFetchStandingsByRound.mockRejectedValue(notFound);
 
@@ -300,7 +305,11 @@ describe('syncMatchesFromMelee', () => {
 			externalSource: 'melee' as const,
 			lastSyncedAt: new Date(),
 		};
-		const notFound = new MeleeTransportError('Melee.gg API request failed with status 404', 'http', 404);
+		const notFound = new MeleeTransportError(
+			'Melee.gg API request failed with status 404',
+			'http',
+			404,
+		);
 		mockFetchMatchesByRound.mockRejectedValue(notFound);
 		mockFetchStandingsByRound.mockRejectedValue(notFound);
 
@@ -344,9 +353,7 @@ describe('syncMatchesFromMelee', () => {
 			createdAt: new Date(),
 			updatedAt: new Date(),
 		};
-		mockFetchMatchesByRound.mockResolvedValue([
-			meleeMatch('reported'),
-		]);
+		mockFetchMatchesByRound.mockResolvedValue([meleeMatch('reported')]);
 
 		const result = await syncMatchesFromMelee(1, eventData, round as any, phase as any);
 
@@ -360,11 +367,11 @@ describe('syncMatchesFromMelee', () => {
 			externalSource: 'melee' as const,
 			lastSyncedAt: new Date(),
 		};
-		mockFetchMatchesByRound.mockResolvedValue([
-			meleeMatch('reported'),
-		]);
+		mockFetchMatchesByRound.mockResolvedValue([meleeMatch('reported')]);
 		mockReplaceRoundSnapshot.mockRejectedValue(new Error('batch rolled back'));
 
-		await expect(syncMatchesFromMelee(1, eventData, round as any, null)).rejects.toThrow('batch rolled back');
+		await expect(syncMatchesFromMelee(1, eventData, round as any, null)).rejects.toThrow(
+			'batch rolled back',
+		);
 	});
 });

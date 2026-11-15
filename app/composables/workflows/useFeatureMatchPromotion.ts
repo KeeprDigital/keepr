@@ -1,4 +1,7 @@
-import type { FeatureMatchNoteDiscardConfirmation, FeatureMatchPromotionResponse } from '~~/shared/api';
+import type {
+	FeatureMatchNoteDiscardConfirmation,
+	FeatureMatchPromotionResponse,
+} from '~~/shared/api';
 import { LazyFeatureMatchNoteDiscardModal } from '#components';
 import { featureMatchNoteDiscardConflict } from '~/utils/featureMatchNoteDiscardConflict';
 
@@ -43,15 +46,12 @@ export function useFeatureMatchPromotion() {
 					? await featureMatchRepo.promoteMatch(eventId, slotId, matchId, confirmedNoteDiscards)
 					: await featureMatchRepo.promoteMatch(eventId, slotId, matchId);
 				break;
-			}
-			catch (cause) {
+			} catch (cause) {
 				const conflict = featureMatchNoteDiscardConflict(cause);
-				if (!conflict)
-					throw cause;
+				if (!conflict) throw cause;
 				const modal = overlay.create(LazyFeatureMatchNoteDiscardModal);
 				const confirmed = await modal.open({ assignments: conflict.assignments }).result;
-				if (!confirmed)
-					return undefined;
+				if (!confirmed) return undefined;
 				confirmedNoteDiscards = conflict.assignments.map(({ assignment }) => ({
 					assignmentId: assignment.id,
 					updatedAt: new Date(assignment.updatedAt),
@@ -68,7 +68,12 @@ export function useFeatureMatchPromotion() {
 			promotedSlotCurrent = featureMatchStore.applySavedSlot(result.promotedSlot);
 		}
 
-		if (promotedSlotCurrent && assignmentsFlight.current && assignmentStore.currentEventId === eventId && assignmentStore.assignmentsByRound.has(roundId))
+		if (
+			promotedSlotCurrent &&
+			assignmentsFlight.current &&
+			assignmentStore.currentEventId === eventId &&
+			assignmentStore.assignmentsByRound.has(roundId)
+		)
 			assignmentStore.applySavedAssignment(result.assignment);
 
 		return result;

@@ -17,9 +17,7 @@ export interface ApplicationFontFamily {
  * of them; a system stack has no package and is never asked for.
  */
 export function applicationFontFamilies(): ApplicationFontFamily[] {
-	return GRAPHIC_FONTS.flatMap(({ package: pkg }) => (pkg
-		? packagedFamily(pkg)
-		: []));
+	return GRAPHIC_FONTS.flatMap(({ package: pkg }) => (pkg ? packagedFamily(pkg) : []));
 }
 
 function packagedFamily(pkg: GraphicFontPackage): ApplicationFontFamily {
@@ -27,9 +25,7 @@ function packagedFamily(pkg: GraphicFontPackage): ApplicationFontFamily {
 		name: pkg.family,
 		provider: 'npm',
 		weights: [...pkg.weights],
-		styles: pkg.italic
-			? ['normal', 'italic']
-			: ['normal'],
+		styles: pkg.italic ? ['normal', 'italic'] : ['normal'],
 	};
 }
 
@@ -64,11 +60,11 @@ interface BuildManifestEntry {
  * here is preloaded, so the manifest entries carried nothing a page used.
  */
 export function dropFontAssetsFromManifest(manifest: Record<string, BuildManifestEntry>) {
-	const fonts = new Set(Object.keys(manifest).filter(key => manifest[key]!.resourceType === 'font'));
-	for (const key of fonts)
-		delete manifest[key];
+	const fonts = new Set(
+		Object.keys(manifest).filter((key) => manifest[key]!.resourceType === 'font'),
+	);
+	for (const key of fonts) delete manifest[key];
 	for (const entry of Object.values(manifest)) {
-		if (entry.assets)
-			entry.assets = entry.assets.filter(asset => !fonts.has(asset));
+		if (entry.assets) entry.assets = entry.assets.filter((asset) => !fonts.has(asset));
 	}
 }

@@ -7,11 +7,11 @@ import type { QuantityPosition } from '~~/shared/types/enums';
  */
 export const CARD_BADGE_POSITION_CLASSES: Record<QuantityPosition, string> = {
 	'top-left': '-top-1 -left-1',
-	'top': '-top-1 left-1/2 -translate-x-1/2',
+	top: '-top-1 left-1/2 -translate-x-1/2',
 	'top-right': '-top-1 -right-1',
-	'left': 'top-1/2 -left-1 -translate-y-1/2',
-	'right': 'top-1/2 -right-1 -translate-y-1/2',
+	left: 'top-1/2 -left-1 -translate-y-1/2',
+	right: 'top-1/2 -right-1 -translate-y-1/2',
 	'bottom-left': '-bottom-1 -left-1',
-	'bottom': '-bottom-1 left-1/2 -translate-x-1/2',
+	bottom: '-bottom-1 left-1/2 -translate-x-1/2',
 	'bottom-right': '-bottom-1 -right-1',
 };

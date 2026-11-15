@@ -28,23 +28,33 @@ const displays = new Map<string, ReturnType<typeof defineComponent>>();
 /** A mode's display: it declares readiness as `modeReady` says and marks itself pending as `modePending` says. */
 function displayFor(mode: string) {
 	if (!displays.has(mode)) {
-		displays.set(mode, defineComponent({
-			setup() {
-				useScreenModeReady(() => readiness[mode] ?? true);
-				return () => h('div', {
-					'data-testid': 'display',
-					'data-mode': mode,
-					'data-render-pending': pending[mode] ? '' : undefined,
-				});
-			},
-		}));
+		displays.set(
+			mode,
+			defineComponent({
+				setup() {
+					useScreenModeReady(() => readiness[mode] ?? true);
+					return () =>
+						h('div', {
+							'data-testid': 'display',
+							'data-mode': mode,
+							'data-render-pending': pending[mode] ? '' : undefined,
+						});
+				},
+			}),
+		);
 	}
 	return displays.get(mode)!;
 }
 
 vi.mock('~/modules/screen-mode', async () => ({
-	...await vi.importActual<typeof import('~/modules/screen-mode/readiness')>('~/modules/screen-mode/readiness'),
-	screenBackgroundLayers: (await vi.importActual<typeof import('~/modules/screen-mode/modeTokens')>('~/modules/screen-mode/modeTokens')).screenBackgroundLayers,
+	...(await vi.importActual<typeof import('~/modules/screen-mode/readiness')>(
+		'~/modules/screen-mode/readiness',
+	)),
+	screenBackgroundLayers: (
+		await vi.importActual<typeof import('~/modules/screen-mode/modeTokens')>(
+			'~/modules/screen-mode/modeTokens',
+		)
+	).screenBackgroundLayers,
 	getScreenModeDefinition: (mode: string) => ({
 		mode,
 		displayComponent: displayFor(mode),
@@ -88,9 +98,7 @@ const themeLayer = { ...colorLayer, id: 'theme-wash', color: '#203040' };
 /** The ids of the layers the host stack paints, or null when it paints none. */
 function paintedLayerIds(wrapper: ReturnType<typeof mountRenderer>) {
 	const stack = wrapper.find('[data-testid="mode-background-stack"]');
-	return stack.exists()
-		? stack.attributes('data-layer-ids')
-		: null;
+	return stack.exists() ? stack.attributes('data-layer-ids') : null;
 }
 
 function mountRenderer() {
@@ -99,7 +107,8 @@ function mountRenderer() {
 			stubs: {
 				ScreenBackgroundLayerStack: {
 					props: ['layers'],
-					template: '<div data-testid="mode-background-stack" :data-layer-count="layers.length" :data-layer-ids="layers.map(layer => layer.id).join()" />',
+					template:
+						'<div data-testid="mode-background-stack" :data-layer-count="layers.length" :data-layer-ids="layers.map(layer => layer.id).join()" />',
 				},
 			},
 		},
@@ -133,10 +142,8 @@ function hostReturning(provideOverlayContainer: boolean) {
 
 describe('screenRenderer', () => {
 	beforeEach(() => {
-		for (const key of Object.keys(readiness))
-			delete readiness[key];
-		for (const key of Object.keys(pending))
-			delete pending[key];
+		for (const key of Object.keys(readiness)) delete readiness[key];
+		for (const key of Object.keys(pending)) delete pending[key];
 		overlayContainer.value = null;
 		screen.value = createMockScreen({ currentMode: 'card' });
 		themeTokens.value = undefined;
@@ -144,7 +151,7 @@ describe('screenRenderer', () => {
 		hostReturning(true);
 	});
 
-	it('renders the mode\'s display inside the container its host resolves for the Event Canvas and Theme', () => {
+	it("renders the mode's display inside the container its host resolves for the Event Canvas and Theme", () => {
 		screen.value = createMockScreen({
 			currentMode: 'card',
 			themeOverrides: {
@@ -155,14 +162,16 @@ describe('screenRenderer', () => {
 
 		const wrapper = mountRenderer();
 
-		expect(resolveScreenModeHost).toHaveBeenCalledWith(expect.objectContaining({
-			mode: 'card',
-			canvas: { width: 1280, height: 720 },
-			theme: { inset: 24 },
-			overrides: {
-				alignment: { horizontal: 'left', vertical: 'top' },
-			},
-		}));
+		expect(resolveScreenModeHost).toHaveBeenCalledWith(
+			expect.objectContaining({
+				mode: 'card',
+				canvas: { width: 1280, height: 720 },
+				theme: { inset: 24 },
+				overrides: {
+					alignment: { horizontal: 'left', vertical: 'top' },
+				},
+			}),
+		);
 		const container = wrapper.get('.host-container');
 		expect(container.attributes('style')).toContain('padding: 24px;');
 		expect(container.find('[data-testid="display"]').exists()).toBe(true);
@@ -177,12 +186,10 @@ describe('screenRenderer', () => {
 		const wrapper = mountRenderer();
 		await settle();
 
-		expect(overlayContainer.value).toBe(provides
-			? wrapper.get('.host-container').element
-			: null);
+		expect(overlayContainer.value).toBe(provides ? wrapper.get('.host-container').element : null);
 	});
 
-	it('paints a capable mode\'s own background layers behind its display', () => {
+	it("paints a capable mode's own background layers behind its display", () => {
 		screen.value = createMockScreen({
 			currentMode: 'card',
 			modeConfigs: {
@@ -204,10 +211,7 @@ describe('screenRenderer', () => {
 	});
 
 	it.each([
-		[
-			'a mode without background layers',
-			createMockScreen({ currentMode: 'card' }),
-		],
+		['a mode without background layers', createMockScreen({ currentMode: 'card' })],
 		[
 			'the Background Screen, whose display owns its layers',
 			createMockScreen({
@@ -237,7 +241,7 @@ describe('screenRenderer', () => {
 		expect(paintedLayerIds(mountRenderer())).toBeNull();
 	});
 
-	it('restyles a live plain mode when its Theme\'s background changes', async () => {
+	it("restyles a live plain mode when its Theme's background changes", async () => {
 		const wrapper = mountRenderer();
 		expect(paintedLayerIds(wrapper)).toBeNull();
 
@@ -257,9 +261,7 @@ describe('screenRenderer', () => {
 		screen.value = createMockScreen({
 			currentMode: 'standings',
 			themeOverrides: {
-				background: [
-					{ ...colorLayer, id: 'override-wash' },
-				],
+				background: [{ ...colorLayer, id: 'override-wash' }],
 			},
 		});
 
@@ -291,32 +293,39 @@ describe('screenRenderer', () => {
 			[
 				'its display declares its data settled',
 				{ ready: false, loading: false },
-				() => { readiness.standings = true; },
+				() => {
+					readiness.standings = true;
+				},
 			],
 			[
 				'nothing inside it is still loading',
 				{ ready: true, loading: true },
-				() => { pending.standings = false; },
+				() => {
+					pending.standings = false;
+				},
 			],
-		])('keeps the mode on program until the incoming mode is ready: %s', async (_, incoming, settleIncoming) => {
-			const wrapper = mountRenderer();
-			await settle();
-			readiness.standings = incoming.ready;
-			pending.standings = incoming.loading;
+		])(
+			'keeps the mode on program until the incoming mode is ready: %s',
+			async (_, incoming, settleIncoming) => {
+				const wrapper = mountRenderer();
+				await settle();
+				readiness.standings = incoming.ready;
+				pending.standings = incoming.loading;
 
-			screen.value = createMockScreen({ currentMode: 'standings' });
-			await settle();
-			expect(onProgram(wrapper, 'card')).toBe(true);
-			expect(frame(wrapper, 'standings').exists()).toBe(true);
-			expect(onProgram(wrapper, 'standings')).toBe(false);
+				screen.value = createMockScreen({ currentMode: 'standings' });
+				await settle();
+				expect(onProgram(wrapper, 'card')).toBe(true);
+				expect(frame(wrapper, 'standings').exists()).toBe(true);
+				expect(onProgram(wrapper, 'standings')).toBe(false);
 
-			settleIncoming();
-			await settle();
+				settleIncoming();
+				await settle();
 
-			expect(frame(wrapper, 'card').exists()).toBe(false);
-			expect(onProgram(wrapper, 'standings')).toBe(true);
-			expect(overlayContainer.value).toBe(frame(wrapper, 'standings').element);
-		});
+				expect(frame(wrapper, 'card').exists()).toBe(false);
+				expect(onProgram(wrapper, 'standings')).toBe(true);
+				expect(overlayContainer.value).toBe(frame(wrapper, 'standings').element);
+			},
+		);
 
 		it('drops the incoming mode when the Screen goes back to the mode on program', async () => {
 			const wrapper = mountRenderer();
@@ -356,9 +365,7 @@ describe('screenRenderer', () => {
 			const wrapper = mountRenderer();
 			await settle();
 
-			applicationFonts.value = [
-				{ fontId: 'poppins', weight: 700, style: 'normal' },
-			];
+			applicationFonts.value = [{ fontId: 'poppins', weight: 700, style: 'normal' }];
 			await settle();
 			pending.card = false;
 			await settle();
@@ -367,10 +374,7 @@ describe('screenRenderer', () => {
 			poppins.resolve([{}]);
 			await settle();
 
-			expect([
-				heldWhileLoading,
-				onProgram(wrapper, 'card'),
-			]).toEqual([false, true]);
+			expect([heldWhileLoading, onProgram(wrapper, 'card')]).toEqual([false, true]);
 		});
 
 		// An application face that never arrives holds the rendering off program only until the timeout.
@@ -378,9 +382,7 @@ describe('screenRenderer', () => {
 			vi.useFakeTimers();
 			vi.spyOn(console, 'warn').mockImplementation(() => {});
 			stubDocumentFonts(() => deferred<unknown>().promise);
-			applicationFonts.value = [
-				{ fontId: 'poppins', weight: 700, style: 'normal' },
-			];
+			applicationFonts.value = [{ fontId: 'poppins', weight: 700, style: 'normal' }];
 			const wrapper = mountRenderer();
 			await vi.advanceTimersByTimeAsync(0);
 			const display = () => wrapper.get('[data-testid="display"]').element as HTMLElement;

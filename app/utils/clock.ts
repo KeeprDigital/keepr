@@ -21,12 +21,12 @@ export const CLOCK_INCREMENT_OPTIONS = [
 ] as const;
 
 const CLOCK_STATE_COLOR_CLASS: Record<Exclude<FeatureMatchClockState, 'untimed'>, string> = {
-	'stopped': 'text-muted',
-	'paused': 'text-warning',
-	'running': 'text-primary',
+	stopped: 'text-muted',
+	paused: 'text-warning',
+	running: 'text-primary',
 	'run-out': 'text-error',
 	'counting-up': 'text-error',
-	'holding': 'text-error',
+	holding: 'text-error',
 };
 
 /**
@@ -36,17 +36,17 @@ const CLOCK_STATE_COLOR_CLASS: Record<Exclude<FeatureMatchClockState, 'untimed'>
  * has no state of its own to colour, so it takes the colour of whether it runs
  * or has run.
  */
-export function clockAppearance({ state, isRunning, elapsedMs }: Pick<FeatureMatchClockProjection, 'state' | 'isRunning' | 'elapsedMs'>) {
+export function clockAppearance({
+	state,
+	isRunning,
+	elapsedMs,
+}: Pick<FeatureMatchClockProjection, 'state' | 'isRunning' | 'elapsedMs'>) {
 	let untimedState: 'running' | 'paused' | 'stopped' = 'stopped';
-	if (isRunning)
-		untimedState = 'running';
-	else if (elapsedMs > 0)
-		untimedState = 'paused';
+	if (isRunning) untimedState = 'running';
+	else if (elapsedMs > 0) untimedState = 'paused';
 
 	return {
-		colorClass: CLOCK_STATE_COLOR_CLASS[state === 'untimed'
-			? untimedState
-			: state],
+		colorClass: CLOCK_STATE_COLOR_CLASS[state === 'untimed' ? untimedState : state],
 		pulses: state === 'run-out' && isRunning,
 		showsCountUp: state === 'counting-up' || state === 'holding',
 	};

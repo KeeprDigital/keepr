@@ -5,10 +5,7 @@ import type {
 	GraphicTypography,
 	MediaGraphicInputValue,
 } from '../../types/graphics';
-import {
-	DEFAULT_ON_AIR_UPDATE_POLICY,
-	MAX_GRAPHIC_TEXT_LENGTH,
-} from '../../types/graphics';
+import { DEFAULT_ON_AIR_UPDATE_POLICY, MAX_GRAPHIC_TEXT_LENGTH } from '../../types/graphics';
 
 /**
  * Typed Graphic Inputs: what a declared value means, and when it is available.
@@ -28,9 +25,7 @@ import {
  */
 
 /** Whether one value may be shown for its Graphic Input, and why not when it may not. */
-export type GraphicInputAvailability
-	= | { available: true }
-		| { available: false; reason: string };
+export type GraphicInputAvailability = { available: true } | { available: false; reason: string };
 
 const AVAILABLE: GraphicInputAvailability = { available: true };
 
@@ -54,11 +49,14 @@ const HEX_COLOUR_VALUE = /^#(?:[\da-f]{3}|[\da-f]{6}|[\da-f]{8})$/i;
  * could show.
  */
 export function isMediaGraphicInputValue(value: unknown): value is MediaGraphicInputValue {
-	if (typeof value !== 'object' || value === null)
-		return false;
+	if (typeof value !== 'object' || value === null) return false;
 	const candidate = value as { assetId?: unknown; revisionId?: unknown };
-	return typeof candidate.assetId === 'string' && candidate.assetId.length > 0
-		&& typeof candidate.revisionId === 'string' && candidate.revisionId.length > 0;
+	return (
+		typeof candidate.assetId === 'string' &&
+		candidate.assetId.length > 0 &&
+		typeof candidate.revisionId === 'string' &&
+		candidate.revisionId.length > 0
+	);
 }
 
 /** The value a placed Broadcast Graphic starts from: its declared default. */
@@ -70,20 +68,17 @@ export function graphicInputAvailability(
 	declaration: GraphicInputDeclaration,
 	value: GraphicInputValue | undefined,
 ): GraphicInputAvailability {
-	if (value === null || value === undefined)
-		return unavailable('No value');
+	if (value === null || value === undefined) return unavailable('No value');
 
 	switch (declaration.type) {
 		case 'text': {
-			if (typeof value !== 'string')
-				return unavailable('Expected text');
+			if (typeof value !== 'string') return unavailable('Expected text');
 			if (value.length > declaration.maxLength)
 				return unavailable(`Longer than ${declaration.maxLength} characters`);
 			// Blank text is a value an optional input may legitimately hold, and is
 			// absence for a required one: the whole point of requiring a Graphic Input
 			// is that program never shows the empty space where it should have been.
-			if (declaration.required && value.trim() === '')
-				return unavailable('No value');
+			if (declaration.required && value.trim() === '') return unavailable('No value');
 			return AVAILABLE;
 		}
 		case 'number': {
@@ -98,22 +93,16 @@ export function graphicInputAvailability(
 			return AVAILABLE;
 		}
 		case 'toggle':
-			return typeof value === 'boolean'
-				? AVAILABLE
-				: unavailable('Expected on or off');
+			return typeof value === 'boolean' ? AVAILABLE : unavailable('Expected on or off');
 		case 'choice': {
-			if (typeof value !== 'string')
-				return unavailable('Expected one of the declared choices');
-			return declaration.options.some(option => option.value === value)
+			if (typeof value !== 'string') return unavailable('Expected one of the declared choices');
+			return declaration.options.some((option) => option.value === value)
 				? AVAILABLE
 				: unavailable('Not one of the declared choices');
 		}
 		case 'color': {
-			if (typeof value !== 'string')
-				return unavailable('Expected a colour');
-			return HEX_COLOUR_VALUE.test(value)
-				? AVAILABLE
-				: unavailable('Not a hex colour');
+			if (typeof value !== 'string') return unavailable('Expected a colour');
+			return HEX_COLOUR_VALUE.test(value) ? AVAILABLE : unavailable('Not a hex colour');
 		}
 		case 'media':
 			return isMediaGraphicInputValue(value)
@@ -146,8 +135,7 @@ export function graphicInputTextValue(
 	declaration: GraphicInputDeclaration,
 	value: GraphicInputValue | undefined,
 ): string {
-	if (!isGraphicInputAvailable(declaration, value))
-		return '';
+	if (!isGraphicInputAvailable(declaration, value)) return '';
 
 	switch (declaration.type) {
 		case 'text':
@@ -155,7 +143,7 @@ export function graphicInputTextValue(
 		case 'number':
 			return String(value as number);
 		case 'choice': {
-			const option = declaration.options.find(entry => entry.value === value);
+			const option = declaration.options.find((entry) => entry.value === value);
 			return option?.label ?? (value as string);
 		}
 		case 'color':
@@ -171,7 +159,7 @@ export function findGraphicInputDeclaration(
 	declarations: readonly GraphicInputDeclaration[] | undefined,
 	key: string,
 ): GraphicInputDeclaration | undefined {
-	return declarations?.find(declaration => declaration.key === key);
+	return declarations?.find((declaration) => declaration.key === key);
 }
 
 /**
@@ -243,14 +231,12 @@ export function resolveGraphicPlaceholderTypography(
 	base: GraphicTypography,
 	style: GraphicPlaceholderStyle | undefined,
 ): GraphicTypography {
-	if (!style)
-		return base;
+	if (!style) return base;
 
 	const resolved = { ...base };
 	for (const key of GRAPHIC_PLACEHOLDER_STYLE_KEYS) {
 		const override = style[key];
-		if (override !== undefined)
-			(resolved as Record<string, unknown>)[key] = override;
+		if (override !== undefined) (resolved as Record<string, unknown>)[key] = override;
 	}
 	return resolved;
 }

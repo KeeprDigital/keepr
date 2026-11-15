@@ -64,16 +64,13 @@ defineSlots<{
 }>();
 
 function testId(suffix: string): string {
-	return props.testIdPrefix
-		? `${props.testIdPrefix}-${suffix}`
-		: suffix;
+	return props.testIdPrefix ? `${props.testIdPrefix}-${suffix}` : suffix;
 }
 
 function editBorderGlow(edit: BorderGlowEdit) {
 	if (edit.kind === 'border')
 		emit('edit', { kind: 'outline', patch: edit.patch as Partial<GraphicOutline> | null });
-	else
-		emit('edit', { kind: 'glow', patch: edit.patch as Partial<GraphicGlow> | null });
+	else emit('edit', { kind: 'glow', patch: edit.patch as Partial<GraphicGlow> | null });
 }
 </script>
 

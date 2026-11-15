@@ -1,5 +1,10 @@
 import type { ComputedRef } from 'vue';
-import type { DeclaredOutputChangeKind, HearingScreen, OutputChangeKind, ScreenHearsContext } from '~~/shared/screenOutputInterest';
+import type {
+	DeclaredOutputChangeKind,
+	HearingScreen,
+	OutputChangeKind,
+	ScreenHearsContext,
+} from '~~/shared/screenOutputInterest';
 import type { ScreenMode } from '~~/shared/types/enums';
 import type { MessageType } from '~~/shared/types/messages';
 import type { ModeConfigTypeMap } from '~~/shared/types/screenConfig';
@@ -8,14 +13,21 @@ import type { ScreenModeDependencies, ScreenModeHearing } from '~/modules/screen
 import type { MessageData, RealtimeTransport } from '~/types/realtime';
 import { computed } from 'vue';
 import { SCREEN_MODES } from '~~/shared/screenModes';
-import { OUTPUT_CHANGE_KINDS, OUTPUT_CHANGE_MESSAGE_TYPES, outputChangeOf, screenHears } from '~~/shared/screenOutputInterest';
+import {
+	OUTPUT_CHANGE_KINDS,
+	OUTPUT_CHANGE_MESSAGE_TYPES,
+	outputChangeOf,
+	screenHears,
+} from '~~/shared/screenOutputInterest';
 import { directChannelMessageTypes } from '~~/shared/types/messages';
 import { renderingChannel } from '~/modules/screen/renderingChannel';
 
 const KNOWN_KINDS: ReadonlySet<string> = new Set(OUTPUT_CHANGE_KINDS);
 
 /** The Event channel's messages: every type but those only a Screen's own channel carries. */
-const EVENT_CHANNEL_MESSAGE_TYPES = OUTPUT_CHANGE_MESSAGE_TYPES.filter(type => !directChannelMessageTypes.has(type));
+const EVENT_CHANNEL_MESSAGE_TYPES = OUTPUT_CHANGE_MESSAGE_TYPES.filter(
+	(type) => !directChannelMessageTypes.has(type),
+);
 
 interface ScreenModeHearingOptions {
 	/**
@@ -57,46 +69,49 @@ export function useScreenModeHearing<M extends ScreenMode>(
 	options: ScreenModeHearingOptions = {},
 ): ComputedRef<ScreenModeHearing<unknown>> {
 	const followed: ReadonlySet<OutputChangeKind> = new Set(
-		options.follows ?? Object.keys(SCREEN_MODES[mode].outputFollows) as DeclaredOutputChangeKind[],
+		options.follows ??
+			(Object.keys(SCREEN_MODES[mode].outputFollows) as DeclaredOutputChangeKind[]),
 	);
 
 	const onScreenChannel: ScreenModeDependencies<unknown> = {
 		// A kind this build does not know came from a newer server: heard, since ignoring it could leave stale data on air.
-		'output:modeDataChanged': ({ causes }) => causes.some(kind => followed.has(kind) || !KNOWN_KINDS.has(kind)),
+		'output:modeDataChanged': ({ causes }) =>
+			causes.some((kind) => followed.has(kind) || !KNOWN_KINDS.has(kind)),
 	};
 
 	function hearsOnEventChannel<K extends MessageType>(type: K, message: MessageData<K>): boolean {
 		const screen = context.screen.value;
-		if (!screen)
-			return false;
+		if (!screen) return false;
 		const hearing = {
 			id: screen.id,
 			mode,
 			config: config(),
 		} as HearingScreen;
 		try {
-			return outputChangeOf(type, message as never)
-				.some(change => followed.has(change.kind) && screenHears(hearing, change, {
-					slot: options.seated?.(),
-				}));
-		}
-		catch {
+			return outputChangeOf(type, message as never).some(
+				(change) =>
+					followed.has(change.kind) &&
+					screenHears(hearing, change, {
+						slot: options.seated?.(),
+					}),
+			);
+		} catch {
 			// A message this build cannot read may still touch what is shown.
 			return true;
 		}
 	}
-	const onEventChannel = Object.fromEntries(followed.size === 0
-		? []
-		: EVENT_CHANNEL_MESSAGE_TYPES.map(type => [
-				type,
-				(message: MessageData<MessageType>) => hearsOnEventChannel(type, message),
-			])) as ScreenModeDependencies<unknown>;
+	const onEventChannel = Object.fromEntries(
+		followed.size === 0
+			? []
+			: EVENT_CHANNEL_MESSAGE_TYPES.map((type) => [
+					type,
+					(message: MessageData<MessageType>) => hearsOnEventChannel(type, message),
+				]),
+	) as ScreenModeDependencies<unknown>;
 
 	return computed(() => ({
 		channel: renderingChannel(context),
-		dependsOn: context.followsScreenChannel?.value
-			? onScreenChannel
-			: onEventChannel,
+		dependsOn: context.followsScreenChannel?.value ? onScreenChannel : onEventChannel,
 	}));
 }
 
@@ -111,16 +126,14 @@ export function listenToScreenModeHearing(
 	heard: () => void,
 ): () => void {
 	const { channel, dependsOn } = hearing;
-	if (!channel)
-		return () => {};
-	const stops = (Object.keys(dependsOn) as MessageType[]).map(type =>
+	if (!channel) return () => {};
+	const stops = (Object.keys(dependsOn) as MessageType[]).map((type) =>
 		realtime.onChannel(channel, type, (message) => {
 			const dependency = dependsOn[type] as true | ((message: unknown, held: unknown) => boolean);
-			if (dependency === true || dependency(message, undefined))
-				heard();
-		}));
+			if (dependency === true || dependency(message, undefined)) heard();
+		}),
+	);
 	return () => {
-		for (const stop of stops)
-			stop();
+		for (const stop of stops) stop();
 	};
 }

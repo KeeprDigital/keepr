@@ -1,7 +1,10 @@
 import type { ScreenOutputFeatureMatchDeckListResponse } from '~~/shared/types/screenOutputReads';
 import { z } from 'zod';
 import { featureMatchDeckListService } from '~~/server/services/featureMatchDeckList';
-import { requireScreenOutputFeatureMatchSlot, screenOutputReadNotFound } from '~~/server/utils/screenOutputRead';
+import {
+	requireScreenOutputFeatureMatchSlot,
+	screenOutputReadNotFound,
+} from '~~/server/utils/screenOutputRead';
 
 const paramsSchema = z.object({
 	slotId: z.coerce.number().int().positive(),
@@ -13,19 +16,20 @@ const paramsSchema = z.object({
  * client names the Deck List the side it shows references now, which a swap
  * or a re-paste moves; a capability still reaches only its Screen's Slot.
  */
-export default defineEventHandler(async (event): Promise<ScreenOutputFeatureMatchDeckListResponse> => {
-	const { slotId, deckListId } = await getValidatedRouterParams(event, paramsSchema.parse);
-	const { eventId } = await requireScreenOutputFeatureMatchSlot(event, slotId);
+export default defineEventHandler(
+	async (event): Promise<ScreenOutputFeatureMatchDeckListResponse> => {
+		const { slotId, deckListId } = await getValidatedRouterParams(event, paramsSchema.parse);
+		const { eventId } = await requireScreenOutputFeatureMatchSlot(event, slotId);
 
-	const deckList = await featureMatchDeckListService().findById(deckListId, slotId, eventId);
-	if (!deckList)
-		screenOutputReadNotFound();
+		const deckList = await featureMatchDeckListService().findById(deckListId, slotId, eventId);
+		if (!deckList) screenOutputReadNotFound();
 
-	return {
-		id: deckList.id,
-		slotId: deckList.slotId,
-		entries: deckList.entries,
-		leaderNumber: deckList.leaderNumber,
-		mainboardCount: deckList.mainboardCount,
-	};
-});
+		return {
+			id: deckList.id,
+			slotId: deckList.slotId,
+			entries: deckList.entries,
+			leaderNumber: deckList.leaderNumber,
+			mainboardCount: deckList.mainboardCount,
+		};
+	},
+);

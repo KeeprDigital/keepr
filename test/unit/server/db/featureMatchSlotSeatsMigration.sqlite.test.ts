@@ -9,7 +9,7 @@ afterAll(async () => {
 });
 
 describe('the Feature Match Slot Seats migration', () => {
-	it('leaves an existing Slot\'s two Seats as they were, with Seats 3 and 4 empty', async () => {
+	it("leaves an existing Slot's two Seats as they were, with Seats 3 and 4 empty", async () => {
 		await harness.client.execute(`
 			INSERT INTO events (id, name, game, feature_match_orientation)
 			VALUES (1, 'Magic', 'mtg', 'horizontal')
@@ -21,19 +21,11 @@ describe('the Feature Match Slot Seats migration', () => {
 
 		await harness.applyRemainingMigrations();
 
-		const { rows } = await harness.client.execute('SELECT player1_data, player2_data, player3_data, player4_data FROM feature_match_slots');
-		expect(rows.map(row => [
-			row.player1_data,
-			row.player2_data,
-			row.player3_data,
-			row.player4_data,
-		])).toEqual([
-			[
-				'{"name":"Ana"}',
-				'{"name":"Ben"}',
-				null,
-				null,
-			],
-		]);
+		const { rows } = await harness.client.execute(
+			'SELECT player1_data, player2_data, player3_data, player4_data FROM feature_match_slots',
+		);
+		expect(
+			rows.map((row) => [row.player1_data, row.player2_data, row.player3_data, row.player4_data]),
+		).toEqual([['{"name":"Ana"}', '{"name":"Ben"}', null, null]]);
 	});
 });

@@ -8,8 +8,13 @@ import { vi } from 'vitest';
  * `answering`, read at each fetch, is false while Scryfall is down: the fetch
  * then answers no card and reports degraded, as one whose retries ran out does.
  */
-export async function scryfallBatchAnswering(cardOf: (scryfallId: string) => unknown, answering: () => boolean = () => true) {
-	const actual = await vi.importActual<typeof import('~/composables/data/useScryfallBatch')>('~/composables/data/useScryfallBatch');
+export async function scryfallBatchAnswering(
+	cardOf: (scryfallId: string) => unknown,
+	answering: () => boolean = () => true,
+) {
+	const actual = await vi.importActual<typeof import('~/composables/data/useScryfallBatch')>(
+		'~/composables/data/useScryfallBatch',
+	);
 	return () => ({
 		...actual.useScryfallBatch(),
 		fetchScryfallCards: async (cards: Array<{ scryfallId: string | null }>) => {
@@ -20,14 +25,11 @@ export async function scryfallBatchAnswering(cardOf: (scryfallId: string) => unk
 				};
 			}
 			return {
-				cards: new Map(cards.flatMap(card => card.scryfallId
-					? [
-							[
-								card.scryfallId,
-								cardOf(card.scryfallId),
-							],
-						]
-					: [])),
+				cards: new Map(
+					cards.flatMap((card) =>
+						card.scryfallId ? [[card.scryfallId, cardOf(card.scryfallId)]] : [],
+					),
+				),
 				degraded: false,
 			};
 		},

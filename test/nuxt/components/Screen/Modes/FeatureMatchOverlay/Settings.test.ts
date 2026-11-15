@@ -34,7 +34,11 @@ const mockFeatureMatchStore = {
 	loadFeatureMatchesByEventId: vi.fn().mockResolvedValue(undefined),
 };
 
-type ActionListener = (context: { name: string; args: unknown[]; after: (callback: () => void) => void }) => void;
+type ActionListener = (context: {
+	name: string;
+	args: unknown[];
+	after: (callback: () => void) => void;
+}) => void;
 const actionListeners: ActionListener[] = [];
 
 const mockScreenStore = {
@@ -50,15 +54,12 @@ function applyRemoteUpdate(screenId: number, change: () => void) {
 	for (const listener of [...actionListeners]) {
 		listener({
 			name: 'applyRemoteUpdated',
-			args: [
-				{ eventId: 1, screenId },
-			],
-			after: callback => afters.push(callback),
+			args: [{ eventId: 1, screenId }],
+			after: (callback) => afters.push(callback),
 		});
 	}
 	change();
-	for (const callback of afters)
-		callback();
+	for (const callback of afters) callback();
 }
 
 const mockSaveState = ref<'idle' | 'saving' | 'committed' | 'failed'>('idle');
@@ -72,31 +73,35 @@ const mockToastAdd = vi.fn();
 const mockLeaseWritable = ref(true);
 const mockLeaseAsked = ref<{ endpoint: string; enabled: boolean } | null>(null);
 const mockTakeOver = vi.fn();
-mockNuxtImport('useGraphicsAuthoringLease', () => (options: { endpoint: () => string; enabled?: () => boolean }) => {
-	mockLeaseAsked.value = {
-		endpoint: options.endpoint(),
-		enabled: options.enabled?.() ?? true,
-	};
-	return {
-		lease: ref(null),
-		status: ref('ready'),
-		writable: mockLeaseWritable,
-		heldByAnotherSession: computed(() => !mockLeaseWritable.value),
-		lost: computed(() => !mockLeaseWritable.value),
-		holderName: computed(() => mockLeaseWritable.value ? null : 'Marcus Angel'),
-		canTakeOver: computed(() => !mockLeaseWritable.value),
-		refresh: vi.fn(),
-		takeOver: mockTakeOver,
-		release: vi.fn(),
-	};
-});
+mockNuxtImport(
+	'useGraphicsAuthoringLease',
+	() => (options: { endpoint: () => string; enabled?: () => boolean }) => {
+		mockLeaseAsked.value = {
+			endpoint: options.endpoint(),
+			enabled: options.enabled?.() ?? true,
+		};
+		return {
+			lease: ref(null),
+			status: ref('ready'),
+			writable: mockLeaseWritable,
+			heldByAnotherSession: computed(() => !mockLeaseWritable.value),
+			lost: computed(() => !mockLeaseWritable.value),
+			holderName: computed(() => (mockLeaseWritable.value ? null : 'Marcus Angel')),
+			canTakeOver: computed(() => !mockLeaseWritable.value),
+			refresh: vi.fn(),
+			takeOver: mockTakeOver,
+			release: vi.fn(),
+		};
+	},
+);
 
 mockNuxtImport('useFeatureMatchStore', () => () => mockFeatureMatchStore);
 mockNuxtImport('useScreenStore', () => () => mockScreenStore);
 mockNuxtImport('useEventStore', () => () => mockEventStore);
-mockNuxtImport('useFeatureMatchMenuItems', () => () => computed(() => [
-	{ label: 'Feature Match 1', value: 1, decks: [] },
-]));
+mockNuxtImport(
+	'useFeatureMatchMenuItems',
+	() => () => computed(() => [{ label: 'Feature Match 1', value: 1, decks: [] }]),
+);
 mockNuxtImport('useModeConfigUpdate', () => () => ({
 	config: mockConfig,
 	saving: ref(false),
@@ -118,14 +123,16 @@ const LayerInspectorStub = defineComponent({
 		writable: { type: Boolean, required: false },
 	},
 	emits: ['remove', 'duplicate'],
-	template: '<div data-testid="layer-inspector" :data-selected="JSON.stringify(selectedTarget)" :data-writable="String(writable)" />',
+	template:
+		'<div data-testid="layer-inspector" :data-selected="JSON.stringify(selectedTarget)" :data-writable="String(writable)" />',
 });
 
 const LayerListStub = defineComponent({
 	props: {
 		editor: { type: Object, required: true },
 	},
-	template: '<div data-testid="layer-list" :data-selection="JSON.stringify(editor.selection.value)" />',
+	template:
+		'<div data-testid="layer-list" :data-selection="JSON.stringify(editor.selection.value)" />',
 });
 
 const CompositorInspectorStub = defineComponent({
@@ -133,7 +140,8 @@ const CompositorInspectorStub = defineComponent({
 		selectedTarget: { type: Object, required: true },
 		writable: { type: Boolean, required: false },
 	},
-	template: '<div data-testid="compositor-inspector" :data-selected="JSON.stringify(selectedTarget)" :data-writable="String(writable)" />',
+	template:
+		'<div data-testid="compositor-inspector" :data-selected="JSON.stringify(selectedTarget)" :data-writable="String(writable)" />',
 });
 
 const MultiLayerInspectorStub = defineComponent({
@@ -142,13 +150,9 @@ const MultiLayerInspectorStub = defineComponent({
 		writable: { type: Boolean, required: false },
 		groupRefusal: { type: String, required: false },
 	},
-	emits: [
-		'update',
-		'group',
-		'align',
-		'distribute',
-	],
-	template: '<div data-testid="multi-layer-inspector" :data-rects="JSON.stringify(rects)" :data-writable="String(writable)" :data-group-refusal="groupRefusal" />',
+	emits: ['update', 'group', 'align', 'distribute'],
+	template:
+		'<div data-testid="multi-layer-inspector" :data-rects="JSON.stringify(rects)" :data-writable="String(writable)" :data-group-refusal="groupRefusal" />',
 });
 
 const TemplateLibraryStub = defineComponent({
@@ -185,13 +189,9 @@ const PreviewOutputAsideStub = defineComponent({
 		selectionFrame: { type: Object, required: false },
 		lockedBoxes: { type: Array, required: false },
 	},
-	emits: [
-		'selectTarget',
-		'selectCompositorTarget',
-		'manipulate',
-		'rotate',
-	],
-	template: '<div data-testid="preview-output-aside" :data-locked-boxes="JSON.stringify(lockedBoxes)" :data-selected="JSON.stringify(selectedTarget)" :data-compositor-selected="JSON.stringify(compositorTarget)" :data-frame="JSON.stringify(selectionFrame)" :data-config="JSON.stringify(config)" :data-canvas-width="canvasWidth" :data-canvas-height="canvasHeight" :data-publication-blocked="String(publicationBlocked)" :title="publicationBlockReason" />',
+	emits: ['selectTarget', 'selectCompositorTarget', 'manipulate', 'rotate'],
+	template:
+		'<div data-testid="preview-output-aside" :data-locked-boxes="JSON.stringify(lockedBoxes)" :data-selected="JSON.stringify(selectedTarget)" :data-compositor-selected="JSON.stringify(compositorTarget)" :data-frame="JSON.stringify(selectionFrame)" :data-config="JSON.stringify(config)" :data-canvas-width="canvasWidth" :data-canvas-height="canvasHeight" :data-publication-blocked="String(publicationBlocked)" :title="publicationBlockReason" />',
 });
 
 const UModalStub = defineComponent({
@@ -205,7 +205,8 @@ const UFormFieldStub = defineComponent({
 	props: {
 		label: { type: String, required: false },
 	},
-	template: '<div data-testid="form-field"><span><slot name="label">{{ label }}</slot></span><slot /></div>',
+	template:
+		'<div data-testid="form-field"><span><slot name="label">{{ label }}</slot></span><slot /></div>',
 });
 
 const UFieldGroupStub = defineComponent({
@@ -217,7 +218,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, required: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 
 const SETTINGS_STUBS = {
@@ -261,11 +263,16 @@ async function mountComponent(screen: Partial<Screen> = {}, stubs: Record<string
 }
 
 function selectedTarget(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
-	return JSON.parse(wrapper.get('[data-testid="layer-inspector"]').attributes('data-selected') ?? '{}');
+	return JSON.parse(
+		wrapper.get('[data-testid="layer-inspector"]').attributes('data-selected') ?? '{}',
+	);
 }
 
 function compositorTarget(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
-	return JSON.parse(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-compositor-selected') ?? '{}');
+	return JSON.parse(
+		wrapper.get('[data-testid="preview-output-aside"]').attributes('data-compositor-selected') ??
+			'{}',
+	);
 }
 
 function preview(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
@@ -273,25 +280,31 @@ function preview(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
 }
 
 async function press(key: string, init: KeyboardEventInit = {}) {
-	window.dispatchEvent(new KeyboardEvent('keydown', {
-		key,
-		bubbles: true,
-		cancelable: true,
-		...init,
-	}));
+	window.dispatchEvent(
+		new KeyboardEvent('keydown', {
+			key,
+			bubbles: true,
+			cancelable: true,
+			...init,
+		}),
+	);
 	await nextTick();
 }
 
 function sourceIds() {
-	return mockConfig.value.layout.sources.map(source => source.id);
+	return mockConfig.value.layout.sources.map((source) => source.id);
 }
 
 function previewSelectedTarget(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
-	return JSON.parse(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-selected') ?? '{}');
+	return JSON.parse(
+		wrapper.get('[data-testid="preview-output-aside"]').attributes('data-selected') ?? '{}',
+	);
 }
 
 function previewConfig(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
-	return JSON.parse(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-config') ?? '{}');
+	return JSON.parse(
+		wrapper.get('[data-testid="preview-output-aside"]').attributes('data-config') ?? '{}',
+	);
 }
 
 describe('featureMatchOverlaySettings', () => {
@@ -324,17 +337,19 @@ describe('featureMatchOverlaySettings', () => {
 			reason: 'Waiting for this Event to load',
 		},
 		{
-			held: 'another session\'s lease',
+			held: "another session's lease",
 			ready: true,
 			writable: false,
-			reason: 'Another session is editing this Screen\'s graphics',
+			reason: "Another session is editing this Screen's graphics",
 		},
-	])('holds the header\'s Reset for $held', async ({ ready, writable, reason }) => {
+	])("holds the header's Reset for $held", async ({ ready, writable, reason }) => {
 		mockResetReady.value = ready;
 		mockLeaseWritable.value = writable;
 		const wrapper = await mountComponent();
 
-		expect((wrapper.vm as unknown as { resetBlockedReason: string | undefined }).resetBlockedReason).toBe(reason);
+		expect(
+			(wrapper.vm as unknown as { resetBlockedReason: string | undefined }).resetBlockedReason,
+		).toBe(reason);
 	});
 
 	it('selects a Source Item clicked in the preview, and edits it in the host inspector', async () => {
@@ -357,8 +372,12 @@ describe('featureMatchOverlaySettings', () => {
 		const wrapper = await mountComponent();
 		await flushPromises();
 
-		expect(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-canvas-width')).toBe('1280');
-		expect(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-canvas-height')).toBe('720');
+		expect(
+			wrapper.get('[data-testid="preview-output-aside"]').attributes('data-canvas-width'),
+		).toBe('1280');
+		expect(
+			wrapper.get('[data-testid="preview-output-aside"]').attributes('data-canvas-height'),
+		).toBe('720');
 	});
 
 	it('visibly blocks output actions while an exact Graphic Asset Reference is missing', async () => {
@@ -373,9 +392,12 @@ describe('featureMatchOverlaySettings', () => {
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="graphic-asset-publication-block"]').exists()).toBe(true);
-		expect(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-publication-blocked')).toBe('true');
-		expect(wrapper.get('[data-testid="preview-output-aside"]').attributes('title'))
-			.toContain('missing');
+		expect(
+			wrapper.get('[data-testid="preview-output-aside"]').attributes('data-publication-blocked'),
+		).toBe('true');
+		expect(wrapper.get('[data-testid="preview-output-aside"]').attributes('title')).toContain(
+			'missing',
+		);
 	});
 
 	it('retries unavailable Graphic Asset Content without changing the pinned reference', async () => {
@@ -389,7 +411,9 @@ describe('featureMatchOverlaySettings', () => {
 		const wrapper = await mountComponent();
 		await flushPromises();
 
-		expect(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-publication-blocked')).toBe('true');
+		expect(
+			wrapper.get('[data-testid="preview-output-aside"]').attributes('data-publication-blocked'),
+		).toBe('true');
 
 		const requestsBeforeRetry = mockApiFetch.mock.calls.length;
 		mockApiFetch.mockResolvedValue({ outcome: 'available', lifecycleState: 'active' });
@@ -397,7 +421,9 @@ describe('featureMatchOverlaySettings', () => {
 		await flushPromises();
 
 		expect(mockApiFetch).toHaveBeenCalledTimes(requestsBeforeRetry + 1);
-		expect(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-publication-blocked')).toBe('false');
+		expect(
+			wrapper.get('[data-testid="preview-output-aside"]').attributes('data-publication-blocked'),
+		).toBe('false');
 		expect(mockConfig.value.layout.frame.backgroundImage).toEqual({
 			kind: 'asset',
 			assetId: 'temporarily-unavailable-asset',
@@ -413,25 +439,34 @@ describe('featureMatchOverlaySettings', () => {
 
 			preview(wrapper).vm.$emit('selectTarget', { type: 'source', itemId: 'main-source' });
 			await nextTick();
-			preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId });
+			preview(wrapper).vm.$emit('selectCompositorTarget', {
+				type: 'item',
+				graphicId: 'feature-match-layout',
+				itemId,
+			});
 			await nextTick();
 
-			expect(wrapper.get('[data-testid="compositor-inspector"]').attributes('data-selected'))
-				.toBe(JSON.stringify({ type: 'item', graphicId: 'feature-match-layout', itemId }));
+			expect(wrapper.get('[data-testid="compositor-inspector"]').attributes('data-selected')).toBe(
+				JSON.stringify({ type: 'item', graphicId: 'feature-match-layout', itemId }),
+			);
 			expect(wrapper.find('[data-testid="layer-inspector"]').exists()).toBe(false);
 			expect(previewSelectedTarget(wrapper)).toEqual({ type: 'canvas' });
-			expect(JSON.parse(wrapper.get('[data-testid="layer-list"]').attributes('data-selection')!)).toEqual({ type: 'item', itemId });
+			expect(
+				JSON.parse(wrapper.get('[data-testid="layer-list"]').attributes('data-selection')!),
+			).toEqual({ type: 'item', itemId });
 		});
 
-		it('hands the preview the selected layer\'s rectangle to move', async () => {
+		it("hands the preview the selected layer's rectangle to move", async () => {
 			const wrapper = await mountComponent();
 			await flushPromises();
-			const source = mockConfig.value.layout.sources.find(item => item.id === 'main-source')!;
+			const source = mockConfig.value.layout.sources.find((item) => item.id === 'main-source')!;
 
 			preview(wrapper).vm.$emit('selectTarget', { type: 'source', itemId: 'main-source' });
 			await nextTick();
 
-			expect(JSON.parse(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-frame')!)).toMatchObject({
+			expect(
+				JSON.parse(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-frame')!),
+			).toMatchObject({
 				rect: {
 					x: source.x,
 					y: source.y,
@@ -447,16 +482,24 @@ describe('featureMatchOverlaySettings', () => {
 			const wrapper = await mountComponent();
 			await flushPromises();
 			const item = mockConfig.value.layout.composition.items[0]!;
-			const rotation = () => mockConfig.value.layout.composition.items.find(candidate => candidate.id === item.id)!.rotation ?? 0;
+			const rotation = () =>
+				mockConfig.value.layout.composition.items.find((candidate) => candidate.id === item.id)!
+					.rotation ?? 0;
 
-			preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId: item.id });
+			preview(wrapper).vm.$emit('selectCompositorTarget', {
+				type: 'item',
+				graphicId: 'feature-match-layout',
+				itemId: item.id,
+			});
 			await nextTick();
 			preview(wrapper).vm.$emit('rotate', 30, 1);
 			preview(wrapper).vm.$emit('rotate', 45, 1);
 			await nextTick();
 
 			expect(rotation()).toBe(45);
-			expect(JSON.parse(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-frame')!)).toMatchObject({ rotation: 45 });
+			expect(
+				JSON.parse(wrapper.get('[data-testid="preview-output-aside"]').attributes('data-frame')!),
+			).toMatchObject({ rotation: 45 });
 
 			await press('z', { metaKey: true });
 			expect(rotation()).toBe(item.rotation ?? 0);
@@ -468,8 +511,14 @@ describe('featureMatchOverlaySettings', () => {
 			const wrapper = await mountComponent();
 			await flushPromises();
 			const item = mockConfig.value.layout.composition.items[0]!;
-			const rotation = () => mockConfig.value.layout.composition.items.find(candidate => candidate.id === item.id)!.rotation ?? 0;
-			preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId: item.id });
+			const rotation = () =>
+				mockConfig.value.layout.composition.items.find((candidate) => candidate.id === item.id)!
+					.rotation ?? 0;
+			preview(wrapper).vm.$emit('selectCompositorTarget', {
+				type: 'item',
+				graphicId: 'feature-match-layout',
+				itemId: item.id,
+			});
 			await nextTick();
 
 			preview(wrapper).vm.$emit('gestureStart');
@@ -495,7 +544,7 @@ describe('featureMatchOverlaySettings', () => {
 				...mockConfig.value,
 				layout: {
 					...mockConfig.value.layout,
-					sources: mockConfig.value.layout.sources.filter(item => item.id !== 'main-source'),
+					sources: mockConfig.value.layout.sources.filter((item) => item.id !== 'main-source'),
 				},
 			};
 			await nextTick();
@@ -513,22 +562,28 @@ describe('featureMatchOverlaySettings', () => {
 			await flushPromises();
 			preview(wrapper).vm.$emit('selectTarget', { type: 'source', itemId: 'main-source' }, false);
 			await nextTick();
-			preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId: ITEM_ID }, true);
+			preview(wrapper).vm.$emit(
+				'selectCompositorTarget',
+				{ type: 'item', graphicId: 'feature-match-layout', itemId: ITEM_ID },
+				true,
+			);
 			await nextTick();
 			return wrapper;
 		}
 
 		function positions() {
 			return [
-				mockConfig.value.layout.sources.find(item => item.id === 'main-source'),
-				mockConfig.value.layout.composition.items.find(item => item.id === ITEM_ID),
-			].map(layer => layer && { x: layer.x, y: layer.y });
+				mockConfig.value.layout.sources.find((item) => item.id === 'main-source'),
+				mockConfig.value.layout.composition.items.find((item) => item.id === ITEM_ID),
+			].map((layer) => layer && { x: layer.x, y: layer.y });
 		}
 
 		it('shows the multi-layer panel, and no single layer as selected in the preview', async () => {
 			const wrapper = await mountWithTwo();
 
-			expect(JSON.parse(wrapper.get('[data-testid="multi-layer-inspector"]').attributes('data-rects')!)).toMatchObject(positions());
+			expect(
+				JSON.parse(wrapper.get('[data-testid="multi-layer-inspector"]').attributes('data-rects')!),
+			).toMatchObject(positions());
 			expect(wrapper.find('[data-testid="layer-inspector"]').exists()).toBe(false);
 			expect(wrapper.find('[data-testid="compositor-inspector"]').exists()).toBe(false);
 			expect(previewSelectedTarget(wrapper)).toEqual({ type: 'canvas' });
@@ -542,7 +597,11 @@ describe('featureMatchOverlaySettings', () => {
 			await nextTick();
 
 			expect(wrapper.find('[data-testid="multi-layer-inspector"]').exists()).toBe(false);
-			expect(compositorTarget(wrapper)).toEqual({ type: 'item', graphicId: 'feature-match-layout', itemId: ITEM_ID });
+			expect(compositorTarget(wrapper)).toEqual({
+				type: 'item',
+				graphicId: 'feature-match-layout',
+				itemId: ITEM_ID,
+			});
 		});
 
 		it('writes an edited shared field to every selected layer', async () => {
@@ -551,20 +610,28 @@ describe('featureMatchOverlaySettings', () => {
 			wrapper.getComponent(MultiLayerInspectorStub).vm.$emit('update', { y: 40 });
 			await nextTick();
 
-			expect(positions().map(position => position?.y)).toEqual([40, 40]);
+			expect(positions().map((position) => position?.y)).toEqual([40, 40]);
 		});
 
-		it.each<[string, (wrapper: Awaited<ReturnType<typeof mountComponent>>) => Promise<void> | void, { x: number; y: number }]>([
+		it.each<
 			[
-				'an arrow key',
-				() => press('ArrowLeft', { shiftKey: true }),
-				{ x: -10, y: 0 },
-			],
+				string,
+				(wrapper: Awaited<ReturnType<typeof mountComponent>>) => Promise<void> | void,
+				{ x: number; y: number },
+			]
+		>([
+			['an arrow key', () => press('ArrowLeft', { shiftKey: true }), { x: -10, y: 0 }],
 			[
 				'a canvas drag of the box they cover',
 				(wrapper) => {
-					const frame = preview(wrapper).props('selectionFrame') as { rect: { x: number; y: number; width: number; height: number } };
-					preview(wrapper).vm.$emit('manipulate', { ...frame.rect, x: frame.rect.x + 5, y: frame.rect.y + 7 }, 1);
+					const frame = preview(wrapper).props('selectionFrame') as {
+						rect: { x: number; y: number; width: number; height: number };
+					};
+					preview(wrapper).vm.$emit(
+						'manipulate',
+						{ ...frame.rect, x: frame.rect.x + 5, y: frame.rect.y + 7 },
+						1,
+					);
 				},
 				{ x: 5, y: 7 },
 			],
@@ -575,7 +642,9 @@ describe('featureMatchOverlaySettings', () => {
 			await act(wrapper);
 			await nextTick();
 
-			expect(positions()).toEqual(before.map(position => ({ x: position!.x + delta.x, y: position!.y + delta.y })));
+			expect(positions()).toEqual(
+				before.map((position) => ({ x: position!.x + delta.x, y: position!.y + delta.y })),
+			);
 		});
 
 		// E8: a Source Item never joins a Graphic Group, and ⌘G says so rather than doing nothing (#920).
@@ -585,8 +654,12 @@ describe('featureMatchOverlaySettings', () => {
 
 			await press('g', { metaKey: true });
 
-			expect(wrapper.get('[data-testid="multi-layer-inspector"]').attributes('data-group-refusal')).toBe('source-item');
-			expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ description: 'Source Items can\'t be grouped' }));
+			expect(
+				wrapper.get('[data-testid="multi-layer-inspector"]').attributes('data-group-refusal'),
+			).toBe('source-item');
+			expect(mockToastAdd).toHaveBeenCalledWith(
+				expect.objectContaining({ description: "Source Items can't be grouped" }),
+			);
 			expect(JSON.stringify(mockConfig.value.layout)).toBe(before);
 		});
 
@@ -597,15 +670,16 @@ describe('featureMatchOverlaySettings', () => {
 			wrapper.getComponent(MultiLayerInspectorStub).vm.$emit('align', 'top');
 			await nextTick();
 
-			expect(positions().map(position => position?.y)).toEqual([90, 90]);
+			expect(positions().map((position) => position?.y)).toEqual([90, 90]);
 		});
 
 		it('escape keeps the layer chosen last, then selects the canvas', async () => {
 			const wrapper = await mountWithTwo();
 
 			await press('Escape');
-			expect(wrapper.get('[data-testid="compositor-inspector"]').attributes('data-selected'))
-				.toBe(JSON.stringify({ type: 'item', graphicId: 'feature-match-layout', itemId: ITEM_ID }));
+			expect(wrapper.get('[data-testid="compositor-inspector"]').attributes('data-selected')).toBe(
+				JSON.stringify({ type: 'item', graphicId: 'feature-match-layout', itemId: ITEM_ID }),
+			);
 
 			await press('Escape');
 			expect(selectedTarget(wrapper)).toEqual({ type: 'canvas' });
@@ -627,13 +701,13 @@ describe('featureMatchOverlaySettings', () => {
 		}
 
 		// A built-in template warns against this shape when it is placed.
-		it('hands the library the Event Canvas\'s aspect ratio', async () => {
+		it("hands the library the Event Canvas's aspect ratio", async () => {
 			const { library } = await mountWithLibrary();
 
 			expect(library.props('canvasAspectRatio')).toBeCloseTo(1280 / 720);
 		});
 
-		it('hands the library the flush of the layout\'s unsaved edits', async () => {
+		it("hands the library the flush of the layout's unsaved edits", async () => {
 			const { library } = await mountWithLibrary();
 
 			await expect(library.props('flushEdits')!()).resolves.toBe(true);
@@ -642,15 +716,19 @@ describe('featureMatchOverlaySettings', () => {
 
 		it('holds authoring while it is in flight, leaving the library, the lease notice and the unsaved layout as they were', async () => {
 			const { wrapper, library } = await mountWithLibrary();
-			const authoring = () => wrapper.get('[data-testid="layer-inspector"]').attributes('data-writable');
-			const exposed = wrapper.vm as unknown as { resetConfig: () => void; resetBlockedReason: string | undefined };
+			const authoring = () =>
+				wrapper.get('[data-testid="layer-inspector"]').attributes('data-writable');
+			const exposed = wrapper.vm as unknown as {
+				resetConfig: () => void;
+				resetBlockedReason: string | undefined;
+			};
 			expect(authoring()).toBe('true');
 
 			library.vm.$emit('update:placing', true);
 			await nextTick();
 			expect(authoring()).toBe('false');
 			expect(preview(wrapper).props('selectionFrame')).toBeNull();
-			expect(exposed.resetBlockedReason).toBe('Another session is editing this Screen\'s graphics');
+			expect(exposed.resetBlockedReason).toBe("Another session is editing this Screen's graphics");
 			preview(wrapper).vm.$emit('manipulate', { x: 1, y: 2, width: 3, height: 4 }, 1);
 			exposed.resetConfig();
 			expect(mockUpdateConfig).not.toHaveBeenCalled();
@@ -706,10 +784,13 @@ describe('featureMatchOverlaySettings', () => {
 
 		beforeAll(stubPointerCapture);
 
-		it('undoes a whole drag on a panel\'s number label as one step, however long it pauses', async () => {
+		it("undoes a whole drag on a panel's number label as one step, however long it pauses", async () => {
 			let now = 1_000;
 			vi.spyOn(Date, 'now').mockImplementation(() => now);
-			const wrapper = await mountComponent({}, { FeatureMatchOverlayLayerInspector: FrameOpacityPanelStub });
+			const wrapper = await mountComponent(
+				{},
+				{ FeatureMatchOverlayLayerInspector: FrameOpacityPanelStub },
+			);
 			await flushPromises();
 			const start = mockConfig.value.layout.frame.opacity;
 			const label = wrapper.get('[data-number-scrub]');
@@ -737,14 +818,14 @@ describe('featureMatchOverlaySettings', () => {
 			await nextTick();
 			await press('Delete');
 
-			expect(sourceIds()).toEqual(before.filter(id => id !== 'main-source'));
+			expect(sourceIds()).toEqual(before.filter((id) => id !== 'main-source'));
 			expect(selectedTarget(wrapper)).toEqual({ type: 'canvas' });
 
 			await press('z', { metaKey: true });
 			expect(sourceIds()).toEqual(before);
 
 			await press('z', { metaKey: true, shiftKey: true });
-			expect(sourceIds()).toEqual(before.filter(id => id !== 'main-source'));
+			expect(sourceIds()).toEqual(before.filter((id) => id !== 'main-source'));
 		});
 
 		it('duplicates the selected layer and selects the copy', async () => {
@@ -756,37 +837,55 @@ describe('featureMatchOverlaySettings', () => {
 			await nextTick();
 			await press('d', { metaKey: true });
 
-			const copyId = sourceIds().find(id => !before.includes(id));
+			const copyId = sourceIds().find((id) => !before.includes(id));
 			expect(copyId).toBeDefined();
 			expect(selectedTarget(wrapper)).toEqual({ type: 'source', itemId: copyId });
 		});
 
-		it.each<[string, (wrapper: Awaited<ReturnType<typeof mountComponent>>) => Promise<void> | void]>([
+		it.each<
+			[string, (wrapper: Awaited<ReturnType<typeof mountComponent>>) => Promise<void> | void]
+		>([
+			['⌘G', () => press('g', { metaKey: true })],
 			[
-				'⌘G',
-				() => press('g', { metaKey: true }),
-			],
-			[
-				'the multi-layer panel\'s Group',
-				wrapper => wrapper.getComponent(MultiLayerInspectorStub).vm.$emit('group'),
+				"the multi-layer panel's Group",
+				(wrapper) => wrapper.getComponent(MultiLayerInspectorStub).vm.$emit('group'),
 			],
 		])('groups two Graphic Items with %s, and ⌘⇧G ungroups them', async (_, group) => {
 			const wrapper = await mountComponent();
 			await flushPromises();
 			const before = mockConfig.value.layout.composition.items;
-			preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId: 'player1-game-wins' });
+			preview(wrapper).vm.$emit('selectCompositorTarget', {
+				type: 'item',
+				graphicId: 'feature-match-layout',
+				itemId: 'player1-game-wins',
+			});
 			await nextTick();
-			preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId: 'player2-game-wins' }, true);
+			preview(wrapper).vm.$emit(
+				'selectCompositorTarget',
+				{ type: 'item', graphicId: 'feature-match-layout', itemId: 'player2-game-wins' },
+				true,
+			);
 			await nextTick();
 
 			await group(wrapper);
 			await nextTick();
-			const created = mockConfig.value.layout.composition.items.find(item => !before.some(entry => entry.id === item.id));
-			expect(created?.type === 'group' && created.children.map(child => child.id)).toEqual(['player1-game-wins', 'player2-game-wins']);
-			expect(compositorTarget(wrapper)).toEqual({ type: 'item', graphicId: 'feature-match-layout', itemId: created!.id });
+			const created = mockConfig.value.layout.composition.items.find(
+				(item) => !before.some((entry) => entry.id === item.id),
+			);
+			expect(created?.type === 'group' && created.children.map((child) => child.id)).toEqual([
+				'player1-game-wins',
+				'player2-game-wins',
+			]);
+			expect(compositorTarget(wrapper)).toEqual({
+				type: 'item',
+				graphicId: 'feature-match-layout',
+				itemId: created!.id,
+			});
 
 			await press('G', { metaKey: true, shiftKey: true });
-			expect(mockConfig.value.layout.composition.items.map(item => item.id)).toEqual(before.map(item => item.id));
+			expect(mockConfig.value.layout.composition.items.map((item) => item.id)).toEqual(
+				before.map((item) => item.id),
+			);
 		});
 
 		it('copies the selected layer with ⌘C, even for an observer, and pastes a selected copy with ⌘V', async () => {
@@ -808,7 +907,7 @@ describe('featureMatchOverlaySettings', () => {
 			await press('v', { metaKey: true, code: 'KeyV' });
 			await flushPromises();
 
-			const copyId = sourceIds().find(id => !before.includes(id));
+			const copyId = sourceIds().find((id) => !before.includes(id));
 			expect(copyId).toBeDefined();
 			expect(selectedTarget(wrapper)).toEqual({ type: 'source', itemId: copyId });
 		});
@@ -821,41 +920,51 @@ describe('featureMatchOverlaySettings', () => {
 					...mockConfig.value.layout,
 					composition: {
 						...mockConfig.value.layout.composition,
-						items: [
-							media('Sponsor logo'),
-						],
+						items: [media('Sponsor logo')],
 					},
 				},
 			};
 			const wrapper = await mountComponent();
 			await flushPromises();
-			preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId: 'Sponsor logo' });
+			preview(wrapper).vm.$emit('selectCompositorTarget', {
+				type: 'item',
+				graphicId: 'feature-match-layout',
+				itemId: 'Sponsor logo',
+			});
 			await nextTick();
 			await press('c', { metaKey: true, code: 'KeyC' });
-			mockApiFetch.mockResolvedValue({ outcome: 'available', lifecycleState: 'retired', kind: 'image' });
+			mockApiFetch.mockResolvedValue({
+				outcome: 'available',
+				lifecycleState: 'retired',
+				kind: 'image',
+			});
 			mockUpdateConfig.mockClear();
 
 			await press('v', { metaKey: true, code: 'KeyV' });
 			await flushPromises();
 
 			expect(mockUpdateConfig).not.toHaveBeenCalled();
-			expect(mockToastAdd).toHaveBeenLastCalledWith(expect.objectContaining({
-				title: 'Nothing pasted',
-				description: expect.stringContaining('"Sponsor logo"'),
-			}));
+			expect(mockToastAdd).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					title: 'Nothing pasted',
+					description: expect.stringContaining('"Sponsor logo"'),
+				}),
+			);
 		});
 
 		it('nudges the selected layer, ten pixels with Shift', async () => {
 			const wrapper = await mountComponent();
 			await flushPromises();
-			const start = mockConfig.value.layout.sources.find(item => item.id === 'main-source')!;
+			const start = mockConfig.value.layout.sources.find((item) => item.id === 'main-source')!;
 
 			preview(wrapper).vm.$emit('selectTarget', { type: 'source', itemId: 'main-source' });
 			await nextTick();
 			await press('ArrowRight');
 			await press('ArrowDown', { shiftKey: true });
 
-			expect(mockConfig.value.layout.sources.find(item => item.id === 'main-source')).toMatchObject({
+			expect(
+				mockConfig.value.layout.sources.find((item) => item.id === 'main-source'),
+			).toMatchObject({
 				x: start.x + 1,
 				y: start.y + 10,
 			});
@@ -870,7 +979,9 @@ describe('featureMatchOverlaySettings', () => {
 
 			const input = document.createElement('input');
 			document.body.appendChild(input);
-			input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+			input.dispatchEvent(
+				new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }),
+			);
 			input.remove();
 			await nextTick();
 
@@ -903,7 +1014,9 @@ describe('featureMatchOverlaySettings', () => {
 			await nextTick();
 
 			expect(wrapper.get('[data-testid="layout-undo"]').attributes('disabled')).toBeDefined();
-			expect(mockToastAdd).toHaveBeenCalledWith(expect.objectContaining({ title: 'Layout changed elsewhere' }));
+			expect(mockToastAdd).toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Layout changed elsewhere' }),
+			);
 		});
 
 		it('keeps undo history through a remote update that leaves the layout alone, or names another Screen', async () => {
@@ -935,7 +1048,9 @@ describe('featureMatchOverlaySettings', () => {
 
 			mockSaveState.value = 'failed';
 			await nextTick();
-			expect(wrapper.get('[data-testid="graphics-save-state"]').text()).toContain('Screen refused the layout');
+			expect(wrapper.get('[data-testid="graphics-save-state"]').text()).toContain(
+				'Screen refused the layout',
+			);
 			await wrapper.get('[data-testid="graphics-save-retry"]').trigger('click');
 			expect(mockRetry).toHaveBeenCalledTimes(1);
 		});
@@ -963,10 +1078,13 @@ describe('featureMatchOverlaySettings — Graphics Authoring Lease', () => {
 		return wrapper;
 	}
 
-	it('asks for the Screen\'s Edit-workspace lease as soon as the editor opens', async () => {
+	it("asks for the Screen's Edit-workspace lease as soon as the editor opens", async () => {
 		await mountComponent();
 
-		expect(mockLeaseAsked.value).toEqual({ endpoint: '/api/events/1/screens/1/graphics-authoring-lease', enabled: true });
+		expect(mockLeaseAsked.value).toEqual({
+			endpoint: '/api/events/1/screens/1/graphics-authoring-lease',
+			enabled: true,
+		});
 	});
 
 	it('shows an observer who holds the lease, and takes it over on request', async () => {
@@ -979,17 +1097,14 @@ describe('featureMatchOverlaySettings — Graphics Authoring Lease', () => {
 	});
 
 	it.each<[string, (wrapper: Awaited<ReturnType<typeof mountComponent>>) => Promise<void> | void]>([
-		[
-			'delete key',
-			() => press('Delete'),
-		],
+		['delete key', () => press('Delete')],
 		[
 			'canvas move',
-			wrapper => preview(wrapper).vm.$emit('manipulate', { x: 1, y: 2, width: 3, height: 4 }, 1),
+			(wrapper) => preview(wrapper).vm.$emit('manipulate', { x: 1, y: 2, width: 3, height: 4 }, 1),
 		],
 		[
 			'display reset',
-			wrapper => (wrapper.vm as unknown as { resetConfig: () => void }).resetConfig(),
+			(wrapper) => (wrapper.vm as unknown as { resetConfig: () => void }).resetConfig(),
 		],
 	])('writes nothing from the %s', async (_, act) => {
 		const wrapper = await mountObserver();
@@ -1001,7 +1116,7 @@ describe('featureMatchOverlaySettings — Graphics Authoring Lease', () => {
 		expect(mockResetConfig).not.toHaveBeenCalled();
 	});
 
-	it('leaves an observer\'s editing shortcuts to the browser', async () => {
+	it("leaves an observer's editing shortcuts to the browser", async () => {
 		await mountObserver();
 		const undo = new KeyboardEvent('keydown', {
 			key: 'z',
@@ -1030,23 +1145,36 @@ describe('featureMatchOverlaySettings — Graphics Authoring Lease', () => {
 		const wrapper = await mountObserver();
 
 		expect(preview(wrapper).props('selectionFrame')).toBeNull();
-		expect(wrapper.get('[data-testid="layer-inspector"]').attributes('data-writable')).toBe('false');
-		expect(wrapper.get('[data-testid="template-library"]').attributes('data-writable')).toBe('false');
+		expect(wrapper.get('[data-testid="layer-inspector"]').attributes('data-writable')).toBe(
+			'false',
+		);
+		expect(wrapper.get('[data-testid="template-library"]').attributes('data-writable')).toBe(
+			'false',
+		);
 		expect(wrapper.get('[data-testid="layout-undo"]').attributes('disabled')).toBeDefined();
 
-		preview(wrapper).vm.$emit('selectCompositorTarget', { type: 'item', graphicId: 'feature-match-layout', itemId: mockConfig.value.layout.composition.items[0]!.id });
+		preview(wrapper).vm.$emit('selectCompositorTarget', {
+			type: 'item',
+			graphicId: 'feature-match-layout',
+			itemId: mockConfig.value.layout.composition.items[0]!.id,
+		});
 		await nextTick();
-		expect(wrapper.get('[data-testid="compositor-inspector"]').attributes('data-writable')).toBe('false');
+		expect(wrapper.get('[data-testid="compositor-inspector"]').attributes('data-writable')).toBe(
+			'false',
+		);
 	});
 
 	// The stress preview writes nothing, so an observer judges overflow too.
-	it('leaves the preview\'s stress toggle working for an observer', async () => {
-		const wrapper = await mountComponent({}, {
-			FeatureMatchOverlayPreviewOutputAside: false,
-			GraphicsCanvasManipulationOverlay: true,
-			// The real preview panel, whose toolbar is its card's actions.
-			ScreenSettingsSection: ScreenSettingsSectionStub,
-		});
+	it("leaves the preview's stress toggle working for an observer", async () => {
+		const wrapper = await mountComponent(
+			{},
+			{
+				FeatureMatchOverlayPreviewOutputAside: false,
+				GraphicsCanvasManipulationOverlay: true,
+				// The real preview panel, whose toolbar is its card's actions.
+				ScreenSettingsSection: ScreenSettingsSectionStub,
+			},
+		);
 		await flushPromises();
 		const toggle = wrapper.get('[data-testid="preview-stress-dataset"]');
 
@@ -1060,13 +1188,16 @@ describe('featureMatchOverlaySettings — Graphics Authoring Lease', () => {
 
 	// The Graphic Animation Preview is not a write path, so the lease never gates it.
 	it('lets an observer play a Graphic Animation Preview run, writing nothing', async () => {
-		const wrapper = await mountComponent({}, {
-			...nuxtUiStubs,
-			UButton: UButtonStub,
-			UPopover: true,
-			FeatureMatchOverlayPreviewOutputAside: PreviewOutputAside,
-			GraphicsCanvasManipulationOverlay: true,
-		});
+		const wrapper = await mountComponent(
+			{},
+			{
+				...nuxtUiStubs,
+				UButton: UButtonStub,
+				UPopover: true,
+				FeatureMatchOverlayPreviewOutputAside: PreviewOutputAside,
+				GraphicsCanvasManipulationOverlay: true,
+			},
+		);
 		await flushPromises();
 		const postMessage = vi.fn();
 		Object.defineProperty(wrapper.get('iframe').element, 'contentWindow', {
@@ -1123,7 +1254,9 @@ describe('featureMatchOverlaySettings — Editor Focus Mode', () => {
 	it('enters Focus Mode from the toolbar toggle, and Escape does not leave it', async () => {
 		const wrapper = await mountComponent();
 		await flushPromises();
-		const toggle = wrapper.get('[data-testid="overlay-toolbar"] [data-testid="editor-focus-mode-toggle"]');
+		const toggle = wrapper.get(
+			'[data-testid="overlay-toolbar"] [data-testid="editor-focus-mode-toggle"]',
+		);
 
 		await toggle.trigger('click');
 		expect(focusMode.active.value).toBe(true);
@@ -1162,13 +1295,13 @@ describe('featureMatchOverlaySettings — Layer Locks', () => {
 	});
 
 	function sourceX() {
-		return mockConfig.value.layout.sources.find(item => item.id === SOURCE.itemId)!.x;
+		return mockConfig.value.layout.sources.find((item) => item.id === SOURCE.itemId)!.x;
 	}
 
 	function lockState(wrapper: Awaited<ReturnType<typeof mountComponent>>) {
 		const aside = wrapper.get('[data-testid="preview-output-aside"]');
 		return {
-			locked: mockConfig.value.layout.sources.find(item => item.id === SOURCE.itemId)?.locked,
+			locked: mockConfig.value.layout.sources.find((item) => item.id === SOURCE.itemId)?.locked,
 			boxes: JSON.parse(aside.attributes('data-locked-boxes') ?? '[]').length,
 			frame: JSON.parse(aside.attributes('data-frame') ?? 'null'),
 		};

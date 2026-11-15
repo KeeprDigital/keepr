@@ -8,5 +8,11 @@ import { screenLayoutTokens } from '~/modules/screen-mode';
  */
 export function useScreenInset() {
 	const { screen, themeTokens } = useScreenContext();
-	return computed(() => screenLayoutTokens(themeTokens?.value ?? DEFAULT_THEME_TOKENS, screen.value?.themeOverrides ?? {}).inset);
+	return computed(
+		() =>
+			screenLayoutTokens(
+				themeTokens?.value ?? DEFAULT_THEME_TOKENS,
+				screen.value?.themeOverrides ?? {},
+			).inset,
+	);
 }

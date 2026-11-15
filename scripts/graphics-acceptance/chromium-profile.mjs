@@ -22,8 +22,7 @@ export function checkoutProfileMarker(checkoutRoot) {
 	let root = checkoutRoot;
 	try {
 		root = realpathSync(checkoutRoot);
-	}
-	catch {
+	} catch {
 		// A root that no longer exists is still named by the path it was given.
 	}
 	return createHash('sha256').update(root).digest('hex').slice(0, 10);

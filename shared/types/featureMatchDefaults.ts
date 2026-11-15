@@ -68,11 +68,11 @@ const REVERSE_MAP = Object.fromEntries(
 // ── Derived types ──
 
 /** Union of flat `featureMatchDefault*` column names. */
-type FeatureMatchDefaultColumnKey = typeof FIELD_MAP[keyof typeof FIELD_MAP];
+type FeatureMatchDefaultColumnKey = (typeof FIELD_MAP)[keyof typeof FIELD_MAP];
 
 /** Object shape using the flat `featureMatchDefault*` column names. */
 export type FeatureMatchDefaultColumns = {
-	[K in keyof typeof FIELD_MAP as typeof FIELD_MAP[K]]: FeatureMatchDefaults[K];
+	[K in keyof typeof FIELD_MAP as (typeof FIELD_MAP)[K]]: FeatureMatchDefaults[K];
 };
 
 /**
@@ -80,7 +80,7 @@ export type FeatureMatchDefaultColumns = {
  * the defaults cannot leave out one added later.
  */
 export const FEATURE_MATCH_DEFAULT_COLUMN_SELECTION = Object.fromEntries(
-	Object.values(FIELD_MAP).map(flat => [flat, true]),
+	Object.values(FIELD_MAP).map((flat) => [flat, true]),
 ) as Record<FeatureMatchDefaultColumnKey, true>;
 
 // ── Conversion helpers ──
@@ -89,9 +89,10 @@ export const FEATURE_MATCH_DEFAULT_COLUMN_SELECTION = Object.fromEntries(
  * Extract feature match defaults from an event-like object that uses flat
  * `featureMatchDefault*` keys. Missing fields fall back to `DEFAULT_FEATURE_MATCH_DEFAULTS`.
  */
-export function toFeatureMatchDefaults(source: Partial<FeatureMatchDefaultColumns> | null | undefined): FeatureMatchDefaults {
-	if (!source)
-		return { ...DEFAULT_FEATURE_MATCH_DEFAULTS };
+export function toFeatureMatchDefaults(
+	source: Partial<FeatureMatchDefaultColumns> | null | undefined,
+): FeatureMatchDefaults {
+	if (!source) return { ...DEFAULT_FEATURE_MATCH_DEFAULTS };
 
 	const result = { ...DEFAULT_FEATURE_MATCH_DEFAULTS };
 	for (const [flat, short] of Object.entries(REVERSE_MAP)) {
@@ -107,7 +108,9 @@ export function toFeatureMatchDefaults(source: Partial<FeatureMatchDefaultColumn
  * Convert a (partial) `FeatureMatchDefaults` object back to the flat
  * `featureMatchDefault*` column keys expected by the API.
  */
-export function fromFeatureMatchDefaults<T extends Partial<FeatureMatchDefaults>>(defaults: T): Partial<FeatureMatchDefaultColumns> {
+export function fromFeatureMatchDefaults<T extends Partial<FeatureMatchDefaults>>(
+	defaults: T,
+): Partial<FeatureMatchDefaultColumns> {
 	const result: Record<string, unknown> = {};
 	for (const [short, flat] of Object.entries(FIELD_MAP)) {
 		const value = (defaults as Record<string, unknown>)[short];

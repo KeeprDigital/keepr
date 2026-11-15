@@ -4,7 +4,11 @@ import { mapPlayerToResponse } from '~~/server/mappers/player';
 import { eventService } from '~~/server/services/event';
 import { opPlayerDeckListService } from '~~/server/services/opPlayerDeckList';
 import { playerService } from '~~/server/services/player';
-import { requireScreenOutputRead, screenOutputPublishedPlayerIds, screenOutputReadNotFound } from '~~/server/utils/screenOutputRead';
+import {
+	requireScreenOutputRead,
+	screenOutputPublishedPlayerIds,
+	screenOutputReadNotFound,
+} from '~~/server/utils/screenOutputRead';
 
 const paramsSchema = z.object({
 	playerId: z.coerce.number().int().positive(),
@@ -18,15 +22,17 @@ const paramsSchema = z.object({
 export default defineEventHandler(async (event): Promise<ScreenOutputOpPlayerDeckListResponse> => {
 	const { playerId } = await getValidatedRouterParams(event, paramsSchema.parse);
 	const { eventId, screen, reader } = await requireScreenOutputRead(event);
-	if (reader === 'capability' && !(await screenOutputPublishedPlayerIds(screen, eventId)).includes(playerId))
+	if (
+		reader === 'capability' &&
+		!(await screenOutputPublishedPlayerIds(screen, eventId)).includes(playerId)
+	)
 		screenOutputReadNotFound();
 
 	const [player, eventRow] = await Promise.all([
 		playerService().findById(playerId, eventId),
 		eventService().findById(eventId),
 	]);
-	if (!player || eventRow?.game !== 'op')
-		screenOutputReadNotFound();
+	if (!player || eventRow?.game !== 'op') screenOutputReadNotFound();
 
 	const deckList = await opPlayerDeckListService().findByPlayer(eventId, playerId);
 	return {

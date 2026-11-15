@@ -18,25 +18,27 @@ import {
 	updateScreenSchema,
 } from '~~/server/schemas/api/screen';
 import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
-import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG, getDefaultConfigForMode, getDisplayDefaultsForMode, resolveScreenModeConfig } from '~~/shared/types/screenConfig';
+import {
+	DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG,
+	getDefaultConfigForMode,
+	getDisplayDefaultsForMode,
+	resolveScreenModeConfig,
+} from '~~/shared/types/screenConfig';
 import { maximalFeatureMatchLayoutDocument } from '~~/test/helpers/featureMatchLayoutDocument';
 
 describe('createScreenSchema', () => {
 	it.each([
 		['feature-match-2', true],
-		[
-			'a'.repeat(50),
-			true,
-		],
-		[
-			'a'.repeat(51),
-			false,
-		],
+		['a'.repeat(50), true],
+		['a'.repeat(51), false],
 		['Feature-Match', false],
 		['feature match', false],
 		['', false],
 	])('takes the slug %j → %s', (slug, accepted) => {
-		expect(createScreenSchema.safeParse({ name: 'Feature Match', slug, currentMode: 'background' }).success).toBe(accepted);
+		expect(
+			createScreenSchema.safeParse({ name: 'Feature Match', slug, currentMode: 'background' })
+				.success,
+		).toBe(accepted);
 	});
 });
 
@@ -63,11 +65,7 @@ describe('a Screen write', () => {
 			createScreenSchema,
 			{ name: 'Feature Match', slug: 'feature-match', currentMode: 'background' },
 		],
-		[
-			'update',
-			updateScreenSchema,
-			{ stateVersion: 0 },
-		],
+		['update', updateScreenSchema, { stateVersion: 0 }],
 	])('refuses a look or a canvas of its own on %s', (_write, schema, body) => {
 		expect(schema.safeParse(body).success).toBe(true);
 		expect(schema.safeParse({ ...body, screenConfig: look }).success).toBe(false);
@@ -93,54 +91,79 @@ describe('deckModeConfigSchema', () => {
 	};
 
 	it('requires the canonical discriminated source and rejects the legacy key', () => {
-		expect(deckModeConfigSchema.safeParse({ ...validConfig, deckSource: undefined }).success).toBe(false);
+		expect(deckModeConfigSchema.safeParse({ ...validConfig, deckSource: undefined }).success).toBe(
+			false,
+		);
 		expect(deckModeConfigSchema.safeParse({ ...validConfig, playerId: 1 }).success).toBe(false);
-		expect(deckModeConfigSchema.safeParse({
-			...validConfig,
-			deckSource: { type: 'invalid', playerId: 1 },
-		}).success).toBe(false);
+		expect(
+			deckModeConfigSchema.safeParse({
+				...validConfig,
+				deckSource: { type: 'invalid', playerId: 1 },
+			}).success,
+		).toBe(false);
 	});
 
 	it('takes its Deck Source in a PATCH only as the canonical source, refusing the retired playerId shorthand', () => {
 		// No client has sent `playerId` since #514, so it is an unknown key.
-		expect(modeConfigPatchSchemaMap.deck.parse({
-			deckSource: { type: 'player', playerId: 3 },
-		}))
-			.toEqual({
+		expect(
+			modeConfigPatchSchemaMap.deck.parse({
 				deckSource: { type: 'player', playerId: 3 },
-			});
-		expect(modeConfigPatchSchemaMap.deck.safeParse({ playerId: null, showDeckName: false }).success).toBe(false);
-		expect(modeConfigPatchSchemaMap.deck.safeParse({
-			playerId: 1,
-			deckSource: { type: 'player', playerId: 2 },
-		}).success).toBe(false);
+			}),
+		).toEqual({
+			deckSource: { type: 'player', playerId: 3 },
+		});
+		expect(
+			modeConfigPatchSchemaMap.deck.safeParse({ playerId: null, showDeckName: false }).success,
+		).toBe(false);
+		expect(
+			modeConfigPatchSchemaMap.deck.safeParse({
+				playerId: 1,
+				deckSource: { type: 'player', playerId: 2 },
+			}).success,
+		).toBe(false);
 	});
 
 	it('rejects the removed board visibility booleans', () => {
-		expect(deckModeConfigSchema.safeParse({ ...validConfig, showMainboard: true }).success).toBe(false);
-		expect(deckModeConfigSchema.safeParse({ ...validConfig, showSideboard: false }).success).toBe(false);
-		expect(deckModeConfigSchema.safeParse({ ...validConfig, sideboardLayout: 'stack' }).success).toBe(false);
+		expect(deckModeConfigSchema.safeParse({ ...validConfig, showMainboard: true }).success).toBe(
+			false,
+		);
+		expect(deckModeConfigSchema.safeParse({ ...validConfig, showSideboard: false }).success).toBe(
+			false,
+		);
+		expect(
+			deckModeConfigSchema.safeParse({ ...validConfig, sideboardLayout: 'stack' }).success,
+		).toBe(false);
 	});
 
 	it('rejects flat layout knobs outside a board block', () => {
-		expect(deckModeConfigSchema.safeParse({ ...validConfig, viewMode: 'grid' }).success).toBe(false);
+		expect(deckModeConfigSchema.safeParse({ ...validConfig, viewMode: 'grid' }).success).toBe(
+			false,
+		);
 		expect(deckModeConfigSchema.safeParse({ ...validConfig, columns: 4 }).success).toBe(false);
-		expect(deckModeConfigSchema.safeParse({ ...validConfig, stackOverlap: 15 }).success).toBe(false);
+		expect(deckModeConfigSchema.safeParse({ ...validConfig, stackOverlap: 15 }).success).toBe(
+			false,
+		);
 	});
 
 	it('rejects unknown keys and bad values inside a board block', () => {
-		expect(deckModeConfigSchema.safeParse({
-			...validConfig,
-			mainboard: { ...validConfig.mainboard, sideboardLayout: 'stack' },
-		}).success).toBe(false);
-		expect(deckModeConfigSchema.safeParse({
-			...validConfig,
-			sideboard: { view: 'carousel' },
-		}).success).toBe(false);
-		expect(deckModeConfigSchema.safeParse({
-			...validConfig,
-			mainboard: { ...validConfig.mainboard, columns: 0 },
-		}).success).toBe(false);
+		expect(
+			deckModeConfigSchema.safeParse({
+				...validConfig,
+				mainboard: { ...validConfig.mainboard, sideboardLayout: 'stack' },
+			}).success,
+		).toBe(false);
+		expect(
+			deckModeConfigSchema.safeParse({
+				...validConfig,
+				sideboard: { view: 'carousel' },
+			}).success,
+		).toBe(false);
+		expect(
+			deckModeConfigSchema.safeParse({
+				...validConfig,
+				mainboard: { ...validConfig.mainboard, columns: 0 },
+			}).success,
+		).toBe(false);
 	});
 
 	// Only a sideboard stacks, as the strip beside the mainboard (ADR-0054).
@@ -150,10 +173,12 @@ describe('deckModeConfigSchema', () => {
 		{ board: 'sideboard', view: 'stack', accepted: true },
 		{ board: 'sideboard', view: 'list', accepted: true },
 	] as const)('$board view $view accepted: $accepted', ({ board, view, accepted }) => {
-		expect(deckModeConfigSchema.safeParse({
-			...validConfig,
-			[board]: { view },
-		}).success).toBe(accepted);
+		expect(
+			deckModeConfigSchema.safeParse({
+				...validConfig,
+				[board]: { view },
+			}).success,
+		).toBe(accepted);
 	});
 });
 
@@ -165,14 +190,18 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 				...builtIn.config,
 			});
 
-			expect(result.success, `${builtIn.id}: ${result.success
-				? ''
-				: JSON.stringify(result.error.issues)}`).toBe(true);
+			expect(
+				result.success,
+				`${builtIn.id}: ${result.success ? '' : JSON.stringify(result.error.issues)}`,
+			).toBe(true);
 		}
 	});
 
 	it('rejects the legacy widget list, which no longer exists', () => {
-		const legacy = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<string, any>;
+		const legacy = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<
+			string,
+			any
+		>;
 		legacy.layout.items = [
 			{
 				id: 'legacy-widget',
@@ -191,7 +220,10 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 	});
 
 	it('rejects a numeric z-index on a Source Item, because list order is the Graphic Layer Order', () => {
-		const legacy = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<string, any>;
+		const legacy = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<
+			string,
+			any
+		>;
 		legacy.layout.sources[0].zIndex = 4;
 
 		expect(featureMatchOverlayModeConfigSchema.safeParse(legacy).success).toBe(false);
@@ -212,28 +244,39 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 	});
 
 	it('refuses the Frame image as a bare reference, the shape before ADR-0021', () => {
-		const bare = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<string, any>;
+		const bare = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<
+			string,
+			any
+		>;
 		bare.layout.frame.backgroundImage = { assetId: 'asset-frame', revisionId: 'revision-frame-3' };
 
 		expect(featureMatchOverlayModeConfigSchema.safeParse(bare).success).toBe(false);
 	});
 
 	it('requires the shared item tree rather than treating it as optional', () => {
-		const withoutComposition = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<string, any>;
+		const withoutComposition = structuredClone(
+			DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG,
+		) as unknown as Record<string, any>;
 		delete withoutComposition.layout.composition;
 
 		expect(featureMatchOverlayModeConfigSchema.safeParse(withoutComposition).success).toBe(false);
 	});
 
 	it('keeps the host-owned Source Item Definition version and rejects a future one', () => {
-		const future = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<string, any>;
+		const future = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<
+			string,
+			any
+		>;
 		future.layout.sources[0].configurationVersion = 2;
 
 		expect(featureMatchOverlayModeConfigSchema.safeParse(future).success).toBe(false);
 	});
 
 	it('rejects widget-era typography on a Source Item surface style', () => {
-		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<string, any>;
+		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<
+			string,
+			any
+		>;
 		config.layout.sources[0].framingStyle = { fontSize: 24, textColor: '#ffffff' };
 
 		expect(featureMatchOverlayModeConfigSchema.safeParse(config).success).toBe(false);
@@ -270,24 +313,31 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 			},
 		},
 	])('reads a $field stored with its own look as its shape alone', ({ field, look }) => {
-		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<string, any>;
-		if (field === 'frame')
-			Object.assign(config.layout.frame, look, { borderLeftVisible: false });
-		else
-			config.layout.sources[0].framingStyle = { ...look, borderRadius: 8 };
+		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<
+			string,
+			any
+		>;
+		if (field === 'frame') Object.assign(config.layout.frame, look, { borderLeftVisible: false });
+		else config.layout.sources[0].framingStyle = { ...look, borderRadius: 8 };
 
-		const parsed = featureMatchOverlayModeConfigSchema.parse(config) as unknown as Record<string, any>;
-		const host = field === 'frame'
-			? parsed.layout.frame
-			: parsed.layout.sources[0].framingStyle;
+		const parsed = featureMatchOverlayModeConfigSchema.parse(config) as unknown as Record<
+			string,
+			any
+		>;
+		const host = field === 'frame' ? parsed.layout.frame : parsed.layout.sources[0].framingStyle;
 
-		expect(JSON.parse(JSON.stringify(host))).toEqual(field === 'frame'
-			? { ...DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout.frame, borderLeftVisible: false }
-			: { borderRadius: 8 });
+		expect(JSON.parse(JSON.stringify(host))).toEqual(
+			field === 'frame'
+				? { ...DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout.frame, borderLeftVisible: false }
+				: { borderRadius: 8 },
+		);
 	});
 
 	it('still refuses a retired look field holding a value it never could', () => {
-		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<string, any>;
+		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG) as unknown as Record<
+			string,
+			any
+		>;
 		config.layout.frame.glowSize = -1;
 
 		expect(featureMatchOverlayModeConfigSchema.safeParse(config).success).toBe(false);
@@ -316,15 +366,23 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 			{ kind: 'url', url: '/video/feature-loop.mp4' },
 			{ kind: 'asset', assetId: 'asset-loop', revisionId: 'revision-loop' },
 		])
-			expect(featureMatchOverlayModeConfigSchema.safeParse(withFrameVideo({ ...frameVideo, source })).success, source.kind).toBe(true);
+			expect(
+				featureMatchOverlayModeConfigSchema.safeParse(withFrameVideo({ ...frameVideo, source }))
+					.success,
+				source.kind,
+			).toBe(true);
 	});
 
 	it('refuses the Frame video as a typed URL, the shape before ADR-0021', () => {
-		expect(featureMatchOverlayModeConfigSchema.safeParse(withFrameVideo({
-			...frameVideo,
-			type: 'video',
-			url: '/video/feature-loop.mp4',
-		})).success).toBe(false);
+		expect(
+			featureMatchOverlayModeConfigSchema.safeParse(
+				withFrameVideo({
+					...frameVideo,
+					type: 'video',
+					url: '/video/feature-loop.mp4',
+				}),
+			).success,
+		).toBe(false);
 	});
 
 	it('rejects an executable, credential-bearing, or plain-HTTP Remote Media URL', () => {
@@ -336,10 +394,12 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 			'https://user:secret@example.com/video.mp4',
 			'http://example.com/video.mp4',
 		]) {
-			const result = featureMatchOverlayModeConfigSchema.safeParse(withFrameVideo({
-				...frameVideo,
-				source: { kind: 'url', url },
-			}));
+			const result = featureMatchOverlayModeConfigSchema.safeParse(
+				withFrameVideo({
+					...frameVideo,
+					source: { kind: 'url', url },
+				}),
+			);
 
 			expect(result.success, url).toBe(false);
 		}
@@ -359,7 +419,7 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 			return config;
 		}
 
-		it('is bounded to 0.25–4, as a Media Graphic Item\'s is', () => {
+		it("is bounded to 0.25–4, as a Media Graphic Item's is", () => {
 			expect(featureMatchOverlayModeConfigSchema.safeParse(withRate(0.25)).success).toBe(true);
 			expect(featureMatchOverlayModeConfigSchema.safeParse(withRate(4)).success).toBe(true);
 			expect(featureMatchOverlayModeConfigSchema.safeParse(withRate(0.05)).success).toBe(false);
@@ -368,7 +428,9 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 
 		it('clamps a rate the earlier 0.1–16 bounds stored, so a layout carrying one still saves', () => {
 			// A layout edit re-sends the whole layout, legacy rate included.
-			const fast = modeConfigPatchSchemaMap['feature-match-overlay'].parse({ layout: withRate(8).layout }) as Pick<FeatureMatchOverlayModeConfig, 'layout'>;
+			const fast = modeConfigPatchSchemaMap['feature-match-overlay'].parse({
+				layout: withRate(8).layout,
+			}) as Pick<FeatureMatchOverlayModeConfig, 'layout'>;
 			const slow = featureMatchLayoutConfigSchema.parse(withRate(0.1).layout);
 
 			expect(fast.layout.frame.mediaBackground?.playbackRate).toBe(4);
@@ -377,10 +439,14 @@ describe('featureMatchOverlayModeConfigSchema', () => {
 	});
 
 	it('accepts partial top-level Feature Match Overlay patches but validates nested values', () => {
-		expect(modeConfigPatchSchemaMap['feature-match-overlay'].safeParse({ featureMatchId: null }).success).toBe(true);
-		expect(modeConfigPatchSchemaMap['feature-match-overlay'].safeParse({
-			layout: { sources: [] },
-		}).success).toBe(false);
+		expect(
+			modeConfigPatchSchemaMap['feature-match-overlay'].safeParse({ featureMatchId: null }).success,
+		).toBe(true);
+		expect(
+			modeConfigPatchSchemaMap['feature-match-overlay'].safeParse({
+				layout: { sources: [] },
+			}).success,
+		).toBe(false);
 	});
 });
 
@@ -458,118 +524,130 @@ describe('backgroundModeConfigSchema', () => {
 
 	it('refuses a second animation layer: one WebGL context per memory-tight OBS source', () => {
 		const result = backgroundModeConfigSchema.safeParse({
-			layers: [
-				animationLayer,
-				{ ...animationLayer, id: 'anim-2', enabled: false },
-			],
+			layers: [animationLayer, { ...animationLayer, id: 'anim-2', enabled: false }],
 		});
 		expect(result.success).toBe(false);
 	});
 
 	it('validates an animation layer selection against the named effect, and refuses one outside the vocabulary', () => {
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: [
-				{
-					...animationLayer,
-					animation: {
-						effect: 'fog',
-						params: { speed: 2 },
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [
+					{
+						...animationLayer,
+						animation: {
+							effect: 'fog',
+							params: { speed: 2 },
+						},
 					},
-				},
-			],
-		}).success).toBe(true);
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: [
-				{
-					...animationLayer,
-					animation: { effect: 'not-an-effect' },
-				},
-			],
-		}).success).toBe(false);
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: [
-				{
-					...animationLayer,
-					animation: {
-						effect: 'fog',
-						params: { lightColor: '#7dd3fc' },
+				],
+			}).success,
+		).toBe(true);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [
+					{
+						...animationLayer,
+						animation: { effect: 'not-an-effect' },
 					},
-				},
-			],
-		}).success).toBe(false);
+				],
+			}).success,
+		).toBe(false);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [
+					{
+						...animationLayer,
+						animation: {
+							effect: 'fog',
+							params: { lightColor: '#7dd3fc' },
+						},
+					},
+				],
+			}).success,
+		).toBe(false);
 	});
 
 	it('refuses a layer outside the closed type vocabulary and any unknown key', () => {
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: [
-				{
-					id: 'x',
-					type: 'starfield',
-					enabled: true,
-					opacity: 1,
-				},
-			],
-		}).success).toBe(false);
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: [
-				{ ...colorLayer, mouseDriftEnabled: true },
-			],
-		}).success).toBe(false);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [
+					{
+						id: 'x',
+						type: 'starfield',
+						enabled: true,
+						opacity: 1,
+					},
+				],
+			}).success,
+		).toBe(false);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [{ ...colorLayer, mouseDriftEnabled: true }],
+			}).success,
+		).toBe(false);
 	});
 
 	it('refuses an out-of-range layer opacity', () => {
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: [
-				{ ...colorLayer, opacity: 1.5 },
-			],
-		}).success).toBe(false);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [{ ...colorLayer, opacity: 1.5 }],
+			}).success,
+		).toBe(false);
 	});
 
 	it('refuses an unsafe media URL source', () => {
-		expect(backgroundModeConfigSchema.safeParse({
-
-			layers: [
-				{
-					...urlImageLayer,
-					source: { kind: 'url', url: 'javascript:alert(1)' },
-				},
-			],
-		}).success).toBe(false);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [
+					{
+						...urlImageLayer,
+						source: { kind: 'url', url: 'javascript:alert(1)' },
+					},
+				],
+			}).success,
+		).toBe(false);
 	});
 
 	it('takes a Remote Media URL over HTTPS only, by the same rule as the Frame', () => {
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: [
-				{
-					...urlImageLayer,
-					source: { kind: 'url', url: 'https://cdn.example.com/plate.png' },
-				},
-			],
-		}).success).toBe(true);
-		expect(backgroundModeConfigSchema.safeParse({
-			layers: [
-				{
-					...urlImageLayer,
-					source: { kind: 'url', url: 'http://cdn.example.com/plate.png' },
-				},
-			],
-		}).success).toBe(false);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [
+					{
+						...urlImageLayer,
+						source: { kind: 'url', url: 'https://cdn.example.com/plate.png' },
+					},
+				],
+			}).success,
+		).toBe(true);
+		expect(
+			backgroundModeConfigSchema.safeParse({
+				layers: [
+					{
+						...urlImageLayer,
+						source: { kind: 'url', url: 'http://cdn.example.com/plate.png' },
+					},
+				],
+			}).success,
+		).toBe(false);
 	});
 
-	it('bounds a video layer\'s playback rate to 0.25–4, as a Media Graphic Item\'s is', () => {
+	it("bounds a video layer's playback rate to 0.25–4, as a Media Graphic Item's is", () => {
 		for (const playbackRate of [0.25, 4]) {
-			expect(backgroundModeConfigSchema.safeParse({
-				layers: [
-					{ ...assetVideoLayer, playbackRate },
-				],
-			}).success, String(playbackRate)).toBe(true);
+			expect(
+				backgroundModeConfigSchema.safeParse({
+					layers: [{ ...assetVideoLayer, playbackRate }],
+				}).success,
+				String(playbackRate),
+			).toBe(true);
 		}
 		for (const playbackRate of [0, 0.05, 20]) {
-			expect(backgroundModeConfigSchema.safeParse({
-				layers: [
-					{ ...assetVideoLayer, playbackRate },
-				],
-			}).success, String(playbackRate)).toBe(false);
+			expect(
+				backgroundModeConfigSchema.safeParse({
+					layers: [{ ...assetVideoLayer, playbackRate }],
+				}).success,
+				String(playbackRate),
+			).toBe(false);
 		}
 	});
 
@@ -584,19 +662,20 @@ describe('backgroundModeConfigSchema', () => {
 			],
 		}) as { layers: Array<{ playbackRate?: number }> };
 
-		expect(result.layers.map(layer => layer.playbackRate)).toEqual([undefined, 4, 0.25]);
+		expect(result.layers.map((layer) => layer.playbackRate)).toEqual([undefined, 4, 0.25]);
 	});
 
 	it('enforces the one-animation-layer rule on the PATCH path too, because it lives on the layers field', () => {
-		expect(modeConfigPatchSchemaMap.background.safeParse({
-			layers: [
-				animationLayer,
-				{ ...animationLayer, id: 'anim-2' },
-			],
-		}).success).toBe(false);
-		expect(modeConfigPatchSchemaMap.background.safeParse({
-			layers: [animationLayer],
-		}).success).toBe(true);
+		expect(
+			modeConfigPatchSchemaMap.background.safeParse({
+				layers: [animationLayer, { ...animationLayer, id: 'anim-2' }],
+			}).success,
+		).toBe(false);
+		expect(
+			modeConfigPatchSchemaMap.background.safeParse({
+				layers: [animationLayer],
+			}).success,
+		).toBe(true);
 	});
 });
 
@@ -606,35 +685,37 @@ describe('a root-relative Remote Media URL', () => {
 	const hosts: Array<[string, (url: string) => boolean]> = [
 		[
 			'a Background Screen image layer',
-			url => backgroundModeConfigSchema.safeParse({
-				layers: [
-					{
-						id: 'plate',
-						type: 'image',
-						enabled: true,
-						opacity: 1,
-						source: { kind: 'url', url },
-						fit: 'cover',
-					},
-				],
-			}).success,
+			(url) =>
+				backgroundModeConfigSchema.safeParse({
+					layers: [
+						{
+							id: 'plate',
+							type: 'image',
+							enabled: true,
+							opacity: 1,
+							source: { kind: 'url', url },
+							fit: 'cover',
+						},
+					],
+				}).success,
 		],
 		[
-			'a plain overlay mode\'s video layer',
-			url => modeConfigPatchSchemaMap.standings.safeParse({
-				backgroundLayers: [
-					{
-						id: 'loop',
-						type: 'video',
-						enabled: true,
-						opacity: 1,
-						source: { kind: 'url', url },
-						fit: 'cover',
-						playbackRate: 1,
-						loop: true,
-					},
-				],
-			}).success,
+			"a plain overlay mode's video layer",
+			(url) =>
+				modeConfigPatchSchemaMap.standings.safeParse({
+					backgroundLayers: [
+						{
+							id: 'loop',
+							type: 'video',
+							enabled: true,
+							opacity: 1,
+							source: { kind: 'url', url },
+							fit: 'cover',
+							playbackRate: 1,
+							loop: true,
+						},
+					],
+				}).success,
 		],
 		[
 			'the Frame image',
@@ -662,7 +743,11 @@ describe('a root-relative Remote Media URL', () => {
 	];
 
 	it.each(hosts)('is taken under /video/ by %s', (_host, accepts) => {
-		for (const url of ['/video/loop.mp4', '/video/shows/2026/intro-loop.webm', '/video/loop.mp4?v=2'])
+		for (const url of [
+			'/video/loop.mp4',
+			'/video/shows/2026/intro-loop.webm',
+			'/video/loop.mp4?v=2',
+		])
 			expect(accepts(url), url).toBe(true);
 	});
 
@@ -703,22 +788,28 @@ describe('a root-relative Remote Media URL', () => {
 			expect(accepts(url), JSON.stringify(url)).toBe(false);
 	});
 
-	it.each(hosts)('is refused as an https: URL with no authority, which a Screen resolves against its own origin, by %s', (_host, accepts) => {
-		// `https:/api/…` parses alone as host `api`, but a browser resolves it
-		// against the page, so it would name the application's own route.
-		for (const url of [
-			'https:/api/graphics-assets/asset-1/revisions/revision-1/content',
-			'HTTPS:/api/events',
-			'https:\\api/events',
-			'https:api/events',
-		])
-			expect(accepts(url), url).toBe(false);
-	});
+	it.each(hosts)(
+		'is refused as an https: URL with no authority, which a Screen resolves against its own origin, by %s',
+		(_host, accepts) => {
+			// `https:/api/…` parses alone as host `api`, but a browser resolves it
+			// against the page, so it would name the application's own route.
+			for (const url of [
+				'https:/api/graphics-assets/asset-1/revisions/revision-1/content',
+				'HTTPS:/api/events',
+				'https:\\api/events',
+				'https:api/events',
+			])
+				expect(accepts(url), url).toBe(false);
+		},
+	);
 
-	it.each(hosts)('leaves HTTPS and the unset empty string as they were for %s', (_host, accepts) => {
-		expect(accepts('https://cdn.example.com/api/loop.mp4')).toBe(true);
-		expect(accepts('')).toBe(true);
-	});
+	it.each(hosts)(
+		'leaves HTTPS and the unset empty string as they were for %s',
+		(_host, accepts) => {
+			expect(accepts('https://cdn.example.com/api/loop.mp4')).toBe(true);
+			expect(accepts('')).toBe(true);
+		},
+	);
 });
 
 // Documents from before ADR-0020 carry a meaningless `videoCompatibility`; refusing
@@ -747,7 +838,11 @@ describe('documents recorded before ADR-0020', () => {
 		});
 
 		expect(result.success).toBe(true);
-		expect(JSON.parse(JSON.stringify(result.data)).layers[0].source).toEqual({ kind: 'asset', assetId: 'asset-2', revisionId: 'rev-2' });
+		expect(JSON.parse(JSON.stringify(result.data)).layers[0].source).toEqual({
+			kind: 'asset',
+			assetId: 'asset-2',
+			revisionId: 'rev-2',
+		});
 	});
 
 	it('reads a layout whose Media Graphic Item still carries videoCompatibility, and drops the key', () => {
@@ -764,7 +859,10 @@ describe('documents recorded before ADR-0020', () => {
 
 describe('modeConfigPatchSchemaMap', () => {
 	it('accepts null to clear the Deck Source back to no Player', () => {
-		const patch = modeConfigPatchSchemaMap.deck.parse({ deckSource: null }) as Record<string, unknown>;
+		const patch = modeConfigPatchSchemaMap.deck.parse({ deckSource: null }) as Record<
+			string,
+			unknown
+		>;
 		const stored = parseModeConfigPatchResult(
 			{
 				deck: {
@@ -775,18 +873,21 @@ describe('modeConfigPatchSchemaMap', () => {
 			patch,
 		);
 
-		expect(resolveScreenModeConfig(stored, 'deck').deckSource).toEqual({ type: 'player', playerId: null });
+		expect(resolveScreenModeConfig(stored, 'deck').deckSource).toEqual({
+			type: 'player',
+			playerId: null,
+		});
 	});
 
 	it('still accepts explicit values and the null sentinel for defaulted fields', () => {
-		expect(modeConfigPatchSchemaMap.metagame.parse({ archetypeLimit: 8 }))
-			.toEqual({ archetypeLimit: 8 });
-		expect(modeConfigPatchSchemaMap.metagame.parse({ archetypeLimit: null }))
-			.toEqual({ archetypeLimit: null });
-		expect(modeConfigPatchSchemaMap.metagame.parse({ minPoints: 12 }))
-			.toEqual({ minPoints: 12 });
-		expect(modeConfigPatchSchemaMap.metagame.safeParse({ archetypeLimit: 0 }).success)
-			.toBe(false);
+		expect(modeConfigPatchSchemaMap.metagame.parse({ archetypeLimit: 8 })).toEqual({
+			archetypeLimit: 8,
+		});
+		expect(modeConfigPatchSchemaMap.metagame.parse({ archetypeLimit: null })).toEqual({
+			archetypeLimit: null,
+		});
+		expect(modeConfigPatchSchemaMap.metagame.parse({ minPoints: 12 })).toEqual({ minPoints: 12 });
+		expect(modeConfigPatchSchemaMap.metagame.safeParse({ archetypeLimit: 0 }).success).toBe(false);
 	});
 });
 
@@ -830,9 +931,14 @@ describe('metagameModeConfigSchema', () => {
 	};
 
 	it('saves a stored config predating minPoints and archetypeLimit as it is, and reads them with their defaults', () => {
-		expect(modeConfigsMapSchema.parse({ metagame: validConfig })).toEqual({ metagame: validConfig });
+		expect(modeConfigsMapSchema.parse({ metagame: validConfig })).toEqual({
+			metagame: validConfig,
+		});
 
-		const resolved = resolveScreenModeConfig({ metagame: validConfig } as ModeConfigsMap, 'metagame');
+		const resolved = resolveScreenModeConfig(
+			{ metagame: validConfig } as ModeConfigsMap,
+			'metagame',
+		);
 
 		expect(resolved.minPoints).toBe(9);
 		expect(resolved.archetypeLimit).toBeNull();
@@ -841,8 +947,12 @@ describe('metagameModeConfigSchema', () => {
 
 	it('takes minPoints as a whole number from zero', () => {
 		expect(metagameModeConfigSchema.safeParse({ ...validConfig, minPoints: 0 }).success).toBe(true);
-		expect(metagameModeConfigSchema.safeParse({ ...validConfig, minPoints: -1 }).success).toBe(false);
-		expect(metagameModeConfigSchema.safeParse({ ...validConfig, minPoints: 1.5 }).success).toBe(false);
+		expect(metagameModeConfigSchema.safeParse({ ...validConfig, minPoints: -1 }).success).toBe(
+			false,
+		);
+		expect(metagameModeConfigSchema.safeParse({ ...validConfig, minPoints: 1.5 }).success).toBe(
+			false,
+		);
 	});
 });
 
@@ -888,22 +998,35 @@ describe('topCardsModeConfigSchema', () => {
 		{ cardsPerPage: 60, accepted: true },
 		{ cardsPerPage: 61, accepted: false },
 		{ cardsPerPage: null, accepted: true },
-	])('a write of $cardsPerPage cards per page is accepted: $accepted', ({ cardsPerPage, accepted }) => {
-		expect(modeConfigPatchSchemaMap['top-cards'].safeParse({ cardsPerPage }).success).toBe(accepted);
-	});
+	])(
+		'a write of $cardsPerPage cards per page is accepted: $accepted',
+		({ cardsPerPage, accepted }) => {
+			expect(modeConfigPatchSchemaMap['top-cards'].safeParse({ cardsPerPage }).success).toBe(
+				accepted,
+			);
+		},
+	);
 
 	it('pages by Auto until a page size is set, and a write of Auto clears a set one', () => {
 		const { cardsPerPage: _auto, ...unset } = validConfig;
 		expect(topCardsModeConfigSchema.safeParse(unset).success).toBe(true);
 		expect(resolveScreenModeConfig({}, 'top-cards').cardsPerPage).toBeUndefined();
 
-		const patch = modeConfigPatchSchemaMap['top-cards'].parse({ cardsPerPage: null }) as Record<string, unknown>;
-		expect(parseModeConfigPatchResult({
-			'top-cards': { cardsPerPage: 4, limit: 12 },
-		}, 'top-cards', patch))
-			.toEqual({
-				'top-cards': { limit: 12 },
-			});
+		const patch = modeConfigPatchSchemaMap['top-cards'].parse({ cardsPerPage: null }) as Record<
+			string,
+			unknown
+		>;
+		expect(
+			parseModeConfigPatchResult(
+				{
+					'top-cards': { cardsPerPage: 4, limit: 12 },
+				},
+				'top-cards',
+				patch,
+			),
+		).toEqual({
+			'top-cards': { limit: 12 },
+		});
 	});
 });
 
@@ -920,9 +1043,13 @@ describe('pairingsModeConfigSchema', () => {
 
 	it('holds rows per page between 1 and 100', () => {
 		expect(pairingsModeConfigSchema.safeParse({ ...defaults, rowsPerPage: 1 }).success).toBe(true);
-		expect(pairingsModeConfigSchema.safeParse({ ...defaults, rowsPerPage: 100 }).success).toBe(true);
+		expect(pairingsModeConfigSchema.safeParse({ ...defaults, rowsPerPage: 100 }).success).toBe(
+			true,
+		);
 		expect(pairingsModeConfigSchema.safeParse({ ...defaults, rowsPerPage: 0 }).success).toBe(false);
-		expect(pairingsModeConfigSchema.safeParse({ ...defaults, rowsPerPage: 101 }).success).toBe(false);
+		expect(pairingsModeConfigSchema.safeParse({ ...defaults, rowsPerPage: 101 }).success).toBe(
+			false,
+		);
 	});
 });
 
@@ -932,16 +1059,30 @@ describe('archetypeSpotlightModeConfigSchema', () => {
 	const defaults = getDefaultConfigForMode('archetype-spotlight');
 
 	it('names its Archetype by a positive id', () => {
-		expect(archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, archetypeId: 7 }).success).toBe(true);
-		expect(archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, archetypeId: 0 }).success).toBe(false);
-		expect(archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, archetypeId: 1.5 }).success).toBe(false);
+		expect(
+			archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, archetypeId: 7 }).success,
+		).toBe(true);
+		expect(
+			archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, archetypeId: 0 }).success,
+		).toBe(false);
+		expect(
+			archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, archetypeId: 1.5 }).success,
+		).toBe(false);
 	});
 
 	it('holds between 1 and 20 top cards', () => {
-		expect(archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, cardLimit: 1 }).success).toBe(true);
-		expect(archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, cardLimit: 20 }).success).toBe(true);
-		expect(archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, cardLimit: 0 }).success).toBe(false);
-		expect(archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, cardLimit: 21 }).success).toBe(false);
+		expect(
+			archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, cardLimit: 1 }).success,
+		).toBe(true);
+		expect(
+			archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, cardLimit: 20 }).success,
+		).toBe(true);
+		expect(
+			archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, cardLimit: 0 }).success,
+		).toBe(false);
+		expect(
+			archetypeSpotlightModeConfigSchema.safeParse({ ...defaults, cardLimit: 21 }).success,
+		).toBe(false);
 	});
 });
 
@@ -954,18 +1095,15 @@ describe('headToHeadModeConfigSchema', () => {
 		for (const field of ['featureMatchId', 'player1Id', 'player2Id']) {
 			expect(headToHeadModeConfigSchema.safeParse({ ...defaults, [field]: 1 }).success).toBe(true);
 			expect(headToHeadModeConfigSchema.safeParse({ ...defaults, [field]: 0 }).success).toBe(false);
-			expect(headToHeadModeConfigSchema.safeParse({ ...defaults, [field]: 2.5 }).success).toBe(false);
+			expect(headToHeadModeConfigSchema.safeParse({ ...defaults, [field]: 2.5 }).success).toBe(
+				false,
+			);
 		}
 	});
 
 	it('keeps which Players it shows through a display reset', () => {
 		const reset = getDisplayDefaultsForMode('head-to-head');
-		for (const field of [
-			'playerSource',
-			'featureMatchId',
-			'player1Id',
-			'player2Id',
-		])
+		for (const field of ['playerSource', 'featureMatchId', 'player1Id', 'player2Id'])
 			expect(reset).not.toHaveProperty(field);
 	});
 });
@@ -974,13 +1112,21 @@ describe('headToHeadModeConfigSchema', () => {
 
 describe('page rotation config fields', () => {
 	it('takes a rotationAnchor server timestamp, and neither a negative nor a fractional one', () => {
-		expect(standingsModeConfigSchema.partial().safeParse({ rotationAnchor: 1_700_000_000_000 }).success).toBe(true);
-		expect(standingsModeConfigSchema.partial().safeParse({ rotationAnchor: -1 }).success).toBe(false);
-		expect(standingsModeConfigSchema.partial().safeParse({ rotationAnchor: 1.5 }).success).toBe(false);
+		expect(
+			standingsModeConfigSchema.partial().safeParse({ rotationAnchor: 1_700_000_000_000 }).success,
+		).toBe(true);
+		expect(standingsModeConfigSchema.partial().safeParse({ rotationAnchor: -1 }).success).toBe(
+			false,
+		);
+		expect(standingsModeConfigSchema.partial().safeParse({ rotationAnchor: 1.5 }).success).toBe(
+			false,
+		);
 	});
 
 	it('metagame uses the canonical autoPageEnabled name and no longer accepts autoPaging', () => {
-		expect(metagameModeConfigSchema.partial().safeParse({ autoPageEnabled: true }).success).toBe(true);
+		expect(metagameModeConfigSchema.partial().safeParse({ autoPageEnabled: true }).success).toBe(
+			true,
+		);
 		expect(metagameModeConfigSchema.partial().safeParse({ autoPaging: true }).success).toBe(false);
 	});
 });

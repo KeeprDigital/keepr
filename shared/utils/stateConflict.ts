@@ -17,12 +17,10 @@ export const STATE_CONFLICT_CODE = 'state-conflict';
 
 /** Whether a `$fetch` failure is a marked lost concurrency race. */
 export function isStateConflictFetchFailure(failure: unknown): boolean {
-	if (typeof failure !== 'object' || failure === null)
-		return false;
+	if (typeof failure !== 'object' || failure === null) return false;
 
 	const status = failure as { statusCode?: unknown; status?: unknown };
-	if (status.statusCode !== 409 && status.status !== 409)
-		return false;
+	if (status.statusCode !== 409 && status.status !== 409) return false;
 
 	const body = (failure as { data?: { data?: { code?: unknown } } }).data;
 	return body?.data?.code === STATE_CONFLICT_CODE;

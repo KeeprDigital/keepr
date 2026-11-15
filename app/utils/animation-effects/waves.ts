@@ -40,7 +40,11 @@ export function createWavesDelegate(): SceneEffectDelegate<AnimationEffectParams
 
 	function frameCamera(camera: THREE.Camera, scale: number) {
 		const zoom = DESIGNED_ZOOM * scale;
-		camera.position.set(CAMERA_POSITION.x / zoom, CAMERA_POSITION.y / zoom, CAMERA_POSITION.z / zoom);
+		camera.position.set(
+			CAMERA_POSITION.x / zoom,
+			CAMERA_POSITION.y / zoom,
+			CAMERA_POSITION.z / zoom,
+		);
 		camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z);
 	}
 
@@ -55,11 +59,13 @@ export function createWavesDelegate(): SceneEffectDelegate<AnimationEffectParams
 			const points: THREE.Vector3[] = [];
 			for (let column = 0; column <= GRID_COLUMNS; column++) {
 				for (let row = 0; row <= GRID_ROWS; row++) {
-					points.push(new three.Vector3(
-						(column - GRID_COLUMNS * 0.5) * CELL_SIZE,
-						REST_HEIGHT + Math.random() * REST_HEIGHT_JITTER,
-						(GRID_ROWS * 0.5 - row) * CELL_SIZE,
-					));
+					points.push(
+						new three.Vector3(
+							(column - GRID_COLUMNS * 0.5) * CELL_SIZE,
+							REST_HEIGHT + Math.random() * REST_HEIGHT_JITTER,
+							(GRID_ROWS * 0.5 - row) * CELL_SIZE,
+						),
+					);
 				}
 			}
 
@@ -75,10 +81,8 @@ export function createWavesDelegate(): SceneEffectDelegate<AnimationEffectParams
 					const b = vertexId(column, row - 1);
 					const c = vertexId(column - 1, row);
 					const d = vertexId(column, row);
-					if (Math.random() < 0.5)
-						indices.push(a, b, c, b, c, d);
-					else
-						indices.push(a, b, d, a, c, d);
+					if (Math.random() < 0.5) indices.push(a, b, c, b, c, d);
+					else indices.push(a, b, d, a, c, d);
 				}
 			}
 			geometry.setIndex(indices);
@@ -89,20 +93,23 @@ export function createWavesDelegate(): SceneEffectDelegate<AnimationEffectParams
 			for (let index = 0; index < position.count; index++)
 				restHeights[index] = position.getY(index);
 
-			mesh = new three.Mesh(geometry, new three.MeshPhongMaterial({
-				color: params.waveColor,
-				shininess: params.shininess,
-				flatShading: true,
-				side: three.DoubleSide,
-			}));
+			mesh = new three.Mesh(
+				geometry,
+				new three.MeshPhongMaterial({
+					color: params.waveColor,
+					shininess: params.shininess,
+					flatShading: true,
+					side: three.DoubleSide,
+				}),
+			);
 			scene.add(mesh);
 
-			const ambience = new three.AmbientLight(0xFFFFFF, 0.25);
+			const ambience = new three.AmbientLight(0xffffff, 0.25);
 			scene.add(ambience);
-			const pointLight = new three.PointLight(0xFFFFFF, 2.4);
+			const pointLight = new three.PointLight(0xffffff, 2.4);
 			pointLight.position.set(-100, 250, -100);
 			scene.add(pointLight);
-			const directional = new three.DirectionalLight(0xFFFFFF, 2.2);
+			const directional = new three.DirectionalLight(0xffffff, 2.2);
 			directional.position.set(260, 420, 180);
 			scene.add(directional);
 
@@ -125,9 +132,11 @@ export function createWavesDelegate(): SceneEffectDelegate<AnimationEffectParams
 			for (let index = 0; index < position.count; index++) {
 				const x = position.getX(index);
 				const z = position.getZ(index);
-				const crossChop = Math.sqrt(speed) * Math.cos(-x - (z * 0.7));
-				const delta = Math.sin((speed * t * 0.02) - (speed * x * 0.025) + (speed * z * 0.015) + crossChop);
-				const trochoidDelta = ((delta + 1) ** 2) / 4;
+				const crossChop = Math.sqrt(speed) * Math.cos(-x - z * 0.7);
+				const delta = Math.sin(
+					speed * t * 0.02 - speed * x * 0.025 + speed * z * 0.015 + crossChop,
+				);
+				const trochoidDelta = (delta + 1) ** 2 / 4;
 				position.setY(index, restHeights[index]! + trochoidDelta * current.waveHeight);
 			}
 			geometry.computeVertexNormals();
@@ -140,9 +149,12 @@ export default function createWavesEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'waves'>,
 ): AnimationEffectInstance<AnimationEffectParams<'waves'>> {
-	return createSceneEffect({
-		three: THREE,
-		host,
-		delegate: createWavesDelegate(),
-	}, params);
+	return createSceneEffect(
+		{
+			three: THREE,
+			host,
+			delegate: createWavesDelegate(),
+		},
+		params,
+	);
 }

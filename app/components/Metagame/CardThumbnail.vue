@@ -15,9 +15,12 @@ const shownImageUrl = computed(() => metagameCardImageUrl(props));
 
 const widthClass = computed(() => {
 	switch (props.size) {
-		case 'sm': return 'w-20';
-		case 'lg': return 'w-44';
-		default: return 'w-32';
+		case 'sm':
+			return 'w-20';
+		case 'lg':
+			return 'w-44';
+		default:
+			return 'w-32';
 	}
 });
 
@@ -28,10 +31,7 @@ watch(shownImageUrl, () => {
 </script>
 
 <template>
-	<div
-		class="mtg-card shrink-0"
-		:class="[widthClass]"
-	>
+	<div class="mtg-card shrink-0" :class="[widthClass]">
 		<img
 			v-if="shownImageUrl && !imageError"
 			:src="shownImageUrl"
@@ -39,7 +39,7 @@ watch(shownImageUrl, () => {
 			class="w-full h-full object-cover"
 			loading="lazy"
 			@error="imageError = true"
-		>
+		/>
 		<div
 			v-else
 			class="w-full h-full bg-elevated border border-default flex items-center justify-center"

@@ -14,7 +14,7 @@ const mockRepo = vi.hoisted(() => ({
 	remove: vi.fn(),
 }));
 
-vi.mock('~/modules/event-data/client', async importOriginal => ({
+vi.mock('~/modules/event-data/client', async (importOriginal) => ({
 	...(await importOriginal<typeof import('~~/app/modules/event-data/client')>()),
 	useEventDataResource: () => mockRepo,
 }));
@@ -48,10 +48,7 @@ const KID = createMockUiArchetype({
 async function mountField(props: { mergeable?: boolean } = {}) {
 	const store = useArchetypeStore();
 	store.$reset();
-	mockRepo.list.mockResolvedValue([
-		{ ...LAW },
-		{ ...KID },
-	]);
+	mockRepo.list.mockResolvedValue([{ ...LAW }, { ...KID }]);
 	const wrapper = mount(ArchetypeNameField, {
 		props: { eventId: 99, archetypeId: LAW.id, ...props },
 		global: { stubs: nuxtUiStubs },
@@ -82,7 +79,9 @@ describe('metagame ArchetypeNameField', () => {
 		await renameButton(wrapper).trigger('click');
 
 		expect(mockRepo.update).toHaveBeenCalledWith(99, LAW.id, { name: 'Law Midrange' });
-		expect(store.archetypes.find(archetype => archetype.id === LAW.id)?.name).toBe('Law Midrange');
+		expect(store.archetypes.find((archetype) => archetype.id === LAW.id)?.name).toBe(
+			'Law Midrange',
+		);
 
 		save.resolve({ ...LAW, name: 'Law Midrange', customised: true });
 		await flushPromises();
@@ -108,9 +107,7 @@ describe('metagame ArchetypeNameField', () => {
 		const merge = wrapper.get('button[aria-label="Merge into Eustass Kid"]');
 		await merge.trigger('click');
 
-		expect(wrapper.emitted('merge')).toEqual([
-			[KID.id],
-		]);
+		expect(wrapper.emitted('merge')).toEqual([[KID.id]]);
 		expect(mockRepo.update).not.toHaveBeenCalled();
 	});
 

@@ -14,11 +14,22 @@ interface CardUpdatedInput extends PublicationInput {
 }
 
 export function screenRuntimePublicationModule() {
-	async function cardUpdated({ eventId, screenId, card, revision, originConnectionId }: CardUpdatedInput) {
+	async function cardUpdated({
+		eventId,
+		screenId,
+		card,
+		revision,
+		originConnectionId,
+	}: CardUpdatedInput) {
 		await publishMessage(eventId, 'card:updated', { card, screenId, revision }, originConnectionId);
 	}
 
-	async function cardCleared({ eventId, screenId, revision, originConnectionId }: PublicationInput) {
+	async function cardCleared({
+		eventId,
+		screenId,
+		revision,
+		originConnectionId,
+	}: PublicationInput) {
 		await publishMessage(eventId, 'card:cleared', { screenId, revision }, originConnectionId);
 	}
 

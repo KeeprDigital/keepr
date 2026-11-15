@@ -16,7 +16,7 @@ const { formData, isDirty, reset, save, saving } = useEventConfigForm({
 	initialData,
 	clearOnReset: errors,
 	validate,
-	toUpdate: changes => changes,
+	toUpdate: (changes) => changes,
 });
 
 function validate(): boolean {
@@ -49,11 +49,7 @@ function validate(): boolean {
 					description="Fixed after creation to protect existing players, decks, and match state."
 					class="flex max-sm:flex-col justify-between items-start gap-4"
 				>
-					<UBadge
-						class="w-64 justify-center capitalize"
-						color="neutral"
-						variant="subtle"
-					>
+					<UBadge class="w-64 justify-center capitalize" color="neutral" variant="subtle">
 						{{ event.game }}
 					</UBadge>
 				</UFormField>

@@ -53,19 +53,22 @@ function boundHeaders(extra: Record<string, string> = {}) {
 describe('silent-video playback validation runtime adapter', () => {
 	it('binds the Workflow request and streams its trusted deterministic poster result', async () => {
 		const poster = Uint8Array.of(1, 2, 3);
-		const fetch = vi.fn(async (_request: Request) => new Response(poster, {
-			headers: boundHeaders({
-				'content-length': String(poster.byteLength),
-				'x-stream-keepr-video-width': '16',
-				'x-stream-keepr-video-height': '16',
-				'x-stream-keepr-video-duration': '1',
-				'x-stream-keepr-poster-time': '0.1',
-				'x-stream-keepr-muted-inline-playback': 'true',
-				'x-stream-keepr-seeked': 'true',
-				'x-stream-keepr-transparency-rendered': 'false',
-				'x-stream-keepr-poster-digest': 'c'.repeat(64),
-			}),
-		}));
+		const fetch = vi.fn(
+			async (_request: Request) =>
+				new Response(poster, {
+					headers: boundHeaders({
+						'content-length': String(poster.byteLength),
+						'x-stream-keepr-video-width': '16',
+						'x-stream-keepr-video-height': '16',
+						'x-stream-keepr-video-duration': '1',
+						'x-stream-keepr-poster-time': '0.1',
+						'x-stream-keepr-muted-inline-playback': 'true',
+						'x-stream-keepr-seeked': 'true',
+						'x-stream-keepr-transparency-rendered': 'false',
+						'x-stream-keepr-poster-digest': 'c'.repeat(64),
+					}),
+				}),
+		);
 		const validator = createSilentVideoPlaybackServiceBindingValidator({ fetch });
 
 		const result = await validator.validate(input);
@@ -88,8 +91,7 @@ describe('silent-video playback validation runtime adapter', () => {
 			mutedInlinePlayback: true,
 			seeked: true,
 		});
-		if (result.outcome !== 'accepted')
-			throw new Error('Expected an accepted validation result');
+		if (result.outcome !== 'accepted') throw new Error('Expected an accepted validation result');
 		await expect(consumeBoundedByteStream(result.poster)).resolves.toEqual(poster);
 	});
 
@@ -109,20 +111,21 @@ describe('silent-video playback validation runtime adapter', () => {
 		['x-stream-keepr-transparency-rendered', 'not-a-boolean'],
 	] as const)('fails closed for invalid trusted proof header %s', async (header, value) => {
 		const validator = createSilentVideoPlaybackServiceBindingValidator({
-			fetch: async () => new Response(Uint8Array.of(1), {
-				headers: boundHeaders({
-					'content-length': '1',
-					'x-stream-keepr-video-width': '16',
-					'x-stream-keepr-video-height': '16',
-					'x-stream-keepr-video-duration': '1',
-					'x-stream-keepr-poster-time': '0.1',
-					'x-stream-keepr-muted-inline-playback': 'true',
-					'x-stream-keepr-seeked': 'true',
-					'x-stream-keepr-transparency-rendered': 'false',
-					'x-stream-keepr-poster-digest': 'c'.repeat(64),
-					[header]: value,
+			fetch: async () =>
+				new Response(Uint8Array.of(1), {
+					headers: boundHeaders({
+						'content-length': '1',
+						'x-stream-keepr-video-width': '16',
+						'x-stream-keepr-video-height': '16',
+						'x-stream-keepr-video-duration': '1',
+						'x-stream-keepr-poster-time': '0.1',
+						'x-stream-keepr-muted-inline-playback': 'true',
+						'x-stream-keepr-seeked': 'true',
+						'x-stream-keepr-transparency-rendered': 'false',
+						'x-stream-keepr-poster-digest': 'c'.repeat(64),
+						[header]: value,
+					}),
 				}),
-			}),
 		});
 
 		await expect(validator.validate(input)).resolves.toEqual({
@@ -132,9 +135,7 @@ describe('silent-video playback validation runtime adapter', () => {
 	});
 
 	it('fails closed when no production binding is configured', async () => {
-		await expect(
-			createUnavailableSilentVideoPlaybackValidator().validate(input),
-		).resolves.toEqual({
+		await expect(createUnavailableSilentVideoPlaybackValidator().validate(input)).resolves.toEqual({
 			outcome: 'unavailable',
 			retryable: true,
 		});
@@ -169,11 +170,14 @@ describe('silent-video playback validation runtime adapter', () => {
 			}),
 		};
 
-		expect(silentVideoPlaybackValidationIssue(alphaInput, accepted))
-			.toBe('vp9-alpha-transparency-unproven');
-		expect(silentVideoPlaybackValidationIssue(alphaInput, {
-			...accepted,
-			transparencyRendered: true,
-		})).toBeUndefined();
+		expect(silentVideoPlaybackValidationIssue(alphaInput, accepted)).toBe(
+			'vp9-alpha-transparency-unproven',
+		);
+		expect(
+			silentVideoPlaybackValidationIssue(alphaInput, {
+				...accepted,
+				transparencyRendered: true,
+			}),
+		).toBeUndefined();
 	});
 });

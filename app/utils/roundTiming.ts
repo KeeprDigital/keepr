@@ -17,23 +17,17 @@ function formatStartTime(startedAt: Date | string): string {
 /** "50 min · started 10:02", or whichever half is set; `null` with neither. */
 export function formatRoundTiming(round: RoundTimingFields): string | null {
 	const parts = [
-		round.durationMinutes != null
-			? `${round.durationMinutes} min`
-			: null,
-		round.startedAt
-			? `started ${formatStartTime(round.startedAt)}`
-			: null,
-	].filter(part => part != null);
-	if (parts.length === 0)
-		return null;
+		round.durationMinutes != null ? `${round.durationMinutes} min` : null,
+		round.startedAt ? `started ${formatStartTime(round.startedAt)}` : null,
+	].filter((part) => part != null);
+	if (parts.length === 0) return null;
 	const text = parts.join(' · ');
 	return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 /** A start as a `datetime-local` input holds it, in this browser's zone; `''` with none. */
 export function toDateTimeLocalValue(startedAt: Date | string | null): string {
-	if (!startedAt)
-		return '';
+	if (!startedAt) return '';
 	const date = new Date(startedAt);
 	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
 	return local.toISOString().slice(0, 19);
@@ -41,10 +35,7 @@ export function toDateTimeLocalValue(startedAt: Date | string | null): string {
 
 /** A `datetime-local` value as the ISO instant a Round write takes; `null` when cleared or unreadable. */
 export function fromDateTimeLocalValue(value: string): string | null {
-	if (!value)
-		return null;
+	if (!value) return null;
 	const date = new Date(value);
-	return Number.isNaN(date.getTime())
-		? null
-		: date.toISOString();
+	return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }

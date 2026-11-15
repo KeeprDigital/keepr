@@ -21,7 +21,7 @@ import { optionalUserId } from '~~/server/utils/auth';
  * entry is a smaller loss than refusing an administrator who holds one.
  */
 export async function graphicsAdministratorActor(event: H3Event): Promise<string> {
-	return await optionalUserId(event) ?? 'graphics-administrator';
+	return (await optionalUserId(event)) ?? 'graphics-administrator';
 }
 
 /**
@@ -42,28 +42,33 @@ export function rethrowGraphicsAssetApiError(error: unknown, event: H3Event): ne
 	}
 	if (error instanceof GraphicsAssetLibraryError) {
 		const capacityError = graphicsCapacityErrorDescriptor(error);
-		const statusCode = capacityError?.statusCode ?? ({
-			'invalid-ingestion-input': 400,
-			'ingestion-operation-not-found': 404,
-			'graphics-subject-not-found': 404,
-			'ingestion-operation-not-uploadable': 409,
-			'ingestion-operation-lease-held': 409,
-			'graphic-asset-lifecycle-action-not-allowed': 409,
-			'staging-capacity-exhausted': 500,
-			'canonical-capacity-exhausted': 500,
-			'graphics-asset-library-unavailable': 503,
-		} as const)[error.code];
-		if (statusCode === 503)
-			setResponseHeader(event, 'retry-after', 5);
+		const statusCode =
+			capacityError?.statusCode ??
+			(
+				{
+					'invalid-ingestion-input': 400,
+					'ingestion-operation-not-found': 404,
+					'graphics-subject-not-found': 404,
+					'ingestion-operation-not-uploadable': 409,
+					'ingestion-operation-lease-held': 409,
+					'graphic-asset-lifecycle-action-not-allowed': 409,
+					'staging-capacity-exhausted': 500,
+					'canonical-capacity-exhausted': 500,
+					'graphics-asset-library-unavailable': 503,
+				} as const
+			)[error.code];
+		if (statusCode === 503) setResponseHeader(event, 'retry-after', 5);
 		throw createError({
 			statusCode,
-			statusMessage: capacityError?.statusMessage ?? (statusCode === 404
-				? 'Not Found'
-				: statusCode === 409
-					? 'Conflict'
-					: statusCode === 503
-						? 'Service Unavailable'
-						: 'Bad Request'),
+			statusMessage:
+				capacityError?.statusMessage ??
+				(statusCode === 404
+					? 'Not Found'
+					: statusCode === 409
+						? 'Conflict'
+						: statusCode === 503
+							? 'Service Unavailable'
+							: 'Bad Request'),
 			message: error.message,
 			data: error.capacity,
 			cause: error,

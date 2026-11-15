@@ -3,7 +3,8 @@ import { manualBracketSchema } from '~~/shared/screenModeConfigs/topCut';
 
 /** A Manual Bracket holds no more Seeds, columns or positions than its size seats (ADR-0075). */
 
-const seeds = (count: number) => Array.from({ length: count }, (_, index) => ({ name: `S${index + 1}` }));
+const seeds = (count: number) =>
+	Array.from({ length: count }, (_, index) => ({ name: `S${index + 1}` }));
 const positions = (count: number) => Array.from({ length: count }, () => ({ winner: 0 as const }));
 
 describe('manualBracketSchema', () => {
@@ -31,11 +32,7 @@ describe('manualBracketSchema', () => {
 			{
 				size: 8,
 				entrants: [],
-				results: [
-					[],
-					[],
-					positions(1),
-				],
+				results: [[], [], positions(1)],
 			},
 			true,
 		],
@@ -53,9 +50,7 @@ describe('manualBracketSchema', () => {
 			{
 				size: 8,
 				entrants: [],
-				results: [
-					positions(4),
-				],
+				results: [positions(4)],
 			},
 			true,
 		],
@@ -64,10 +59,7 @@ describe('manualBracketSchema', () => {
 			{
 				size: 8,
 				entrants: [],
-				results: [
-					[],
-					positions(3),
-				],
+				results: [[], positions(3)],
 			},
 			false,
 		],
@@ -108,38 +100,28 @@ describe('manualBracketSchema', () => {
 	});
 
 	it.each([
-		[
-			'a typed name, trimmed',
-			{ name: '  Kim  ' },
-			{ name: 'Kim' },
-		],
-		[
-			'a Player',
-			{ playerId: 3 },
-			{ playerId: 3 },
-		],
+		['a typed name, trimmed', { name: '  Kim  ' }, { name: 'Kim' }],
+		['a Player', { playerId: 3 }, { playerId: 3 }],
 	])('holds %s as an entrant', (_, entrant, held) => {
-		expect(manualBracketSchema.parse({
-			size: 4,
-			entrants: [entrant],
-			results: [],
-		}).entrants).toEqual([held]);
+		expect(
+			manualBracketSchema.parse({
+				size: 4,
+				entrants: [entrant],
+				results: [],
+			}).entrants,
+		).toEqual([held]);
 	});
 
 	it.each([
-		[
-			'a blank name',
-			{ name: '   ' },
-		],
-		[
-			'both a Player and a name',
-			{ playerId: 3, name: 'Kim' },
-		],
+		['a blank name', { name: '   ' }],
+		['both a Player and a name', { playerId: 3, name: 'Kim' }],
 	])('refuses %s as an entrant', (_, entrant) => {
-		expect(manualBracketSchema.safeParse({
-			size: 4,
-			entrants: [entrant],
-			results: [],
-		}).success).toBe(false);
+		expect(
+			manualBracketSchema.safeParse({
+				size: 4,
+				entrants: [entrant],
+				results: [],
+			}).success,
+		).toBe(false);
 	});
 });

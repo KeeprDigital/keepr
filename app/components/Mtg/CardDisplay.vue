@@ -22,15 +22,16 @@ let showCardTimer: ReturnType<typeof setTimeout> | null = null;
 const loads = createGuardedSequence();
 
 function clearShowCardTimer() {
-	if (showCardTimer)
-		clearTimeout(showCardTimer);
+	if (showCardTimer) clearTimeout(showCardTimer);
 	showCardTimer = null;
 }
 
 const CARD_ASPECT_RATIO = 85 / 61;
 /** The card's width in Event Canvas pixels, and the square it turns within: its diagonal. */
 const cardWidth = computed(() => props.width);
-const turningSquare = computed(() => `calc(${cardWidth.value} * ${Math.sqrt(1 + CARD_ASPECT_RATIO ** 2)})`);
+const turningSquare = computed(
+	() => `calc(${cardWidth.value} * ${Math.sqrt(1 + CARD_ASPECT_RATIO ** 2)})`,
+);
 
 // Container style — always centers the card within the diagonal rotation container.
 // Viewport-level positioning is handled by the Renderer, not this component.
@@ -47,32 +48,30 @@ const containerStyle = computed(() => ({
  */
 const motion = modeMotionVars('card', 'motion');
 const motionStyle = {
-	'transitionProperty': 'opacity, transform, clip-path',
-	'transitionDuration': motion.duration,
-	'transitionTimingFunction': motion.easing,
-	'transitionDelay': motion.delay,
-	'transformOrigin': motion.transformOrigin,
+	transitionProperty: 'opacity, transform, clip-path',
+	transitionDuration: motion.duration,
+	transitionTimingFunction: motion.easing,
+	transitionDelay: motion.delay,
+	transformOrigin: motion.transformOrigin,
 	'--card-motion-opacity': motion.opacity,
 	'--card-motion-transform': motion.transform,
 	'--card-motion-clip': motion.clipPath,
 };
 
 function cardImageUrls(card: ScreenCard): string[] {
-	if (isOpScreenCard(card))
-		return [card.imageUrl];
-	return [card.imageData.front?.normal, card.imageData.back?.normal]
-		.filter((url): url is string => !!url);
+	if (isOpScreenCard(card)) return [card.imageUrl];
+	return [card.imageData.front?.normal, card.imageData.back?.normal].filter(
+		(url): url is string => !!url,
+	);
 }
 
 /** Enters the card shown, once it has mounted. */
 function reveal(cardId: string) {
 	clearShowCardTimer();
 	void nextTick(() => {
-		if (displayCard.value?.id !== cardId)
-			return;
+		if (displayCard.value?.id !== cardId) return;
 		showCardTimer = setTimeout(() => {
-			if (displayCard.value?.id === cardId)
-				showCard.value = true;
+			if (displayCard.value?.id === cardId) showCard.value = true;
 			showCardTimer = null;
 		}, 50);
 	});
@@ -83,8 +82,7 @@ function leave() {
 	if (showCard.value) {
 		leaving = true;
 		showCard.value = false;
-	}
-	else if (!leaving) {
+	} else if (!leaving) {
 		displayCard.value = pendingCard.value;
 		pendingCard.value = null;
 	}
@@ -95,35 +93,37 @@ function leave() {
  * it leaves and the replacement enters. The same card updates in place, so a
  * flip or rotation animates on the card shown.
  */
-watch(() => props.card, async (next) => {
-	const flight = loads.begin();
-	preloading.value = false;
-	if (!next) {
-		pendingCard.value = null;
-		leave();
-		return;
-	}
-	if (displayCard.value?.id === next.id && !leaving) {
-		pendingCard.value = null;
-		displayCard.value = next;
-		if (!showCard.value)
-			reveal(next.id);
-		return;
-	}
+watch(
+	() => props.card,
+	async (next) => {
+		const flight = loads.begin();
+		preloading.value = false;
+		if (!next) {
+			pendingCard.value = null;
+			leave();
+			return;
+		}
+		if (displayCard.value?.id === next.id && !leaving) {
+			pendingCard.value = null;
+			displayCard.value = next;
+			if (!showCard.value) reveal(next.id);
+			return;
+		}
 
-	preloading.value = true;
-	await preloadImages(cardImageUrls(next));
-	if (flight.stale)
-		return;
-	preloading.value = false;
-	if (displayCard.value && (showCard.value || leaving)) {
-		pendingCard.value = next;
-		leave();
-		return;
-	}
-	displayCard.value = next;
-	reveal(next.id);
-}, { immediate: true });
+		preloading.value = true;
+		await preloadImages(cardImageUrls(next));
+		if (flight.stale) return;
+		preloading.value = false;
+		if (displayCard.value && (showCard.value || leaving)) {
+			pendingCard.value = next;
+			leave();
+			return;
+		}
+		displayCard.value = next;
+		reveal(next.id);
+	},
+	{ immediate: true },
+);
 
 useScreenModeReady(() => !preloading.value);
 
@@ -137,26 +137,17 @@ function onAfterLeave() {
 	leaving = false;
 	displayCard.value = pendingCard.value;
 	pendingCard.value = null;
-	if (displayCard.value)
-		reveal(displayCard.value.id);
+	if (displayCard.value) reveal(displayCard.value.id);
 }
 </script>
 
 <template>
-	<div
-		v-if="displayCard"
-		:key="displayCard.id"
-		class="card-container"
-		:style="containerStyle"
-	>
+	<div v-if="displayCard" :key="displayCard.id" class="card-container" :style="containerStyle">
 		<div data-testid="spotlight-card" :style="{ width: cardWidth }">
 			<!-- Card -->
 			<transition mode="out-in" name="card-motion" @after-leave="onAfterLeave">
 				<div v-if="showCard" class="card-image-wrapper" :style="motionStyle">
-					<OpCardImage
-						v-if="isOpScreenCard(displayCard)"
-						:card="displayCard"
-					/>
+					<OpCardImage v-if="isOpScreenCard(displayCard)" :card="displayCard" />
 					<MtgCardImage
 						v-else
 						:card="displayCard"

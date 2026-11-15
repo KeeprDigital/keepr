@@ -9,7 +9,7 @@ export function useSendDeckToScreen() {
 
 	// Get all Screens in Deck List mode
 	const deckScreens = computed(() => {
-		return screenStore.screens.filter(s => s.currentMode === 'deck');
+		return screenStore.screens.filter((s) => s.currentMode === 'deck');
 	});
 
 	const hasDeckScreens = computed(() => deckScreens.value.length > 0);
@@ -29,24 +29,27 @@ export function useSendDeckToScreen() {
 			return false;
 		}
 
-		const sent = await runRequest(async () => {
-			await screenStore.updateModeConfig(eventId, screen.id, 'deck', {
-				deckSource: { type: 'player', playerId },
-			});
+		const sent = await runRequest(
+			async () => {
+				await screenStore.updateModeConfig(eventId, screen.id, 'deck', {
+					deckSource: { type: 'player', playerId },
+				});
 
-			return true;
-		}, {
-			success: {
-				title: 'Deck Sent',
-				description: `Deck sent to "${screen.name}"`,
-				color: 'success',
+				return true;
 			},
-			error: {
-				title: 'Error',
-				description: 'Failed to send deck to screen',
-				color: 'error',
+			{
+				success: {
+					title: 'Deck Sent',
+					description: `Deck sent to "${screen.name}"`,
+					color: 'success',
+				},
+				error: {
+					title: 'Error',
+					description: 'Failed to send deck to screen',
+					color: 'error',
+				},
 			},
-		});
+		);
 
 		return sent === true;
 	}
@@ -72,7 +75,7 @@ export function useSendDeckToScreen() {
 	 * Get dropdown items for selecting a Deck List Screen
 	 */
 	function getDeckScreenItems(playerId: number) {
-		return deckScreens.value.map(screen => ({
+		return deckScreens.value.map((screen) => ({
 			label: screen.name,
 			icon: 'i-lucide-monitor',
 			onSelect: () => sendToScreen(playerId, screen),

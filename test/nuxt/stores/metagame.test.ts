@@ -38,7 +38,7 @@ describe('useMetagameStore', () => {
 
 	// The Conversion Target is the Event's (ADR-0061), so the page asks for the one another operator's write announces.
 	describe('conversionTarget', () => {
-		it('asks for the Event\'s Conversion Target, Top 8 before an Event loads, and follows its announced change', () => {
+		it("asks for the Event's Conversion Target, Top 8 before an Event loads, and follows its announced change", () => {
 			const eventStore = useEventStore();
 			eventStore.$reset();
 			expect(store.conversionTarget).toEqual({ conversionMetric: 'topN', conversionThreshold: 8 });
@@ -51,13 +51,23 @@ describe('useMetagameStore', () => {
 			expect(store.conversionTarget).toEqual({ conversionMetric: 'topN', conversionThreshold: 16 });
 
 			// `event:updated` carries the whole Event response.
-			const announced = createMockEvent({ id: 3, conversionMetric: 'minPoints', conversionThreshold: 0 });
+			const announced = createMockEvent({
+				id: 3,
+				conversionMetric: 'minPoints',
+				conversionThreshold: 0,
+			});
 			eventStore.applyRemoteUpdated({ eventId: announced.id, timestamp: 0, event: announced });
-			expect(store.conversionTarget).toEqual({ conversionMetric: 'minPoints', conversionThreshold: 0 });
+			expect(store.conversionTarget).toEqual({
+				conversionMetric: 'minPoints',
+				conversionThreshold: 0,
+			});
 
 			// A store reset leaves the Event's target alone.
 			store.$reset();
-			expect(store.conversionTarget).toEqual({ conversionMetric: 'minPoints', conversionThreshold: 0 });
+			expect(store.conversionTarget).toEqual({
+				conversionMetric: 'minPoints',
+				conversionThreshold: 0,
+			});
 		});
 	});
 
@@ -115,10 +125,12 @@ describe('useMetagameStore', () => {
 			],
 		])('reports a refused summary with %s', async (_, status, message, reported) => {
 			vi.spyOn(console, 'error').mockImplementation(() => {});
-			mockFetch.mockRejectedValue(transportFailure({
-				status,
-				body: { message },
-			}));
+			mockFetch.mockRejectedValue(
+				transportFailure({
+					status,
+					body: { message },
+				}),
+			);
 
 			await store.loadSummary(1);
 
@@ -163,20 +175,14 @@ describe('useMetagameStore', () => {
 					player: createMockPlayer({ id: 1 }),
 				},
 			],
-			[
-				'player:deleted',
-				{ playerId: 1 },
-			],
+			['player:deleted', { playerId: 1 }],
 			[
 				'archetype:created',
 				{
 					archetype: createMockUiArchetype({ id: 1 }),
 				},
 			],
-			[
-				'archetype:keyCardsUpdated',
-				{ archetypeId: 1, keyCards: [] },
-			],
+			['archetype:keyCardsUpdated', { archetypeId: 1, keyCards: [] }],
 			[
 				'playerList:membersChanged',
 				{
@@ -186,7 +192,7 @@ describe('useMetagameStore', () => {
 					memberCount: 0,
 				},
 			],
-		])('follows a peer\'s %s', (type, payload) => {
+		])("follows a peer's %s", (type, payload) => {
 			store.summaryData = makeSummaryData();
 
 			deliver(type as never, payload as never);

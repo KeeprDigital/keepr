@@ -13,19 +13,23 @@ import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { expectOperationResult } from './responseStatus';
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
-const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xC5, 0x85);
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
+const emptyTextChunk = Uint8Array.of(0, 0, 0, 0, 0x74, 0x45, 0x58, 0x74, 0x96, 0x42, 0xc5, 0x85);
 
 /** This suite's own content: chunk counts no other suite pads with. */
 function pngWithTextChunks(count: number) {
-	return Uint8Array.from(Buffer.concat([
-		basePixelPng.slice(0, -12),
-		...Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[],
-		basePixelPng.slice(-12),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			basePixelPng.slice(0, -12),
+			...(Array.from({ length: count }).fill(emptyTextChunk) as Uint8Array[]),
+			basePixelPng.slice(-12),
+		]),
+	);
 }
 
 const pixelPng = pngWithTextChunks(130);
@@ -70,8 +74,7 @@ describe('a plain overlay mode’s asset Background Layer', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	async function ingest(mode: string): Promise<GraphicAssetReference> {
@@ -120,7 +123,7 @@ describe('a plain overlay mode’s asset Background Layer', () => {
 			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
 			{
 				method: 'PUT',
-				headers: { 'cookie': authorCookie, 'content-type': 'image/png' },
+				headers: { cookie: authorCookie, 'content-type': 'image/png' },
 				body: replacementPng,
 			},
 		);
@@ -144,12 +147,14 @@ describe('a plain overlay mode’s asset Background Layer', () => {
 				},
 			});
 			screenId = screen.id;
-			capability = (await $fetch<{ assetCapability: string }>(
-				`/api/events/${eventId}/screens/${screenId}/asset-capability`,
-				{
-					headers: { cookie: authorCookie },
-				},
-			)).assetCapability;
+			capability = (
+				await $fetch<{ assetCapability: string }>(
+					`/api/events/${eventId}/screens/${screenId}/asset-capability`,
+					{
+						headers: { cookie: authorCookie },
+					},
+				)
+			).assetCapability;
 
 			await $fetch(`/api/events/${eventId}/screens/${screenId}/config/${mode}`, {
 				method: 'PATCH',
@@ -230,10 +235,12 @@ describe('a plain overlay mode’s asset Background Layer', () => {
 					headers: { cookie: authorCookie },
 				},
 			);
-			expect(view.revisions).toContainEqual(expect.objectContaining({
-				revisionId: reference.revisionId,
-				retention: { policy: 'referenced', referenceCount: 1 },
-			}));
+			expect(view.revisions).toContainEqual(
+				expect.objectContaining({
+					revisionId: reference.revisionId,
+					retention: { policy: 'referenced', referenceCount: 1 },
+				}),
+			);
 
 			const delivered = await fetch(
 				`/api/screen-output/screens/${screenId}/assets/${reference.assetId}/revisions/${reference.revisionId}/content`,

@@ -32,7 +32,6 @@ const RETIRED_COOKIES = [
 
 export default defineEventHandler((event) => {
 	for (const name of RETIRED_COOKIES) {
-		if (getCookie(event, name) !== undefined)
-			deleteCookie(event, name, { path: '/' });
+		if (getCookie(event, name) !== undefined) deleteCookie(event, name, { path: '/' });
 	}
 });

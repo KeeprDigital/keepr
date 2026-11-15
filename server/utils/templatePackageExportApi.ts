@@ -25,9 +25,8 @@ export function respondWithTemplatePackage(
 ): ReadableStream<Uint8Array> {
 	if (outcome.outcome === 'rejected') {
 		const { report } = outcome;
-		const retryable = report.issues.length > 0 && report.issues.every(issue => issue.retryable);
-		if (retryable)
-			setResponseHeader(event, 'retry-after', 5);
+		const retryable = report.issues.length > 0 && report.issues.every((issue) => issue.retryable);
+		if (retryable) setResponseHeader(event, 'retry-after', 5);
 		// Only the retryable half is classified, because only it is a 5xx. A 409 is the
 		// author being told to correct something and is never sanitized; the 503 was,
 		// and this refusal's `data` surviving is what hid it — the report came through
@@ -85,8 +84,8 @@ export function exportBroadcastGraphicTemplatePackage(
 			assets: requirements.assets,
 			capabilities: requirements.capabilities,
 		})
-		.then(outcome => respondWithTemplatePackage(event, outcome))
-		.catch(error => rethrowGraphicsAssetApiError(error, event));
+		.then((outcome) => respondWithTemplatePackage(event, outcome))
+		.catch((error) => rethrowGraphicsAssetApiError(error, event));
 }
 
 /**
@@ -117,6 +116,6 @@ export function exportFeatureMatchLayoutTemplatePackage(
 			assets: requirements.assets,
 			capabilities: requirements.capabilities,
 		})
-		.then(outcome => respondWithTemplatePackage(event, outcome))
-		.catch(error => rethrowGraphicsAssetApiError(error, event));
+		.then((outcome) => respondWithTemplatePackage(event, outcome))
+		.catch((error) => rethrowGraphicsAssetApiError(error, event));
 }

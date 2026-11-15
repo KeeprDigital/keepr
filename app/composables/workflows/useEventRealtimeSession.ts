@@ -16,8 +16,7 @@ let sessionActive = false;
  * tells of exactly what that Screen shows.
  */
 export function useEventRealtimeSession() {
-	if (sessionActive)
-		return;
+	if (sessionActive) return;
 
 	sessionActive = true;
 
@@ -29,13 +28,10 @@ export function useEventRealtimeSession() {
 	const { accept } = useRealtimeMessageGate(computed(() => realtime.connectionId));
 
 	realtime.onRoom('event-session', createEventRealtimeHandlers({ accept, eventStore, realtime }));
-	const room = () => eventStore.roomEventId
-		? eventRealtimeChannel(eventStore.roomEventId)
-		: null;
+	const room = () => (eventStore.roomEventId ? eventRealtimeChannel(eventStore.roomEventId) : null);
 	function resync() {
 		// A live rendering is in no room and holds none of this.
-		if (!room())
-			return;
+		if (!room()) return;
 		// The cache is keyed by Player revision, which a resolved deck card does not
 		// move (#648), so a resolution missed meanwhile could otherwise stay cached.
 		clearPlayerDeckCache();
@@ -49,10 +45,12 @@ export function useEventRealtimeSession() {
 	// Subscriptions that waited on a token missed what was published meanwhile,
 	// and a first attach over an unbroken connection reports no continuity loss
 	// (ADR-0023).
-	watch(() => !!realtime.tokenError, (waiting, wasWaiting) => {
-		if (wasWaiting && !waiting)
-			resync();
-	});
+	watch(
+		() => !!realtime.tokenError,
+		(waiting, wasWaiting) => {
+			if (wasWaiting && !waiting) resync();
+		},
+	);
 
 	watch(
 		room,

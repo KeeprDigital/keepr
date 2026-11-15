@@ -57,7 +57,7 @@ const MANIFEST_PATH = '/_acceptance/static-font-v1.json';
 /** Chromium loads this face, and the static-font-v1 profile accepts it. */
 const LIBRARY_FACE = 'public/fonts/mana.woff2';
 
-const fromRepository = path => new URL(`../${path}`, import.meta.url);
+const fromRepository = (path) => new URL(`../${path}`, import.meta.url);
 
 /**
  * `public/fonts/mana.ttf`, subtables split per platform, with languages restated.
@@ -77,7 +77,9 @@ const fromRepository = path => new URL(`../${path}`, import.meta.url);
  */
 async function cmapLanguageVariant(languageForPlatform) {
 	return withCmapLanguages(
-		withSeparateCmapSubtables(new Uint8Array(await readFile(fromRepository('public/fonts/mana.ttf')))),
+		withSeparateCmapSubtables(
+			new Uint8Array(await readFile(fromRepository('public/fonts/mana.ttf'))),
+		),
 		languageForPlatform,
 	);
 }
@@ -144,9 +146,7 @@ export async function main(argv = process.argv) {
 			// The library face has to be reached from the installation's own origin:
 			// its routes are same-origin and cookie-authorized, so a page served from
 			// loopback could not read them at all.
-			const local = library
-				? undefined
-				: await serveLocally();
+			const local = library ? undefined : await serveLocally();
 			let staged;
 			try {
 				let page;
@@ -165,22 +165,26 @@ export async function main(argv = process.argv) {
 					// One expression, because the page and the identity it reads as are one
 					// fact: the operation staged above is a 404 to every session but this
 					// one (ADR-0010, #276).
-					page = authoredPageRequest(session, `${origin}${ACCEPTANCE_PATH}?operation=${staged.operationId}`);
-				}
-				else {
+					page = authoredPageRequest(
+						session,
+						`${origin}${ACCEPTANCE_PATH}?operation=${staged.operationId}`,
+					);
+				} else {
 					// Nothing to be the author of: the loopback run reads no library route.
 					page = { url: `${local.origin}${ACCEPTANCE_PATH}` };
 				}
 
 				const verdict = await observeChromiumVerdict(page);
-				record(verdict.outcome === 'passed'
-					? []
-					: [
-							{
-								code: verdictFailureCode(verdict),
-								detail: { page: HARNESS },
-							},
-						]);
+				record(
+					verdict.outcome === 'passed'
+						? []
+						: [
+								{
+									code: verdictFailureCode(verdict),
+									detail: { page: HARNESS },
+								},
+							],
+				);
 
 				return {
 					faces: library ? 6 : 5,
@@ -188,17 +192,14 @@ export async function main(argv = process.argv) {
 					library: library ? 'published' : 'not-exercised',
 					mode: deployed ? 'deployed' : 'local',
 				};
-			}
-			finally {
+			} finally {
 				// The published face is a real asset in a real installation, so it is
 				// trashed whether the run passed or failed.
-				if (staged)
-					await staged.dispose(await staged.publishedAssetId());
+				if (staged) await staged.dispose(await staged.publishedAssetId());
 				await local?.close();
 			}
 		},
 	});
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

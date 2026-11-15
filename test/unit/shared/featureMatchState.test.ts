@@ -40,9 +40,7 @@ describe('resetPlayerFeatureMatchStateForNewGame', () => {
 	const existingState = {
 		lifeTotal: 15,
 		gameWins: 2,
-		counters: [
-			{ type: 'poison', value: 3 },
-		],
+		counters: [{ type: 'poison', value: 3 }],
 		cardsKept: 6,
 		sideboardRevealed: true,
 	};
@@ -59,13 +57,11 @@ describe('resetPlayerFeatureMatchStateForNewGame', () => {
 		expect(result.cardsKept).toBeUndefined();
 	});
 
-	it('uses the game\'s starting life, and keeps counters when asked to', () => {
+	it("uses the game's starting life, and keeps counters when asked to", () => {
 		const result = resetPlayerFeatureMatchStateForNewGame(existingState, 40, false);
 
 		expect(result.lifeTotal).toBe(40);
-		expect(result.counters).toEqual([
-			{ type: 'poison', value: 3 },
-		]);
+		expect(result.counters).toEqual([{ type: 'poison', value: 3 }]);
 		expect(result.cardsKept).toBeUndefined();
 	});
 });

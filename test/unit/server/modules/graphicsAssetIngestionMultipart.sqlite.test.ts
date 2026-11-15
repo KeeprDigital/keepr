@@ -12,9 +12,7 @@ import {
 	GraphicsObjectInputError,
 	unavailableObjectStoreOutcome,
 } from '~~/server/modules/graphics-asset-library/object-store';
-import {
-	GRAPHICS_MULTIPART_PART_BYTES,
-} from '~~/shared/utils/graphicsAssetCompatibility';
+import { GRAPHICS_MULTIPART_PART_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
 import { pngOfByteLength } from '~~/test/helpers/graphicsFixtures';
 import { createTestGraphicsIngestion } from '~~/test/helpers/graphicsLibrary';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
@@ -183,19 +181,23 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 		const operation = await initiateLargeTransfer(ingestion, 'ambiguous-part-response');
 		const firstPart = new Uint8Array(GRAPHICS_MULTIPART_PART_BYTES);
 
-		await expect(ingestion.uploadGraphicAssetMultipartPart({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			partNumber: 1,
-			bytes: createBoundedByteStream(firstPart, {
-				byteLength: firstPart.byteLength,
-				maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
+		await expect(
+			ingestion.uploadGraphicAssetMultipartPart({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				partNumber: 1,
+				bytes: createBoundedByteStream(firstPart, {
+					byteLength: firstPart.byteLength,
+					maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
+				}),
 			}),
-		})).rejects.toMatchObject({ code: 'graphics-asset-library-unavailable' });
-		await expect(ingestion.getIngestionOperation({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-		})).resolves.toMatchObject({
+		).rejects.toMatchObject({ code: 'graphics-asset-library-unavailable' });
+		await expect(
+			ingestion.getIngestionOperation({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+			}),
+		).resolves.toMatchObject({
 			transferredByteLength: 0,
 			transfer: { completedParts: [] },
 		});
@@ -212,9 +214,7 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 		expect(retried).toMatchObject({
 			transferredByteLength: GRAPHICS_MULTIPART_PART_BYTES,
 			transfer: {
-				completedParts: [
-					{ partNumber: 1 },
-				],
+				completedParts: [{ partNumber: 1 }],
 			},
 		});
 	});
@@ -234,47 +234,46 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 			},
 			refusal: { message: 'Byte stream length mismatch' },
 		},
-	])('accepts a part again after $failure while a sibling part completed', async ({ fail, refusal }) => {
-		const delegate = createInMemoryStagingGraphicsObjectStore();
-		const tail = Uint8Array.of(0);
-		const firstPart = new Uint8Array(GRAPHICS_MULTIPART_PART_BYTES);
-		let failFirstPart = true;
-		const staging: InMemoryGraphicsStagingObjectStore = {
-			...delegate,
-			async uploadPart(input) {
-				if (input.partNumber !== 1 || !failFirstPart)
-					return await delegate.uploadPart(input);
-				failFirstPart = false;
-				await uploadPart(2, tail);
-				return fail();
-			},
-		};
-		const ingestion = createIngestion(staging);
-		const operation = await initiateLargeTransfer(ingestion, 'failed-part-beside-a-sibling');
-		function uploadPart(partNumber: number, bytes: Uint8Array) {
-			return ingestion.uploadGraphicAssetMultipartPart({
-				operationId: operation.id,
-				initiatedBy: operation.initiatedBy,
-				partNumber,
-				bytes: createBoundedByteStream(bytes, {
-					byteLength: bytes.byteLength,
-					maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
-				}),
+	])(
+		'accepts a part again after $failure while a sibling part completed',
+		async ({ fail, refusal }) => {
+			const delegate = createInMemoryStagingGraphicsObjectStore();
+			const tail = Uint8Array.of(0);
+			const firstPart = new Uint8Array(GRAPHICS_MULTIPART_PART_BYTES);
+			let failFirstPart = true;
+			const staging: InMemoryGraphicsStagingObjectStore = {
+				...delegate,
+				async uploadPart(input) {
+					if (input.partNumber !== 1 || !failFirstPart) return await delegate.uploadPart(input);
+					failFirstPart = false;
+					await uploadPart(2, tail);
+					return fail();
+				},
+			};
+			const ingestion = createIngestion(staging);
+			const operation = await initiateLargeTransfer(ingestion, 'failed-part-beside-a-sibling');
+			function uploadPart(partNumber: number, bytes: Uint8Array) {
+				return ingestion.uploadGraphicAssetMultipartPart({
+					operationId: operation.id,
+					initiatedBy: operation.initiatedBy,
+					partNumber,
+					bytes: createBoundedByteStream(bytes, {
+						byteLength: bytes.byteLength,
+						maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
+					}),
+				});
+			}
+
+			await expect(uploadPart(1, firstPart)).rejects.toMatchObject(refusal);
+
+			await expect(uploadPart(1, firstPart)).resolves.toMatchObject({
+				transferredByteLength: GRAPHICS_MULTIPART_PART_BYTES + 1,
+				transfer: {
+					completedParts: [{ partNumber: 1 }, { partNumber: 2 }],
+				},
 			});
-		}
-
-		await expect(uploadPart(1, firstPart)).rejects.toMatchObject(refusal);
-
-		await expect(uploadPart(1, firstPart)).resolves.toMatchObject({
-			transferredByteLength: GRAPHICS_MULTIPART_PART_BYTES + 1,
-			transfer: {
-				completedParts: [
-					{ partNumber: 1 },
-					{ partNumber: 2 },
-				],
-			},
-		});
-	});
+		},
+	);
 
 	it('says what the catalogue threw when a part meets an unreachable checkpoint (#633)', async () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -283,8 +282,7 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 		const ingestion = createIngestion(undefined, {
 			...catalogue,
 			async getGraphicAssetMultipartState(...input) {
-				if (!checkpointReachable)
-					throw new Error('D1_ERROR: database is locked: SQLITE_BUSY');
+				if (!checkpointReachable) throw new Error('D1_ERROR: database is locked: SQLITE_BUSY');
 				return await catalogue.getGraphicAssetMultipartState(...input);
 			},
 		});
@@ -292,15 +290,17 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 		checkpointReachable = false;
 		const firstPart = new Uint8Array(GRAPHICS_MULTIPART_PART_BYTES);
 
-		await expect(ingestion.uploadGraphicAssetMultipartPart({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			partNumber: 1,
-			bytes: createBoundedByteStream(firstPart, {
-				byteLength: firstPart.byteLength,
-				maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
+		await expect(
+			ingestion.uploadGraphicAssetMultipartPart({
+				operationId: operation.id,
+				initiatedBy: operation.initiatedBy,
+				partNumber: 1,
+				bytes: createBoundedByteStream(firstPart, {
+					byteLength: firstPart.byteLength,
+					maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
+				}),
 			}),
-		})).rejects.toMatchObject({
+		).rejects.toMatchObject({
 			code: 'graphics-asset-library-unavailable',
 			message: 'Graphics multipart checkpoint is temporarily unavailable',
 		});
@@ -328,7 +328,20 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 		staging.injectTransientFailure('multipart-upload-part', 3);
 
 		for (let attempt = 0; attempt < 3; attempt++) {
-			await expect(ingestion.uploadGraphicAssetMultipartPart({
+			await expect(
+				ingestion.uploadGraphicAssetMultipartPart({
+					operationId: operation.id,
+					initiatedBy: operation.initiatedBy,
+					partNumber: 1,
+					bytes: createBoundedByteStream(firstPart, {
+						byteLength: firstPart.byteLength,
+						maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
+					}),
+				}),
+			).rejects.toMatchObject({ code: 'graphics-asset-library-unavailable' });
+		}
+		await expect(
+			ingestion.uploadGraphicAssetMultipartPart({
 				operationId: operation.id,
 				initiatedBy: operation.initiatedBy,
 				partNumber: 1,
@@ -336,17 +349,8 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 					byteLength: firstPart.byteLength,
 					maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
 				}),
-			})).rejects.toMatchObject({ code: 'graphics-asset-library-unavailable' });
-		}
-		await expect(ingestion.uploadGraphicAssetMultipartPart({
-			operationId: operation.id,
-			initiatedBy: operation.initiatedBy,
-			partNumber: 1,
-			bytes: createBoundedByteStream(firstPart, {
-				byteLength: firstPart.byteLength,
-				maximumByteLength: GRAPHICS_MULTIPART_PART_BYTES,
 			}),
-		})).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
+		).rejects.toMatchObject({ code: 'ingestion-operation-not-uploadable' });
 
 		const cancelled = await ingestion.cancelGraphicsIngestion({
 			operationId: operation.id,
@@ -393,8 +397,7 @@ describe('resumable image ingestion at the Graphic Asset ingestion seam', () => 
 			...delegate,
 			async beginMultipart(input) {
 				const started = await delegate.beginMultipart(input);
-				if (started.outcome === 'started')
-					upload = started.upload;
+				if (started.outcome === 'started') upload = started.upload;
 				return started;
 			},
 		};

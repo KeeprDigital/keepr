@@ -19,7 +19,10 @@ export const DEFAULT_CONVERSION_TARGET: ConversionTarget = {
 };
 
 /** Top N is a placement, so at least 1; a minimum-points target admits 0. */
-export const CONVERSION_THRESHOLD_BOUNDS: Record<MetagameConversionMetric, { min: number; max: number }> = {
+export const CONVERSION_THRESHOLD_BOUNDS: Record<
+	MetagameConversionMetric,
+	{ min: number; max: number }
+> = {
 	topN: { min: 1, max: 999 },
 	minPoints: { min: 0, max: 999 },
 };
@@ -27,24 +30,34 @@ export const CONVERSION_THRESHOLD_BOUNDS: Record<MetagameConversionMetric, { min
 /** The two fields travel together, the threshold bounded by its metric. */
 export const conversionTargetShape = {
 	conversionMetric: z.enum(METAGAME_CONVERSION_METRIC_VALUES),
-	conversionThreshold: z.number().int().min(Math.min(...Object.values(CONVERSION_THRESHOLD_BOUNDS).map(bound => bound.min))).max(Math.max(...Object.values(CONVERSION_THRESHOLD_BOUNDS).map(bound => bound.max))),
+	conversionThreshold: z
+		.number()
+		.int()
+		.min(Math.min(...Object.values(CONVERSION_THRESHOLD_BOUNDS).map((bound) => bound.min)))
+		.max(Math.max(...Object.values(CONVERSION_THRESHOLD_BOUNDS).map((bound) => bound.max))),
 };
 
-export function isConversionTargetInBounds({ conversionMetric, conversionThreshold }: ConversionTarget): boolean {
+export function isConversionTargetInBounds({
+	conversionMetric,
+	conversionThreshold,
+}: ConversionTarget): boolean {
 	const { min, max } = CONVERSION_THRESHOLD_BOUNDS[conversionMetric];
 	return conversionThreshold >= min && conversionThreshold <= max;
 }
 
 /** The Event's target as a read takes it; an Event context not yet loaded reads the default. */
-export function eventConversionTarget(event: Partial<ConversionTarget> | null | undefined): ConversionTarget {
+export function eventConversionTarget(
+	event: Partial<ConversionTarget> | null | undefined,
+): ConversionTarget {
 	return event?.conversionMetric != null && event.conversionThreshold != null
 		? { conversionMetric: event.conversionMetric, conversionThreshold: event.conversionThreshold }
 		: DEFAULT_CONVERSION_TARGET;
 }
 
 /** The target named as the Metagame page and Archetype Spotlight name it: "Top 8", "9+ pts". */
-export function conversionTargetLabel({ conversionMetric, conversionThreshold }: ConversionTarget): string {
-	return conversionMetric === 'topN'
-		? `Top ${conversionThreshold}`
-		: `${conversionThreshold}+ pts`;
+export function conversionTargetLabel({
+	conversionMetric,
+	conversionThreshold,
+}: ConversionTarget): string {
+	return conversionMetric === 'topN' ? `Top ${conversionThreshold}` : `${conversionThreshold}+ pts`;
 }

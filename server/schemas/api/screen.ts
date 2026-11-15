@@ -1,20 +1,24 @@
 import type { ServerValidatedKeys } from '~~/shared/screenModeConfigs/contract';
 import type { BackgroundLayersCapableMode } from '~~/shared/screenModes';
 import type { ScreenMode } from '~~/shared/types/enums';
-import type { BroadcastGraphicConfig, GraphicGroupChildConfig, GraphicItemConfig } from '~~/shared/types/graphics';
+import type {
+	BroadcastGraphicConfig,
+	GraphicGroupChildConfig,
+	GraphicItemConfig,
+} from '~~/shared/types/graphics';
 import type { GraphicThemeSlot } from '~~/shared/types/graphicThemeBindings';
 import type { FeatureMatchSourceItemConfig, ModeConfigsMap } from '~~/shared/types/screenConfig';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { SCREEN_MODE_VALUES, screens } from '~~/server/db/schema';
-import {
-	graphicAssetId,
-	graphicAssetRevisionId,
-} from '~~/server/modules/graphics-asset-library';
+import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
 import { graphicTypographyFields, shapeGeometrySchema } from '~~/server/schemas/api/graphicValues';
 import { storedFrameAnimationConfigSchema } from '~~/shared/animationEffects';
-import { FEATURE_MATCH_SOURCE_ITEM_CONFIGURATION_VERSION, MAX_FEATURE_MATCH_SOURCE_ITEMS } from '~~/shared/featureMatchSourceItems';
+import {
+	FEATURE_MATCH_SOURCE_ITEM_CONFIGURATION_VERSION,
+	MAX_FEATURE_MATCH_SOURCE_ITEMS,
+} from '~~/shared/featureMatchSourceItems';
 import {
 	GRAPHIC_FONT_IDS,
 	graphicSourceRelationKind,
@@ -31,7 +35,10 @@ import {
 	screenMediaSourceSchema,
 } from '~~/shared/modules/theme/background';
 import { isServerValidatedField } from '~~/shared/screenModeConfigs/contract';
-import { screenModeConfigContract, screenModeSupportsBackgroundLayers } from '~~/shared/screenModes';
+import {
+	screenModeConfigContract,
+	screenModeSupportsBackgroundLayers,
+} from '~~/shared/screenModes';
 import { SUPPORTED_SOCIAL_NETWORK_KEYS } from '~~/shared/socialProfiles';
 import {
 	FORMER_SCREEN_MODE_KEYS,
@@ -39,9 +46,7 @@ import {
 	SCREEN_COMMAND_VALUES,
 	SEAT_VALUES,
 } from '~~/shared/types/enums';
-import {
-	MEDIA_FIT_VALUES,
-} from '~~/shared/types/graphicItem';
+import { MEDIA_FIT_VALUES } from '~~/shared/types/graphicItem';
 import {
 	DECK_LIST_VIEW_VALUES,
 	GAME_WINS_BOX_ORIENTATION_VALUES,
@@ -117,7 +122,11 @@ function jsonByteLength(value: unknown): number {
 	return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
 
-export const screenSlugSchema = z.string().min(1).max(50).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens');
+export const screenSlugSchema = z
+	.string()
+	.min(1)
+	.max(50)
+	.regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens');
 
 /* ────────────────────────────────────────────────
  * Mode config Zod schemas (strict — no unknown keys)
@@ -130,30 +139,36 @@ const pixelPositionSchema = finiteNumberSchema.min(-MAX_PIXEL_VALUE).max(MAX_PIX
 const nonNegativePixelSchema = finiteNumberSchema.nonnegative().max(MAX_PIXEL_VALUE);
 const cssColorSchema = z.string().min(1).max(500);
 const optionalCssColorSchema = cssColorSchema.optional();
-const graphicAssetReferenceSchema = z.object({
-	assetId: z.string().min(1).max(100).transform(graphicAssetId),
-	revisionId: z.string().min(1).max(100).transform(graphicAssetRevisionId),
-}).strict();
+const graphicAssetReferenceSchema = z
+	.object({
+		assetId: z.string().min(1).max(100).transform(graphicAssetId),
+		revisionId: z.string().min(1).max(100).transform(graphicAssetRevisionId),
+	})
+	.strict();
 
 /**
  * One media Graphic Input value on the wire: an exact revision, the same shape
  * wherever the choice is made — an authored default here, an operator's runtime
  * selection in the Broadcast Graphics Live Session.
  */
-const mediaGraphicInputValueSchema = z.object({
-	assetId: z.string().min(1).max(100).transform(graphicAssetId),
-	revisionId: z.string().min(1).max(100).transform(graphicAssetRevisionId),
-	videoCompatibility: retiredVideoCompatibilitySchema,
-}).strict();
+const mediaGraphicInputValueSchema = z
+	.object({
+		assetId: z.string().min(1).max(100).transform(graphicAssetId),
+		revisionId: z.string().min(1).max(100).transform(graphicAssetRevisionId),
+		videoCompatibility: retiredVideoCompatibilitySchema,
+	})
+	.strict();
 
-const screenMediaBackgroundConfigSchema = z.object({
-	enabled: z.boolean(),
-	source: screenMediaSourceSchema,
-	fit: z.enum(MEDIA_FIT_VALUES),
-	opacity: opacitySchema,
-	playbackRate: screenMediaPlaybackRateSchema,
-	loop: z.boolean(),
-}).strict();
+const screenMediaBackgroundConfigSchema = z
+	.object({
+		enabled: z.boolean(),
+		source: screenMediaSourceSchema,
+		fit: z.enum(MEDIA_FIT_VALUES),
+		opacity: opacitySchema,
+		playbackRate: screenMediaPlaybackRateSchema,
+		loop: z.boolean(),
+	})
+	.strict();
 
 /** The field a mode's configuration gains by declaring a Background Layer stack. */
 const BACKGROUND_LAYERS_CONFIG_SHAPE = {
@@ -175,22 +190,28 @@ type ServerFieldSchemas<Shape extends z.ZodRawShape> = {
  * A mode's complete fields: the contract's, each server-validated one replaced
  * by the server's schema, plus `backgroundLayers` when the mode declares a stack.
  */
-type ModeConfigShape<M extends ScreenMode> = Extract<{
-	[K in keyof ContractShape<M>]: K extends ServerValidatedKeys<ContractShape<M>>
-		? z.ZodType<z.output<ContractShape<M>[K]>>
-		: ContractShape<M>[K];
-} & (M extends BackgroundLayersCapableMode ? typeof BACKGROUND_LAYERS_CONFIG_SHAPE : unknown), z.ZodRawShape>;
+type ModeConfigShape<M extends ScreenMode> = Extract<
+	{
+		[K in keyof ContractShape<M>]: K extends ServerValidatedKeys<ContractShape<M>>
+			? z.ZodType<z.output<ContractShape<M>[K]>>
+			: ContractShape<M>[K];
+	} & (M extends BackgroundLayersCapableMode ? typeof BACKGROUND_LAYERS_CONFIG_SHAPE : unknown),
+	z.ZodRawShape
+>;
 
 /**
  * A PATCH body: every field optional and nullable, `null` being the "delete this
  * key" sentinel, except an authored stack, which a PATCH may replace but never
  * delete.
  */
-type ModeConfigPatchShape<Shape, AuthoredStack extends PropertyKey> = Extract<{
-	[K in keyof Shape]: K extends AuthoredStack
-		? z.ZodOptional<Extract<Shape[K], z.ZodType>>
-		: z.ZodOptional<z.ZodNullable<Extract<Shape[K], z.ZodType>>>;
-}, z.ZodRawShape>;
+type ModeConfigPatchShape<Shape, AuthoredStack extends PropertyKey> = Extract<
+	{
+		[K in keyof Shape]: K extends AuthoredStack
+			? z.ZodOptional<Extract<Shape[K], z.ZodType>>
+			: z.ZodOptional<z.ZodNullable<Extract<Shape[K], z.ZodType>>>;
+	},
+	z.ZodRawShape
+>;
 
 /**
  * One mode's write forms, all derived from its config contract, so none restates
@@ -228,33 +249,40 @@ type ModeConfigPatchShape<Shape, AuthoredStack extends PropertyKey> = Extract<{
  */
 function configContractModeForms<M extends ScreenMode>(
 	mode: M,
-	...[serverFields]: [ServerValidatedKeys<ContractShape<M>>] extends [never] ? [] : [ServerFieldSchemas<ContractShape<M>>]
+	...[serverFields]: [ServerValidatedKeys<ContractShape<M>>] extends [never]
+		? []
+		: [ServerFieldSchemas<ContractShape<M>>]
 ) {
 	const contract = screenModeConfigContract(mode);
 	const supplied: Partial<Record<string, z.ZodType>> = serverFields ?? {};
-	const own = Object.fromEntries(Object.entries(contract.shape as Record<string, z.ZodType>).map(([key, field]) => {
-		if (!isServerValidatedField(field))
-			return [key, field];
-		const serverField = supplied[key];
-		if (!serverField)
-			throw new Error(`Screen Mode "${mode}" config field "${key}" is server-validated, but the server supplies no schema for it.`);
-		return [key, serverField];
-	}));
-	const shape = (screenModeSupportsBackgroundLayers(mode)
-		? {
-				...own,
-				...BACKGROUND_LAYERS_CONFIG_SHAPE,
-			}
-		: own) as ModeConfigShape<M>;
+	const own = Object.fromEntries(
+		Object.entries(contract.shape as Record<string, z.ZodType>).map(([key, field]) => {
+			if (!isServerValidatedField(field)) return [key, field];
+			const serverField = supplied[key];
+			if (!serverField)
+				throw new Error(
+					`Screen Mode "${mode}" config field "${key}" is server-validated, but the server supplies no schema for it.`,
+				);
+			return [key, serverField];
+		}),
+	);
+	const shape = (
+		screenModeSupportsBackgroundLayers(mode)
+			? {
+					...own,
+					...BACKGROUND_LAYERS_CONFIG_SHAPE,
+				}
+			: own
+	) as ModeConfigShape<M>;
 	const schema = z.object(shape).strict();
 
 	const authoredStacks: readonly string[] = contract.authoredStacks;
-	const patchShape = Object.fromEntries(Object.entries(shape as Record<string, z.ZodType>).map(([key, field]) => [
-		key,
-		authoredStacks.includes(key)
-			? field.optional()
-			: field.nullable().optional(),
-	])) as ModeConfigPatchShape<ModeConfigShape<M>, ContractOf<M>['authoredStacks'][number]>;
+	const patchShape = Object.fromEntries(
+		Object.entries(shape as Record<string, z.ZodType>).map(([key, field]) => [
+			key,
+			authoredStacks.includes(key) ? field.optional() : field.nullable().optional(),
+		]),
+	) as ModeConfigPatchShape<ModeConfigShape<M>, ContractOf<M>['authoredStacks'][number]>;
 
 	// A former field may still be in what a client read, so a write naming one
 	// is accepted and stores the current field its contract upgrades it to, or
@@ -268,19 +296,23 @@ function configContractModeForms<M extends ScreenMode>(
 
 const featureMatchOverlayAnchorValueSchema = z.enum(FEATURE_MATCH_OVERLAY_ANCHOR_VALUES);
 
-const featureMatchOverlayRectSchema = z.object({
-	x: pixelPositionSchema,
-	y: pixelPositionSchema,
-	width: pixelSizeSchema,
-	height: pixelSizeSchema,
-}).strict();
+const featureMatchOverlayRectSchema = z
+	.object({
+		x: pixelPositionSchema,
+		y: pixelPositionSchema,
+		width: pixelSizeSchema,
+		height: pixelSizeSchema,
+	})
+	.strict();
 
-const featureMatchOverlayBorderSidesSchema = z.object({
-	borderTopVisible: z.boolean().optional(),
-	borderRightVisible: z.boolean().optional(),
-	borderBottomVisible: z.boolean().optional(),
-	borderLeftVisible: z.boolean().optional(),
-}).strict();
+const featureMatchOverlayBorderSidesSchema = z
+	.object({
+		borderTopVisible: z.boolean().optional(),
+		borderRightVisible: z.boolean().optional(),
+		borderBottomVisible: z.boolean().optional(),
+		borderLeftVisible: z.boolean().optional(),
+	})
+	.strict();
 
 /**
  * A look field the Frame or a Source Item stored before its fill, border and
@@ -309,56 +341,62 @@ const retiredBorderGlowShape = {
  * Per-side border visibility and per-corner radii stay here because the Frame and
  * its Source Items are host capability the Host Contract leaves with the host.
  */
-const featureMatchSourceFramingStyleSchema = featureMatchOverlayBorderSidesSchema.extend({
-	borderRadius: nonNegativePixelSchema.optional(),
-	borderRadiusTopLeft: nonNegativePixelSchema.optional(),
-	borderRadiusTopRight: nonNegativePixelSchema.optional(),
-	borderRadiusBottomRight: nonNegativePixelSchema.optional(),
-	borderRadiusBottomLeft: nonNegativePixelSchema.optional(),
-	glowPosition: z.enum(['both', 'inside', 'outside']).optional(),
-	backgroundColor: retiredLookField(optionalCssColorSchema),
-	backgroundOpacity: retiredLookField(opacitySchema),
-	backgroundGradient: retiredLookField(z.string().max(1000)),
-	...retiredBorderGlowShape,
-}).strict();
+const featureMatchSourceFramingStyleSchema = featureMatchOverlayBorderSidesSchema
+	.extend({
+		borderRadius: nonNegativePixelSchema.optional(),
+		borderRadiusTopLeft: nonNegativePixelSchema.optional(),
+		borderRadiusTopRight: nonNegativePixelSchema.optional(),
+		borderRadiusBottomRight: nonNegativePixelSchema.optional(),
+		borderRadiusBottomLeft: nonNegativePixelSchema.optional(),
+		glowPosition: z.enum(['both', 'inside', 'outside']).optional(),
+		backgroundColor: retiredLookField(optionalCssColorSchema),
+		backgroundOpacity: retiredLookField(opacitySchema),
+		backgroundGradient: retiredLookField(z.string().max(1000)),
+		...retiredBorderGlowShape,
+	})
+	.strict();
 
 /**
  * The Frame: its own opacity, image, video, Animation Effect switch and which
  * canvas edges its border runs along. Its fill, border and glow are the
  * `frame-surface` Mode Token, its effect `frame-animation-effect` (#831).
  */
-const featureMatchOverlayFrameConfigSchema = featureMatchOverlayBorderSidesSchema.extend({
-	opacity: opacitySchema,
-	backgroundImage: screenMediaSourceSchema.optional(),
-	backgroundImageFit: z.enum(MEDIA_FIT_VALUES).optional(),
-	mediaBackground: screenMediaBackgroundConfigSchema.optional(),
-	// The stored-payload wrapper rather than the plain config schema: every
-	// layout write re-sends the whole stored layout, so a pre-rebuild animation
-	// bag resets to absent here instead of vetoing the edit it rides along on.
-	animation: storedFrameAnimationConfigSchema.optional(),
-	backgroundColor: retiredLookField(cssColorSchema),
-	gradient: retiredLookField(z.string().max(1000)),
-	...retiredBorderGlowShape,
-}).strict();
+const featureMatchOverlayFrameConfigSchema = featureMatchOverlayBorderSidesSchema
+	.extend({
+		opacity: opacitySchema,
+		backgroundImage: screenMediaSourceSchema.optional(),
+		backgroundImageFit: z.enum(MEDIA_FIT_VALUES).optional(),
+		mediaBackground: screenMediaBackgroundConfigSchema.optional(),
+		// The stored-payload wrapper rather than the plain config schema: every
+		// layout write re-sends the whole stored layout, so a pre-rebuild animation
+		// bag resets to absent here instead of vetoing the edit it rides along on.
+		animation: storedFrameAnimationConfigSchema.optional(),
+		backgroundColor: retiredLookField(cssColorSchema),
+		gradient: retiredLookField(z.string().max(1000)),
+		...retiredBorderGlowShape,
+	})
+	.strict();
 
 /**
  * A Source Item: the one Feature Match Overlay-specific Graphic Item Definition,
  * and the only Graphic Item a Feature Match Layout stores outside its shared
  * composition. Top-level only — a Graphic Group never contains one.
  */
-const featureMatchSourceItemConfigSchema = featureMatchOverlayRectSchema.extend({
-	id: z.string().min(1).max(100),
-	label: z.string().min(1).max(100),
-	visible: z.boolean(),
-	locked: z.boolean().optional(),
-	anchor: featureMatchOverlayAnchorValueSchema.optional(),
-	configurationVersion: z.literal(FEATURE_MATCH_SOURCE_ITEM_CONFIGURATION_VERSION).optional(),
-	// A closed vocabulary, not free text: a role is the one thing a Source Item
-	// declares that means anything on another installation.
-	sourceRole: z.enum(FEATURE_MATCH_SOURCE_ROLE_VALUES).optional(),
-	frameCutout: z.boolean(),
-	framingStyle: featureMatchSourceFramingStyleSchema.optional(),
-}).strict() satisfies z.ZodType<FeatureMatchSourceItemConfig>;
+const featureMatchSourceItemConfigSchema = featureMatchOverlayRectSchema
+	.extend({
+		id: z.string().min(1).max(100),
+		label: z.string().min(1).max(100),
+		visible: z.boolean(),
+		locked: z.boolean().optional(),
+		anchor: featureMatchOverlayAnchorValueSchema.optional(),
+		configurationVersion: z.literal(FEATURE_MATCH_SOURCE_ITEM_CONFIGURATION_VERSION).optional(),
+		// A closed vocabulary, not free text: a role is the one thing a Source Item
+		// declares that means anything on another installation.
+		sourceRole: z.enum(FEATURE_MATCH_SOURCE_ROLE_VALUES).optional(),
+		frameCutout: z.boolean(),
+		framingStyle: featureMatchSourceFramingStyleSchema.optional(),
+	})
+	.strict() satisfies z.ZodType<FeatureMatchSourceItemConfig>;
 
 /* ────────────────────────────────────────────────
  * Shared Graphics Foundation vocabulary
@@ -374,75 +412,102 @@ const graphicRotationSchema = finiteNumberSchema.min(-360).max(360);
  * whichever branch happens to match first.
  */
 const graphicFontSelectionSchema = z.discriminatedUnion('kind', [
-	z.object({
-		kind: z.literal('application'),
-		fontId: z.enum(GRAPHIC_FONT_IDS),
-	}).strict(),
-	z.object({
-		kind: z.literal('asset'),
-		reference: graphicAssetReferenceSchema,
-	}).strict(),
+	z
+		.object({
+			kind: z.literal('application'),
+			fontId: z.enum(GRAPHIC_FONT_IDS),
+		})
+		.strict(),
+	z
+		.object({
+			kind: z.literal('asset'),
+			reference: graphicAssetReferenceSchema,
+		})
+		.strict(),
 ]);
 
-const graphicTypographySchema = z.object({
-	font: graphicFontSelectionSchema,
-	...graphicTypographyFields,
-	textAlign: z.enum(GRAPHIC_TEXT_ALIGN_VALUES),
-	color: cssColorSchema,
-}).strict();
+const graphicTypographySchema = z
+	.object({
+		font: graphicFontSelectionSchema,
+		...graphicTypographyFields,
+		textAlign: z.enum(GRAPHIC_TEXT_ALIGN_VALUES),
+		color: cssColorSchema,
+	})
+	.strict();
 
-const graphicFillStopSchema = z.object({
-	color: cssColorSchema,
-	position: opacitySchema,
-	opacity: opacitySchema,
-}).strict();
+const graphicFillStopSchema = z
+	.object({
+		color: cssColorSchema,
+		position: opacitySchema,
+		opacity: opacitySchema,
+	})
+	.strict();
 
 const graphicFillSchema = z.discriminatedUnion('type', [
-	z.object({
-		type: z.literal('solid'),
-		color: cssColorSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('linear-gradient'),
-		angle: finiteNumberSchema.min(-360).max(360),
-		stops: z.array(graphicFillStopSchema)
-			.min(MIN_GRAPHIC_FILL_STOPS)
-			.max(MAX_GRAPHIC_FILL_STOPS),
-	}).strict(),
+	z
+		.object({
+			type: z.literal('solid'),
+			color: cssColorSchema,
+		})
+		.strict(),
+	z
+		.object({
+			type: z.literal('linear-gradient'),
+			angle: finiteNumberSchema.min(-360).max(360),
+			stops: z.array(graphicFillStopSchema).min(MIN_GRAPHIC_FILL_STOPS).max(MAX_GRAPHIC_FILL_STOPS),
+		})
+		.strict(),
 ]);
 
-const graphicSurfaceStyleSchema = z.object({
-	fill: graphicFillSchema,
-	fillOpacity: opacitySchema,
-	outline: z.object({
-		color: cssColorSchema,
-		width: nonNegativePixelSchema.max(500),
-	}).strict().optional(),
-	glow: z.object({
-		color: cssColorSchema,
-		size: nonNegativePixelSchema.max(500),
-		opacity: opacitySchema,
-	}).strict().optional(),
-}).strict();
+const graphicSurfaceStyleSchema = z
+	.object({
+		fill: graphicFillSchema,
+		fillOpacity: opacitySchema,
+		outline: z
+			.object({
+				color: cssColorSchema,
+				width: nonNegativePixelSchema.max(500),
+			})
+			.strict()
+			.optional(),
+		glow: z
+			.object({
+				color: cssColorSchema,
+				size: nonNegativePixelSchema.max(500),
+				opacity: opacitySchema,
+			})
+			.strict()
+			.optional(),
+	})
+	.strict();
 
 /* Graphic Animation: bounded recipes rather than a keyframe timeline. */
 
 const graphicAnimationChannelsShape = {
 	fade: z.object({ opacity: opacitySchema }).strict().optional(),
-	slide: z.object({
-		direction: z.enum(GRAPHIC_SLIDE_DIRECTION_VALUES),
-		distanceMode: z.enum(GRAPHIC_SLIDE_DISTANCE_MODE_VALUES),
-		// Ignored while the mode clears the owner's parent, exactly as a square
-		// Shape Geometry corner ignores its size.
-		distance: finiteNumberSchema.nonnegative().max(MAX_GRAPHIC_SLIDE_DISTANCE_PX),
-	}).strict().optional(),
-	scale: z.object({
-		factor: finiteNumberSchema.min(0).max(MAX_GRAPHIC_ANIMATION_SCALE),
-		origin: z.enum(GRAPHIC_ANIMATION_ORIGIN_VALUES),
-	}).strict().optional(),
-	reveal: z.object({
-		edge: z.enum(GRAPHIC_REVEAL_EDGE_VALUES),
-	}).strict().optional(),
+	slide: z
+		.object({
+			direction: z.enum(GRAPHIC_SLIDE_DIRECTION_VALUES),
+			distanceMode: z.enum(GRAPHIC_SLIDE_DISTANCE_MODE_VALUES),
+			// Ignored while the mode clears the owner's parent, exactly as a square
+			// Shape Geometry corner ignores its size.
+			distance: finiteNumberSchema.nonnegative().max(MAX_GRAPHIC_SLIDE_DISTANCE_PX),
+		})
+		.strict()
+		.optional(),
+	scale: z
+		.object({
+			factor: finiteNumberSchema.min(0).max(MAX_GRAPHIC_ANIMATION_SCALE),
+			origin: z.enum(GRAPHIC_ANIMATION_ORIGIN_VALUES),
+		})
+		.strict()
+		.optional(),
+	reveal: z
+		.object({
+			edge: z.enum(GRAPHIC_REVEAL_EDGE_VALUES),
+		})
+		.strict()
+		.optional(),
 };
 
 const graphicAnimationRecipeShape = {
@@ -456,14 +521,16 @@ const graphicAnimationRecipeShape = {
 
 const graphicAnimationRecipeSchema = z.object(graphicAnimationRecipeShape).strict();
 
-const graphicOnScreenAnimationRecipeSchema = z.object({
-	...graphicAnimationRecipeShape,
-	pause: finiteNumberSchema.nonnegative().max(MAX_GRAPHIC_ANIMATION_PAUSE_MS),
-	repeat: z.union([
-		finiteNumberSchema.int().min(MIN_GRAPHIC_ANIMATION_REPEAT).max(MAX_GRAPHIC_ANIMATION_REPEAT),
-		z.literal(GRAPHIC_ANIMATION_REPEAT_INDEFINITE),
-	]),
-}).strict();
+const graphicOnScreenAnimationRecipeSchema = z
+	.object({
+		...graphicAnimationRecipeShape,
+		pause: finiteNumberSchema.nonnegative().max(MAX_GRAPHIC_ANIMATION_PAUSE_MS),
+		repeat: z.union([
+			finiteNumberSchema.int().min(MIN_GRAPHIC_ANIMATION_REPEAT).max(MAX_GRAPHIC_ANIMATION_REPEAT),
+			z.literal(GRAPHIC_ANIMATION_REPEAT_INDEFINITE),
+		]),
+	})
+	.strict();
 
 /**
  * The bound on a Graphic Item's identity, and on every id that names one.
@@ -500,21 +567,25 @@ export const MAX_GRAPHIC_ITEM_ID_LENGTH = 64;
  */
 const MAX_GRAPHIC_ANIMATION_STAGGER_ITEMS = 100;
 
-const graphicAnimationStaggerSchema = z.object({
-	order: z.enum(GRAPHIC_ANIMATION_STAGGER_ORDER_VALUES),
-	step: finiteNumberSchema.nonnegative().max(MAX_GRAPHIC_ANIMATION_STAGGER_STEP_MS),
-	itemIds: z.array(z.string().min(1).max(MAX_GRAPHIC_ITEM_ID_LENGTH)).max(MAX_GRAPHIC_ANIMATION_STAGGER_ITEMS),
-}).strict();
+const graphicAnimationStaggerSchema = z
+	.object({
+		order: z.enum(GRAPHIC_ANIMATION_STAGGER_ORDER_VALUES),
+		step: finiteNumberSchema.nonnegative().max(MAX_GRAPHIC_ANIMATION_STAGGER_STEP_MS),
+		itemIds: z
+			.array(z.string().min(1).max(MAX_GRAPHIC_ITEM_ID_LENGTH))
+			.max(MAX_GRAPHIC_ANIMATION_STAGGER_ITEMS),
+	})
+	.strict();
 
 /**
  * At most one recipe per lifecycle phase, stated structurally: the phases are the
  * keys of one object, so a second enter recipe has nowhere to go.
  */
 const graphicAnimationShape = {
-	'enter': graphicAnimationRecipeSchema.optional(),
+	enter: graphicAnimationRecipeSchema.optional(),
 	'on-screen': graphicOnScreenAnimationRecipeSchema.optional(),
-	'update': graphicAnimationRecipeSchema.optional(),
-	'exit': graphicAnimationRecipeSchema.optional(),
+	update: graphicAnimationRecipeSchema.optional(),
+	exit: graphicAnimationRecipeSchema.optional(),
 };
 
 const graphicAnimationSchema = z.object(graphicAnimationShape).strict();
@@ -542,29 +613,35 @@ const graphicAnimationSchema = z.object(graphicAnimationShape).strict();
  * hand, and refusing it is the correct answer rather than a regression of the
  * deletion tolerance.
  */
-const GRAPHIC_STAGGER_SUBSET_MESSAGE
-	= 'A Graphic Animation Stagger must not name more Graphic Items than its container holds';
+const GRAPHIC_STAGGER_SUBSET_MESSAGE =
+	'A Graphic Animation Stagger must not name more Graphic Items than its container holds';
 
 function graphicStaggerNamesASubset(
-	container: { animation?: { stagger?: Record<string, { itemIds: readonly string[] } | undefined> } },
+	container: {
+		animation?: { stagger?: Record<string, { itemIds: readonly string[] } | undefined> };
+	},
 	itemCount: number,
 ): boolean {
 	const stagger = container.animation?.stagger;
-	if (!stagger)
-		return true;
-	return Object.values(stagger).every(phase => (phase?.itemIds.length ?? 0) <= itemCount);
+	if (!stagger) return true;
+	return Object.values(stagger).every((phase) => (phase?.itemIds.length ?? 0) <= itemCount);
 }
 
 /** Only a container — a Broadcast Graphic or a Graphic Group — staggers direct items. */
-const graphicContainerAnimationSchema = z.object({
-	...graphicAnimationShape,
-	stagger: z.object({
-		'enter': graphicAnimationStaggerSchema.optional(),
-		'on-screen': graphicAnimationStaggerSchema.optional(),
-		'update': graphicAnimationStaggerSchema.optional(),
-		'exit': graphicAnimationStaggerSchema.optional(),
-	}).strict().optional(),
-}).strict();
+const graphicContainerAnimationSchema = z
+	.object({
+		...graphicAnimationShape,
+		stagger: z
+			.object({
+				enter: graphicAnimationStaggerSchema.optional(),
+				'on-screen': graphicAnimationStaggerSchema.optional(),
+				update: graphicAnimationStaggerSchema.optional(),
+				exit: graphicAnimationStaggerSchema.optional(),
+			})
+			.strict()
+			.optional(),
+	})
+	.strict();
 
 /* ────────────────────────────────────────────────
  * Graphic Inputs
@@ -618,10 +695,14 @@ export {
 	MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT,
 };
 
-const graphicInputKeySchema = z.string()
+const graphicInputKeySchema = z
+	.string()
 	.min(1)
 	.max(MAX_GRAPHIC_INPUT_KEY_LENGTH)
-	.regex(GRAPHIC_INPUT_KEY_PATTERN, 'A Graphic Input key must start with a letter and contain only letters, digits, underscores, and hyphens');
+	.regex(
+		GRAPHIC_INPUT_KEY_PATTERN,
+		'A Graphic Input key must start with a letter and contain only letters, digits, underscores, and hyphens',
+	);
 
 const graphicInputLabelSchema = z.string().min(1).max(MAX_GRAPHIC_INPUT_LABEL_LENGTH);
 
@@ -633,66 +714,89 @@ const graphicInputDeclarationBaseShape = {
 };
 
 const graphicInputDeclarationSchema = z.discriminatedUnion('type', [
-	z.object({
-		...graphicInputDeclarationBaseShape,
-		type: z.literal('text'),
-		default: z.string().max(MAX_GRAPHIC_TEXT_LENGTH),
-		// A declared bound never exceeds the bound on a Text Graphic Item's own
-		// stored template: a value no template could hold is not a useful value.
-		maxLength: z.number().int().min(1).max(MAX_GRAPHIC_TEXT_LENGTH),
-	}).strict(),
-	z.object({
-		...graphicInputDeclarationBaseShape,
-		type: z.literal('number'),
-		default: finiteNumberSchema.nullable(),
-		min: finiteNumberSchema.optional(),
-		max: finiteNumberSchema.optional(),
-		integer: z.boolean(),
-	}).strict(),
-	z.object({
-		...graphicInputDeclarationBaseShape,
-		type: z.literal('toggle'),
-		default: z.boolean(),
-	}).strict(),
-	z.object({
-		...graphicInputDeclarationBaseShape,
-		type: z.literal('choice'),
-		default: z.string().max(MAX_GRAPHIC_INPUT_CHOICE_LENGTH).nullable(),
-		options: z.array(z.object({
-			value: z.string().min(1).max(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
-			label: z.string().min(1).max(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
-		}).strict()).max(MAX_GRAPHIC_INPUT_CHOICE_OPTIONS),
-	}).strict(),
-	z.object({
-		...graphicInputDeclarationBaseShape,
-		type: z.literal('color'),
-		default: cssColorSchema.nullable(),
-	}).strict(),
-	z.object({
-		...graphicInputDeclarationBaseShape,
-		type: z.literal('media'),
-		// A media Graphic Input's default is a pinned Graphics Asset Library
-		// revision, exactly as an authored asset reference is.
-		default: mediaGraphicInputValueSchema.nullable(),
-		mediaKind: z.enum(GRAPHIC_MEDIA_KIND_VALUES),
-	}).strict(),
+	z
+		.object({
+			...graphicInputDeclarationBaseShape,
+			type: z.literal('text'),
+			default: z.string().max(MAX_GRAPHIC_TEXT_LENGTH),
+			// A declared bound never exceeds the bound on a Text Graphic Item's own
+			// stored template: a value no template could hold is not a useful value.
+			maxLength: z.number().int().min(1).max(MAX_GRAPHIC_TEXT_LENGTH),
+		})
+		.strict(),
+	z
+		.object({
+			...graphicInputDeclarationBaseShape,
+			type: z.literal('number'),
+			default: finiteNumberSchema.nullable(),
+			min: finiteNumberSchema.optional(),
+			max: finiteNumberSchema.optional(),
+			integer: z.boolean(),
+		})
+		.strict(),
+	z
+		.object({
+			...graphicInputDeclarationBaseShape,
+			type: z.literal('toggle'),
+			default: z.boolean(),
+		})
+		.strict(),
+	z
+		.object({
+			...graphicInputDeclarationBaseShape,
+			type: z.literal('choice'),
+			default: z.string().max(MAX_GRAPHIC_INPUT_CHOICE_LENGTH).nullable(),
+			options: z
+				.array(
+					z
+						.object({
+							value: z.string().min(1).max(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
+							label: z.string().min(1).max(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
+						})
+						.strict(),
+				)
+				.max(MAX_GRAPHIC_INPUT_CHOICE_OPTIONS),
+		})
+		.strict(),
+	z
+		.object({
+			...graphicInputDeclarationBaseShape,
+			type: z.literal('color'),
+			default: cssColorSchema.nullable(),
+		})
+		.strict(),
+	z
+		.object({
+			...graphicInputDeclarationBaseShape,
+			type: z.literal('media'),
+			// A media Graphic Input's default is a pinned Graphics Asset Library
+			// revision, exactly as an authored asset reference is.
+			default: mediaGraphicInputValueSchema.nullable(),
+			mediaKind: z.enum(GRAPHIC_MEDIA_KIND_VALUES),
+		})
+		.strict(),
 ]);
 
-const graphicSourceSelectionSchema = z.object({
-	key: graphicInputKeySchema,
-	label: graphicInputLabelSchema,
-	kind: z.enum(GRAPHIC_SOURCE_SELECTION_KIND_VALUES),
-	/**
-	 * A fixed relationship from another Graphic Source Selection instead of an
-	 * operator pick. Whether the named selection exists and whether the relationship
-	 * can yield this kind are checked on the `sources` array, which is the only place
-	 * that can see its siblings.
-	 */
-	from: z.object({
-		sourceKey: graphicInputKeySchema,
-		relation: z.enum(GRAPHIC_SOURCE_RELATION_VALUES),
-	}).strict().optional(),
-}).strict();
+const graphicSourceSelectionSchema = z
+	.object({
+		key: graphicInputKeySchema,
+		label: graphicInputLabelSchema,
+		kind: z.enum(GRAPHIC_SOURCE_SELECTION_KIND_VALUES),
+		/**
+		 * A fixed relationship from another Graphic Source Selection instead of an
+		 * operator pick. Whether the named selection exists and whether the relationship
+		 * can yield this kind are checked on the `sources` array, which is the only place
+		 * that can see its siblings.
+		 */
+		from: z
+			.object({
+				sourceKey: graphicInputKeySchema,
+				relation: z.enum(GRAPHIC_SOURCE_RELATION_VALUES),
+			})
+			.strict()
+			.optional(),
+	})
+	.strict();
 
 /**
  * A Graphic Input Binding names one catalog field.
@@ -713,52 +817,59 @@ const graphicSourceSelectionSchema = z.object({
  * `graphicBindingFields(kind, game)` cannot produce the dead combination in the first
  * place; a hand-written API call can.
  */
-const graphicInputBindingSchema = z.object({
-	inputKey: graphicInputKeySchema,
-	sourceKey: graphicInputKeySchema,
-	fieldId: z.string().min(1).max(100).refine(
-		isKnownGraphicBindingFieldId,
-		'A Graphic Input Binding must name a field from the binding catalog',
-	),
-}).strict();
+const graphicInputBindingSchema = z
+	.object({
+		inputKey: graphicInputKeySchema,
+		sourceKey: graphicInputKeySchema,
+		fieldId: z
+			.string()
+			.min(1)
+			.max(100)
+			.refine(
+				isKnownGraphicBindingFieldId,
+				'A Graphic Input Binding must name a field from the binding catalog',
+			),
+	})
+	.strict();
 
 /**
  * One Social Profile Projection declaration. Referential integrity belongs to
  * the containing Broadcast Graphic, which can see the source and item lists.
  */
-const socialProfileProjectionSchema = z.object({
-	key: graphicInputKeySchema,
-	label: graphicInputLabelSchema,
-	sourceKey: graphicInputKeySchema,
-	presentationGroupId: z.string().min(1).max(MAX_GRAPHIC_ITEM_ID_LENGTH),
-	// Optional on the wire so documents authored before projection re-resolution keep
-	// their established staged behaviour rather than becoming strict-save-invalid.
-	updatePolicy: z.enum(ON_AIR_UPDATE_POLICY_VALUES).optional(),
-	dwellMs: finiteNumberSchema.int()
-		.min(MIN_SOCIAL_PROFILE_DWELL_MS)
-		.max(MAX_SOCIAL_PROFILE_DWELL_MS),
-	transition: z.enum(SOCIAL_PROFILE_TRANSITION_VALUES),
-	transitionDurationMs: finiteNumberSchema.int()
-		.min(MIN_SOCIAL_PROFILE_TRANSITION_DURATION_MS)
-		.max(MAX_SOCIAL_PROFILE_TRANSITION_DURATION_MS),
-}).strict();
+const socialProfileProjectionSchema = z
+	.object({
+		key: graphicInputKeySchema,
+		label: graphicInputLabelSchema,
+		sourceKey: graphicInputKeySchema,
+		presentationGroupId: z.string().min(1).max(MAX_GRAPHIC_ITEM_ID_LENGTH),
+		// Optional on the wire so documents authored before projection re-resolution keep
+		// their established staged behaviour rather than becoming strict-save-invalid.
+		updatePolicy: z.enum(ON_AIR_UPDATE_POLICY_VALUES).optional(),
+		dwellMs: finiteNumberSchema
+			.int()
+			.min(MIN_SOCIAL_PROFILE_DWELL_MS)
+			.max(MAX_SOCIAL_PROFILE_DWELL_MS),
+		transition: z.enum(SOCIAL_PROFILE_TRANSITION_VALUES),
+		transitionDurationMs: finiteNumberSchema
+			.int()
+			.min(MIN_SOCIAL_PROFILE_TRANSITION_DURATION_MS)
+			.max(MAX_SOCIAL_PROFILE_TRANSITION_DURATION_MS),
+	})
+	.strict();
 
 /** Whether every derived Graphic Source Selection names a sibling it can actually follow. */
 function graphicSourceDerivationsResolve(
 	sources: readonly { key: string; kind: string; from?: { sourceKey: string; relation: string } }[],
 ): boolean {
-	const byKey = new Map(sources.map(source => [source.key, source]));
+	const byKey = new Map(sources.map((source) => [source.key, source]));
 
 	return sources.every((source) => {
-		if (!source.from)
-			return true;
+		if (!source.from) return true;
 		const parent = byKey.get(source.from.sourceKey);
-		if (!parent || parent.key === source.key)
-			return false;
-		return graphicSourceRelationKind(
-			parent.kind as never,
-			source.from.relation as never,
-		) === source.kind;
+		if (!parent || parent.key === source.key) return false;
+		return (
+			graphicSourceRelationKind(parent.kind as never, source.from.relation as never) === source.kind
+		);
 	});
 }
 
@@ -772,14 +883,13 @@ function graphicSourceDerivationsResolve(
 function graphicSourceDerivationsAcyclic(
 	sources: readonly { key: string; from?: { sourceKey: string } }[],
 ): boolean {
-	const byKey = new Map(sources.map(source => [source.key, source]));
+	const byKey = new Map(sources.map((source) => [source.key, source]));
 
 	return sources.every((source) => {
 		const seen = new Set<string>([source.key]);
 		let current = source.from?.sourceKey;
 		while (current !== undefined) {
-			if (seen.has(current))
-				return false;
+			if (seen.has(current)) return false;
 			seen.add(current);
 			current = byKey.get(current)?.from?.sourceKey;
 		}
@@ -798,7 +908,10 @@ function graphicSourceDerivationsAcyclic(
  * carries one reads, and dropped, because Style Sets are gone and their values are
  * the document's own literals already. Every other unknown key is still refused.
  */
-const formerGraphicStyleSetLinkSchema = z.unknown().optional().transform(() => undefined);
+const formerGraphicStyleSetLinkSchema = z
+	.unknown()
+	.optional()
+	.transform(() => undefined);
 
 /* ────────────────────────────────────────────────
  * Graphic Item Theme bindings
@@ -812,19 +925,22 @@ function graphicThemeSlotBindingSchema(slot: GraphicThemeSlot) {
 	return z.enum(graphicThemeSlotTokens(slot) as [string, ...string[]]).optional();
 }
 
-const graphicItemThemeBindingsSchema = z.object(Object.fromEntries(
-	GRAPHIC_THEME_SLOT_VALUES.map(slot => [
-		slot,
-		graphicThemeSlotBindingSchema(slot),
-	]),
-)).strict();
+const graphicItemThemeBindingsSchema = z
+	.object(
+		Object.fromEntries(
+			GRAPHIC_THEME_SLOT_VALUES.map((slot) => [slot, graphicThemeSlotBindingSchema(slot)]),
+		),
+	)
+	.strict();
 
 /** A Broadcast Graphic's own bindings: whole-composition motion and nothing else. */
-const graphicContainerThemeBindingsSchema = z.object({
-	'animation.enter': graphicThemeSlotBindingSchema('animation.enter'),
-	'animation.update': graphicThemeSlotBindingSchema('animation.update'),
-	'animation.exit': graphicThemeSlotBindingSchema('animation.exit'),
-}).strict();
+const graphicContainerThemeBindingsSchema = z
+	.object({
+		'animation.enter': graphicThemeSlotBindingSchema('animation.enter'),
+		'animation.update': graphicThemeSlotBindingSchema('animation.update'),
+		'animation.exit': graphicThemeSlotBindingSchema('animation.exit'),
+	})
+	.strict();
 
 const graphicItemBaseShape = {
 	id: z.string().min(1).max(MAX_GRAPHIC_ITEM_ID_LENGTH),
@@ -850,21 +966,26 @@ const graphicItemBaseShape = {
  * Line height and text alignment are absent: they lay out the whole text block
  * rather than one run inside it.
  */
-const graphicPlaceholderStyleSchema = z.object({
-	font: graphicFontSelectionSchema.optional(),
-	fontSize: graphicTypographyFields.fontSize.optional(),
-	fontWeight: graphicTypographyFields.fontWeight.optional(),
-	fontStyle: graphicTypographyFields.fontStyle.optional(),
-	textTransform: graphicTypographyFields.textTransform.optional(),
-	letterSpacing: graphicTypographyFields.letterSpacing.optional(),
-	color: cssColorSchema.optional(),
-}).strict();
+const graphicPlaceholderStyleSchema = z
+	.object({
+		font: graphicFontSelectionSchema.optional(),
+		fontSize: graphicTypographyFields.fontSize.optional(),
+		fontWeight: graphicTypographyFields.fontWeight.optional(),
+		fontStyle: graphicTypographyFields.fontStyle.optional(),
+		textTransform: graphicTypographyFields.textTransform.optional(),
+		letterSpacing: graphicTypographyFields.letterSpacing.optional(),
+		color: cssColorSchema.optional(),
+	})
+	.strict();
 
-const graphicPlaceholderKeySchema = z.string().refine(
-	key => GRAPHIC_INPUT_KEY_PATTERN.test(key)
-		|| readSocialProfileProjectedValueReference(key) !== undefined,
-	'A Graphic Placeholder Style must name a Graphic Input or projected text value',
-);
+const graphicPlaceholderKeySchema = z
+	.string()
+	.refine(
+		(key) =>
+			GRAPHIC_INPUT_KEY_PATTERN.test(key) ||
+			readSocialProfileProjectedValueReference(key) !== undefined,
+		'A Graphic Placeholder Style must name a Graphic Input or projected text value',
+	);
 
 const textGraphicItemShape = {
 	...graphicItemBaseShape,
@@ -874,13 +995,13 @@ const textGraphicItemShape = {
 	overflowPolicy: z.enum(TEXT_OVERFLOW_POLICY_VALUES),
 	minFontSize: finiteNumberSchema.positive().max(MAX_GRAPHIC_FONT_SIZE),
 	surfaceStyle: graphicSurfaceStyleSchema.optional(),
-	placeholderStyles: z.record(
-		graphicPlaceholderKeySchema,
-		graphicPlaceholderStyleSchema,
-	).refine(
-		styles => Object.keys(styles).length <= MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM,
-		`A Text Graphic Item must not define more than ${MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM} Graphic Placeholder Styles`,
-	).optional(),
+	placeholderStyles: z
+		.record(graphicPlaceholderKeySchema, graphicPlaceholderStyleSchema)
+		.refine(
+			(styles) => Object.keys(styles).length <= MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM,
+			`A Text Graphic Item must not define more than ${MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM} Graphic Placeholder Styles`,
+		)
+		.optional(),
 };
 
 const shapeGraphicItemShape = {
@@ -904,10 +1025,12 @@ const mediaGraphicItemShape = {
 	asset: graphicAssetReferenceSchema.optional(),
 	mediaKind: z.enum(GRAPHIC_MEDIA_KIND_VALUES),
 	fit: z.enum(MEDIA_FIT_VALUES),
-	focalPosition: z.object({
-		horizontal: opacitySchema,
-		vertical: opacitySchema,
-	}).strict(),
+	focalPosition: z
+		.object({
+			horizontal: opacitySchema,
+			vertical: opacitySchema,
+		})
+		.strict(),
 	opacity: opacitySchema,
 	clipGeometry: shapeGeometrySchema.optional(),
 	videoCompatibility: retiredVideoCompatibilitySchema,
@@ -1008,7 +1131,9 @@ const deckListGraphicItemShape = {
 const textGraphicItemConfigSchema = z.object(textGraphicItemShape).strict();
 const shapeGraphicItemConfigSchema = z.object(shapeGraphicItemShape).strict();
 const mediaGraphicItemConfigSchema = z.object(mediaGraphicItemShape).strict();
-const socialNetworkIconGraphicItemConfigSchema = z.object(socialNetworkIconGraphicItemShape).strict();
+const socialNetworkIconGraphicItemConfigSchema = z
+	.object(socialNetworkIconGraphicItemShape)
+	.strict();
 const clockGraphicItemConfigSchema = z.object(clockGraphicItemShape).strict();
 const playerLifeGraphicItemConfigSchema = z.object(playerLifeGraphicItemShape).strict();
 const gameWinsGraphicItemConfigSchema = z.object(gameWinsGraphicItemShape).strict();
@@ -1041,11 +1166,13 @@ const seatIndicatorGraphicItemConfigSchema = z.object(seatIndicatorGraphicItemSh
  * Main-axis sizing belongs to a Graphic Group child, so only a child carries
  * one: a top-level Graphic Item has no group to be sized inside.
  */
-const graphicGroupChildSizingSchema = z.object({
-	mode: z.enum(['fixed', 'fill']),
-	size: nonNegativePixelSchema,
-	weight: finiteNumberSchema.min(0).max(100),
-}).strict();
+const graphicGroupChildSizingSchema = z
+	.object({
+		mode: z.enum(['fixed', 'fill']),
+		size: nonNegativePixelSchema,
+		weight: finiteNumberSchema.min(0).max(100),
+	})
+	.strict();
 
 /**
  * A Graphic Group child is any base Graphic Item kind except another Graphic
@@ -1053,73 +1180,98 @@ const graphicGroupChildSizingSchema = z.object({
  * schema rather than a rule something has to check.
  */
 const graphicGroupChildConfigSchema = z.discriminatedUnion('type', [
-	z.object({
-		...textGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...shapeGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...mediaGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...socialNetworkIconGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...clockGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...playerLifeGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...gameWinsGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...deckListGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...commanderDamageGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
-	z.object({
-		...seatIndicatorGraphicItemShape,
-		sizing: graphicGroupChildSizingSchema.optional(),
-	}).strict(),
+	z
+		.object({
+			...textGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...shapeGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...mediaGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...socialNetworkIconGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...clockGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...playerLifeGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...gameWinsGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...deckListGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...commanderDamageGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			...seatIndicatorGraphicItemShape,
+			sizing: graphicGroupChildSizingSchema.optional(),
+		})
+		.strict(),
 ]);
 
-const graphicGroupItemConfigSchema = z.object({
-	...graphicItemBaseShape,
-	type: z.literal('group'),
-	arrangement: z.enum(GRAPHIC_GROUP_ARRANGEMENT_VALUES),
-	padding: nonNegativePixelSchema,
-	gap: nonNegativePixelSchema,
-	align: z.enum(GRAPHIC_GROUP_ALIGN_VALUES),
-	justify: z.enum(GRAPHIC_GROUP_JUSTIFY_VALUES),
-	clip: z.boolean(),
-	geometry: shapeGeometrySchema,
-	surfaceStyle: graphicSurfaceStyleSchema.optional(),
-	defaultChildSurfaceStyle: graphicSurfaceStyleSchema.optional(),
-	// A Graphic Group coordinates the animation of its direct items as well as
-	// its own, so it widens the base item's animation rather than reusing it.
-	animation: graphicContainerAnimationSchema.optional(),
-	children: z.array(graphicGroupChildConfigSchema).max(
-		MAX_GRAPHIC_GROUP_CHILDREN,
-		`A Graphic Group must not contain more than ${MAX_GRAPHIC_GROUP_CHILDREN} Graphic Items`,
-	),
-}).strict().refine(
-	// Its children, not the whole Broadcast Graphic's items: a group orders what it
-	// contains, and the graphic orders its top-level items, of which the group is one.
-	group => graphicStaggerNamesASubset(group, group.children.length),
-	GRAPHIC_STAGGER_SUBSET_MESSAGE,
-);
+const graphicGroupItemConfigSchema = z
+	.object({
+		...graphicItemBaseShape,
+		type: z.literal('group'),
+		arrangement: z.enum(GRAPHIC_GROUP_ARRANGEMENT_VALUES),
+		padding: nonNegativePixelSchema,
+		gap: nonNegativePixelSchema,
+		align: z.enum(GRAPHIC_GROUP_ALIGN_VALUES),
+		justify: z.enum(GRAPHIC_GROUP_JUSTIFY_VALUES),
+		clip: z.boolean(),
+		geometry: shapeGeometrySchema,
+		surfaceStyle: graphicSurfaceStyleSchema.optional(),
+		defaultChildSurfaceStyle: graphicSurfaceStyleSchema.optional(),
+		// A Graphic Group coordinates the animation of its direct items as well as
+		// its own, so it widens the base item's animation rather than reusing it.
+		animation: graphicContainerAnimationSchema.optional(),
+		children: z
+			.array(graphicGroupChildConfigSchema)
+			.max(
+				MAX_GRAPHIC_GROUP_CHILDREN,
+				`A Graphic Group must not contain more than ${MAX_GRAPHIC_GROUP_CHILDREN} Graphic Items`,
+			),
+	})
+	.strict()
+	.refine(
+		// Its children, not the whole Broadcast Graphic's items: a group orders what it
+		// contains, and the graphic orders its top-level items, of which the group is one.
+		(group) => graphicStaggerNamesASubset(group, group.children.length),
+		GRAPHIC_STAGGER_SUBSET_MESSAGE,
+	);
 
 const graphicItemConfigSchema = z.discriminatedUnion('type', [
 	textGraphicItemConfigSchema,
@@ -1185,43 +1337,57 @@ export const MAX_BROADCAST_GRAPHICS_PER_SCREEN = 50;
  */
 export const MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN_WORST_CASE_BYTES = 1_930_214;
 
-function countGraphicItems(items: readonly { type: string; children?: readonly unknown[] }[]): number {
+function countGraphicItems(
+	items: readonly { type: string; children?: readonly unknown[] }[],
+): number {
 	return items.reduce(
-		(total, item) => total + 1 + (item.type === 'group'
-			? (item.children?.length ?? 0)
-			: 0),
+		(total, item) => total + 1 + (item.type === 'group' ? (item.children?.length ?? 0) : 0),
 		0,
 	);
 }
 
-function graphicItemIds(items: readonly { id: string; type: string; children?: readonly { id: string }[] }[]) {
-	return items.flatMap(item => [
+function graphicItemIds(
+	items: readonly { id: string; type: string; children?: readonly { id: string }[] }[],
+) {
+	return items.flatMap((item) => [
 		item.id,
-		...(item.type === 'group'
-			? (item.children ?? []).map(child => child.id)
-			: []),
+		...(item.type === 'group' ? (item.children ?? []).map((child) => child.id) : []),
 	]);
 }
 
-function hasSocialNetworkIcon(items: readonly { type: string; children?: readonly { type: string }[] }[]): boolean {
-	return items.some(item => item.type === 'social-network-icon'
-		|| (item.type === 'group' && item.children?.some(child => child.type === 'social-network-icon')));
+function hasSocialNetworkIcon(
+	items: readonly { type: string; children?: readonly { type: string }[] }[],
+): boolean {
+	return items.some(
+		(item) =>
+			item.type === 'social-network-icon' ||
+			(item.type === 'group' &&
+				item.children?.some((child) => child.type === 'social-network-icon')),
+	);
 }
 
 /** A projected placeholder style is meaningful only in Broadcast Graphics. */
 function hasSocialProfilePlaceholderStyle(items: readonly GraphicItemConfig[]): boolean {
 	function projectedStyle(item: GraphicItemConfig | GraphicGroupChildConfig): boolean {
-		return item.type === 'text' && Object.keys(item.placeholderStyles ?? {})
-			.some(key => readSocialProfileProjectedValueReference(key) !== undefined);
+		return (
+			item.type === 'text' &&
+			Object.keys(item.placeholderStyles ?? {}).some(
+				(key) => readSocialProfileProjectedValueReference(key) !== undefined,
+			)
+		);
 	}
-	return items.some(item => projectedStyle(item)
-		|| (item.type === 'group' && item.children.some(projectedStyle)));
+	return items.some(
+		(item) => projectedStyle(item) || (item.type === 'group' && item.children.some(projectedStyle)),
+	);
 }
 
 /** Every projected consumer stays inside the Presentation Group that supplies it. */
 function socialProfileProjectionConsumersResolve(graphic: BroadcastGraphicConfig): boolean {
 	const presentationGroupByProjection = new Map(
-		(graphic.socialProfileProjections ?? []).map(projection => [projection.key, projection.presentationGroupId]),
+		(graphic.socialProfileProjections ?? []).map((projection) => [
+			projection.key,
+			projection.presentationGroupId,
+		]),
 	);
 
 	function resolves(
@@ -1232,16 +1398,15 @@ function socialProfileProjectionConsumersResolve(graphic: BroadcastGraphicConfig
 			const presentationGroupId = presentationGroupByProjection.get(item.network.projectionKey);
 			return presentationGroupId !== undefined && presentationGroupId === containingGroupId;
 		}
-		if (item.type !== 'text')
-			return true;
+		if (item.type !== 'text') return true;
 		const styleReferences = Object.keys(item.placeholderStyles ?? {})
 			.map(readSocialProfileProjectedValueReference)
-			.filter(reference => reference !== undefined);
-		if (presentationGroupByProjection.size === 0)
-			return styleReferences.length === 0;
+			.filter((reference) => reference !== undefined);
+		if (presentationGroupByProjection.size === 0) return styleReferences.length === 0;
 		if (
-			graphicTextTemplateDottedPlaceholderKeys(item.text)
-				.some(key => readSocialProfileProjectedValueReference(key) === undefined)
+			graphicTextTemplateDottedPlaceholderKeys(item.text).some(
+				(key) => readSocialProfileProjectedValueReference(key) === undefined,
+			)
 		) {
 			return false;
 		}
@@ -1256,125 +1421,135 @@ function socialProfileProjectionConsumersResolve(graphic: BroadcastGraphicConfig
 	}
 
 	return graphic.items.every((item) => {
-		if (item.type !== 'group')
-			return resolves(item, undefined);
-		return item.children.every(child => resolves(child, item.id));
+		if (item.type !== 'group') return resolves(item, undefined);
+		return item.children.every((child) => resolves(child, item.id));
 	});
 }
 
-export const broadcastGraphicConfigSchema = z.object({
-	id: z.string().min(1).max(100),
-	name: z.string().min(1).max(MAX_BROADCAST_GRAPHIC_NAME_LENGTH),
-	// The one Graphic Channel this Broadcast Graphic runs in. Deliberately not checked
-	// against the Screen's declared channels: that is a cross-field rule, and an
-	// object-level refinement never reaches the patch path the editors write through,
-	// so it would hold on one write path and not the other. Membership of a channel the
-	// Screen does not declare resolves to no membership instead, uniformly.
-	channelId: z.string().min(1).max(100).optional(),
-	// Named caps: these are reached before the mode-configuration byte limit, so
-	// the operator learns which cap they hit rather than reading a byte count.
-	items: z.array(graphicItemConfigSchema)
-		.max(
-			MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC,
-			`A Broadcast Graphic must not contain more than ${MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC} Graphic Items`,
-		)
-		// Graphic Item ids are unique within one Broadcast Graphic, including a
-		// Graphic Group's children. Every authoring operation addresses an item by
-		// id alone and resolves it against both levels, so a duplicate would edit,
-		// move, or delete the wrong item. The check belongs on this field rather
-		// than on the object: the mode-configuration patch schema rebuilds each
-		// mode from its field schemas and drops object-level refinements.
-		.refine(
-			items => new Set(graphicItemIds(items)).size === graphicItemIds(items).length,
-			'Graphic Item ids must be unique within one Broadcast Graphic',
-		),
-	// Every cap and uniqueness rule sits on its own array field for the same reason
-	// the Graphic Item ones do: an object-level refinement never reaches the patch
-	// path the editors write through.
-	inputs: z.array(graphicInputDeclarationSchema)
-		.max(
-			MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC,
-			`A Broadcast Graphic must not declare more than ${MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC} Graphic Inputs`,
-		)
-		// A `{inputKey}` placeholder, a Graphic Input Binding, and a Live Control
-		// edit all address an input by key alone, so a duplicate key would render,
-		// bind, and edit whichever one happened to be found first.
-		.refine(
-			inputs => new Set(inputs.map(input => input.key)).size === inputs.length,
-			'Graphic Input keys must be unique within one Broadcast Graphic',
-		)
-		.optional(),
-	sources: z.array(graphicSourceSelectionSchema)
-		.max(
-			MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC,
-			`A Broadcast Graphic must not declare more than ${MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC} Graphic Source Selections`,
-		)
-		.refine(
-			sources => new Set(sources.map(source => source.key)).size === sources.length,
-			'Graphic Source Selection keys must be unique within one Broadcast Graphic',
-		)
-		// A derived Graphic Source Selection is only meaningful if the relationship it
-		// names exists and yields the kind it declares — otherwise it is a selection
-		// that can never resolve, and an operator would have no picker to fix it with.
-		.refine(
-			graphicSourceDerivationsResolve,
-			'A derived Graphic Source Selection must follow a declared selection through a relationship that yields its own kind',
-		)
-		.refine(
-			graphicSourceDerivationsAcyclic,
-			'Graphic Source Selections must not derive from one another in a cycle',
-		)
-		.optional(),
-	bindings: z.array(graphicInputBindingSchema)
-		.max(
-			MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC,
-			`A Broadcast Graphic must not declare more than ${MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC} Graphic Input Bindings`,
-		)
-		// A Graphic Input Binding maps one Graphic Input to one field, so a second
-		// binding for the same input would leave which one resolves undecided.
-		.refine(
-			bindings => new Set(bindings.map(binding => binding.inputKey)).size === bindings.length,
-			'A Graphic Input may have at most one Graphic Input Binding',
-		)
-		.optional(),
-	socialProfileProjections: z.array(socialProfileProjectionSchema)
-		.max(
-			MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC,
-			`A Broadcast Graphic must not declare more than ${MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC} Social Profile Projections`,
-		)
-		.refine(
-			projections => new Set(projections.map(projection => projection.key)).size === projections.length,
-			'Social Profile Projection keys must be unique within one Broadcast Graphic',
-		)
-		.optional(),
-	animation: graphicContainerAnimationSchema.optional(),
-	styleSet: formerGraphicStyleSetLinkSchema,
-	styleRefs: formerGraphicStyleSetLinkSchema,
-	themeBindings: graphicContainerThemeBindingsSchema.optional(),
-}).strict().refine(
-	// Top-level items only: a Graphic Group's children are staggered by the group.
-	graphic => graphicStaggerNamesASubset(graphic, graphic.items.length),
-	GRAPHIC_STAGGER_SUBSET_MESSAGE,
-).refine(
-	(graphic) => {
-		const sources = new Map((graphic.sources ?? []).map(source => [source.key, source]));
+export const broadcastGraphicConfigSchema = z
+	.object({
+		id: z.string().min(1).max(100),
+		name: z.string().min(1).max(MAX_BROADCAST_GRAPHIC_NAME_LENGTH),
+		// The one Graphic Channel this Broadcast Graphic runs in. Deliberately not checked
+		// against the Screen's declared channels: that is a cross-field rule, and an
+		// object-level refinement never reaches the patch path the editors write through,
+		// so it would hold on one write path and not the other. Membership of a channel the
+		// Screen does not declare resolves to no membership instead, uniformly.
+		channelId: z.string().min(1).max(100).optional(),
+		// Named caps: these are reached before the mode-configuration byte limit, so
+		// the operator learns which cap they hit rather than reading a byte count.
+		items: z
+			.array(graphicItemConfigSchema)
+			.max(
+				MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC,
+				`A Broadcast Graphic must not contain more than ${MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC} Graphic Items`,
+			)
+			// Graphic Item ids are unique within one Broadcast Graphic, including a
+			// Graphic Group's children. Every authoring operation addresses an item by
+			// id alone and resolves it against both levels, so a duplicate would edit,
+			// move, or delete the wrong item. The check belongs on this field rather
+			// than on the object: the mode-configuration patch schema rebuilds each
+			// mode from its field schemas and drops object-level refinements.
+			.refine(
+				(items) => new Set(graphicItemIds(items)).size === graphicItemIds(items).length,
+				'Graphic Item ids must be unique within one Broadcast Graphic',
+			),
+		// Every cap and uniqueness rule sits on its own array field for the same reason
+		// the Graphic Item ones do: an object-level refinement never reaches the patch
+		// path the editors write through.
+		inputs: z
+			.array(graphicInputDeclarationSchema)
+			.max(
+				MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC,
+				`A Broadcast Graphic must not declare more than ${MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC} Graphic Inputs`,
+			)
+			// A `{inputKey}` placeholder, a Graphic Input Binding, and a Live Control
+			// edit all address an input by key alone, so a duplicate key would render,
+			// bind, and edit whichever one happened to be found first.
+			.refine(
+				(inputs) => new Set(inputs.map((input) => input.key)).size === inputs.length,
+				'Graphic Input keys must be unique within one Broadcast Graphic',
+			)
+			.optional(),
+		sources: z
+			.array(graphicSourceSelectionSchema)
+			.max(
+				MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC,
+				`A Broadcast Graphic must not declare more than ${MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC} Graphic Source Selections`,
+			)
+			.refine(
+				(sources) => new Set(sources.map((source) => source.key)).size === sources.length,
+				'Graphic Source Selection keys must be unique within one Broadcast Graphic',
+			)
+			// A derived Graphic Source Selection is only meaningful if the relationship it
+			// names exists and yields the kind it declares — otherwise it is a selection
+			// that can never resolve, and an operator would have no picker to fix it with.
+			.refine(
+				graphicSourceDerivationsResolve,
+				'A derived Graphic Source Selection must follow a declared selection through a relationship that yields its own kind',
+			)
+			.refine(
+				graphicSourceDerivationsAcyclic,
+				'Graphic Source Selections must not derive from one another in a cycle',
+			)
+			.optional(),
+		bindings: z
+			.array(graphicInputBindingSchema)
+			.max(
+				MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC,
+				`A Broadcast Graphic must not declare more than ${MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC} Graphic Input Bindings`,
+			)
+			// A Graphic Input Binding maps one Graphic Input to one field, so a second
+			// binding for the same input would leave which one resolves undecided.
+			.refine(
+				(bindings) => new Set(bindings.map((binding) => binding.inputKey)).size === bindings.length,
+				'A Graphic Input may have at most one Graphic Input Binding',
+			)
+			.optional(),
+		socialProfileProjections: z
+			.array(socialProfileProjectionSchema)
+			.max(
+				MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC,
+				`A Broadcast Graphic must not declare more than ${MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHIC} Social Profile Projections`,
+			)
+			.refine(
+				(projections) =>
+					new Set(projections.map((projection) => projection.key)).size === projections.length,
+				'Social Profile Projection keys must be unique within one Broadcast Graphic',
+			)
+			.optional(),
+		animation: graphicContainerAnimationSchema.optional(),
+		styleSet: formerGraphicStyleSetLinkSchema,
+		styleRefs: formerGraphicStyleSetLinkSchema,
+		themeBindings: graphicContainerThemeBindingsSchema.optional(),
+	})
+	.strict()
+	.refine(
+		// Top-level items only: a Graphic Group's children are staggered by the group.
+		(graphic) => graphicStaggerNamesASubset(graphic, graphic.items.length),
+		GRAPHIC_STAGGER_SUBSET_MESSAGE,
+	)
+	.refine((graphic) => {
+		const sources = new Map((graphic.sources ?? []).map((source) => [source.key, source]));
 		return (graphic.socialProfileProjections ?? []).every(
-			projection => sources.get(projection.sourceKey)?.kind === 'talent',
+			(projection) => sources.get(projection.sourceKey)?.kind === 'talent',
 		);
-	},
-	'A Social Profile Projection must reference a declared Talent Graphic Source Selection',
-).refine(
-	(graphic) => {
+	}, 'A Social Profile Projection must reference a declared Talent Graphic Source Selection')
+	.refine((graphic) => {
 		const projections = graphic.socialProfileProjections ?? [];
-		const groups = new Set(graphic.items.filter(item => item.type === 'group').map(group => group.id));
-		return projections.every(projection => groups.has(projection.presentationGroupId))
-			&& new Set(projections.map(projection => projection.presentationGroupId)).size === projections.length;
-	},
-	'Every Social Profile Projection must reference its own ordinary Graphic Group',
-).refine(
-	graphic => socialProfileProjectionConsumersResolve(graphic as BroadcastGraphicConfig),
-	'Projected text values and dynamic Social Network Icons must reference the projection of their containing Presentation Group',
-);
+		const groups = new Set(
+			graphic.items.filter((item) => item.type === 'group').map((group) => group.id),
+		);
+		return (
+			projections.every((projection) => groups.has(projection.presentationGroupId)) &&
+			new Set(projections.map((projection) => projection.presentationGroupId)).size ===
+				projections.length
+		);
+	}, 'Every Social Profile Projection must reference its own ordinary Graphic Group')
+	.refine(
+		(graphic) => socialProfileProjectionConsumersResolve(graphic as BroadcastGraphicConfig),
+		'Projected text values and dynamic Social Network Icons must reference the projection of their containing Presentation Group',
+	);
 
 /**
  * A Feature Match Layout's shared item tree.
@@ -1386,40 +1561,44 @@ export const broadcastGraphicConfigSchema = z.object({
  * let a write store declarations nothing resolves and nothing can accept — the
  * Host Contract's `textValues` rule, restated where the wire is checked.
  */
-const featureMatchLayoutCompositionSchema = z.object({
-	id: z.string().min(1).max(100),
-	name: z.string().min(1).max(100),
-	items: z.array(graphicItemConfigSchema)
-		.max(
-			MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT,
-			`A Feature Match Layout must not contain more than ${MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT} Graphic Items`,
-		)
-		// Counting Graphic Group children, exactly as a Broadcast Graphics Screen's
-		// total does. Without it the cap above bounded only the top-level list, so 100
-		// groups of 50 children was 5,100 Graphic Items in one layout — refused, if at
-		// all, by the byte total rather than by a limit anyone could read.
-		.refine(
-			items => countGraphicItems(items) <= MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT,
-			`A Feature Match Layout must not contain more than ${MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT} Graphic Items in total`,
-		)
-		.refine(
-			items => new Set(graphicItemIds(items)).size === graphicItemIds(items).length,
-			'Graphic Item ids must be unique within one Feature Match Layout',
-		)
-		.refine(
-			items => !hasSocialNetworkIcon(items),
-			'Social Network Icon Graphic Items are available only in Broadcast Graphics',
-		)
-		.refine(
-			items => !hasSocialProfilePlaceholderStyle(items),
-			'Social Profile Projection placeholder styles are available only in Broadcast Graphics',
-		),
-	animation: graphicContainerAnimationSchema.optional(),
-	themeBindings: graphicContainerThemeBindingsSchema.optional(),
-}).strict().refine(
-	composition => graphicStaggerNamesASubset(composition, composition.items.length),
-	GRAPHIC_STAGGER_SUBSET_MESSAGE,
-);
+const featureMatchLayoutCompositionSchema = z
+	.object({
+		id: z.string().min(1).max(100),
+		name: z.string().min(1).max(100),
+		items: z
+			.array(graphicItemConfigSchema)
+			.max(
+				MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT,
+				`A Feature Match Layout must not contain more than ${MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT} Graphic Items`,
+			)
+			// Counting Graphic Group children, exactly as a Broadcast Graphics Screen's
+			// total does. Without it the cap above bounded only the top-level list, so 100
+			// groups of 50 children was 5,100 Graphic Items in one layout — refused, if at
+			// all, by the byte total rather than by a limit anyone could read.
+			.refine(
+				(items) => countGraphicItems(items) <= MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT,
+				`A Feature Match Layout must not contain more than ${MAX_GRAPHIC_ITEMS_PER_FEATURE_MATCH_LAYOUT} Graphic Items in total`,
+			)
+			.refine(
+				(items) => new Set(graphicItemIds(items)).size === graphicItemIds(items).length,
+				'Graphic Item ids must be unique within one Feature Match Layout',
+			)
+			.refine(
+				(items) => !hasSocialNetworkIcon(items),
+				'Social Network Icon Graphic Items are available only in Broadcast Graphics',
+			)
+			.refine(
+				(items) => !hasSocialProfilePlaceholderStyle(items),
+				'Social Profile Projection placeholder styles are available only in Broadcast Graphics',
+			),
+		animation: graphicContainerAnimationSchema.optional(),
+		themeBindings: graphicContainerThemeBindingsSchema.optional(),
+	})
+	.strict()
+	.refine(
+		(composition) => graphicStaggerNamesASubset(composition, composition.items.length),
+		GRAPHIC_STAGGER_SUBSET_MESSAGE,
+	);
 
 /**
  * A Broadcast Graphics Screen's authored stack of Broadcast Graphics: the
@@ -1428,39 +1607,45 @@ const featureMatchLayoutCompositionSchema = z.object({
  * Every cap lives on the array itself rather than on the mode object, so it
  * reaches the PATCH path, which validates each field on its own.
  */
-const broadcastGraphicsStackSchema = z.array(broadcastGraphicConfigSchema)
+const broadcastGraphicsStackSchema = z
+	.array(broadcastGraphicConfigSchema)
 	.max(
 		MAX_BROADCAST_GRAPHICS_PER_SCREEN,
 		`A Broadcast Graphics Screen must not carry more than ${MAX_BROADCAST_GRAPHICS_PER_SCREEN} Broadcast Graphics`,
 	)
 	.refine(
-		graphics => graphics.reduce((total, graphic) => total + countGraphicItems(graphic.items), 0)
-			<= MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN,
+		(graphics) =>
+			graphics.reduce((total, graphic) => total + countGraphicItems(graphic.items), 0) <=
+			MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN,
 		`A Broadcast Graphics Screen must not carry more than ${MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN} Graphic Items in total`,
 	)
 	.refine(
-		graphics => graphics.reduce((total, graphic) => total + (graphic.inputs?.length ?? 0), 0)
-			<= MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN,
+		(graphics) =>
+			graphics.reduce((total, graphic) => total + (graphic.inputs?.length ?? 0), 0) <=
+			MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN,
 		`A Broadcast Graphics Screen must not declare more than ${MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN} Graphic Inputs in total`,
 	)
 	// Bindings are budgeted with the inputs they map, and Graphic Source
 	// Selections with them: all three are per-graphic lists whose product with the
 	// Broadcast Graphic cap would otherwise be unbounded.
 	.refine(
-		graphics => graphics.reduce((total, graphic) => total + (graphic.bindings?.length ?? 0), 0)
-			<= MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN,
+		(graphics) =>
+			graphics.reduce((total, graphic) => total + (graphic.bindings?.length ?? 0), 0) <=
+			MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN,
 		`A Broadcast Graphics Screen must not declare more than ${MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN} Graphic Input Bindings in total`,
 	)
 	.refine(
-		graphics => graphics.reduce((total, graphic) => total + (graphic.sources?.length ?? 0), 0)
-			<= MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN,
+		(graphics) =>
+			graphics.reduce((total, graphic) => total + (graphic.sources?.length ?? 0), 0) <=
+			MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN,
 		`A Broadcast Graphics Screen must not declare more than ${MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN} Graphic Source Selections in total`,
 	)
 	.refine(
-		graphics => graphics.reduce(
-			(total, graphic) => total + (graphic.socialProfileProjections?.length ?? 0),
-			0,
-		) <= MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHICS_SCREEN,
+		(graphics) =>
+			graphics.reduce(
+				(total, graphic) => total + (graphic.socialProfileProjections?.length ?? 0),
+				0,
+			) <= MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHICS_SCREEN,
 		`A Broadcast Graphics Screen must not declare more than ${MAX_SOCIAL_PROFILE_PROJECTIONS_PER_BROADCAST_GRAPHICS_SCREEN} Social Profile Projections in total`,
 	);
 
@@ -1485,36 +1670,42 @@ const broadcastGraphicsStackSchema = z.array(broadcastGraphicConfigSchema)
  * one — hand-edited, or written by something that thought a layout was Screen
  * state — is refused on the unknown key rather than installed and quietly ignored.
  */
-export const featureMatchLayoutConfigSchema = z.object({
-	frame: featureMatchOverlayFrameConfigSchema,
-	// Host-owned Source Items: top-level only, with Frame cutout behaviour the
-	// shared vocabulary has no way to express. Their list order is their Graphic
-	// Layer Order beneath the composition.
-	sources: z.array(featureMatchSourceItemConfigSchema).max(MAX_FEATURE_MATCH_SOURCE_ITEMS),
-	composition: featureMatchLayoutCompositionSchema,
-}).strict();
+export const featureMatchLayoutConfigSchema = z
+	.object({
+		frame: featureMatchOverlayFrameConfigSchema,
+		// Host-owned Source Items: top-level only, with Frame cutout behaviour the
+		// shared vocabulary has no way to express. Their list order is their Graphic
+		// Layer Order beneath the composition.
+		sources: z.array(featureMatchSourceItemConfigSchema).max(MAX_FEATURE_MATCH_SOURCE_ITEMS),
+		composition: featureMatchLayoutCompositionSchema,
+	})
+	.strict();
 
 /**
  * Every Screen Mode's write forms, from its config contract. The server supplies
  * the schema of each field that reaches server-only Graphic Asset ids (ADR-0037).
  */
 const modeConfigForms = {
-	'background': configContractModeForms('background', { layers: backgroundLayerStackSchema }),
-	'card': configContractModeForms('card'),
-	'deck': configContractModeForms('deck'),
-	'standings': configContractModeForms('standings'),
+	background: configContractModeForms('background', { layers: backgroundLayerStackSchema }),
+	card: configContractModeForms('card'),
+	deck: configContractModeForms('deck'),
+	standings: configContractModeForms('standings'),
 	'top-cut': configContractModeForms('top-cut'),
 	'feature-match': configContractModeForms('feature-match'),
-	'feature-match-overlay': configContractModeForms('feature-match-overlay', { layout: featureMatchLayoutConfigSchema }),
-	'broadcast-graphics': configContractModeForms('broadcast-graphics', { graphics: broadcastGraphicsStackSchema }),
-	'metagame': configContractModeForms('metagame'),
+	'feature-match-overlay': configContractModeForms('feature-match-overlay', {
+		layout: featureMatchLayoutConfigSchema,
+	}),
+	'broadcast-graphics': configContractModeForms('broadcast-graphics', {
+		graphics: broadcastGraphicsStackSchema,
+	}),
+	metagame: configContractModeForms('metagame'),
 	'top-cards': configContractModeForms('top-cards'),
 	'player-history': configContractModeForms('player-history'),
-	'pairings': configContractModeForms('pairings'),
+	pairings: configContractModeForms('pairings'),
 	'archetype-spotlight': configContractModeForms('archetype-spotlight'),
 	'head-to-head': configContractModeForms('head-to-head'),
 	'round-clock': configContractModeForms('round-clock'),
-	'talent': configContractModeForms('talent'),
+	talent: configContractModeForms('talent'),
 } satisfies Record<ScreenMode, unknown>;
 
 type ModeConfigForms = typeof modeConfigForms;
@@ -1538,12 +1729,14 @@ export const backgroundModeConfigSchema = modeConfigCompleteSchemaMap.background
 export const deckModeConfigSchema = modeConfigCompleteSchemaMap.deck;
 export const standingsModeConfigSchema = modeConfigCompleteSchemaMap.standings;
 export const featureMatchModeConfigSchema = modeConfigCompleteSchemaMap['feature-match'];
-export const featureMatchOverlayModeConfigSchema = modeConfigCompleteSchemaMap['feature-match-overlay'];
+export const featureMatchOverlayModeConfigSchema =
+	modeConfigCompleteSchemaMap['feature-match-overlay'];
 export const broadcastGraphicsModeConfigSchema = modeConfigCompleteSchemaMap['broadcast-graphics'];
 export const metagameModeConfigSchema = modeConfigCompleteSchemaMap.metagame;
 export const topCardsModeConfigSchema = modeConfigCompleteSchemaMap['top-cards'];
 export const pairingsModeConfigSchema = modeConfigCompleteSchemaMap.pairings;
-export const archetypeSpotlightModeConfigSchema = modeConfigCompleteSchemaMap['archetype-spotlight'];
+export const archetypeSpotlightModeConfigSchema =
+	modeConfigCompleteSchemaMap['archetype-spotlight'];
 export const headToHeadModeConfigSchema = modeConfigCompleteSchemaMap['head-to-head'];
 export const roundClockModeConfigSchema = modeConfigCompleteSchemaMap['round-clock'];
 export const talentModeConfigSchema = modeConfigCompleteSchemaMap.talent;
@@ -1558,7 +1751,7 @@ export const talentModeConfigSchema = modeConfigCompleteSchemaMap.talent;
  */
 function withModeConfigsMapRules<T extends z.ZodTypeAny>(schema: T) {
 	return schema.refine(
-		value => jsonByteLength(value) <= MAX_MODE_CONFIGS_BYTES,
+		(value) => jsonByteLength(value) <= MAX_MODE_CONFIGS_BYTES,
 		`Mode configuration must not exceed ${MAX_MODE_CONFIGS_BYTES} bytes`,
 	);
 }
@@ -1582,14 +1775,11 @@ export const screenModeSchema = z.preprocess(currentScreenModeKey, z.enum(SCREEN
  * carrying both keeps the current key's config, the newer of the two.
  */
 function withCurrentScreenModeKeys(value: unknown): unknown {
-	if (typeof value !== 'object' || value === null || Array.isArray(value))
-		return value;
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return value;
 	const configs: Record<string, unknown> = { ...value };
 	for (const [former, current] of Object.entries(FORMER_SCREEN_MODE_KEYS)) {
-		if (!Object.hasOwn(configs, former))
-			continue;
-		if (!Object.hasOwn(configs, current))
-			configs[current] = configs[former];
+		if (!Object.hasOwn(configs, former)) continue;
+		if (!Object.hasOwn(configs, current)) configs[current] = configs[former];
 		delete configs[former];
 	}
 	return configs;
@@ -1635,11 +1825,11 @@ export function modeConfigSchemasWithObjectLevelChecks(
 	// own definition, which is why the shape rebuild loses it while the type still
 	// looks correct. Reading the checks back is therefore the only way to see one.
 	return Object.entries(schemas)
-		.filter(([, schema]) => ((schema as unknown as { _zod?: { def?: { checks?: unknown[] } } })
-			._zod
-			?.def
-			?.checks
-			?.length ?? 0) > 0)
+		.filter(
+			([, schema]) =>
+				((schema as unknown as { _zod?: { def?: { checks?: unknown[] } } })._zod?.def?.checks
+					?.length ?? 0) > 0,
+		)
 		.map(([mode]) => mode);
 }
 
@@ -1648,8 +1838,8 @@ function assertNoUnenforceableModeConfigRules(): void {
 
 	if (offenders.length > 0) {
 		throw new Error(
-			`Mode config schemas carry object-level checks the PATCH path cannot enforce: ${offenders.join(', ')}. `
-			+ 'Move the constraint onto a field, or extend parseModeConfigPatchResult to evaluate it. See #85.',
+			`Mode config schemas carry object-level checks the PATCH path cannot enforce: ${offenders.join(', ')}. ` +
+				'Move the constraint onto a field, or extend parseModeConfigPatchResult to evaluate it. See #85.',
 		);
 	}
 }
@@ -1736,22 +1926,30 @@ export const updateScreenSchema = createUpdateSchema(screens)
 	})
 	.strict();
 
-export const screenCommandSchema = z.object({
-	command: z.enum(SCREEN_COMMAND_VALUES),
-}).strict();
+export const screenCommandSchema = z
+	.object({
+		command: z.enum(SCREEN_COMMAND_VALUES),
+	})
+	.strict();
 
 /**
  * A Screen Theme Override write: each named token's new value, or `null` to
  * clear it (ADR-0041). Each value is checked against the token's type and the
  * Screen's mode by the write, which knows the vocabulary.
  */
-export const screenThemeOverridesPatchSchema = z.object({
-	stateVersion: z.number().int().nonnegative().optional(),
-	tokens: z.record(
-		z.string(),
-		z.unknown().refine(value => value !== undefined, 'A value, or null to clear, is required'),
-	).refine(tokens => Object.keys(tokens).length > 0, 'Name at least one token'),
-}).strict();
+export const screenThemeOverridesPatchSchema = z
+	.object({
+		stateVersion: z.number().int().nonnegative().optional(),
+		tokens: z
+			.record(
+				z.string(),
+				z
+					.unknown()
+					.refine((value) => value !== undefined, 'A value, or null to clear, is required'),
+			)
+			.refine((tokens) => Object.keys(tokens).length > 0, 'Name at least one token'),
+	})
+	.strict();
 
 // ROUTE PARAMS
 export const screenParamsSchema = z.object({

@@ -20,15 +20,16 @@ const eventStore = useEventStore();
 const canShow = computed(() => cardStore.activeScreenId !== null);
 const timeoutDraft = ref(eventStore.event?.cardTimeout ?? 0);
 
-watch(() => eventStore.event?.cardTimeout, (value) => {
-	timeoutDraft.value = value ?? 0;
-});
+watch(
+	() => eventStore.event?.cardTimeout,
+	(value) => {
+		timeoutDraft.value = value ?? 0;
+	},
+);
 
 const timeoutLabel = computed(() => {
 	const seconds = eventStore.event?.cardTimeout ?? 0;
-	return seconds > 0
-		? `${seconds}s timeout`
-		: 'No timeout';
+	return seconds > 0 ? `${seconds}s timeout` : 'No timeout';
 });
 
 async function saveTimeout() {
@@ -81,12 +82,7 @@ async function saveTimeout() {
 
 					<UFormField label="Timeout" :description="timeoutLabel" size="sm">
 						<UFieldGroup class="w-full">
-							<UInputNumber
-								v-model="timeoutDraft"
-								:min="0"
-								size="sm"
-								class="flex-1"
-							/>
+							<UInputNumber v-model="timeoutDraft" :min="0" size="sm" class="flex-1" />
 							<UButton
 								size="sm"
 								variant="outline"

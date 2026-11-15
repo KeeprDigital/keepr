@@ -5,7 +5,7 @@ import type { Commander } from '~~/shared/types/game';
 
 export const ATRAXA: Commander = {
 	scryfallId: 'd0d33d52-3d28-4635-b985-51e126289259',
-	name: 'Atraxa, Praetors\' Voice',
+	name: "Atraxa, Praetors' Voice",
 	colorIdentity: 'WUBG',
 	setCode: 'cm2',
 	collectorNumber: '10',
@@ -21,14 +21,18 @@ export const TYMNA: Commander = {
 
 export const KRAUM: Commander = {
 	scryfallId: '9c4d7a1e-5b0f-4a3e-9d57-6f6d6d0b7a22',
-	name: 'Kraum, Ludevic\'s Opus',
+	name: "Kraum, Ludevic's Opus",
 	colorIdentity: 'UR',
 	setCode: 'c16',
 	collectorNumber: '34',
 };
 
 /** A typed Seat as a setup save sends it: a name, its Commanders, and whatever else `extra` holds. */
-export function typedSeat(name: string, commanders: Commander[], extra: Partial<ManualPlayerSlotData> = {}): ManualPlayerSlotData {
+export function typedSeat(
+	name: string,
+	commanders: Commander[],
+	extra: Partial<ManualPlayerSlotData> = {},
+): ManualPlayerSlotData {
 	return {
 		name,
 		...extra,
@@ -53,17 +57,19 @@ export function scryfallCardOf(commander: Commander, overrides: Record<string, u
  * A Seat as a Commander Slot stores it and a read answers it: with the deck
  * name and colours its save wrote, and the Feature Match Deck List it holds.
  */
-export function storedSeat(name: string, commanders: Commander[], deckList?: { id: number; mainboardCount: number }): ManualPlayerSlotData {
+export function storedSeat(
+	name: string,
+	commanders: Commander[],
+	deckList?: { id: number; mainboardCount: number },
+): ManualPlayerSlotData {
 	return {
 		name,
 		gameData: {
 			type: 'mtg',
 			commanders,
-			deckName: commanders.map(commander => commander.name).join(' / '),
+			deckName: commanders.map((commander) => commander.name).join(' / '),
 			deckColors: 'WUBRG',
-			...(deckList
-				? { featureMatchDeckList: deckList }
-				: {}),
+			...(deckList ? { featureMatchDeckList: deckList } : {}),
 		},
 	};
 }

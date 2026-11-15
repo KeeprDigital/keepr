@@ -57,11 +57,9 @@ function cockpitCatalogue(openCounts: Partial<Record<GraphicsDiscrepancyKind, nu
 		getCapacity: vi.fn().mockResolvedValue(capacity()),
 		countUnavailableContent: vi.fn().mockResolvedValue(0),
 		countOpenDiscrepancies: vi.fn().mockResolvedValue(counts),
-		countIsolatedDiscrepancies: vi.fn()
-			.mockResolvedValue(counts['critical-integrity-incident']),
+		countIsolatedDiscrepancies: vi.fn().mockResolvedValue(counts['critical-integrity-incident']),
 		getReconciliationState: vi.fn().mockResolvedValue({}),
-		summariseIngestionAttention: vi.fn()
-			.mockResolvedValue({ counts: {}, operations: [] }),
+		summariseIngestionAttention: vi.fn().mockResolvedValue({ counts: {}, operations: [] }),
 		countUnreleasedStagedInput: vi.fn().mockResolvedValue(0),
 		summariseRetentionDeadlines: vi.fn().mockResolvedValue(NO_DEADLINES),
 		listGraphicsAssetEvidence: vi.fn().mockResolvedValue([]),
@@ -133,13 +131,11 @@ describe('the Operations Cockpit reading', () => {
 			'missing-derivative': 40,
 			'unavailable-content': 1,
 		}).getOperationsCockpit();
-		if (cockpit.outcome !== 'complete')
-			throw new Error('The cockpit could not read the catalogue');
+		if (cockpit.outcome !== 'complete') throw new Error('The cockpit could not read the catalogue');
 
 		expect(cockpit.alerts.countsBySeverity).toEqual({ critical: 0, warning: 41, info: 0 });
-		expect(cockpit.reconciliation.countsBySeverity)
-			.toEqual({ critical: 0, warning: 41, info: 0 });
-		expect(cockpit.alerts.open.map(alert => [alert.code, alert.openCount])).toEqual([
+		expect(cockpit.reconciliation.countsBySeverity).toEqual({ critical: 0, warning: 41, info: 0 });
+		expect(cockpit.alerts.open.map((alert) => [alert.code, alert.openCount])).toEqual([
 			['unavailable-content-open', 1],
 			['missing-derivative-open', 40],
 		]);
@@ -151,8 +147,7 @@ describe('the Operations Cockpit reading', () => {
 		// is affected. A "Degraded" badge above a row reporting only info would
 		// teach an administrator to stop trusting the badge.
 		const cockpit = await libraryWith({ 'unexpected-object': 1 }).getOperationsCockpit();
-		if (cockpit.outcome !== 'complete')
-			throw new Error('The cockpit could not read the catalogue');
+		if (cockpit.outcome !== 'complete') throw new Error('The cockpit could not read the catalogue');
 
 		expect(cockpit.condition.status).toBe('healthy');
 		expect(cockpit.condition.canonicalByteStore).toEqual({ status: 'healthy' });
@@ -172,8 +167,7 @@ describe('the Operations Cockpit reading', () => {
 			'unavailable-content': 2,
 			'unexpected-object': 5,
 		}).getOperationsCockpit();
-		if (cockpit.outcome !== 'complete')
-			throw new Error('The cockpit could not read the catalogue');
+		if (cockpit.outcome !== 'complete') throw new Error('The cockpit could not read the catalogue');
 
 		// Only the two warning subjects hold it degraded; the five info ones do not.
 		expect(cockpit.condition.canonicalByteStore).toEqual({

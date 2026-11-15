@@ -125,16 +125,18 @@ describe('broadcastGraphicsLiveStateChange', () => {
 				},
 			},
 		};
-		const after = applyBroadcastGraphicsCommand(before, {
-			type: 'Select Social Profile',
-			payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_000,
-			socialProfileProjections: [
-				{ key: 'profile' } as never,
-			],
-		});
+		const after = applyBroadcastGraphicsCommand(
+			before,
+			{
+				type: 'Select Social Profile',
+				payload: { graphicId: 'lower', projectionKey: 'profile', network: 'x' },
+			},
+			{
+				inputs: [],
+				acceptedAt: 1_000,
+				socialProfileProjections: [{ key: 'profile' } as never],
+			},
+		);
 		const change = broadcastGraphicsLiveStateChange(before, after);
 
 		expect(change).toEqual({
@@ -195,21 +197,22 @@ describe('broadcastGraphicsLiveStateChange', () => {
 			},
 		};
 
-		const after = applyBroadcastGraphicsCommand(before, {
-			type: 'Out',
-			payload: { graphicId: 'lower1' },
-		}, {
-			inputs: [],
-			acceptedAt: 1_000,
-			durations: { enter: 500, exit: 500, update: 0 },
-			channel: {
-				handoff: 'out-then-in',
-				members: [
-					{ graphicId: 'lower1' },
-					{ graphicId: 'lower2' },
-				],
+		const after = applyBroadcastGraphicsCommand(
+			before,
+			{
+				type: 'Out',
+				payload: { graphicId: 'lower1' },
 			},
-		} as Parameters<typeof applyBroadcastGraphicsCommand>[2]);
+			{
+				inputs: [],
+				acceptedAt: 1_000,
+				durations: { enter: 500, exit: 500, update: 0 },
+				channel: {
+					handoff: 'out-then-in',
+					members: [{ graphicId: 'lower1' }, { graphicId: 'lower2' }],
+				},
+			} as Parameters<typeof applyBroadcastGraphicsCommand>[2],
+		);
 		const change = broadcastGraphicsLiveStateChange(before, after);
 
 		expect(changedBroadcastGraphicsLiveState(before, change!)).toEqual(after);
@@ -236,39 +239,44 @@ describe('a live state carrying an entry that is null', () => {
 		const from = recoveredBroadcastGraphicsLiveState(before);
 		const to = recoveredBroadcastGraphicsLiveState(after);
 		const change = broadcastGraphicsLiveStateChange(from, to);
-		if (change === null)
-			return true;
+		if (change === null) return true;
 		return JSON.stringify(changedBroadcastGraphicsLiveState(from, change)) === JSON.stringify(to);
 	}
 
 	it('is refused by recovery rather than read as a Graphic Source Selection record', () => {
-		expect(broadcastGraphicsRecoveryFault({
-			playout: {},
-			inputs: {},
-			sources: { slate: null },
-		})?.reason).toBe('corrupt');
+		expect(
+			broadcastGraphicsRecoveryFault({
+				playout: {},
+				inputs: {},
+				sources: { slate: null },
+			})?.reason,
+		).toBe('corrupt');
 	});
 
 	it('converges when a null Graphic Source Selection record stops being there', () => {
-		expect(converged(
-			{
-				playout: {},
-				inputs: {},
-				sources: { slate: null },
-			},
-			{ playout: {}, inputs: {}, sources: {} },
-		)).toBe(true);
+		expect(
+			converged(
+				{
+					playout: {},
+					inputs: {},
+					sources: { slate: null },
+				},
+				{ playout: {}, inputs: {}, sources: {} },
+			),
+		).toBe(true);
 	});
 
 	it('converges when a null Graphic Source Selection record appears', () => {
-		expect(converged(
-			{ playout: {}, inputs: {}, sources: {} },
-			{
-				playout: {},
-				inputs: {},
-				sources: { slate: null },
-			},
-		)).toBe(true);
+		expect(
+			converged(
+				{ playout: {}, inputs: {}, sources: {} },
+				{
+					playout: {},
+					inputs: {},
+					sources: { slate: null },
+				},
+			),
+		).toBe(true);
 	});
 
 	it('describes nothing rather than a removal when handed an entry it was promised could not exist', () => {
@@ -276,13 +284,12 @@ describe('a live state carrying an entry that is null', () => {
 		// depends on it. Answering "I cannot describe this" costs a reload; reading the
 		// null as a removal would cost a divergence nothing heals, which is the defect
 		// this pair of tests exists to keep fixed if another map is ever described.
-		expect(broadcastGraphicsLiveStateChange(
-			{ playout: {}, inputs: {}, sources: {} },
-			{
+		expect(
+			broadcastGraphicsLiveStateChange({ playout: {}, inputs: {}, sources: {} }, {
 				playout: {},
 				inputs: {},
 				sources: { slate: null },
-			} as never,
-		)).toBeNull();
+			} as never),
+		).toBeNull();
 	});
 });

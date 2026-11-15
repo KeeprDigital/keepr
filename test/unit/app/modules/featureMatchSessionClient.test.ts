@@ -61,18 +61,23 @@ describe('feature Match Session client module', () => {
 		const client = useFeatureMatchSessionClient();
 		await client.startClock(1, 2);
 
-		expect(repository.sendCommand).toHaveBeenCalledWith(1, 7, expect.objectContaining({
-			type: 'StartClock',
-			payload: {},
-			baseSequence: 4,
-		}));
+		expect(repository.sendCommand).toHaveBeenCalledWith(
+			1,
+			7,
+			expect.objectContaining({
+				type: 'StartClock',
+				payload: {},
+				baseSequence: 4,
+			}),
+		);
 	});
 
 	// A Commander Session's commands (ADR-0087): damage is relative and merges; the others claim the state they saw.
 	it.each([
 		[
 			'Commander Damage',
-			(client: ReturnType<typeof useFeatureMatchSessionClient>) => client.adjustCommanderDamage(1, 2, 'player2', { seat: 'player1', commander: 1 }, 5),
+			(client: ReturnType<typeof useFeatureMatchSessionClient>) =>
+				client.adjustCommanderDamage(1, 2, 'player2', { seat: 'player1', commander: 1 }, 5),
 			{
 				type: 'AdjustCommanderDamage',
 				payload: {
@@ -86,7 +91,8 @@ describe('feature Match Session client module', () => {
 		],
 		[
 			'an Eliminated Seat',
-			(client: ReturnType<typeof useFeatureMatchSessionClient>) => client.setEliminated(1, 2, 'player3', true),
+			(client: ReturnType<typeof useFeatureMatchSessionClient>) =>
+				client.setEliminated(1, 2, 'player3', true),
 			{
 				type: 'SetEliminated',
 				payload: { player: 'player3', eliminated: true },
@@ -95,7 +101,8 @@ describe('feature Match Session client module', () => {
 		],
 		[
 			'a declared winner',
-			(client: ReturnType<typeof useFeatureMatchSessionClient>) => client.setOutcome(1, 2, { winner: 'player4' }),
+			(client: ReturnType<typeof useFeatureMatchSessionClient>) =>
+				client.setOutcome(1, 2, { winner: 'player4' }),
 			{
 				type: 'SetOutcome',
 				payload: {
@@ -115,13 +122,21 @@ describe('feature Match Session client module', () => {
 
 	it('constructs state update commands in the client seam', async () => {
 		const client = useFeatureMatchSessionClient();
-		await client.updateState(1, 2, { firstPlayer: 'player1', activePlayer: 'player1', turnNumber: 1 });
+		await client.updateState(1, 2, {
+			firstPlayer: 'player1',
+			activePlayer: 'player1',
+			turnNumber: 1,
+		});
 
-		expect(repository.sendCommand).toHaveBeenCalledWith(1, 7, expect.objectContaining({
-			type: 'SelectFirstPlayer',
-			payload: { player: 'player1' },
-			baseSequence: 4,
-		}));
+		expect(repository.sendCommand).toHaveBeenCalledWith(
+			1,
+			7,
+			expect.objectContaining({
+				type: 'SelectFirstPlayer',
+				payload: { player: 'player1' },
+				baseSequence: 4,
+			}),
+		);
 	});
 
 	it('sends a multi-field state update as one Batch command in one round trip', async () => {
@@ -129,9 +144,7 @@ describe('feature Match Session client module', () => {
 		await client.updateState(1, 2, {
 			player1: {
 				lifeTotal: 12,
-				counters: [
-					{ type: 'poison', value: 3 },
-				],
+				counters: [{ type: 'poison', value: 3 }],
 			},
 			player2: {
 				lifeTotal: 9,
@@ -151,63 +164,65 @@ describe('feature Match Session client module', () => {
 		expect(repository.getSlot).toHaveBeenCalledTimes(1);
 		expect(repository.sendCommand).toHaveBeenCalledTimes(1);
 
-		expect(repository.sendCommand).toHaveBeenCalledWith(1, 7, expect.objectContaining({
-			type: 'Batch',
-			baseSequence: 4,
-			payload: {
-				commands: [
-					{
-						type: 'SetLife',
-						payload: { player: 'player1', lifeTotal: 12 },
-					},
-					{
-						type: 'SetCounters',
-						payload: {
-							player: 'player1',
-							counters: [
-								{ type: 'poison', value: 3 },
-							],
+		expect(repository.sendCommand).toHaveBeenCalledWith(
+			1,
+			7,
+			expect.objectContaining({
+				type: 'Batch',
+				baseSequence: 4,
+				payload: {
+					commands: [
+						{
+							type: 'SetLife',
+							payload: { player: 'player1', lifeTotal: 12 },
 						},
-					},
-					{
-						type: 'SetLife',
-						payload: { player: 'player2', lifeTotal: 9 },
-					},
-					{
-						type: 'SetCounters',
-						payload: { player: 'player2', counters: [] },
-					},
-					{
-						type: 'SetCardsKept',
-						payload: { player: 'player2', cardsKept: 6 },
-					},
-					{
-						type: 'SetSideboardRevealed',
-						payload: { player: 'player2', revealed: true },
-					},
-					{
-						type: 'SetClock',
-						payload: { targetMs: 30_000 },
-					},
-					{
-						type: 'SetFirstPlayer',
-						payload: { player: 'player2' },
-					},
-					{
-						type: 'SetActivePlayer',
-						payload: { player: 'player1' },
-					},
-					{
-						type: 'SetTurnNumber',
-						payload: { turnNumber: 4 },
-					},
-					{
-						type: 'StartOvertime',
-						payload: { totalTurns: 3 },
-					},
-				],
-			},
-		}));
+						{
+							type: 'SetCounters',
+							payload: {
+								player: 'player1',
+								counters: [{ type: 'poison', value: 3 }],
+							},
+						},
+						{
+							type: 'SetLife',
+							payload: { player: 'player2', lifeTotal: 9 },
+						},
+						{
+							type: 'SetCounters',
+							payload: { player: 'player2', counters: [] },
+						},
+						{
+							type: 'SetCardsKept',
+							payload: { player: 'player2', cardsKept: 6 },
+						},
+						{
+							type: 'SetSideboardRevealed',
+							payload: { player: 'player2', revealed: true },
+						},
+						{
+							type: 'SetClock',
+							payload: { targetMs: 30_000 },
+						},
+						{
+							type: 'SetFirstPlayer',
+							payload: { player: 'player2' },
+						},
+						{
+							type: 'SetActivePlayer',
+							payload: { player: 'player1' },
+						},
+						{
+							type: 'SetTurnNumber',
+							payload: { turnNumber: 4 },
+						},
+						{
+							type: 'StartOvertime',
+							payload: { totalTurns: 3 },
+						},
+					],
+				},
+			}),
+		);
 	});
 
 	it('sends a match-level sideboard reveal as one Batch of two per-player commands', async () => {
@@ -218,22 +233,26 @@ describe('feature Match Session client module', () => {
 		});
 
 		expect(repository.sendCommand).toHaveBeenCalledTimes(1);
-		expect(repository.sendCommand).toHaveBeenCalledWith(1, 7, expect.objectContaining({
-			type: 'Batch',
-			baseSequence: 4,
-			payload: {
-				commands: [
-					{
-						type: 'SetSideboardRevealed',
-						payload: { player: 'player1', revealed: true },
-					},
-					{
-						type: 'SetSideboardRevealed',
-						payload: { player: 'player2', revealed: true },
-					},
-				],
-			},
-		}));
+		expect(repository.sendCommand).toHaveBeenCalledWith(
+			1,
+			7,
+			expect.objectContaining({
+				type: 'Batch',
+				baseSequence: 4,
+				payload: {
+					commands: [
+						{
+							type: 'SetSideboardRevealed',
+							payload: { player: 'player1', revealed: true },
+						},
+						{
+							type: 'SetSideboardRevealed',
+							payload: { player: 'player2', revealed: true },
+						},
+					],
+				},
+			}),
+		);
 	});
 
 	it('sends a lone sideboardRevealed player update as its primitive command', async () => {
@@ -241,11 +260,15 @@ describe('feature Match Session client module', () => {
 		await client.updatePlayerFeatureMatchState(1, 2, 'player1', { sideboardRevealed: false });
 
 		expect(repository.sendCommand).toHaveBeenCalledTimes(1);
-		expect(repository.sendCommand).toHaveBeenCalledWith(1, 7, expect.objectContaining({
-			type: 'SetSideboardRevealed',
-			payload: { player: 'player1', revealed: false },
-			baseSequence: 4,
-		}));
+		expect(repository.sendCommand).toHaveBeenCalledWith(
+			1,
+			7,
+			expect.objectContaining({
+				type: 'SetSideboardRevealed',
+				payload: { player: 'player1', revealed: false },
+				baseSequence: 4,
+			}),
+		);
 	});
 
 	it('sends a single-field state update as its primitive command, not a Batch', async () => {
@@ -253,11 +276,15 @@ describe('feature Match Session client module', () => {
 		await client.updateState(1, 2, { turnNumber: 4 });
 
 		expect(repository.sendCommand).toHaveBeenCalledTimes(1);
-		expect(repository.sendCommand).toHaveBeenCalledWith(1, 7, expect.objectContaining({
-			type: 'SetTurnNumber',
-			payload: { turnNumber: 4 },
-			baseSequence: 4,
-		}));
+		expect(repository.sendCommand).toHaveBeenCalledWith(
+			1,
+			7,
+			expect.objectContaining({
+				type: 'SetTurnNumber',
+				payload: { turnNumber: 4 },
+				baseSequence: 4,
+			}),
+		);
 	});
 
 	it('sends nothing for a state update with no batchable fields', async () => {
@@ -290,7 +317,7 @@ describe('feature Match Session client module', () => {
 
 		const result = await useFeatureMatchSessionClient().bulkClockAction(1, 'start');
 
-		expect(result.updates.map(update => update.featureMatchId)).toEqual([2]);
+		expect(result.updates.map((update) => update.featureMatchId)).toEqual([2]);
 	});
 
 	it('orchestrates bulk clock actions from slot sessions', async () => {
@@ -307,10 +334,12 @@ describe('feature Match Session client module', () => {
 		const result = await client.bulkClockAction(1, 'pause');
 
 		expect(repository.sendCommand).toHaveBeenCalledOnce();
-		expect(repository.sendCommand.mock.calls[0]?.[2]).toEqual(expect.objectContaining({
-			type: 'PauseClock',
-			baseSequence: 4,
-		}));
+		expect(repository.sendCommand.mock.calls[0]?.[2]).toEqual(
+			expect.objectContaining({
+				type: 'PauseClock',
+				baseSequence: 4,
+			}),
+		);
 		expect(result.updates).toHaveLength(1);
 		expect(result.updates[0]).toMatchObject({ featureMatchId: 2, sessionId: 7, sequence: 5 });
 	});

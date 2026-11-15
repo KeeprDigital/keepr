@@ -23,7 +23,8 @@ const USwitchStub = defineComponent({
 		disabled: { type: Boolean, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	template:
+		'<button type="button" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
 });
 
 const UInputNumberStub = defineComponent({
@@ -75,11 +76,15 @@ function mountFields(props: Record<string, unknown> = {}, slots: Record<string, 
 type Wrapper = ReturnType<typeof mountFields>;
 
 function switchFor(wrapper: Wrapper, label: string) {
-	return wrapper.findAllComponents({ name: 'USwitch' }).find(entry => entry.attributes('aria-label') === label);
+	return wrapper
+		.findAllComponents({ name: 'USwitch' })
+		.find((entry) => entry.attributes('aria-label') === label);
 }
 
 function input(wrapper: Wrapper, name: string, ariaLabel: string) {
-	return wrapper.findAllComponents({ name }).find(entry => entry.attributes('aria-label') === ariaLabel);
+	return wrapper
+		.findAllComponents({ name })
+		.find((entry) => entry.attributes('aria-label') === ariaLabel);
 }
 
 function lastEdit(wrapper: Wrapper) {
@@ -87,7 +92,7 @@ function lastEdit(wrapper: Wrapper) {
 }
 
 describe('border and glow fields', () => {
-	it('labels the border with the host\'s name for it', () => {
+	it("labels the border with the host's name for it", () => {
 		const wrapper = mountFields({ borderLabel: 'Outline' });
 
 		expect(switchFor(wrapper, 'Outline')?.props('modelValue')).toBe(true);
@@ -145,16 +150,8 @@ describe('border and glow fields', () => {
 
 	// The glow has its own opacity beside it, so only the border colour edits alpha.
 	it.each([
-		[
-			'the host asks hex-only',
-			true,
-			{ hexOnly: true, alpha: false },
-		],
-		[
-			'the host takes any colour',
-			false,
-			{ hexOnly: false, alpha: true },
-		],
+		['the host asks hex-only', true, { hexOnly: true, alpha: false }],
+		['the host takes any colour', false, { hexOnly: false, alpha: true }],
 	])('edits colour with a colour picker when %s', async (_case, hexOnly, borderPicker) => {
 		const wrapper = mountFields({ hexOnly });
 		const picker = input(wrapper, 'UIColorPicker', 'Border colour')!;
@@ -178,20 +175,30 @@ describe('border and glow fields', () => {
 	});
 
 	it('lets the host replace the colour picker through the colour slot', async () => {
-		const wrapper = mountFields({}, {
-			color: (slot: { target: 'border' | 'glow'; value?: string; label: string; update: (value?: string) => void }) =>
-				h('button', {
-					'type': 'button',
-					'data-testid': `palette-${slot.target}`,
-					'data-value': slot.value,
-					'aria-label': slot.label,
-					'onClick': () => slot.update('brand'),
-				}),
-		});
+		const wrapper = mountFields(
+			{},
+			{
+				color: (slot: {
+					target: 'border' | 'glow';
+					value?: string;
+					label: string;
+					update: (value?: string) => void;
+				}) =>
+					h('button', {
+						type: 'button',
+						'data-testid': `palette-${slot.target}`,
+						'data-value': slot.value,
+						'aria-label': slot.label,
+						onClick: () => slot.update('brand'),
+					}),
+			},
+		);
 
 		expect(wrapper.findComponent({ name: 'UIColorPicker' }).exists()).toBe(false);
 		expect(wrapper.get('[data-testid="palette-border"]').attributes('data-value')).toBe('#0077a3');
-		expect(wrapper.get('[data-testid="palette-glow"]').attributes('aria-label')).toBe('Glow colour');
+		expect(wrapper.get('[data-testid="palette-glow"]').attributes('aria-label')).toBe(
+			'Glow colour',
+		);
 
 		await wrapper.get('[data-testid="palette-glow"]').trigger('click');
 		expect(lastEdit(wrapper)).toEqual({
@@ -211,7 +218,11 @@ describe('border and glow fields', () => {
 	it('disables every control when the host is read-only', () => {
 		const wrapper = mountFields({ disabled: true });
 
-		expect(wrapper.findAllComponents({ name: 'USwitch' }).every(entry => entry.props('disabled'))).toBe(true);
-		expect(wrapper.findAllComponents({ name: 'UInputNumber' }).every(entry => entry.props('disabled'))).toBe(true);
+		expect(
+			wrapper.findAllComponents({ name: 'USwitch' }).every((entry) => entry.props('disabled')),
+		).toBe(true);
+		expect(
+			wrapper.findAllComponents({ name: 'UInputNumber' }).every((entry) => entry.props('disabled')),
+		).toBe(true);
 	});
 });

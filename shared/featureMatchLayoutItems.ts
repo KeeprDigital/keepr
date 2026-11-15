@@ -80,12 +80,8 @@ export function surfaceStyle(
 	return {
 		fill,
 		fillOpacity: extras.fillOpacity ?? 1,
-		...(extras.outline
-			? { outline: extras.outline }
-			: {}),
-		...(extras.glow
-			? { glow: extras.glow }
-			: {}),
+		...(extras.outline ? { outline: extras.outline } : {}),
+		...(extras.glow ? { glow: extras.glow } : {}),
 	};
 }
 
@@ -112,9 +108,7 @@ export function textItem(
 		typography: item.typography,
 		overflowPolicy: item.overflowPolicy ?? 'ellipsis',
 		minFontSize: item.minFontSize ?? 16,
-		...(item.surfaceStyle
-			? { surfaceStyle: item.surfaceStyle }
-			: {}),
+		...(item.surfaceStyle ? { surfaceStyle: item.surfaceStyle } : {}),
 	};
 }
 
@@ -163,9 +157,7 @@ export function clockItem(
 		typography: item.typography,
 		overflowPolicy: 'clip',
 		minFontSize: 16,
-		...(item.surfaceStyle
-			? { surfaceStyle: item.surfaceStyle }
-			: {}),
+		...(item.surfaceStyle ? { surfaceStyle: item.surfaceStyle } : {}),
 	};
 }
 
@@ -187,9 +179,7 @@ export function playerLifeItem(
 		lifeAnimation: 'glow',
 		lifeAnimationDurationMs: 420,
 		lifeAnimationAccentColor: item.accentColor ?? '#ffffff',
-		...(item.surfaceStyle
-			? { surfaceStyle: item.surfaceStyle }
-			: {}),
+		...(item.surfaceStyle ? { surfaceStyle: item.surfaceStyle } : {}),
 	};
 }
 
@@ -215,9 +205,7 @@ export function gameWinsItem(
 		boxWidth: item.boxWidth,
 		boxHeight: item.boxHeight,
 		boxGap: item.boxGap,
-		boxGeometry: item.boxRadius
-			? roundedShapeGeometry(item.boxRadius)
-			: squareShapeGeometry(),
+		boxGeometry: item.boxRadius ? roundedShapeGeometry(item.boxRadius) : squareShapeGeometry(),
 		boxSurfaceStyle: {
 			fill: solidFill('#000000'),
 			fillOpacity: 0,
@@ -249,9 +237,7 @@ export function groupItem(
 		justify: 'start',
 		clip: item.clip ?? true,
 		geometry: squareShapeGeometry(),
-		...(item.surfaceStyle
-			? { surfaceStyle: item.surfaceStyle }
-			: {}),
+		...(item.surfaceStyle ? { surfaceStyle: item.surfaceStyle } : {}),
 		children: item.children,
 	};
 }
@@ -266,44 +252,43 @@ export type FeatureMatchLayoutEdge = 'top' | 'right' | 'bottom' | 'left';
  * outline, and an edge that exists on its own can be styled, ordered, and
  * animated independently of the surface it sits against.
  */
-export function edgeRuleItem(
-	item: {
-		id: string;
-		label: string;
-		edge: FeatureMatchLayoutEdge;
-		bounds: { x: number; y: number; width: number; height: number };
-		thickness: number;
-		surfaceStyle: GraphicSurfaceStyle;
-	},
-): ShapeGraphicItemConfig {
+export function edgeRuleItem(item: {
+	id: string;
+	label: string;
+	edge: FeatureMatchLayoutEdge;
+	bounds: { x: number; y: number; width: number; height: number };
+	thickness: number;
+	surfaceStyle: GraphicSurfaceStyle;
+}): ShapeGraphicItemConfig {
 	const { bounds, thickness, edge } = item;
-	const rect = edge === 'top'
-		? {
-				x: bounds.x,
-				y: bounds.y,
-				width: bounds.width,
-				height: thickness,
-			}
-		: edge === 'bottom'
+	const rect =
+		edge === 'top'
 			? {
 					x: bounds.x,
-					y: bounds.y + bounds.height - thickness,
+					y: bounds.y,
 					width: bounds.width,
 					height: thickness,
 				}
-			: edge === 'left'
+			: edge === 'bottom'
 				? {
 						x: bounds.x,
-						y: bounds.y,
-						width: thickness,
-						height: bounds.height,
+						y: bounds.y + bounds.height - thickness,
+						width: bounds.width,
+						height: thickness,
 					}
-				: {
-						x: bounds.x + bounds.width - thickness,
-						y: bounds.y,
-						width: thickness,
-						height: bounds.height,
-					};
+				: edge === 'left'
+					? {
+							x: bounds.x,
+							y: bounds.y,
+							width: thickness,
+							height: bounds.height,
+						}
+					: {
+							x: bounds.x + bounds.width - thickness,
+							y: bounds.y,
+							width: thickness,
+							height: bounds.height,
+						};
 
 	return shapeItem({
 		id: item.id,

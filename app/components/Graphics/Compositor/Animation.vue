@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { GraphicAnimationChannelKey, GraphicAnimationChannels, GraphicThemeTokens } from '~~/shared/modules/graphics';
+import type {
+	GraphicAnimationChannelKey,
+	GraphicAnimationChannels,
+	GraphicThemeTokens,
+} from '~~/shared/modules/graphics';
 import type {
 	BroadcastGraphicConfig,
 	GraphicAnimationPhase,
@@ -77,31 +81,29 @@ const emit = defineEmits<{ 'update:graphics': [graphics: BroadcastGraphicConfig[
  */
 const { canAuthor, edit, bindThemeToken, detachThemeToken } = useCompositorEditing(
 	() => props,
-	graphics => emit('update:graphics', graphics),
+	(graphics) => emit('update:graphics', graphics),
 );
 
 /** The stack as it previews: a bound phase shows its token's recipe. */
-const selection = computed(() => resolveGraphicsSelection(
-	paintGraphicsThemeBindings(props.graphics, props.themeTokens),
-	props.selectedTarget,
-));
+const selection = computed(() =>
+	resolveGraphicsSelection(
+		paintGraphicsThemeBindings(props.graphics, props.themeTokens),
+		props.selectedTarget,
+	),
+);
 
 /**
  * The Theme binding slot of one lifecycle phase's recipe, or null for on-screen
  * cycling, which no motion token fills.
  */
 function themeSlotFor(phase: GraphicAnimationPhase): GraphicThemeAnimationSlot | null {
-	return phase === 'on-screen'
-		? null
-		: `animation.${phase}`;
+	return phase === 'on-screen' ? null : `animation.${phase}`;
 }
 
 function themeBindingFor(slot: GraphicThemeAnimationSlot): string | undefined {
 	const current = selection.value;
-	if (current.kind === 'graphic')
-		return current.graphic.themeBindings?.[slot];
-	if (current.kind === 'item')
-		return current.item.themeBindings?.[slot];
+	if (current.kind === 'graphic') return current.graphic.themeBindings?.[slot];
+	if (current.kind === 'item') return current.item.themeBindings?.[slot];
 	return undefined;
 }
 
@@ -120,10 +122,8 @@ const PHASES = GRAPHIC_ANIMATION_PHASE_VALUES;
  */
 const animation = computed<GraphicContainerAnimation | undefined>(() => {
 	const current = selection.value;
-	if (current.kind === 'graphic')
-		return current.graphic.animation;
-	if (current.kind === 'item')
-		return current.item.animation;
+	if (current.kind === 'graphic') return current.graphic.animation;
+	if (current.kind === 'item') return current.item.animation;
 	return undefined;
 });
 
@@ -131,9 +131,9 @@ const animation = computed<GraphicContainerAnimation | undefined>(() => {
 const staggerMembers = computed(() => {
 	const current = selection.value;
 	if (current.kind === 'graphic')
-		return current.graphic.items.map(item => ({ id: item.id, label: item.label }));
+		return current.graphic.items.map((item) => ({ id: item.id, label: item.label }));
 	if (current.kind === 'item' && current.item.type === 'group')
-		return current.item.children.map(child => ({ id: child.id, label: child.label }));
+		return current.item.children.map((child) => ({ id: child.id, label: child.label }));
 	return [];
 });
 
@@ -151,10 +151,8 @@ const slideParent = computed(() => {
 
 const ownerLabel = computed(() => {
 	const current = selection.value;
-	if (current.kind === 'graphic')
-		return current.graphic.name;
-	if (current.kind === 'item')
-		return current.item.label;
+	if (current.kind === 'graphic') return current.graphic.name;
+	if (current.kind === 'item') return current.item.label;
 	return '';
 });
 
@@ -168,7 +166,8 @@ function setPhaseEnabled(phase: GraphicAnimationPhase, enabled: boolean) {
 	if (enabled) {
 		edit({
 			kind: 'author',
-			graphic: (graphics, graphicId) => enableBroadcastGraphicAnimationPhase(graphics, graphicId, phase),
+			graphic: (graphics, graphicId) =>
+				enableBroadcastGraphicAnimationPhase(graphics, graphicId, phase),
 			item: (graphic, itemId) => enableGraphicItemAnimationPhase(graphic, itemId, phase),
 		});
 		return;
@@ -176,15 +175,20 @@ function setPhaseEnabled(phase: GraphicAnimationPhase, enabled: boolean) {
 
 	edit({
 		kind: 'author',
-		graphic: (graphics, graphicId) => setBroadcastGraphicAnimationRecipe(graphics, graphicId, phase, null),
+		graphic: (graphics, graphicId) =>
+			setBroadcastGraphicAnimationRecipe(graphics, graphicId, phase, null),
 		item: (graphic, itemId) => setGraphicItemAnimationRecipe(graphic, itemId, phase, null),
 	});
 }
 
-function updateRecipe(phase: GraphicAnimationPhase, patch: Partial<GraphicOnScreenAnimationRecipe>) {
+function updateRecipe(
+	phase: GraphicAnimationPhase,
+	patch: Partial<GraphicOnScreenAnimationRecipe>,
+) {
 	edit({
 		kind: 'author',
-		graphic: (graphics, graphicId) => patchBroadcastGraphicAnimationRecipe(graphics, graphicId, phase, patch),
+		graphic: (graphics, graphicId) =>
+			patchBroadcastGraphicAnimationRecipe(graphics, graphicId, phase, patch),
 		item: (graphic, itemId) => patchGraphicItemAnimationRecipe(graphic, itemId, phase, patch),
 	});
 }
@@ -196,23 +200,30 @@ function updateChannel<K extends GraphicAnimationChannelKey>(
 ) {
 	edit({
 		kind: 'author',
-		graphic: (graphics, graphicId) => patchBroadcastGraphicAnimationChannel(graphics, graphicId, phase, channel, patch),
-		item: (graphic, itemId) => patchGraphicItemAnimationChannel(graphic, itemId, phase, channel, patch),
+		graphic: (graphics, graphicId) =>
+			patchBroadcastGraphicAnimationChannel(graphics, graphicId, phase, channel, patch),
+		item: (graphic, itemId) =>
+			patchGraphicItemAnimationChannel(graphic, itemId, phase, channel, patch),
 	});
 }
 
 function applyPreset(phase: GraphicAnimationPhase, presetId: string) {
 	edit({
 		kind: 'author',
-		graphic: (graphics, graphicId) => applyBroadcastGraphicAnimationPreset(graphics, graphicId, phase, presetId),
+		graphic: (graphics, graphicId) =>
+			applyBroadcastGraphicAnimationPreset(graphics, graphicId, phase, presetId),
 		item: (graphic, itemId) => applyGraphicItemAnimationPreset(graphic, itemId, phase, presetId),
 	});
 }
 
-function updateStagger(phase: GraphicAnimationPhase, patch: Partial<GraphicAnimationStagger> | null) {
+function updateStagger(
+	phase: GraphicAnimationPhase,
+	patch: Partial<GraphicAnimationStagger> | null,
+) {
 	edit({
 		kind: 'author',
-		graphic: (graphics, graphicId) => patchBroadcastGraphicAnimationStagger(graphics, graphicId, phase, patch),
+		graphic: (graphics, graphicId) =>
+			patchBroadcastGraphicAnimationStagger(graphics, graphicId, phase, patch),
 		item: (graphic, itemId) => patchGraphicItemAnimationStagger(graphic, itemId, phase, patch),
 	});
 }
@@ -220,13 +231,18 @@ function updateStagger(phase: GraphicAnimationPhase, patch: Partial<GraphicAnima
 function toggleStaggerMember(phase: GraphicAnimationPhase, memberId: string, selected: boolean) {
 	edit({
 		kind: 'author',
-		graphic: (graphics, graphicId) => toggleBroadcastGraphicStaggerMember(graphics, graphicId, phase, memberId, selected),
-		item: (graphic, itemId) => toggleGraphicItemStaggerMember(graphic, itemId, phase, memberId, selected),
+		graphic: (graphics, graphicId) =>
+			toggleBroadcastGraphicStaggerMember(graphics, graphicId, phase, memberId, selected),
+		item: (graphic, itemId) =>
+			toggleGraphicItemStaggerMember(graphic, itemId, phase, memberId, selected),
 	});
 }
 
 function presetOptions(phase: GraphicAnimationPhase) {
-	return graphicAnimationPresetsForPhase(phase).map(preset => ({ label: preset.label, value: preset.id }));
+	return graphicAnimationPresetsForPhase(phase).map((preset) => ({
+		label: preset.label,
+		value: preset.id,
+	}));
 }
 
 function recipeOf(phase: GraphicAnimationPhase) {
@@ -248,9 +264,7 @@ function staggerOf(phase: GraphicAnimationPhase) {
 	>
 		<div v-if="!headless" class="flex items-center gap-2">
 			<UIcon name="i-lucide-wand-sparkles" class="size-4 shrink-0 text-muted" />
-			<p class="text-sm font-semibold">
-				Animation
-			</p>
+			<p class="text-sm font-semibold">Animation</p>
 			<UBadge size="xs" variant="soft">
 				{{ ownerLabel }}
 			</UBadge>
@@ -271,7 +285,7 @@ function staggerOf(phase: GraphicAnimationPhase) {
 					size="sm"
 					:aria-label="`${GRAPHIC_ANIMATION_PHASE_LABELS[phase]} animation`"
 					:data-testid="`animation-${phase}-enabled`"
-					@update:model-value="value => setPhaseEnabled(phase, value === true)"
+					@update:model-value="(value) => setPhaseEnabled(phase, value === true)"
 				/>
 			</div>
 
@@ -282,7 +296,7 @@ function staggerOf(phase: GraphicAnimationPhase) {
 					:label="`${GRAPHIC_ANIMATION_PHASE_LABELS[phase]} recipe`"
 					:current="themeBindingFor(themeSlotFor(phase)!)"
 					:writable="canAuthor"
-					@bind="token => bindThemeToken(themeSlotFor(phase)!, token)"
+					@bind="(token) => bindThemeToken(themeSlotFor(phase)!, token)"
 					@detach="detachThemeToken(themeSlotFor(phase)!)"
 				/>
 
@@ -294,7 +308,7 @@ function staggerOf(phase: GraphicAnimationPhase) {
 						class="w-full"
 						placeholder="Apply a preset"
 						:data-testid="`animation-${phase}-preset`"
-						@update:model-value="value => applyPreset(phase, String(value))"
+						@update:model-value="(value) => applyPreset(phase, String(value))"
 					/>
 				</UFormField>
 
@@ -304,7 +318,7 @@ function staggerOf(phase: GraphicAnimationPhase) {
 					:disabled="!canAuthor"
 					:slide-parent="slideParent"
 					:test-id-prefix="`animation-${phase}`"
-					@update="patch => updateRecipe(phase, patch)"
+					@update="(patch) => updateRecipe(phase, patch)"
 					@channel="(channel, patch) => updateChannel(phase, channel, patch)"
 				/>
 			</div>
@@ -316,15 +330,13 @@ function staggerOf(phase: GraphicAnimationPhase) {
 			-->
 			<div v-if="staggerMembers.length > 0" class="mt-2 rounded border border-default/50 p-2">
 				<div class="flex items-center justify-between gap-2">
-					<p class="text-xs">
-						Stagger
-					</p>
+					<p class="text-xs">Stagger</p>
 					<USwitch
 						:model-value="staggerOf(phase) !== undefined"
 						size="sm"
 						:aria-label="`${GRAPHIC_ANIMATION_PHASE_LABELS[phase]} stagger`"
 						:data-testid="`animation-${phase}-stagger-enabled`"
-						@update:model-value="value => updateStagger(phase, value === true ? {} : null)"
+						@update:model-value="(value) => updateStagger(phase, value === true ? {} : null)"
 					/>
 				</div>
 
@@ -337,7 +349,7 @@ function staggerOf(phase: GraphicAnimationPhase) {
 							size="xs"
 							class="w-full"
 							:data-testid="`animation-${phase}-stagger-order`"
-							@update:model-value="value => updateStagger(phase, { order: value })"
+							@update:model-value="(value) => updateStagger(phase, { order: value })"
 						/>
 					</UFormField>
 					<GraphicsNumberField
@@ -347,7 +359,7 @@ function staggerOf(phase: GraphicAnimationPhase) {
 						:min="0"
 						:max="MAX_GRAPHIC_ANIMATION_STAGGER_STEP_MS"
 						:data-testid="`animation-${phase}-stagger-step`"
-						@update:model-value="value => updateStagger(phase, { step: Number(value ?? 0) })"
+						@update:model-value="(value) => updateStagger(phase, { step: Number(value ?? 0) })"
 					/>
 					<div class="space-y-1">
 						<UFormField
@@ -362,7 +374,9 @@ function staggerOf(phase: GraphicAnimationPhase) {
 								size="sm"
 								:aria-label="`Stagger ${member.label}`"
 								:data-testid="`animation-${phase}-stagger-member-${member.id}`"
-								@update:model-value="value => toggleStaggerMember(phase, member.id, value === true)"
+								@update:model-value="
+									(value) => toggleStaggerMember(phase, member.id, value === true)
+								"
 							/>
 						</UFormField>
 					</div>

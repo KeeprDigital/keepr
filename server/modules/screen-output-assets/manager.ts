@@ -1,12 +1,5 @@
-import {
-	createScreenOutputAssetCapability,
-	screenOutputAssetCapabilityDigest,
-} from './capability';
-import {
-	createScreenOutputLink,
-	parseScreenOutputLink,
-	screenOutputLinkIsFor,
-} from './link';
+import { createScreenOutputAssetCapability, screenOutputAssetCapabilityDigest } from './capability';
+import { createScreenOutputLink, parseScreenOutputLink, screenOutputLinkIsFor } from './link';
 
 export interface PersistedScreenOutputAssetCapability {
 	assetCapabilitySeed: string;
@@ -35,23 +28,25 @@ interface ScreenOutputAssetCapabilityManagerDependencies {
 	generateSeed?: () => string;
 }
 
-type ScreenOutputAssetCapabilityOutcome
-	= { outcome: 'available'; capability: string; link: string }
-		| { outcome: 'missing' };
+type ScreenOutputAssetCapabilityOutcome =
+	| { outcome: 'available'; capability: string; link: string }
+	| { outcome: 'missing' };
 
-type ScreenOutputLinkExchangeOutcome
-	= { outcome: 'available'; eventId: number; screenId: number; capability: string }
-		| { outcome: 'missing' };
+type ScreenOutputLinkExchangeOutcome =
+	| { outcome: 'available'; eventId: number; screenId: number; capability: string }
+	| { outcome: 'missing' };
 
 export function createScreenOutputAssetCapabilityManager(
 	dependencies: ScreenOutputAssetCapabilityManagerDependencies,
 ) {
 	const generateSeed = dependencies.generateSeed ?? (() => crypto.randomUUID());
 
-	async function derive(persisted: Pick<
-		PersistedScreenOutputAssetCapability,
-		'assetCapabilitySeed' | 'assetCapabilityVersion'
-	>) {
+	async function derive(
+		persisted: Pick<
+			PersistedScreenOutputAssetCapability,
+			'assetCapabilitySeed' | 'assetCapabilityVersion'
+		>,
+	) {
 		return await createScreenOutputAssetCapability({
 			signingKey: dependencies.signingKey,
 			seed: persisted.assetCapabilitySeed,
@@ -59,10 +54,13 @@ export function createScreenOutputAssetCapabilityManager(
 		});
 	}
 
-	async function deriveLink(screenId: number, persisted: Pick<
-		PersistedScreenOutputAssetCapability,
-		'assetCapabilitySeed' | 'assetCapabilityVersion'
-	>) {
+	async function deriveLink(
+		screenId: number,
+		persisted: Pick<
+			PersistedScreenOutputAssetCapability,
+			'assetCapabilitySeed' | 'assetCapabilityVersion'
+		>,
+	) {
 		return await createScreenOutputLink({
 			signingKey: dependencies.signingKey,
 			screenId,
@@ -71,10 +69,12 @@ export function createScreenOutputAssetCapabilityManager(
 		});
 	}
 
-	async function prepare(input: {
-		seed?: string;
-		version?: number;
-	} = {}) {
+	async function prepare(
+		input: {
+			seed?: string;
+			version?: number;
+		} = {},
+	) {
 		const seed = input.seed ?? generateSeed();
 		const version = input.version ?? 1;
 		const capability = await derive({
@@ -96,8 +96,7 @@ export function createScreenOutputAssetCapabilityManager(
 		screenId: number;
 	}): Promise<ScreenOutputAssetCapabilityOutcome> {
 		const screen = await dependencies.screens.findById(input.screenId, input.eventId);
-		if (!screen)
-			return { outcome: 'missing' };
+		if (!screen) return { outcome: 'missing' };
 		return {
 			outcome: 'available',
 			capability: await derive(screen),
@@ -110,8 +109,7 @@ export function createScreenOutputAssetCapabilityManager(
 		screenId: number;
 	}): Promise<ScreenOutputAssetCapabilityOutcome> {
 		const screen = await dependencies.screens.findById(input.screenId, input.eventId);
-		if (!screen)
-			return { outcome: 'missing' };
+		if (!screen) return { outcome: 'missing' };
 		const prepared = await prepare({
 			seed: generateSeed(),
 			version: screen.assetCapabilityVersion + 1,
@@ -122,8 +120,7 @@ export function createScreenOutputAssetCapabilityManager(
 			prepared.persisted,
 			screen.assetCapabilityVersion,
 		);
-		if (!updated)
-			return { outcome: 'missing' };
+		if (!updated) return { outcome: 'missing' };
 		return {
 			outcome: 'available',
 			capability: prepared.capability,
@@ -141,8 +138,7 @@ export function createScreenOutputAssetCapabilityManager(
 	async function exchange(input: { link: unknown }): Promise<ScreenOutputLinkExchangeOutcome> {
 		const link = input.link;
 		const named = parseScreenOutputLink(link);
-		if (!named || typeof link !== 'string')
-			return { outcome: 'missing' };
+		if (!named || typeof link !== 'string') return { outcome: 'missing' };
 		const screen = await dependencies.screens.findByIdInAnyEvent(named.screenId);
 		const verified = await screenOutputLinkIsFor({
 			signingKey: dependencies.signingKey,
@@ -153,8 +149,7 @@ export function createScreenOutputAssetCapabilityManager(
 				version: screen.assetCapabilityVersion,
 			},
 		});
-		if (!screen || !verified)
-			return { outcome: 'missing' };
+		if (!screen || !verified) return { outcome: 'missing' };
 		return {
 			outcome: 'available',
 			eventId: screen.eventId,

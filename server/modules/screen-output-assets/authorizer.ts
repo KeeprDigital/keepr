@@ -32,40 +32,36 @@ import {
  * a media value chosen live is otherwise a graphic whose media the output cannot
  * fetch.
  */
-const MODE_SLOT_SCOPES = GRAPHIC_ASSET_REFERENCING_SCREEN_MODES.flatMap(mode =>
-	screenOutputResolvableSlotPrefixes(mode).map(prefix => [mode, `${prefix}%`] as const),
+const MODE_SLOT_SCOPES = GRAPHIC_ASSET_REFERENCING_SCREEN_MODES.flatMap((mode) =>
+	screenOutputResolvableSlotPrefixes(mode).map((prefix) => [mode, `${prefix}%`] as const),
 );
 
-const MODE_SLOT_SCOPE = MODE_SLOT_SCOPES
-	.map(() => '(screen.current_mode = ? AND reference.owner_slot LIKE ?)')
-	.join(' OR ');
+const MODE_SLOT_SCOPE = MODE_SLOT_SCOPES.map(
+	() => '(screen.current_mode = ? AND reference.owner_slot LIKE ?)',
+).join(' OR ');
 
-const MODE_SLOT_SCOPE_BINDINGS = MODE_SLOT_SCOPES.flatMap(scope => [...scope]);
+const MODE_SLOT_SCOPE_BINDINGS = MODE_SLOT_SCOPES.flatMap((scope) => [...scope]);
 
 function parseStoredModeConfigs(stored: string | null): ModeConfigsMap | null {
-	if (!stored)
-		return null;
+	if (!stored) return null;
 	try {
 		const parsed: unknown = JSON.parse(stored);
 		return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-			? parsed as ModeConfigsMap
+			? (parsed as ModeConfigsMap)
 			: null;
-	}
-	catch {
+	} catch {
 		return null;
 	}
 }
 
 function parseStoredTokens(stored: string | null): StoredThemeTokens {
-	if (!stored)
-		return {};
+	if (!stored) return {};
 	try {
 		const parsed: unknown = JSON.parse(stored);
 		return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-			? parsed as StoredThemeTokens
+			? (parsed as StoredThemeTokens)
 			: {};
-	}
-	catch {
+	} catch {
 		return {};
 	}
 }
@@ -79,7 +75,8 @@ export function createD1ScreenOutputAssetAuthorizer(database: D1Database) {
 	 * library counts as in use.
 	 */
 	async function authorizeThemeSupplied(input: ScreenOutputAssetAuthorizationInput) {
-		const screen = await database.prepare(`
+		const screen = await database
+			.prepare(`
 			SELECT screen.current_mode AS mode, screen.theme_overrides AS overrides,
 				theme.id AS themeId, theme.tokens AS tokens
 			FROM screens screen
@@ -87,22 +84,27 @@ export function createD1ScreenOutputAssetAuthorizer(database: D1Database) {
 			LEFT JOIN themes theme ON theme.id = event.theme_id
 			WHERE screen.id = ? AND screen.asset_capability_digest = ?
 			LIMIT 1
-		`).bind(input.screenId, input.capabilityDigest).first<{
-			mode: ScreenMode;
-			overrides: string | null;
-			themeId: string | null;
-			tokens: string | null;
-		}>();
-		if (!screen)
-			return undefined;
+		`)
+			.bind(input.screenId, input.capabilityDigest)
+			.first<{
+				mode: ScreenMode;
+				overrides: string | null;
+				themeId: string | null;
+				tokens: string | null;
+			}>();
+		if (!screen) return undefined;
 		const supplied = screenThemeGraphicAssetReferences(
 			screen.mode,
 			parseStoredTokens(screen.tokens),
 			parseStoredTokens(screen.overrides),
-		).some(({ reference }) => reference.assetId === input.assetId && reference.revisionId === input.revisionId);
-		if (!supplied)
-			return undefined;
-		return await database.prepare(`
+		).some(
+			({ reference }) =>
+				reference.assetId === input.assetId && reference.revisionId === input.revisionId,
+		);
+		if (!supplied) return undefined;
+		return (
+			(await database
+				.prepare(`
 			SELECT revision.content_digest AS contentIdentity
 			FROM graphic_asset_references reference
 			JOIN graphic_asset_revisions revision
@@ -115,13 +117,16 @@ export function createD1ScreenOutputAssetAuthorizer(database: D1Database) {
 						AND reference.owner_slot LIKE ?)
 				)
 			LIMIT 1
-		`).bind(
-			input.assetId,
-			input.revisionId,
-			screen.themeId ?? '',
-			String(input.screenId),
-			`${SCREEN_THEME_OVERRIDE_SLOT_PREFIX}%`,
-		).first<{ contentIdentity: string }>() ?? undefined;
+		`)
+				.bind(
+					input.assetId,
+					input.revisionId,
+					screen.themeId ?? '',
+					String(input.screenId),
+					`${SCREEN_THEME_OVERRIDE_SLOT_PREFIX}%`,
+				)
+				.first<{ contentIdentity: string }>()) ?? undefined
+		);
 	}
 
 	/**
@@ -131,22 +136,27 @@ export function createD1ScreenOutputAssetAuthorizer(database: D1Database) {
 	 * photo stops resolving with the write that released it.
 	 */
 	async function authorizeTalentSupplied(input: ScreenOutputAssetAuthorizationInput) {
-		const screen = await database.prepare(`
+		const screen = await database
+			.prepare(`
 			SELECT screen.current_mode AS mode, screen.mode_configs AS modeConfigs, screen.event_id AS eventId
 			FROM screens screen
 			WHERE screen.id = ? AND screen.asset_capability_digest = ?
 			LIMIT 1
-		`).bind(input.screenId, input.capabilityDigest).first<{
-			mode: ScreenMode;
-			modeConfigs: string | null;
-			eventId: number;
-		}>();
-		if (screen?.mode !== 'talent')
-			return undefined;
-		const talentIds = talentScreenPhotoTalentIds(resolveScreenModeConfig(parseStoredModeConfigs(screen.modeConfigs), 'talent'));
-		if (talentIds.length === 0)
-			return undefined;
-		return await database.prepare(`
+		`)
+			.bind(input.screenId, input.capabilityDigest)
+			.first<{
+				mode: ScreenMode;
+				modeConfigs: string | null;
+				eventId: number;
+			}>();
+		if (screen?.mode !== 'talent') return undefined;
+		const talentIds = talentScreenPhotoTalentIds(
+			resolveScreenModeConfig(parseStoredModeConfigs(screen.modeConfigs), 'talent'),
+		);
+		if (talentIds.length === 0) return undefined;
+		return (
+			(await database
+				.prepare(`
 			SELECT revision.content_digest AS contentIdentity
 			FROM graphic_asset_references reference
 			JOIN graphic_asset_revisions revision
@@ -158,33 +168,26 @@ export function createD1ScreenOutputAssetAuthorizer(database: D1Database) {
 				AND reference.owner_id IN (SELECT CAST(value AS TEXT) FROM json_each(?))
 				AND reference.asset_id = ? AND reference.revision_id = ?
 			LIMIT 1
-		`).bind(
-			screen.eventId,
-			JSON.stringify(talentIds),
-			input.assetId,
-			input.revisionId,
-		).first<{ contentIdentity: string }>() ?? undefined;
+		`)
+				.bind(screen.eventId, JSON.stringify(talentIds), input.assetId, input.revisionId)
+				.first<{ contentIdentity: string }>()) ?? undefined
+		);
 	}
 
 	return {
 		/** Whether this capability may open a session at all. */
-		async authorizeCapability(input: {
-			screenId: number;
-			capabilityDigest: string;
-		}) {
-			const row = await database.prepare(`
+		async authorizeCapability(input: { screenId: number; capabilityDigest: string }) {
+			const row = await database
+				.prepare(`
 				SELECT screen.id AS id
 				FROM screens screen
 				WHERE screen.id = ?
 					AND screen.asset_capability_digest = ?
 				LIMIT 1
-			`).bind(
-				input.screenId,
-				input.capabilityDigest,
-			).first<{ id: number }>();
-			return row
-				? { outcome: 'authorized' as const }
-				: { outcome: 'missing' as const };
+			`)
+				.bind(input.screenId, input.capabilityDigest)
+				.first<{ id: number }>();
+			return row ? { outcome: 'authorized' as const } : { outcome: 'missing' as const };
 		},
 
 		/**
@@ -207,17 +210,16 @@ export function createD1ScreenOutputAssetAuthorizer(database: D1Database) {
 		 * bearer for one Event's Screen asking for a grant on another's.
 		 */
 		async screenForCapability(input: { capabilityDigest: string }) {
-			const row = await database.prepare(`
+			const row = await database
+				.prepare(`
 				SELECT screen.id AS id, screen.event_id AS eventId
 				FROM screens screen
 				WHERE screen.asset_capability_digest = ?
 				LIMIT 1
-			`).bind(
-				input.capabilityDigest,
-			).first<{ id: number; eventId: number }>();
-			return row
-				? { screenId: row.id, eventId: row.eventId }
-				: null;
+			`)
+				.bind(input.capabilityDigest)
+				.first<{ id: number; eventId: number }>();
+			return row ? { screenId: row.id, eventId: row.eventId } : null;
 		},
 
 		/**
@@ -229,7 +231,9 @@ export function createD1ScreenOutputAssetAuthorizer(database: D1Database) {
 		 * transparent video (ADR-0020), so there is no per-engine refusal to make.
 		 */
 		async authorize(input: ScreenOutputAssetAuthorizationInput) {
-			const row = await database.prepare(`
+			const row =
+				(await database
+					.prepare(`
 				SELECT
 					revision.content_digest AS contentIdentity
 				FROM screens screen
@@ -245,17 +249,18 @@ export function createD1ScreenOutputAssetAuthorizer(database: D1Database) {
 					AND reference.asset_id = ?
 					AND reference.revision_id = ?
 				LIMIT 1
-			`).bind(
-				input.screenId,
-				...MODE_SLOT_SCOPE_BINDINGS,
-				input.capabilityDigest,
-				input.assetId,
-				input.revisionId,
-			).first<{ contentIdentity: string }>()
-			?? await authorizeThemeSupplied(input)
-			?? await authorizeTalentSupplied(input);
-			if (!row)
-				return { outcome: 'missing' as const };
+			`)
+					.bind(
+						input.screenId,
+						...MODE_SLOT_SCOPE_BINDINGS,
+						input.capabilityDigest,
+						input.assetId,
+						input.revisionId,
+					)
+					.first<{ contentIdentity: string }>()) ??
+				(await authorizeThemeSupplied(input)) ??
+				(await authorizeTalentSupplied(input));
+			if (!row) return { outcome: 'missing' as const };
 			return {
 				outcome: 'authorized' as const,
 				contentIdentity: row.contentIdentity,

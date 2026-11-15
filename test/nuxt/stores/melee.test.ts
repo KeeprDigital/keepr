@@ -1,7 +1,14 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deferred } from '~~/test/helpers/deferred';
-import { createMockEvent, createMockFeatureMatch, createMockMatch, createMockPhase, createMockPlayer, createMockRound } from '~~/test/helpers/fixtures';
+import {
+	createMockEvent,
+	createMockFeatureMatch,
+	createMockMatch,
+	createMockPhase,
+	createMockPlayer,
+	createMockRound,
+} from '~~/test/helpers/fixtures';
 import { transportFailure } from '~~/test/helpers/transportFailure';
 
 /*
@@ -63,7 +70,7 @@ async function serve(path: string, options?: { query?: { roundId?: number } }) {
 		case 'matches':
 			return roundId
 				? {
-						matches: server.matches.filter(match => match.roundId === roundId),
+						matches: server.matches.filter((match) => match.roundId === roundId),
 					}
 				: [...server.matches];
 		default:
@@ -75,15 +82,13 @@ async function serve(path: string, options?: { query?: { roundId?: number } }) {
 function held() {
 	return {
 		event: useEventStore().event?.name,
-		phases: usePhaseStore().phases.map(phase => phase.id),
-		rounds: useRoundStore().rounds.map(round => round.id),
-		players: usePlayerStore().players.map(player => player.id),
-		decks: usePlayerDeckStore().decks.map(deck => deck.id),
-		slots: useFeatureMatchStore().featureMatches.map(slot => slot.id),
-		matches: useMatchStore().matches.map(match => match.id),
-		metagame: useMetagameStore().summaryData === null
-			? 'invalidated'
-			: 'held',
+		phases: usePhaseStore().phases.map((phase) => phase.id),
+		rounds: useRoundStore().rounds.map((round) => round.id),
+		players: usePlayerStore().players.map((player) => player.id),
+		decks: usePlayerDeckStore().decks.map((deck) => deck.id),
+		slots: useFeatureMatchStore().featureMatches.map((slot) => slot.id),
+		matches: useMatchStore().matches.map((match) => match.id),
+		metagame: useMetagameStore().summaryData === null ? 'invalidated' : 'held',
 	};
 }
 
@@ -95,8 +100,7 @@ function readsOf(resource: string) {
 /** The server stops answering reads of one resource; every other read still answers. */
 function failReadsOf(resource: string) {
 	mockFetch.mockImplementation(async (path: string, options?: { query?: { roundId?: number } }) => {
-		if (path.endsWith(`/${resource}`))
-			throw new Error(`${resource} offline`);
+		if (path.endsWith(`/${resource}`)) throw new Error(`${resource} offline`);
 		return serve(path, options);
 	});
 }
@@ -234,22 +238,14 @@ describe('useMeleeStore', () => {
 	 */
 	function importOnServer() {
 		server.event = { ...server.event, name: 'Imported Event' };
-		server.phases = [
-			createMockPhase({ id: 1, eventId: 1 }),
-		];
+		server.phases = [createMockPhase({ id: 1, eventId: 1 })];
 		server.rounds = [
 			createMockRound({ id: 10, eventId: 1, phaseId: 1 }),
 			createMockRound({ id: 20, eventId: 1, phaseId: 1 }),
 		];
-		server.players = [
-			createMockPlayer({ id: 7, eventId: 1 }),
-		];
-		server.decks = [
-			{ id: 70, eventId: 1, playerId: 7 },
-		];
-		server.slots = [
-			createMockFeatureMatch({ id: 5, eventId: 1 }),
-		];
+		server.players = [createMockPlayer({ id: 7, eventId: 1 })];
+		server.decks = [{ id: 70, eventId: 1, playerId: 7 }];
+		server.slots = [createMockFeatureMatch({ id: 5, eventId: 1 })];
 		server.matches = [
 			createMockMatch({ id: 100, eventId: 1, roundId: 10 }),
 			createMockMatch({ id: 200, eventId: 1, roundId: 20 }),
@@ -259,24 +255,15 @@ describe('useMeleeStore', () => {
 
 	it.each([
 		['no Event', undefined, false],
-		[
-			'Melee enabled and configured',
-			{ meleeEnabled: true, meleeConfigured: true },
-			true,
-		],
-		[
-			'Melee configured but not enabled',
-			{ meleeEnabled: false, meleeConfigured: true },
-			false,
-		],
+		['Melee enabled and configured', { meleeEnabled: true, meleeConfigured: true }, true],
+		['Melee configured but not enabled', { meleeEnabled: false, meleeConfigured: true }, false],
 	])('hasCredentials with %s is %s', (_, event, expected) => {
-		if (event)
-			setEvent(event);
+		if (event) setEvent(event);
 
 		expect(store.hasCredentials).toBe(expected);
 	});
 
-	it('tracks sync progress through the Event\'s Rounds in order', () => {
+	it("tracks sync progress through the Event's Rounds in order", () => {
 		const rounds = useRoundStore();
 		setRoundsAndPhases();
 
@@ -292,7 +279,7 @@ describe('useMeleeStore', () => {
 		expect(store.nextUnsyncedRound).toEqual(testRounds[1]);
 		expect(store.syncedRoundCount).toBe(1);
 
-		rounds.rounds = testRounds.map(r => ({
+		rounds.rounds = testRounds.map((r) => ({
 			...r,
 			lastSyncedAt: new Date(),
 		})) as never;
@@ -324,7 +311,7 @@ describe('useMeleeStore', () => {
 			} as never,
 		);
 
-		expect(store.availableRounds.map(round => round.id)).toEqual([10, 20, 30]);
+		expect(store.availableRounds.map((round) => round.id)).toEqual([10, 20, 30]);
 		expect(store.totalRoundCount).toBe(3);
 	});
 
@@ -352,23 +339,29 @@ describe('useMeleeStore', () => {
 				matches: [100, 200],
 			});
 			expect(store.lastOperation).toMatchObject({ kind: 'event', status: 'success' });
-			expect(store.lastOperation?.details).toContain('Structure notification could not be delivered');
+			expect(store.lastOperation?.details).toContain(
+				'Structure notification could not be delivered',
+			);
 		});
 	});
 
 	describe('failure reporting', () => {
 		it('reports the sentence a refused sync carries, in `error` and in the operation banner', async () => {
 			setEvent();
-			mockEventRepo.syncMelee.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { message: 'This Event is no longer linked to a Melee.gg tournament' },
-				request: `[POST] "/api/events/1/melee/sync"`,
-			}));
+			mockEventRepo.syncMelee.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { message: 'This Event is no longer linked to a Melee.gg tournament' },
+					request: `[POST] "/api/events/1/melee/sync"`,
+				}),
+			);
 
 			await store.syncEvent();
 
 			expect(store.error).toBe('This Event is no longer linked to a Melee.gg tournament');
-			expect(store.lastOperation?.description).toBe('This Event is no longer linked to a Melee.gg tournament');
+			expect(store.lastOperation?.description).toBe(
+				'This Event is no longer linked to a Melee.gg tournament',
+			);
 		});
 	});
 
@@ -397,7 +390,11 @@ describe('useMeleeStore', () => {
 				slots: [5],
 				metagame: 'invalidated',
 			});
-			expect(store.lastOperation).toMatchObject({ kind: 'players', status: 'success', title: 'Players Synced' });
+			expect(store.lastOperation).toMatchObject({
+				kind: 'players',
+				status: 'success',
+				title: 'Players Synced',
+			});
 			expect(store.lastOperation?.details).toContain('1 deactivated');
 			expect(store.lastOperation?.details).toContain('Player notification could not be delivered');
 		});
@@ -532,13 +529,15 @@ describe('useMeleeStore', () => {
 			expect(store.lastOperation?.status).toBe('warning');
 			expect(store.lastOperation?.title).toBe('Melee Updated — Reload Needed');
 			expect(store.lastOperation?.description).toContain('source changes were committed');
-			expect(store.lastOperation?.details).toContain('Local deck lists refresh failed: decks offline');
+			expect(store.lastOperation?.details).toContain(
+				'Local deck lists refresh failed: decks offline',
+			);
 			expect(store.error).toBeNull();
 		});
 	});
 
 	describe('syncSpecificRound', () => {
-		it('holds the Event, Players, Rounds and Slots as the server has them, with the synced Round\'s Matches on view', async () => {
+		it("holds the Event, Players, Rounds and Slots as the server has them, with the synced Round's Matches on view", async () => {
 			setEvent();
 			await useMatchStore().loadMatchesByRoundId(1, 20);
 			importOnServer();
@@ -596,9 +595,11 @@ describe('useMeleeStore', () => {
 			expect(store.syncStep).toBe('complete');
 
 			let resolveRound!: (value: unknown) => void;
-			mockEventRepo.syncSpecificRound.mockReturnValue(new Promise((resolve) => {
-				resolveRound = resolve;
-			}));
+			mockEventRepo.syncSpecificRound.mockReturnValue(
+				new Promise((resolve) => {
+					resolveRound = resolve;
+				}),
+			);
 			const newerSync = store.syncSpecificRound(20);
 			await Promise.resolve();
 			expect(store.syncStep).toBe('standings');
@@ -857,12 +858,13 @@ describe('useMeleeStore', () => {
 		/** The next Players read held open, so a test decides what happens before it answers. */
 		function holdPlayersReload() {
 			const reload = deferred<unknown[]>();
-			mockFetch.mockImplementation(async (path: string, options?: { query?: { roundId?: number } }) => {
-				if (!path.endsWith('/players'))
-					return serve(path, options);
-				mockFetch.mockImplementation(serve);
-				return reload.promise;
-			});
+			mockFetch.mockImplementation(
+				async (path: string, options?: { query?: { roundId?: number } }) => {
+					if (!path.endsWith('/players')) return serve(path, options);
+					mockFetch.mockImplementation(serve);
+					return reload.promise;
+				},
+			);
 			return reload;
 		}
 
@@ -886,21 +888,26 @@ describe('useMeleeStore', () => {
 			['runInitialSetup', 'rounds', 'rounds'],
 			['runInitialSetup', 'players', 'players'],
 			['runInitialSetup', 'feature-match-slots', 'feature matches'],
-		] as const)('%s, when the %s reload fails, says Reload Needed and lists the %s refresh', async (command, resource, label) => {
-			setEvent();
-			await useMatchStore().loadMatchesByRoundId(1, round.id);
-			importOnServer();
-			failReadsOf(resource);
+		] as const)(
+			'%s, when the %s reload fails, says Reload Needed and lists the %s refresh',
+			async (command, resource, label) => {
+				setEvent();
+				await useMatchStore().loadMatchesByRoundId(1, round.id);
+				importOnServer();
+				failReadsOf(resource);
 
-			await commands[command].run();
+				await commands[command].run();
 
-			expect(store.lastOperation).toMatchObject({
-				status: 'warning',
-				title: `${commands[command].title} — Reload Needed`,
-			});
-			expect(store.lastOperation?.details).toContain(`Local ${label} refresh failed: ${resource} offline`);
-			expect(store.error).toBeNull();
-		});
+				expect(store.lastOperation).toMatchObject({
+					status: 'warning',
+					title: `${commands[command].title} — Reload Needed`,
+				});
+				expect(store.lastOperation?.details).toContain(
+					`Local ${label} refresh failed: ${resource} offline`,
+				);
+				expect(store.error).toBeNull();
+			},
+		);
 
 		it('still reloads the rest of the Event structure when one of its reloads fails', async () => {
 			setEvent();
@@ -1006,14 +1013,12 @@ describe('useMeleeStore', () => {
 		it('a new operation is not answered by the one still running for the earlier lifetime', async () => {
 			setEvent();
 			const earlier = deferred<unknown>();
-			mockEventRepo.syncMelee
-				.mockReturnValueOnce(earlier.promise)
-				.mockResolvedValueOnce({
-					success: true,
-					event: { name: 'Current Event' },
-					phases: 1,
-					rounds: 1,
-				});
+			mockEventRepo.syncMelee.mockReturnValueOnce(earlier.promise).mockResolvedValueOnce({
+				success: true,
+				event: { name: 'Current Event' },
+				phases: 1,
+				rounds: 1,
+			});
 
 			const earlierSync = store.syncEvent();
 			switchAway();
@@ -1027,9 +1032,11 @@ describe('useMeleeStore', () => {
 			await earlierSync;
 
 			expect(mockEventRepo.syncMelee).toHaveBeenLastCalledWith(1);
-			expect(currentSync).toEqual(expect.objectContaining({
-				event: { name: 'Current Event' },
-			}));
+			expect(currentSync).toEqual(
+				expect.objectContaining({
+					event: { name: 'Current Event' },
+				}),
+			);
 			expect(store.lastOperation?.description).toBe('Synced event structure for Current Event');
 		});
 	});

@@ -1,4 +1,8 @@
-import type { BroadcastGraphicsBackgroundConfig, FeatureMatchOverlayFrameAnimationConfig, ScreenMediaBackgroundConfig } from './types/screenConfig';
+import type {
+	BroadcastGraphicsBackgroundConfig,
+	FeatureMatchOverlayFrameAnimationConfig,
+	ScreenMediaBackgroundConfig,
+} from './types/screenConfig';
 
 /**
  * The starting values a Screen's media background, a Feature Match Overlay

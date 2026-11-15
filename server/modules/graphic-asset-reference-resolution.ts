@@ -132,12 +132,14 @@ export interface IndexedGraphicAssetReferenceFacts extends GraphicAssetReference
 export function boundGraphicAssetReferenceFacts(
 	facts: readonly IndexedGraphicAssetReferenceFacts[],
 ): string {
-	return JSON.stringify(facts.map(fact => ({
-		id: fact.id,
-		ownerSlot: fact.ownerSlot,
-		revisionId: fact.reference.revisionId,
-		assetId: fact.reference.assetId,
-		allowRetired: fact.allowRetired ? 1 : 0,
-		kind: fact.kind,
-	})));
+	return JSON.stringify(
+		facts.map((fact) => ({
+			id: fact.id,
+			ownerSlot: fact.ownerSlot,
+			revisionId: fact.reference.revisionId,
+			assetId: fact.reference.assetId,
+			allowRetired: fact.allowRetired ? 1 : 0,
+			kind: fact.kind,
+		})),
+	);
 }

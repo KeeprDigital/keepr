@@ -63,38 +63,51 @@ export function maximalFeatureMatchLayoutDocument(
 	// is the host that actually declares the `feature-match` context, so Clock, Player
 	// Life, Game Wins, and Deck List are Definitions a real layout places.
 	const withGroup = addGraphicItem(base, { kind: 'group', id: 'cluster', ...CANVAS }).graphic;
-	const withChild = addGraphicGroupChild(withGroup, { kind: 'shape', groupId: 'cluster', id: 'child' }).graphic;
-	const withName = addGraphicItem(withChild, { kind: 'text', id: 'player1-name', ...CANVAS }).graphic;
-	const withBackdrop = addGraphicItem(withName, { kind: 'media', id: 'backdrop', ...CANVAS }).graphic;
+	const withChild = addGraphicGroupChild(withGroup, {
+		kind: 'shape',
+		groupId: 'cluster',
+		id: 'child',
+	}).graphic;
+	const withName = addGraphicItem(withChild, {
+		kind: 'text',
+		id: 'player1-name',
+		...CANVAS,
+	}).graphic;
+	const withBackdrop = addGraphicItem(withName, {
+		kind: 'media',
+		id: 'backdrop',
+		...CANVAS,
+	}).graphic;
 	const withClock = addGraphicItem(withBackdrop, { kind: 'clock', id: 'clock', ...CANVAS }).graphic;
-	const withLife = addGraphicItem(withClock, { kind: 'player-life', id: 'life', ...CANVAS }).graphic;
+	const withLife = addGraphicItem(withClock, {
+		kind: 'player-life',
+		id: 'life',
+		...CANVAS,
+	}).graphic;
 	const withWins = addGraphicItem(withLife, { kind: 'game-wins', id: 'wins', ...CANVAS }).graphic;
-	const composition = addGraphicItem(withWins, { kind: 'deck-list', id: 'sideboard', ...CANVAS }).graphic;
+	const composition = addGraphicItem(withWins, {
+		kind: 'deck-list',
+		id: 'sideboard',
+		...CANVAS,
+	}).graphic;
 
-	const group = composition.items.find(item => item.id === 'cluster');
-	if (group?.type !== 'group')
-		throw new Error('expected a Graphic Group');
+	const group = composition.items.find((item) => item.id === 'cluster');
+	if (group?.type !== 'group') throw new Error('expected a Graphic Group');
 	const child = group.children[0];
 	if (child?.type !== 'shape')
 		throw new Error('expected a Shape Graphic Item inside the Graphic Group');
-	const name = composition.items.find(item => item.id === 'player1-name');
-	if (name?.type !== 'text')
-		throw new Error('expected a Text Graphic Item');
-	const backdrop = composition.items.find(item => item.id === 'backdrop');
-	if (backdrop?.type !== 'media')
-		throw new Error('expected a Media Graphic Item');
-	const clock = composition.items.find(item => item.id === 'clock');
-	if (clock?.type !== 'clock')
-		throw new Error('expected a Clock Graphic Item');
-	const life = composition.items.find(item => item.id === 'life');
-	if (life?.type !== 'player-life')
-		throw new Error('expected a Player Life Graphic Item');
-	const wins = composition.items.find(item => item.id === 'wins');
-	if (wins?.type !== 'game-wins')
-		throw new Error('expected a Game Wins Graphic Item');
-	const sideboard = composition.items.find(item => item.id === 'sideboard');
-	if (sideboard?.type !== 'deck-list')
-		throw new Error('expected a Deck List Graphic Item');
+	const name = composition.items.find((item) => item.id === 'player1-name');
+	if (name?.type !== 'text') throw new Error('expected a Text Graphic Item');
+	const backdrop = composition.items.find((item) => item.id === 'backdrop');
+	if (backdrop?.type !== 'media') throw new Error('expected a Media Graphic Item');
+	const clock = composition.items.find((item) => item.id === 'clock');
+	if (clock?.type !== 'clock') throw new Error('expected a Clock Graphic Item');
+	const life = composition.items.find((item) => item.id === 'life');
+	if (life?.type !== 'player-life') throw new Error('expected a Player Life Graphic Item');
+	const wins = composition.items.find((item) => item.id === 'wins');
+	if (wins?.type !== 'game-wins') throw new Error('expected a Game Wins Graphic Item');
+	const sideboard = composition.items.find((item) => item.id === 'sideboard');
+	if (sideboard?.type !== 'deck-list') throw new Error('expected a Deck List Graphic Item');
 
 	backdrop.asset = { ...options.itemAsset };
 	backdrop.clipGeometry = {
@@ -189,7 +202,7 @@ export function maximalFeatureMatchLayoutDocument(
 	};
 
 	composition.animation = {
-		'enter': {
+		enter: {
 			duration: 400,
 			easing: 'ease-out',
 			delay: 100,
@@ -203,21 +216,21 @@ export function maximalFeatureMatchLayoutDocument(
 			repeat: 3,
 			scale: { factor: 1.1, origin: 'center' },
 		},
-		'update': {
+		update: {
 			duration: 250,
 			easing: 'ease-in-out',
 			delay: 0,
 			fade: { opacity: 0.5 },
 		},
-		'exit': {
+		exit: {
 			duration: 300,
 			easing: 'ease-in',
 			delay: 0,
 			slide: { direction: 'south', distanceMode: 'fixed', distance: 200 },
 			reveal: { edge: 'left' },
 		},
-		'stagger': {
-			'enter': {
+		stagger: {
+			enter: {
 				order: 'list',
 				step: 80,
 				itemIds: ['player1-name', 'cluster'],
@@ -227,21 +240,15 @@ export function maximalFeatureMatchLayoutDocument(
 				step: 40,
 				itemIds: ['cluster'],
 			},
-			'update': {
+			update: {
 				order: 'list',
 				step: 20,
 				itemIds: ['player1-name'],
 			},
-			'exit': {
+			exit: {
 				order: 'reverse-list',
 				step: 60,
-				itemIds: [
-					'cluster',
-					'backdrop',
-					'clock',
-					'life',
-					'wins',
-				],
+				itemIds: ['cluster', 'backdrop', 'clock', 'life', 'wins'],
 			},
 		},
 	};
@@ -345,21 +352,27 @@ export function maximalFeatureMatchLayoutDocument(
  * The layout with each named layer stored locked (ADR-0063): a Source Item, a
  * top-level Graphic Item or a Graphic Group child, matched by id.
  */
-export function withLayersLocked(layout: FeatureMatchLayoutConfig, ids: readonly string[]): FeatureMatchLayoutConfig {
-	const lock = <T extends { id: string }>(item: T): T => ids.includes(item.id)
-		? { ...item, locked: true }
-		: item;
+export function withLayersLocked(
+	layout: FeatureMatchLayoutConfig,
+	ids: readonly string[],
+): FeatureMatchLayoutConfig {
+	const lock = <T extends { id: string }>(item: T): T =>
+		ids.includes(item.id) ? { ...item, locked: true } : item;
 	return {
 		...layout,
 		sources: layout.sources.map(lock),
 		composition: {
 			...layout.composition,
-			items: layout.composition.items.map(item => lock(item.type === 'group'
-				? {
-						...item,
-						children: item.children.map(lock),
-					}
-				: item)),
+			items: layout.composition.items.map((item) =>
+				lock(
+					item.type === 'group'
+						? {
+								...item,
+								children: item.children.map(lock),
+							}
+						: item,
+				),
+			),
 		},
 	};
 }

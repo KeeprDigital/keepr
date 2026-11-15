@@ -23,7 +23,12 @@ import { editorLayerCanvasBox } from './layerFrame';
  */
 
 /** The align commands the property panel offers several selected layers, in their order, each along one axis. */
-export const ALIGN_COMMANDS: readonly { edge: AlignEdge; axis: DistributeAxis; label: string; icon: string }[] = [
+export const ALIGN_COMMANDS: readonly {
+	edge: AlignEdge;
+	axis: DistributeAxis;
+	label: string;
+	icon: string;
+}[] = [
 	{
 		edge: 'left',
 		axis: 'x',
@@ -63,10 +68,11 @@ export const ALIGN_COMMANDS: readonly { edge: AlignEdge; axis: DistributeAxis; l
 ];
 
 /** The distribute commands the property panel offers three or more selected layers. */
-export const DISTRIBUTE_COMMANDS: readonly { axis: DistributeAxis; label: string; icon: string }[] = [
-	{ axis: 'x', label: 'Horizontally', icon: 'i-lucide-align-horizontal-space-around' },
-	{ axis: 'y', label: 'Vertically', icon: 'i-lucide-align-vertical-space-around' },
-];
+export const DISTRIBUTE_COMMANDS: readonly { axis: DistributeAxis; label: string; icon: string }[] =
+	[
+		{ axis: 'x', label: 'Horizontally', icon: 'i-lucide-align-horizontal-space-around' },
+		{ axis: 'y', label: 'Vertically', icon: 'i-lucide-align-vertical-space-around' },
+	];
 
 /** Where a layer's stored rectangle moves to. */
 export interface LayerPosition<L extends GraphicsEditorLayer> {
@@ -85,7 +91,11 @@ interface Member<L extends GraphicsEditorLayer> {
 }
 
 /** The Graphic Group a layer is a child of, if any. */
-function parentGroup<D, L extends GraphicsEditorLayer>(tree: GraphicsEditorTree<D, L>, document: D, layer: L) {
+function parentGroup<D, L extends GraphicsEditorLayer>(
+	tree: GraphicsEditorTree<D, L>,
+	document: D,
+	layer: L,
+) {
 	return layerItemLocation(tree, document, layer)?.group;
 }
 
@@ -100,10 +110,11 @@ function alignmentMembers<D, L extends GraphicsEditorLayer>(
 ): { members: Member<L>[]; group?: GraphicGroupItemConfig } {
 	const present = layers.filter((layer) => {
 		const group = parentGroup(tree, document, layer);
-		return layerConfig(tree, document, layer) !== undefined
-			&& (!group || group.arrangement === 'canvas');
+		return (
+			layerConfig(tree, document, layer) !== undefined && (!group || group.arrangement === 'canvas')
+		);
 	});
-	const groups = new Set(present.map(layer => parentGroup(tree, document, layer)));
+	const groups = new Set(present.map((layer) => parentGroup(tree, document, layer)));
 	const [group] = groups;
 	if (groups.size === 1 && group) {
 		return {
@@ -135,9 +146,11 @@ function alignmentMembers<D, L extends GraphicsEditorLayer>(
 }
 
 /** What one layer aligns to: its group's padded box, or the canvas. */
-function container(group: GraphicGroupItemConfig | undefined, canvas: { width: number; height: number }): GraphicRect {
-	if (!group)
-		return { x: 0, y: 0, ...canvas };
+function container(
+	group: GraphicGroupItemConfig | undefined,
+	canvas: { width: number; height: number },
+): GraphicRect {
+	if (!group) return { x: 0, y: 0, ...canvas };
 	const padding = Math.max(0, group.padding);
 	return {
 		x: 0,
@@ -147,14 +160,13 @@ function container(group: GraphicGroupItemConfig | undefined, canvas: { width: n
 	};
 }
 
-function positions<L extends GraphicsEditorLayer>(members: readonly Member<L>[], moves: readonly BoxMove[]): LayerPosition<L>[] {
+function positions<L extends GraphicsEditorLayer>(
+	members: readonly Member<L>[],
+	moves: readonly BoxMove[],
+): LayerPosition<L>[] {
 	return members.flatMap(({ layer, rect }, index) => {
 		const move = moves[index]!;
-		return move.x === 0 && move.y === 0
-			? []
-			: [
-					{ layer, x: rect.x + move.x, y: rect.y + move.y },
-				];
+		return move.x === 0 && move.y === 0 ? [] : [{ layer, x: rect.x + move.x, y: rect.y + move.y }];
 	});
 }
 
@@ -192,10 +204,15 @@ export function alignLayers<D, L extends GraphicsEditorLayer>(
 	edge: AlignEdge,
 ): LayerPosition<L>[] {
 	const { members, group } = alignmentMembers(tree, document, layers);
-	const to = layers.length > 1
-		? undefined
-		: container(group, canvas);
-	return positions(members, alignBoxes(members.map(member => member.box), edge, to));
+	const to = layers.length > 1 ? undefined : container(group, canvas);
+	return positions(
+		members,
+		alignBoxes(
+			members.map((member) => member.box),
+			edge,
+			to,
+		),
+	);
 }
 
 /**
@@ -209,5 +226,11 @@ export function distributeLayers<D, L extends GraphicsEditorLayer>(
 	axis: DistributeAxis,
 ): LayerPosition<L>[] {
 	const { members } = alignmentMembers(tree, document, layers);
-	return positions(members, distributeBoxes(members.map(member => member.box), axis));
+	return positions(
+		members,
+		distributeBoxes(
+			members.map((member) => member.box),
+			axis,
+		),
+	);
 }

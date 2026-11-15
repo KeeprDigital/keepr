@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import type { AnimationEffectRenderPlan, AnimationEffectSelection, FeatureMatchOverlayFrameAnimationConfig } from '~~/shared/animationEffects';
+import type {
+	AnimationEffectRenderPlan,
+	AnimationEffectSelection,
+	FeatureMatchOverlayFrameAnimationConfig,
+} from '~~/shared/animationEffects';
 import type { FeatureMatchOverlayOutput } from '~~/shared/types/screenConfig';
-import { animationEffectRenderPlan, parseAnimationEffectSelection, parseFrameAnimationConfig } from '~~/shared/animationEffects';
+import {
+	animationEffectRenderPlan,
+	parseAnimationEffectSelection,
+	parseFrameAnimationConfig,
+} from '~~/shared/animationEffects';
 import ScreenAnimationEffectSurface from '~/components/Screen/AnimationEffectSurface.vue';
 import { featureMatchOverlayFrameContentMaskStyle } from '~/modules/feature-match-overlay/renderModel';
 
@@ -32,9 +40,7 @@ const hostStyle = computed(() => ({
 /** An effect this build does not ship parses to nothing and renders nothing. */
 const renderPlan = computed<AnimationEffectRenderPlan | null>(() => {
 	const selection = parseAnimationEffectSelection(props.effect);
-	return selection
-		? animationEffectRenderPlan(selection)
-		: null;
+	return selection ? animationEffectRenderPlan(selection) : null;
 });
 </script>
 
@@ -46,11 +52,7 @@ const renderPlan = computed<AnimationEffectRenderPlan | null>(() => {
 		:width="canvasWidth"
 		:height="canvasHeight"
 	>
-		<div
-			xmlns="http://www.w3.org/1999/xhtml"
-			class="frame-animation"
-			:style="hostStyle"
-		>
+		<div xmlns="http://www.w3.org/1999/xhtml" class="frame-animation" :style="hostStyle">
 			<ScreenAnimationEffectSurface
 				:effect="renderPlan.effect"
 				:params="renderPlan.params"

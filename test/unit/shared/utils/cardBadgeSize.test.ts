@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { cardBadgeTextSize, DECK_AUTO_BADGE_RATIOS, TOP_CARDS_AUTO_BADGE_RATIO } from '~~/shared/utils/cardBadgeSize';
+import {
+	cardBadgeTextSize,
+	DECK_AUTO_BADGE_RATIOS,
+	TOP_CARDS_AUTO_BADGE_RATIO,
+} from '~~/shared/utils/cardBadgeSize';
 
 // An Auto badge follows its card: at its mode's former default card width it is
 // the former default text size, so a Screen that never set one looks as it did.

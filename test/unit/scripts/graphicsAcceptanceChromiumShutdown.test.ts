@@ -5,7 +5,10 @@ import { basename, join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { acceptanceProfilePrefix, checkoutProfileMarker } from '../../../scripts/graphics-acceptance/chromium-profile.mjs';
+import {
+	acceptanceProfilePrefix,
+	checkoutProfileMarker,
+} from '../../../scripts/graphics-acceptance/chromium-profile.mjs';
 import { launchChromium } from '../../../scripts/graphics-acceptance/chromium.mjs';
 import { LOAD_TOLERANT_WAIT_MS } from '../../helpers/loadTolerantBounds';
 import { fakeChrome } from './fixtures/fake-chrome';
@@ -34,8 +37,7 @@ function alive(pid: number): boolean {
 	try {
 		process.kill(pid, 0);
 		return true;
-	}
-	catch {
+	} catch {
 		return false;
 	}
 }
@@ -48,9 +50,7 @@ function gone(pid: number) {
 /** The signals the stand-in has recorded ignoring, in order: none until it has taken one. */
 function signalsReceived(profile: string): string[] {
 	const record = join(profile, 'signals-received');
-	return existsSync(record)
-		? readFileSync(record, 'utf8').split('\n').filter(Boolean)
-		: [];
+	return existsSync(record) ? readFileSync(record, 'utf8').split('\n').filter(Boolean) : [];
 }
 
 /**
@@ -61,15 +61,12 @@ const stubbornGraces = { terminateGraceMs: 200, killGraceMs: LOAD_TOLERANT_WAIT_
 
 afterEach(() => {
 	for (const pid of strays) {
-		if (alive(pid))
-			process.kill(pid, 'SIGKILL');
+		if (alive(pid)) process.kill(pid, 'SIGKILL');
 	}
 	strays.clear();
-	for (const runner of runners)
-		runner.kill('SIGKILL');
+	for (const runner of runners) runner.kill('SIGKILL');
 	runners.clear();
-	for (const profile of runnerProfiles)
-		rmSync(profile, { recursive: true, force: true });
+	for (const profile of runnerProfiles) rmSync(profile, { recursive: true, force: true });
 	runnerProfiles.clear();
 });
 
@@ -79,15 +76,15 @@ async function startRunner(...args: string[]) {
 		stdio: ['ignore', 'pipe', 'inherit'],
 	});
 	runners.add(runner);
-	const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolve =>
-		runner.once('exit', (code, signal) => resolve({ code, signal })));
+	const exited = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) =>
+		runner.once('exit', (code, signal) => resolve({ code, signal })),
+	);
 	let output = '';
 	const launched = await new Promise<{ pid: number; profile: string }>((resolve, reject) => {
 		runner.stdout!.setEncoding('utf8').on('data', (chunk: string) => {
 			output += chunk;
-			const line = output.split('\n').find(candidate => candidate.startsWith('{'));
-			if (line)
-				resolve(JSON.parse(line));
+			const line = output.split('\n').find((candidate) => candidate.startsWith('{'));
+			if (line) resolve(JSON.parse(line));
 		});
 		runner.once('exit', () => reject(new Error(`runner exited before launching: ${output}`)));
 	});
@@ -104,13 +101,12 @@ async function startRunner(...args: string[]) {
 /** The stand-in, launched through the real launcher with a short SIGTERM grace. */
 async function launchStandIn() {
 	const browser = await launchChromium(STUBBORN_CHROME, [], stubbornGraces);
-	if (!browser?.pid)
-		throw new Error('the stand-in did not launch');
+	if (!browser?.pid) throw new Error('the stand-in did not launch');
 	strays.add(browser.pid);
 	return { ...browser, pid: browser.pid };
 }
 
-describe('the acceptance browser\'s shutdown', () => {
+describe("the acceptance browser's shutdown", () => {
 	it('escalates to SIGKILL when the browser ignores the protocol and SIGTERM', async () => {
 		const browser = await launchStandIn();
 
@@ -123,32 +119,42 @@ describe('the acceptance browser\'s shutdown', () => {
 	it('stops a browser that never announced itself rather than leaving it to run on', async () => {
 		const tag = `--stand-in=${process.pid}-${Date.now()}`;
 
-		await expect(launchChromium(STUBBORN_CHROME, ['--silent', tag], { ...stubbornGraces, startupTimeoutMs: 300 }))
-			.rejects
-			.toThrow('Chrome DevTools endpoint timed out.');
+		await expect(
+			launchChromium(STUBBORN_CHROME, ['--silent', tag], {
+				...stubbornGraces,
+				startupTimeoutMs: 300,
+			}),
+		).rejects.toThrow('Chrome DevTools endpoint timed out.');
 
 		const ps = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' });
-		expect(ps.split('\n').filter(line => line.includes(tag))).toEqual([]);
+		expect(ps.split('\n').filter((line) => line.includes(tag))).toEqual([]);
 	});
 
-	it('names its profile after this checkout, so a reap can tell it from anyone else\'s browser', async () => {
+	it("names its profile after this checkout, so a reap can tell it from anyone else's browser", async () => {
 		const browser = await launchStandIn();
 
-		expect(basename(browser.profile).startsWith(acceptanceProfilePrefix(checkoutProfileMarker(CHECKOUT)))).toBe(true);
+		expect(
+			basename(browser.profile).startsWith(
+				acceptanceProfilePrefix(checkoutProfileMarker(CHECKOUT)),
+			),
+		).toBe(true);
 		await browser.dispose();
 	});
 
-	it.each(['SIGTERM', 'SIGINT'] as const)('takes the browser down with it when the runner gets %s', async (signal) => {
-		const { runner, exited, pid, profile } = await startRunner();
+	it.each(['SIGTERM', 'SIGINT'] as const)(
+		'takes the browser down with it when the runner gets %s',
+		async (signal) => {
+			const { runner, exited, pid, profile } = await startRunner();
 
-		runner.kill(signal);
+			runner.kill(signal);
 
-		expect(await exited).toEqual({ code: null, signal });
-		await gone(pid);
-		expect(existsSync(profile)).toBe(false);
-	});
+			expect(await exited).toEqual({ code: null, signal });
+			await gone(pid);
+			expect(existsSync(profile)).toBe(false);
+		},
+	);
 
-	it('leaves a runner\'s own SIGTERM handler to finish, and still takes the browser down', async () => {
+	it("leaves a runner's own SIGTERM handler to finish, and still takes the browser down", async () => {
 		const { runner, exited, pid, printed } = await startRunner('own-cleanup');
 
 		runner.kill('SIGTERM');
@@ -217,10 +223,13 @@ describe('a browser that outlives SIGKILL', () => {
 		{
 			stopping: 'a browser that never announced itself, in its startup report',
 			// It says nothing, so its startup bound is meant to run out as well.
-			stop: async ({ options }: ImmortalChrome) => await launchChromium('chrome', [], { ...options, startupTimeoutMs: 100 }).then(
-				() => { throw new Error('the stand-in launched'); },
-				(failure: Error) => failure.message,
-			),
+			stop: async ({ options }: ImmortalChrome) =>
+				await launchChromium('chrome', [], { ...options, startupTimeoutMs: 100 }).then(
+					() => {
+						throw new Error('the stand-in launched');
+					},
+					(failure: Error) => failure.message,
+				),
 		},
 		{
 			stopping: 'a browser being disposed of, on stderr',
@@ -234,13 +243,16 @@ describe('a browser that outlives SIGKILL', () => {
 				return stderr();
 			},
 		},
-	])('keeps the profile it still holds, and names it, when stopping $stopping', async ({ stop }) => {
-		const stand = immortalChrome();
+	])(
+		'keeps the profile it still holds, and names it, when stopping $stopping',
+		async ({ stop }) => {
+			const stand = immortalChrome();
 
-		const report = await stop(stand);
+			const report = await stop(stand);
 
-		expect(report).toContain('still running after SIGKILL');
-		expect(report).toContain(`profile kept: ${stand.chrome.profile()}`);
-		expect(existsSync(stand.chrome.profile()!)).toBe(true);
-	});
+			expect(report).toContain('still running after SIGKILL');
+			expect(report).toContain(`profile kept: ${stand.chrome.profile()}`);
+			expect(existsSync(stand.chrome.profile()!)).toBe(true);
+		},
+	);
 });

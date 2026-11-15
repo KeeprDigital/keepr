@@ -1,12 +1,20 @@
 import type { StoredThemeTokens } from '~~/shared/modules/theme';
-import type { FeatureMatchLayoutFrameConfig, FeatureMatchOverlayModeConfig } from '~~/shared/types/screenConfig';
+import type {
+	FeatureMatchLayoutFrameConfig,
+	FeatureMatchOverlayModeConfig,
+} from '~~/shared/types/screenConfig';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
-import { fakeScreenThemeNetwork, overrideWrites, screenSettingsPage, seedThemedScreen } from '~~/test/nuxt/helpers/screenThemeOverrides';
+import {
+	fakeScreenThemeNetwork,
+	overrideWrites,
+	screenSettingsPage,
+	seedThemedScreen,
+} from '~~/test/nuxt/helpers/screenThemeOverrides';
 import FrameStyleCard from '~/components/Screen/Modes/FeatureMatchOverlay/FrameStyleCard.vue';
 import SurfaceStyleTokenInput from '~/components/Theme/SurfaceStyleTokenInput.vue';
 import { THEME_TOKEN_DRAFT_COMMIT_MS } from '~/modules/theme-editor/draft';
@@ -47,7 +55,8 @@ const UIColorPickerStub = defineComponent({
 		placeholder: { type: String, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" data-testid="color-picker" :data-allow-raw-value="String(allowRawValue)" @click="$emit(\'update:modelValue\', \'\')">{{ modelValue }}</button>',
+	template:
+		'<button type="button" data-testid="color-picker" :data-allow-raw-value="String(allowRawValue)" @click="$emit(\'update:modelValue\', \'\')">{{ modelValue }}</button>',
 });
 
 const UInputStub = defineComponent({
@@ -58,7 +67,8 @@ const UInputStub = defineComponent({
 		},
 	},
 	emits: ['update:modelValue'],
-	template: '<input data-testid="u-input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	template:
+		'<input data-testid="u-input" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 });
 
 const UInputNumberStub = defineComponent({
@@ -66,7 +76,8 @@ const UInputNumberStub = defineComponent({
 		modelValue: { type: Number, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<input data-testid="u-input-number" type="number" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
+	template:
+		'<input data-testid="u-input-number" type="number" :value="modelValue" @input="$emit(\'update:modelValue\', Number($event.target.value))" />',
 });
 
 const USelectStub = defineComponent({
@@ -78,7 +89,8 @@ const USelectStub = defineComponent({
 		items: { type: Array, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<select data-testid="u-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items || []" :key="String(item.value ?? item)" :value="item.value ?? item">{{ item.label ?? item }}</option></select>',
+	template:
+		'<select data-testid="u-select" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="item in items || []" :key="String(item.value ?? item)" :value="item.value ?? item">{{ item.label ?? item }}</option></select>',
 });
 
 const ScreenSettingsToggleStub = defineComponent({
@@ -88,7 +100,8 @@ const ScreenSettingsToggleStub = defineComponent({
 		description: { type: String, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" data-testid="settings-toggle" :data-description="description" @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
+	template:
+		'<button type="button" data-testid="settings-toggle" :data-description="description" @click="$emit(\'update:modelValue\', !modelValue)">{{ label }}</button>',
 });
 
 const USwitchStub = defineComponent({
@@ -97,44 +110,55 @@ const USwitchStub = defineComponent({
 		modelValue: { type: Boolean, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<button type="button" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
+	template:
+		'<button type="button" role="switch" :aria-checked="String(modelValue)" @click="$emit(\'update:modelValue\', !modelValue)" />',
 });
 
-async function mountComponent(options: Partial<{
-	config: FeatureMatchOverlayModeConfig;
-	patchFrame: (updates: Partial<FeatureMatchLayoutFrameConfig>) => void;
-	themeOverrides: StoredThemeTokens;
-}> = {}) {
+async function mountComponent(
+	options: Partial<{
+		config: FeatureMatchOverlayModeConfig;
+		patchFrame: (updates: Partial<FeatureMatchLayoutFrameConfig>) => void;
+		themeOverrides: StoredThemeTokens;
+	}> = {},
+) {
 	const screen = seedThemedScreen('feature-match-overlay', options.themeOverrides);
 	const config = options.config ?? structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
-	const patchFrame = options.patchFrame ?? vi.fn<(updates: Partial<FeatureMatchLayoutFrameConfig>) => void>();
-	const wrapper = mount(screenSettingsPage(screen, () => h(FrameStyleCard, {
-		config,
-		patchFrame,
-		screen: screen(),
-		eventId: 1,
-	})), {
-		global: {
-			stubs: {
-				UFormField: UFormFieldStub,
-				UIColorPicker: UIColorPickerStub,
-				UInput: UInputStub,
-				UInputNumber: UInputNumberStub,
-				USelect: USelectStub,
-				ScreenMediaBackgroundFields: defineComponent({ template: '<div data-testid="media-background-fields" />' }),
-				ScreenSettingsToggle: ScreenSettingsToggleStub,
-				ScreenSettingsSection: ScreenSettingsSectionStub,
-				USwitch: USwitchStub,
-				UButton: defineComponent({ template: '<button type="button"><slot /></button>' }),
-				UBadge: defineComponent({
-					props: {
-						label: { type: String, required: false },
-					},
-					template: '<span>{{ label }}</span>',
-				}),
+	const patchFrame =
+		options.patchFrame ?? vi.fn<(updates: Partial<FeatureMatchLayoutFrameConfig>) => void>();
+	const wrapper = mount(
+		screenSettingsPage(screen, () =>
+			h(FrameStyleCard, {
+				config,
+				patchFrame,
+				screen: screen(),
+				eventId: 1,
+			}),
+		),
+		{
+			global: {
+				stubs: {
+					UFormField: UFormFieldStub,
+					UIColorPicker: UIColorPickerStub,
+					UInput: UInputStub,
+					UInputNumber: UInputNumberStub,
+					USelect: USelectStub,
+					ScreenMediaBackgroundFields: defineComponent({
+						template: '<div data-testid="media-background-fields" />',
+					}),
+					ScreenSettingsToggle: ScreenSettingsToggleStub,
+					ScreenSettingsSection: ScreenSettingsSectionStub,
+					USwitch: USwitchStub,
+					UButton: defineComponent({ template: '<button type="button"><slot /></button>' }),
+					UBadge: defineComponent({
+						props: {
+							label: { type: String, required: false },
+						},
+						template: '<span>{{ label }}</span>',
+					}),
+				},
 			},
 		},
-	});
+	);
 	await flushPromises();
 	return wrapper;
 }
@@ -142,9 +166,10 @@ async function mountComponent(options: Partial<{
 describe('featureMatchOverlayFrameStyleCard', () => {
 	// The Frame's fill, border, glow and effect are the Theme's Mode Tokens (#831),
 	// each edited only as a Screen Theme Override row.
-	it('offers no colour, gradient, border or glow of the Frame\'s own', async () => {
+	it("offers no colour, gradient, border or glow of the Frame's own", async () => {
 		const wrapper = await mountComponent();
-		const outsideRows = (selector: string) => wrapper.findAll(selector).filter(found => !found.element.closest('[data-token]'));
+		const outsideRows = (selector: string) =>
+			wrapper.findAll(selector).filter((found) => !found.element.closest('[data-token]'));
 
 		expect(outsideRows('[data-testid="color-picker"]')).toHaveLength(0);
 		expect(outsideRows('[data-testid="u-input"]')).toHaveLength(0);
@@ -170,40 +195,44 @@ describe('featureMatchOverlayFrameStyleCard', () => {
 		['Surface', 'feature-match-overlay.frame-surface'],
 		['Video', 'feature-match-overlay.frame-media'],
 		['Animation', 'feature-match-overlay.frame-animation-effect'],
-	])('shows the %s section\'s Look: %s, once', async (section, token) => {
+	])("shows the %s section's Look: %s, once", async (section, token) => {
 		const wrapper = await mountComponent();
 
 		expect(wrapper.findAll(`[data-token="${token}"]`)).toHaveLength(1);
-		expect(wrapper.get(`[data-section="${section}"]`).findAll('[data-token]').map(row => row.attributes('data-token'))).toEqual([token]);
+		expect(
+			wrapper
+				.get(`[data-section="${section}"]`)
+				.findAll('[data-token]')
+				.map((row) => row.attributes('data-token')),
+		).toEqual([token]);
 	});
 
 	// A Frame setting stored partly in the layout and partly as a Mode Token is edited in one section.
 	it.each([
-		[
-			'Video',
-			['[data-testid="media-background-fields"]'],
-			'feature-match-overlay.frame-media',
-		],
+		['Video', ['[data-testid="media-background-fields"]'], 'feature-match-overlay.frame-media'],
 		[
 			'Animation',
 			['[data-testid="settings-toggle"]', '[data-testid="frame-animation-opacity"]'],
 			'feature-match-overlay.frame-animation-effect',
 		],
-	] as const)('edits the Frame\'s %s, its layout fields and its Mode Token, in that one section', async (section, selectors, token) => {
-		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
-		config.layout.frame = {
-			...config.layout.frame,
-			animation: { enabled: true, opacity: 0.45 },
-		};
-		const wrapper = await mountComponent({ config });
-		const sections = wrapper.findAll('[data-section]');
-		const holding = (has: (found: (typeof sections)[number]) => boolean) =>
-			sections.filter(has).map(found => found.attributes('data-section'));
+	] as const)(
+		"edits the Frame's %s, its layout fields and its Mode Token, in that one section",
+		async (section, selectors, token) => {
+			const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
+			config.layout.frame = {
+				...config.layout.frame,
+				animation: { enabled: true, opacity: 0.45 },
+			};
+			const wrapper = await mountComponent({ config });
+			const sections = wrapper.findAll('[data-section]');
+			const holding = (has: (found: (typeof sections)[number]) => boolean) =>
+				sections.filter(has).map((found) => found.attributes('data-section'));
 
-		for (const selector of selectors)
-			expect(holding(found => found.find(selector).exists())).toEqual([section]);
-		expect(holding(found => found.find(`[data-token="${token}"]`).exists())).toEqual([section]);
-	});
+			for (const selector of selectors)
+				expect(holding((found) => found.find(selector).exists())).toEqual([section]);
+			expect(holding((found) => found.find(`[data-token="${token}"]`).exists())).toEqual([section]);
+		},
+	);
 
 	it.each([
 		[
@@ -218,7 +247,7 @@ describe('featureMatchOverlayFrameStyleCard', () => {
 			{ 'feature-match-overlay.frame-surface': SURFACE },
 			{ 'feature-match-overlay.frame-surface': null },
 		],
-	] as const)('%s a Frame row\'s Screen Theme Override', async (action, token, stored, written) => {
+	] as const)("%s a Frame row's Screen Theme Override", async (action, token, stored, written) => {
 		const wrapper = await mountComponent({ themeOverrides: stored });
 		// A surface commits once its edits pause.
 		vi.useFakeTimers({
@@ -227,9 +256,11 @@ describe('featureMatchOverlayFrameStyleCard', () => {
 		const row = wrapper.get(`[data-token="${token}"]`);
 
 		if (action === 'clears')
-			await row.findAll('button').find(button => button.text() === 'Clear')!.trigger('click');
-		else
-			wrapper.getComponent(SurfaceStyleTokenInput).vm.$emit('commit', SURFACE);
+			await row
+				.findAll('button')
+				.find((button) => button.text() === 'Clear')!
+				.trigger('click');
+		else wrapper.getComponent(SurfaceStyleTokenInput).vm.$emit('commit', SURFACE);
 		await vi.advanceTimersByTimeAsync(THEME_TOKEN_DRAFT_COMMIT_MS);
 		await flushPromises();
 
@@ -239,23 +270,28 @@ describe('featureMatchOverlayFrameStyleCard', () => {
 	it.each([
 		{ side: 'Left', stored: undefined, written: false },
 		{ side: 'Top', stored: false, written: true },
-	] as const)('switches the Frame border\'s $side edge, which shows unless switched off', async ({ side, stored, written }) => {
-		const patchFrame = vi.fn();
-		const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
-		config.layout.frame = { ...config.layout.frame, [`border${side}Visible`]: stored };
-		const wrapper = await mountComponent({ config, patchFrame });
-		const toggle = wrapper.get(`button[title="${side} border"]`);
+	] as const)(
+		"switches the Frame border's $side edge, which shows unless switched off",
+		async ({ side, stored, written }) => {
+			const patchFrame = vi.fn();
+			const config = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
+			config.layout.frame = { ...config.layout.frame, [`border${side}Visible`]: stored };
+			const wrapper = await mountComponent({ config, patchFrame });
+			const toggle = wrapper.get(`button[title="${side} border"]`);
 
-		expect(toggle.attributes('aria-pressed')).toBe(String(!written));
-		await toggle.trigger('click');
-		expect(patchFrame).toHaveBeenLastCalledWith({ [`border${side}Visible`]: written });
-	});
+			expect(toggle.attributes('aria-pressed')).toBe(String(!written));
+			await toggle.trigger('click');
+			expect(patchFrame).toHaveBeenLastCalledWith({ [`border${side}Visible`]: written });
+		},
+	);
 
-	it('switches the Frame\'s Animation Effect on, keeping its opacity and naming no effect', async () => {
+	it("switches the Frame's Animation Effect on, keeping its opacity and naming no effect", async () => {
 		const patchFrame = vi.fn();
 		const wrapper = await mountComponent({ patchFrame });
 
-		const toggle = wrapper.findAll('[data-testid="settings-toggle"]').find(candidate => candidate.text() === 'Animation');
+		const toggle = wrapper
+			.findAll('[data-testid="settings-toggle"]')
+			.find((candidate) => candidate.text() === 'Animation');
 		await toggle!.trigger('click');
 
 		expect(patchFrame).toHaveBeenLastCalledWith({

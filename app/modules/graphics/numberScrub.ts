@@ -44,11 +44,7 @@ export function startNumberScrub(value: number, bounds: NumberScrubBounds = {}):
 export function scrubNumber(scrub: NumberScrub, move: NumberScrubMove): NumberScrub {
 	const px = scrub.remainderPx + move.dx;
 	const steps = Math.trunc(px / NUMBER_SCRUB_PX_PER_STEP);
-	const increment = move.step * (move.shiftKey
-		? 10
-		: move.altKey
-			? 0.1
-			: 1);
+	const increment = move.step * (move.shiftKey ? 10 : move.altKey ? 0.1 : 1);
 	const precision = Math.max(decimalPlaces(increment), decimalPlaces(scrub.value));
 	const next = Number((scrub.value + steps * increment).toFixed(precision));
 	return {

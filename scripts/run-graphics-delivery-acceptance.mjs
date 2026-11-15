@@ -78,9 +78,7 @@ const FAULTS = new Set([
 
 function flagValue(argv, name) {
 	const index = argv.indexOf(name);
-	return index === -1
-		? undefined
-		: argv[index + 1];
+	return index === -1 ? undefined : argv[index + 1];
 }
 
 function capabilityHeaders(capability, extra) {
@@ -141,15 +139,21 @@ export async function main(argv = process.argv) {
 
 				// Before anything is authorized, the route must already refuse.
 				const anonymous = await session.request(path);
-				record(checkCapabilityDenial(anonymous, {
-					route,
-					body: anonymous.text(),
-				}));
+				record(
+					checkCapabilityDenial(anonymous, {
+						route,
+						body: anonymous.text(),
+					}),
+				);
 
 				// And it must refuse an unreachable revision in exactly the same way,
 				// or the refusal itself becomes a way to enumerate the Screen Output.
 				const unreferenced = await session.request(
-					acceptanceRoutes.capabilityContent(scenario.screenId, scenario.assetId, 'gar-not-referenced'),
+					acceptanceRoutes.capabilityContent(
+						scenario.screenId,
+						scenario.assetId,
+						'gar-not-referenced',
+					),
 					{
 						headers: capabilityHeaders(scenario.capability),
 					},
@@ -174,24 +178,28 @@ export async function main(argv = process.argv) {
 				const range = await session.request(path, {
 					headers: capabilityHeaders(scenario.capability, { range: 'bytes=8-15' }),
 				});
-				record(checkRangeRead(range, {
-					route,
-					start: 8,
-					end: 15,
-					byteLength,
-					bytes: scenario.content.slice(8, 16),
-				}));
+				record(
+					checkRangeRead(range, {
+						route,
+						start: 8,
+						end: 15,
+						byteLength,
+						bytes: scenario.content.slice(8, 16),
+					}),
+				);
 
 				const suffix = await session.request(path, {
 					headers: capabilityHeaders(scenario.capability, { range: 'bytes=-8' }),
 				});
-				record(checkRangeRead(suffix, {
-					route,
-					start: byteLength - 8,
-					end: byteLength - 1,
-					byteLength,
-					bytes: scenario.content.slice(byteLength - 8),
-				}));
+				record(
+					checkRangeRead(suffix, {
+						route,
+						start: byteLength - 8,
+						end: byteLength - 1,
+						byteLength,
+						bytes: scenario.content.slice(byteLength - 8),
+					}),
+				);
 
 				const beyond = await session.request(path, {
 					headers: capabilityHeaders(scenario.capability, { range: `bytes=${byteLength}-` }),
@@ -204,16 +212,12 @@ export async function main(argv = process.argv) {
 					headers: capabilityHeaders(scenario.capability),
 				});
 				record(checkCacheParity(full, repeated, { route }));
-				record(checkValidatorStability([
-					etag,
-					repeated.headers.get('etag'),
-				], { route }));
+				record(checkValidatorStability([etag, repeated.headers.get('etag')], { route }));
 				if (deployed) {
 					const warmth = checkCacheWarmed(repeated, { route });
 					if (requireCacheHit) {
 						record(warmth);
-					}
-					else if (warmth.length > 0) {
+					} else if (warmth.length > 0) {
 						note({
 							code: 'delivery-cache-state-unreported',
 							detail: { route },
@@ -223,7 +227,9 @@ export async function main(argv = process.argv) {
 
 				// Native media elements carry the capability as a path-scoped cookie,
 				// which is a second public entry point and a second authorization.
-				const sessionRoute = deliveryRouteLabel(acceptanceRoutes.capabilitySession(scenario.screenId));
+				const sessionRoute = deliveryRouteLabel(
+					acceptanceRoutes.capabilitySession(scenario.screenId),
+				);
 				const bootstrap = await session.request(
 					acceptanceRoutes.capabilitySession(scenario.screenId),
 					{
@@ -231,7 +237,9 @@ export async function main(argv = process.argv) {
 						headers: capabilityHeaders(scenario.capability),
 					},
 				);
-				const sessionCookie = bootstrap.headers.getSetCookie().map(value => value.split(';', 1)[0])[0];
+				const sessionCookie = bootstrap.headers
+					.getSetCookie()
+					.map((value) => value.split(';', 1)[0])[0];
 				if (bootstrap.status !== 200 || !sessionCookie) {
 					record([
 						{
@@ -239,36 +247,39 @@ export async function main(argv = process.argv) {
 							detail: { route: sessionRoute, actual: bootstrap.status },
 						},
 					]);
-				}
-				else {
+				} else {
 					const viaCookie = await session.request(path, {
 						headers: { cookie: sessionCookie, range: 'bytes=8-15' },
 					});
-					record(checkRangeRead(viaCookie, {
-						route,
-						start: 8,
-						end: 15,
-						byteLength,
-						bytes: scenario.content.slice(8, 16),
-					}));
+					record(
+						checkRangeRead(viaCookie, {
+							route,
+							start: 8,
+							end: 15,
+							byteLength,
+							bytes: scenario.content.slice(8, 16),
+						}),
+					);
 				}
 
 				// Cross-origin readers get nothing, not even a preflight grant.
 				const preflight = await session.request(path, {
 					method: 'OPTIONS',
 					headers: {
-						'origin': 'https://not-this-installation.invalid',
+						origin: 'https://not-this-installation.invalid',
 						'access-control-request-method': 'GET',
 					},
 				});
-				record(preflight.headers.get('access-control-allow-origin')
-					? [
-							{
-								code: 'cors-preflight-permitted',
-								detail: { route },
-							},
-						]
-					: []);
+				record(
+					preflight.headers.get('access-control-allow-origin')
+						? [
+								{
+									code: 'cors-preflight-permitted',
+									detail: { route },
+								},
+							]
+						: [],
+				);
 
 				return { route };
 			}
@@ -311,17 +322,19 @@ export async function main(argv = process.argv) {
 				const staleRead = await session.request(path, {
 					headers: capabilityHeaders(revoked),
 				});
-				record(staleRead.status === 200
-					? [
-							{
-								code: 'delivery-revocation-ineffective',
-								detail: { route },
-							},
-						]
-					: checkCapabilityDenial(staleRead, {
-							route,
-							body: staleRead.text(),
-						}));
+				record(
+					staleRead.status === 200
+						? [
+								{
+									code: 'delivery-revocation-ineffective',
+									detail: { route },
+								},
+							]
+						: checkCapabilityDenial(staleRead, {
+								route,
+								body: staleRead.text(),
+							}),
+				);
 
 				const staleBootstrap = await session.request(
 					acceptanceRoutes.capabilitySession(scenario.screenId),
@@ -330,25 +343,29 @@ export async function main(argv = process.argv) {
 						headers: capabilityHeaders(revoked),
 					},
 				);
-				record(staleBootstrap.status === 404
-					? []
-					: [
-							{
-								code: 'delivery-revocation-ineffective',
-								detail: { route, actual: staleBootstrap.status },
-							},
-						]);
+				record(
+					staleBootstrap.status === 404
+						? []
+						: [
+								{
+									code: 'delivery-revocation-ineffective',
+									detail: { route, actual: staleBootstrap.status },
+								},
+							],
+				);
 
 				// Warmed or not, an unauthorized read is still refused.
 				const anonymous = await session.request(path);
-				record(anonymous.status === 200
-					? [
-							{
-								code: 'delivery-authorization-skipped',
-								detail: { route },
-							},
-						]
-					: []);
+				record(
+					anonymous.status === 200
+						? [
+								{
+									code: 'delivery-authorization-skipped',
+									detail: { route },
+								},
+							]
+						: [],
+				);
 
 				const renewed = await session.request(path, {
 					headers: capabilityHeaders(replacement),
@@ -364,11 +381,13 @@ export async function main(argv = process.argv) {
 				const byteLength = scenario.content.byteLength;
 
 				const unauthenticated = await session.request(path, { anonymous: true });
-				record(checkCapabilityDenial(unauthenticated, {
-					route,
-					body: unauthenticated.text(),
-					expectedStatus: 401,
-				}));
+				record(
+					checkCapabilityDenial(unauthenticated, {
+						route,
+						body: unauthenticated.text(),
+						expectedStatus: 401,
+					}),
+				);
 
 				const full = await session.request(path, {});
 				record(checkFullRead(full, editorExpectations(scenario, route)));
@@ -385,13 +404,15 @@ export async function main(argv = process.argv) {
 				const range = await session.request(path, {
 					headers: { range: 'bytes=8-15' },
 				});
-				record(checkRangeRead(range, {
-					route,
-					start: 8,
-					end: 15,
-					byteLength,
-					bytes: scenario.content.slice(8, 16),
-				}));
+				record(
+					checkRangeRead(range, {
+						route,
+						start: 8,
+						end: 15,
+						byteLength,
+						bytes: scenario.content.slice(8, 16),
+					}),
+				);
 
 				const beyond = await session.request(path, {
 					headers: { range: `bytes=${byteLength}-` },
@@ -430,10 +451,9 @@ export async function main(argv = process.argv) {
 
 					// One missing object takes down one revision and nothing else.
 					const unaffected = await readBothRoutes(warm);
-					record(checkFullRead(
-						unaffected.capability,
-						capabilityExpectations(warm, unaffected.route),
-					));
+					record(
+						checkFullRead(unaffected.capability, capabilityExpectations(warm, unaffected.route)),
+					);
 				}
 
 				if (fault === 'content-integrity-disagreement') {
@@ -462,9 +482,11 @@ export async function main(argv = process.argv) {
 							headers: capabilityHeaders(cold.capability),
 						},
 					);
-					record(checkRetryableUnavailable(bootstrap, {
-						route: deliveryRouteLabel(acceptanceRoutes.capabilitySession(cold.screenId)),
-					}));
+					record(
+						checkRetryableUnavailable(bootstrap, {
+							route: deliveryRouteLabel(acceptanceRoutes.capabilitySession(cold.screenId)),
+						}),
+					);
 				}
 
 				if (fault === 'r2-outage-authorized-cache') {
@@ -488,8 +510,7 @@ export async function main(argv = process.argv) {
 					if (deployed) {
 						record(checkFullRead(warmed.capability, capabilityExpectations(warm, warmed.route)));
 						record(checkNoStorageAddressing(warmed.capability.headers, { route: warmed.route }));
-					}
-					else {
+					} else {
 						// Distinct from `delivery-cache-state-unreported`, which means the
 						// edge did not report warmth. This means there is no edge cache
 						// here to report anything, so the assertion was never attempted.
@@ -515,8 +536,7 @@ export async function main(argv = process.argv) {
 						cold: restore(armed.cold),
 					});
 					faultPassed = !failed();
-				}
-				finally {
+				} finally {
 					// A failed run keeps everything it would need to be run again: the
 					// scenario file holds the only copy of the bytes the operator has
 					// just deleted, and the Events hold the identities that address
@@ -524,9 +544,11 @@ export async function main(argv = process.argv) {
 					// runbook impossible to follow.
 					if (faultPassed) {
 						for (const eventId of new Set([armed.warm.eventId, armed.cold.eventId])) {
-							await session.request(acceptanceRoutes.event(eventId), {
-								method: 'DELETE',
-							}).catch(() => undefined);
+							await session
+								.request(acceptanceRoutes.event(eventId), {
+									method: 'DELETE',
+								})
+								.catch(() => undefined);
 						}
 						// A passed run has nothing left to restore, so its two armed
 						// pixels go with it (#375) — the Events above released their
@@ -541,9 +563,9 @@ export async function main(argv = process.argv) {
 						// derived from the installation, and withholding it would break
 						// the restore path this file exists to protect.
 						process.stderr.write(
-							`${HARNESS} kept the armed scenario at ${scenarioPath} so the injected fault can be `
-							+ 'restored and re-run; its acceptance Events were left in place for the same reason. '
-							+ 'Delete both once you are done.\n',
+							`${HARNESS} kept the armed scenario at ${scenarioPath} so the injected fault can be ` +
+								'restored and re-run; its acceptance Events were left in place for the same reason. ' +
+								'Delete both once you are done.\n',
 						);
 					}
 				}
@@ -581,15 +603,16 @@ export async function main(argv = process.argv) {
 				};
 			}
 
-			const scenario = await provisionScreenOutputScenario(session, { label: 'Delivery Semantics' });
+			const scenario = await provisionScreenOutputScenario(session, {
+				label: 'Delivery Semantics',
+			});
 			evidence.addSecret(scenario.capability);
 			try {
 				const { route } = await runCapabilityRoute(scenario);
 				await runOutputDocument(scenario);
 				await runRevocation(scenario, route);
 				await runEditorRoute(scenario);
-			}
-			finally {
+			} finally {
 				await scenario.dispose();
 			}
 			return {
@@ -599,5 +622,4 @@ export async function main(argv = process.argv) {
 	});
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

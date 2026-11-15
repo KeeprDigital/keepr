@@ -2,7 +2,10 @@ import type { ScreenOutputEvent } from '~~/shared/utils/screenOutputEvent';
 import { mapThemeToScreenOutput } from '~~/server/mappers/theme';
 import { eventService } from '~~/server/services/event';
 import { themeService } from '~~/server/services/theme';
-import { requireScreenOutputRead, screenOutputReadNotFound } from '~~/server/utils/screenOutputRead';
+import {
+	requireScreenOutputRead,
+	screenOutputReadNotFound,
+} from '~~/server/utils/screenOutputRead';
 import { toScreenOutputEvent } from '~~/shared/utils/screenOutputEvent';
 
 /**
@@ -19,16 +22,11 @@ import { toScreenOutputEvent } from '~~/shared/utils/screenOutputEvent';
 export default defineEventHandler(async (event): Promise<ScreenOutputEvent> => {
 	const { eventId } = await requireScreenOutputRead(event);
 	const found = await eventService().findById(eventId);
-	if (!found)
-		screenOutputReadNotFound();
+	if (!found) screenOutputReadNotFound();
 
-	const theme = found.themeId
-		? await themeService().findById(found.themeId)
-		: undefined;
+	const theme = found.themeId ? await themeService().findById(found.themeId) : undefined;
 	return {
 		...toScreenOutputEvent(found),
-		theme: theme
-			? mapThemeToScreenOutput(theme)
-			: null,
+		theme: theme ? mapThemeToScreenOutput(theme) : null,
 	};
 });

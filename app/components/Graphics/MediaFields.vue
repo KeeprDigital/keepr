@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { MediaFit } from '~~/shared/types/graphicItem';
 import type { MediaFieldsPatch, MediaFieldsValue } from '~/utils/mediaFields';
-import { MAX_GRAPHIC_MEDIA_PLAYBACK_RATE, MIN_GRAPHIC_MEDIA_PLAYBACK_RATE } from '~~/shared/types/graphics';
+import {
+	MAX_GRAPHIC_MEDIA_PLAYBACK_RATE,
+	MIN_GRAPHIC_MEDIA_PLAYBACK_RATE,
+} from '~~/shared/types/graphics';
 import { MEDIA_FIT_OPTIONS } from '~/utils/mediaFields';
 
 /**
@@ -18,20 +21,25 @@ import { MEDIA_FIT_OPTIONS } from '~/utils/mediaFields';
  * `resolveMediaFieldsPatch`. The playback-rate bounds are the ones every host's
  * schema stores: 0.25–4, a Media Graphic Item's.
  */
-const props = withDefaults(defineProps<{
-	media: MediaFieldsValue;
-	opacity?: boolean;
-	focal?: boolean;
-	playback?: boolean;
-	size?: 'xs' | 'sm';
-	disabled?: boolean;
-}>(), {
-	size: 'sm',
-});
+const props = withDefaults(
+	defineProps<{
+		media: MediaFieldsValue;
+		opacity?: boolean;
+		focal?: boolean;
+		playback?: boolean;
+		size?: 'xs' | 'sm';
+		disabled?: boolean;
+	}>(),
+	{
+		size: 'sm',
+	},
+);
 
 const emit = defineEmits<{ update: [patch: MediaFieldsPatch] }>();
 
-const focalPosition = computed(() => props.media.focalPosition ?? { horizontal: 0.5, vertical: 0.5 });
+const focalPosition = computed(
+	() => props.media.focalPosition ?? { horizontal: 0.5, vertical: 0.5 },
+);
 
 /** A cleared focal axis returns to the centre. */
 function updateFocal(axis: 'horizontal' | 'vertical', value: number | null | undefined) {

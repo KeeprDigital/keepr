@@ -21,18 +21,26 @@ type ConnectionState = RealtimeConnectionState['connectionState'];
 
 const scopes: EffectScope[] = [];
 
-function harness({ channel: listenedOn = 'event:1' as string | null, attached = false, firstAttach = true } = {}) {
+function harness({
+	channel: listenedOn = 'event:1' as string | null,
+	attached = false,
+	firstAttach = true,
+} = {}) {
 	const realtime = createFakeEventChannel();
-	if (attached)
-		realtime.attach(1);
+	if (attached) realtime.attach(1);
 	const channel = ref<string | null>(listenedOn);
 	const resync = vi.fn();
 	const onFirstAttach = vi.fn();
 	const scope = effectScope();
 	scopes.push(scope);
-	const { disconnected } = scope.run(() => useReconnectResync(resync, channel, realtime.transport as unknown as Transport, firstAttach
-		? { onFirstAttach }
-		: {}))!;
+	const { disconnected } = scope.run(() =>
+		useReconnectResync(
+			resync,
+			channel,
+			realtime.transport as unknown as Transport,
+			firstAttach ? { onFirstAttach } : {},
+		),
+	)!;
 	async function connection(...states: ConnectionState[]) {
 		for (const state of states) {
 			realtime.transport.connectionState = state;
@@ -52,7 +60,7 @@ function harness({ channel: listenedOn = 'event:1' as string | null, attached = 
 
 describe('useReconnectResync', () => {
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
 	// A page's first moments are not a lost connection, so only these four report one.
@@ -72,7 +80,7 @@ describe('useReconnectResync', () => {
 		expect(disconnected.value).toBe(expected);
 	});
 
-	it('resyncs when the channel it listens on attaches again having lost continuity, and not for another channel\'s loss', () => {
+	it("resyncs when the channel it listens on attaches again having lost continuity, and not for another channel's loss", () => {
 		const { resync, reattach } = harness();
 
 		reattach(2);
@@ -85,14 +93,8 @@ describe('useReconnectResync', () => {
 	// The channel's own signal is the reason (#641): a read sent when the
 	// connection returns can be answered before anything listens again.
 	it.each<[string, ConnectionState[]]>([
-		[
-			'its channel\'s continuity resumed',
-			['suspended', 'connecting', 'connected'],
-		],
-		[
-			'it first connects',
-			['connecting', 'connected'],
-		],
+		["its channel's continuity resumed", ['suspended', 'connecting', 'connected']],
+		['it first connects', ['connecting', 'connected']],
 	])('does not resync when the connection comes back and %s', async (_, states) => {
 		const { resync, connection } = harness();
 

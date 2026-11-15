@@ -39,7 +39,9 @@ const { patchFrame } = useFeatureMatchOverlayConfigEditor({
 });
 
 /** The selection target resolved against the Feature Match Layout. */
-const selection = computed(() => resolveFeatureMatchOverlaySelection(props.config.layout, props.selectedTarget));
+const selection = computed(() =>
+	resolveFeatureMatchOverlaySelection(props.config.layout, props.selectedTarget),
+);
 
 const header = computed(() => {
 	const current = selection.value;
@@ -93,7 +95,11 @@ const header = computed(() => {
 		</div>
 
 		<!-- A disabled fieldset is what makes the read-only panel read-only, as in the shared compositor's inspector. -->
-		<fieldset class="min-w-0" :disabled="writable !== true" data-testid="overlay-layer-inspector-fields">
+		<fieldset
+			class="min-w-0"
+			:disabled="writable !== true"
+			data-testid="overlay-layer-inspector-fields"
+		>
 			<FeatureMatchOverlayFrameStyleCard
 				v-if="selection.kind === 'canvas'"
 				:config="config"

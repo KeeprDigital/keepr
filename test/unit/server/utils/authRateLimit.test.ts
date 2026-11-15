@@ -1,6 +1,11 @@
 import type { ThrowawayAuth } from '~~/test/helpers/throwawayAuth';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { LOCAL_HOST, LOCAL_ORIGIN, throwawayAuth, throwawayAuthDatabase } from '~~/test/helpers/throwawayAuth';
+import {
+	LOCAL_HOST,
+	LOCAL_ORIGIN,
+	throwawayAuth,
+	throwawayAuthDatabase,
+} from '~~/test/helpers/throwawayAuth';
 
 /**
  * Better Auth's rate limiter, against a real instance configured exactly as the
@@ -28,17 +33,23 @@ const OTHER_CLIENT = '198.51.100.8';
 let auth: ThrowawayAuth;
 
 /** One sign-in attempt against `instance`, with a wrong password unless given the right one. */
-async function signIn(instance: ThrowawayAuth, headers: Record<string, string>, password = 'not-the-password') {
-	return await instance.handler(new Request(`${LOCAL_ORIGIN}/api/auth/sign-in/email`, {
-		method: 'POST',
-		headers: {
-			'content-type': 'application/json',
-			'host': LOCAL_HOST,
-			'origin': LOCAL_ORIGIN,
-			...headers,
-		},
-		body: JSON.stringify({ email: EMAIL, password }),
-	}));
+async function signIn(
+	instance: ThrowawayAuth,
+	headers: Record<string, string>,
+	password = 'not-the-password',
+) {
+	return await instance.handler(
+		new Request(`${LOCAL_ORIGIN}/api/auth/sign-in/email`, {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				host: LOCAL_HOST,
+				origin: LOCAL_ORIGIN,
+				...headers,
+			},
+			body: JSON.stringify({ email: EMAIL, password }),
+		}),
+	);
 }
 
 /** Spend `client`'s whole sign-in allowance on wrong passwords. */
@@ -59,7 +70,7 @@ beforeEach(async () => {
 });
 
 describe('the sign-in rate limit outside the dev server', () => {
-	it('refuses a client\'s fourth attempt within ten seconds with 429 and a retry delay', async () => {
+	it("refuses a client's fourth attempt within ten seconds with 429 and a retry delay", async () => {
 		await exhaust(auth, CLIENT);
 
 		const refused = await signIn(auth, { 'cf-connecting-ip': CLIENT }, PASSWORD);
@@ -77,7 +88,10 @@ describe('the sign-in rate limit outside the dev server', () => {
 	it('is not reset by a caller-written x-forwarded-for', async () => {
 		await exhaust(auth, CLIENT);
 
-		const refused = await signIn(auth, { 'cf-connecting-ip': CLIENT, 'x-forwarded-for': OTHER_CLIENT });
+		const refused = await signIn(auth, {
+			'cf-connecting-ip': CLIENT,
+			'x-forwarded-for': OTHER_CLIENT,
+		});
 
 		expect(refused.status).toBe(429);
 	});

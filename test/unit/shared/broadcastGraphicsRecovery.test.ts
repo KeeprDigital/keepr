@@ -58,28 +58,35 @@ describe('broadcastGraphicsRecovery', () => {
 
 		it('tolerates an empty object, which is a session that has accepted nothing', () => {
 			expect(broadcastGraphicsRecoveryFault({})).toBeNull();
-			expect(recoveredBroadcastGraphicsLiveState({})).toEqual(createInitialBroadcastGraphicsLiveState());
+			expect(recoveredBroadcastGraphicsLiveState({})).toEqual(
+				createInitialBroadcastGraphicsLiveState(),
+			);
 		});
 
 		it('trusts a real persisted record produced by the reducer itself', () => {
 			// The real persisted record, built by the reducer and round-tripped as JSON.
-			const persisted = JSON.parse(JSON.stringify(applyBroadcastGraphicsCommand(
-				createInitialBroadcastGraphicsLiveState(),
-				{
-					type: 'Take',
-					payload: { graphicId: 'slate' },
-				},
-				{ inputs: [], acceptedAt: 1_700_000_000_000 },
-			)));
+			const persisted = JSON.parse(
+				JSON.stringify(
+					applyBroadcastGraphicsCommand(
+						createInitialBroadcastGraphicsLiveState(),
+						{
+							type: 'Take',
+							payload: { graphicId: 'slate' },
+						},
+						{ inputs: [], acceptedAt: 1_700_000_000_000 },
+					),
+				),
+			);
 
 			expect(broadcastGraphicsRecoveryFault(persisted)).toBeNull();
 			expect(recoveredBroadcastGraphicsLiveState(persisted)).toEqual(persisted);
 			// And it really does carry the animation timing this validator must not judge.
-			expect(Object.keys(persisted.playout.slate).toSorted())
-				.toEqual(['cut', 'effectiveStartedAt', 'onAir']);
-			expect(onAirBroadcastGraphicIds(persisted, [
-				{ id: 'slate' },
-			])).toEqual(['slate']);
+			expect(Object.keys(persisted.playout.slate).toSorted()).toEqual([
+				'cut',
+				'effectiveStartedAt',
+				'onAir',
+			]);
+			expect(onAirBroadcastGraphicIds(persisted, [{ id: 'slate' }])).toEqual(['slate']);
 		});
 
 		it('passes through fields it does not interpret rather than calling them a fault', () => {
@@ -164,10 +171,7 @@ describe('broadcastGraphicsRecovery', () => {
 			const recovered = recoveredBroadcastGraphicsLiveState(null);
 
 			expect(recovered).toEqual(createInitialBroadcastGraphicsLiveState());
-			expect(onAirBroadcastGraphicIds(recovered, [
-				{ id: 'slate' },
-				{ id: 'bug' },
-			])).toEqual([]);
+			expect(onAirBroadcastGraphicIds(recovered, [{ id: 'slate' }, { id: 'bug' }])).toEqual([]);
 		});
 	});
 
@@ -175,20 +179,9 @@ describe('broadcastGraphicsRecovery', () => {
 		it.each([
 			['a string', '{"playout":'],
 			['a number', 7],
-			[
-				'an array',
-				[
-					{ onAir: true },
-				],
-			],
-			[
-				'a non-object playout map',
-				{ playout: 'slate', inputs: {} },
-			],
-			[
-				'a non-object inputs map',
-				{ playout: {}, inputs: 3 },
-			],
+			['an array', [{ onAir: true }]],
+			['a non-object playout map', { playout: 'slate', inputs: {} }],
+			['a non-object inputs map', { playout: {}, inputs: 3 }],
 			[
 				'a non-object playout record',
 				{
@@ -266,10 +259,7 @@ describe('broadcastGraphicsRecovery', () => {
 				inputs: {},
 			});
 
-			expect(onAirBroadcastGraphicIds(recovered, [
-				{ id: 'good' },
-				{ id: 'bad' },
-			])).toEqual([]);
+			expect(onAirBroadcastGraphicIds(recovered, [{ id: 'good' }, { id: 'bad' }])).toEqual([]);
 		});
 	});
 
@@ -344,9 +334,7 @@ describe('broadcastGraphicsRecovery', () => {
 			[
 				'a current Social Profile outside the accepted set',
 				withProfile({
-					acceptedProfiles: [
-						avaTwitch,
-					],
+					acceptedProfiles: [avaTwitch],
 					currentNetwork: 'x',
 				}),
 			],
@@ -426,9 +414,7 @@ describe('broadcastGraphicsRecovery', () => {
 				'an Automatic value that is not boolean',
 				withProfile({
 					talent: { id: 7, name: 'Ava' },
-					acceptedProfiles: [
-						avaTwitch,
-					],
+					acceptedProfiles: [avaTwitch],
 					currentNetwork: 'twitch',
 					automatic: 'yes',
 				}),
@@ -437,9 +423,7 @@ describe('broadcastGraphicsRecovery', () => {
 				'a rotation anchor outside the accepted set',
 				withProfile({
 					talent: { id: 7, name: 'Ava' },
-					acceptedProfiles: [
-						avaTwitch,
-					],
+					acceptedProfiles: [avaTwitch],
 					currentNetwork: 'twitch',
 					automatic: true,
 					rotationAnchor: { network: 'x', anchoredAt: 123_456 },
@@ -449,9 +433,7 @@ describe('broadcastGraphicsRecovery', () => {
 				'a rotation anchor instant that is not numeric',
 				withProfile({
 					talent: { id: 7, name: 'Ava' },
-					acceptedProfiles: [
-						avaTwitch,
-					],
+					acceptedProfiles: [avaTwitch],
 					currentNetwork: 'twitch',
 					automatic: true,
 					rotationAnchor: { network: 'twitch', anchoredAt: 'later' },
@@ -526,9 +508,7 @@ describe('broadcastGraphicsRecovery', () => {
 				inputs: {},
 			});
 
-			expect(onAirBroadcastGraphicIds(recovered, [
-				{ id: 'slate' },
-			])).toEqual([]);
+			expect(onAirBroadcastGraphicIds(recovered, [{ id: 'slate' }])).toEqual([]);
 		});
 
 		it('trusts a long-stale animation start time rather than calling it a fault', () => {
@@ -541,10 +521,9 @@ describe('broadcastGraphicsRecovery', () => {
 			};
 
 			expect(broadcastGraphicsRecoveryFault(ancient)).toBeNull();
-			expect(onAirBroadcastGraphicIds(recoveredBroadcastGraphicsLiveState(ancient), [
-				{ id: 'slate' },
-			]))
-				.toEqual(['slate']);
+			expect(
+				onAirBroadcastGraphicIds(recoveredBroadcastGraphicsLiveState(ancient), [{ id: 'slate' }]),
+			).toEqual(['slate']);
 		});
 
 		it('accepts a bounded correlated Social Profile Transition anchor and legacy state without one', () => {
@@ -593,7 +572,7 @@ describe('broadcastGraphicsRecovery', () => {
 							acceptedProfiles: [],
 							transitionAnchor: {
 								startedAt: 123_456,
-								from: ['OldAva', 'NewAva'].map(handle => ({
+								from: ['OldAva', 'NewAva'].map((handle) => ({
 									values: {
 										network: 'twitch',
 										networkLabel: 'Twitch',
@@ -638,10 +617,7 @@ describe('broadcastGraphicsRecovery', () => {
 
 			expect(next.playout).toEqual({});
 			expect(next.inputs.slate?.working).toEqual({ name: 'Ava' });
-			expect(onAirBroadcastGraphicIds(next, [
-				{ id: 'slate' },
-				{ id: 'bug' },
-			])).toEqual([]);
+			expect(onAirBroadcastGraphicIds(next, [{ id: 'slate' }, { id: 'bug' }])).toEqual([]);
 		});
 
 		it('drops manual Social Profile Projection state at the epoch boundary', () => {
@@ -650,9 +626,7 @@ describe('broadcastGraphicsRecovery', () => {
 				socialProfileProjections: {
 					lower: {
 						profile: {
-							acceptedProfiles: [
-								avaTwitch,
-							],
+							acceptedProfiles: [avaTwitch],
 							currentNetwork: 'twitch',
 							manualNetwork: 'twitch',
 						},
@@ -701,7 +675,7 @@ describe('broadcastGraphicsRecovery', () => {
 			expect(next.inputs.slate?.overrides).toEqual({});
 		});
 
-		it('resumes the bound value in the new epoch rather than the previous show\'s correction', () => {
+		it("resumes the bound value in the new epoch rather than the previous show's correction", () => {
 			// The hazard stated as the behaviour that replaces it: the new epoch's first
 			// Take resolves the binding, and what reaches air is this show's value.
 			const next = carriedForwardBroadcastGraphicsLiveState(endedWithBinding);
@@ -714,9 +688,7 @@ describe('broadcastGraphicsRecovery', () => {
 				default: 'Unnamed',
 				maxLength: 40,
 			};
-			const bindings = [
-				{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' },
-			];
+			const bindings = [{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }];
 
 			const taken = applyBroadcastGraphicsCommand(
 				next,
@@ -771,25 +743,28 @@ describe('broadcastGraphicsRecovery', () => {
 
 			// The settled rule, asserted through the gate itself rather than through the
 			// shape: a required unavailable Graphic Input prevents a Take.
-			expect(() => applyBroadcastGraphicsCommand(
-				next,
-				{
-					type: 'Take',
-					payload: { graphicId: 'slate' },
-				},
-				{
-					inputs: [required],
-					acceptedAt: 1_700_000_000_000,
-				},
-			)).toThrow(expect.objectContaining({ code: 'required-input-unavailable' }));
+			expect(() =>
+				applyBroadcastGraphicsCommand(
+					next,
+					{
+						type: 'Take',
+						payload: { graphicId: 'slate' },
+					},
+					{
+						inputs: [required],
+						acceptedAt: 1_700_000_000_000,
+					},
+				),
+			).toThrow(expect.objectContaining({ code: 'required-input-unavailable' }));
 		});
 
 		it('carries nothing forward from state it cannot trust', () => {
-			expect(carriedForwardBroadcastGraphicsLiveState({
-				playout: 'slate',
-				inputs: { a: 1 },
-			}))
-				.toEqual(createInitialBroadcastGraphicsLiveState());
+			expect(
+				carriedForwardBroadcastGraphicsLiveState({
+					playout: 'slate',
+					inputs: { a: 1 },
+				}),
+			).toEqual(createInitialBroadcastGraphicsLiveState());
 		});
 
 		// Each call must assign into fresh factory state, or one graphic's or epoch's values leak

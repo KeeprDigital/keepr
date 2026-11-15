@@ -104,13 +104,17 @@ const templates = computed(() => {
 	const kind = eventKind.value;
 	// Nothing is offered until the Event's kind is known.
 	return kind
-		? entries.value.filter(template => isFourSeatLayoutOfferedTo(template.fourSeat === true, kind))
+		? entries.value.filter((template) =>
+				isFourSeatLayoutOfferedTo(template.fourSeat === true, kind),
+			)
 		: [];
 });
 /** What this Event's templates are, for the copy around the list. */
-const offered = computed(() => eventKind.value === 'mtg-commander'
-	? 'four-Seat Feature Match Layout Templates, which a Commander Event is offered'
-	: 'Feature Match Layout Templates, but for the four-Seat ones a Commander Event is offered');
+const offered = computed(() =>
+	eventKind.value === 'mtg-commander'
+		? 'four-Seat Feature Match Layout Templates, which a Commander Event is offered'
+		: 'Feature Match Layout Templates, but for the four-Seat ones a Commander Event is offered',
+);
 
 const saving = ref(false);
 /**
@@ -121,8 +125,7 @@ const savedNotOffered = ref<string | null>(null);
 
 function notOfferedReason(saved: FeatureMatchLayoutTemplateSummary): string | null {
 	const kind = eventKind.value;
-	if (!kind || isFourSeatLayoutOfferedTo(saved.fourSeat === true, kind))
-		return null;
+	if (!kind || isFourSeatLayoutOfferedTo(saved.fourSeat === true, kind)) return null;
 	return saved.fourSeat
 		? 'It names a third or fourth Seat, or something only a Commander Event holds, so only a Commander Event is offered it.'
 		: 'It names no third or fourth Seat and nothing only a Commander Event holds, so it is offered to every Event that is not a Commander Event.';
@@ -132,14 +135,13 @@ const pendingPlaceId = ref<string | null>(null);
 
 /** Land the editor's unsaved edits, or refuse to go on reading a Screen that lacks them. */
 async function landEdits() {
-	if (props.flushEdits && !await props.flushEdits())
+	if (props.flushEdits && !(await props.flushEdits()))
 		throw new Error('An edit to this Screen could not be saved. Retry the save, then try again.');
 }
 
 /** Save this Screen's Feature Match Layout as a new template at revision 1. */
 async function save() {
-	if (!canAuthor.value || saving.value)
-		return;
+	if (!canAuthor.value || saving.value) return;
 	saving.value = true;
 	savedNotOffered.value = null;
 	try {
@@ -148,11 +150,9 @@ async function save() {
 		savedNotOffered.value = notOfferedReason(saved);
 		error.value = null;
 		await refresh();
-	}
-	catch (caught) {
+	} catch (caught) {
 		error.value = failureMessage(caught);
-	}
-	finally {
+	} finally {
 		saving.value = false;
 	}
 }
@@ -162,11 +162,8 @@ async function save() {
  * undo, so the first click asks and the second one does it.
  */
 function askToPlace(templateId: string) {
-	if (!canAuthor.value)
-		return;
-	pendingPlaceId.value = pendingPlaceId.value === templateId
-		? null
-		: templateId;
+	if (!canAuthor.value) return;
+	pendingPlaceId.value = pendingPlaceId.value === templateId ? null : templateId;
 }
 
 /**
@@ -175,8 +172,7 @@ function askToPlace(templateId: string) {
  * built-in; a saved or installed layout carries no canvas size.
  */
 function aspectMismatch(template: FeatureMatchLayoutTemplateSummary): boolean {
-	if (template.aspectRatio === undefined || props.canvasAspectRatio === undefined)
-		return false;
+	if (template.aspectRatio === undefined || props.canvasAspectRatio === undefined) return false;
 	return Math.abs(props.canvasAspectRatio - template.aspectRatio) > 0.05;
 }
 
@@ -203,8 +199,7 @@ async function place(templateId: string) {
 			// suppressed, so the authoritative Screen is reloaded here.
 			await screenStore.getScreenById(props.eventId, props.screenId);
 			emit('placed');
-		}
-		finally {
+		} finally {
 			placing.value = false;
 		}
 	});
@@ -230,8 +225,8 @@ async function place(templateId: string) {
 			empty-description="Save a finished layout to reuse it on a Feature Match Overlay Screen of an Event it is offered to."
 		>
 			<template #intro>
-				This installation's reusable {{ offered }}.
-				Placing one replaces this Screen's whole layout with an independent copy.
+				This installation's reusable {{ offered }}. Placing one replaces this Screen's whole layout
+				with an independent copy.
 			</template>
 
 			<template v-if="canAuthor" #save>
@@ -335,16 +330,16 @@ async function place(templateId: string) {
 						@confirm="place(template.id)"
 						@cancel="cancelPlace"
 					>
-						Replace this Screen's Feature Match Layout with “{{ template.name }}”?
-						The Frame, Source Items, and every Graphic Item are replaced. The
-						Screen's Feature Match Slot and canvas size are kept.
+						Replace this Screen's Feature Match Layout with “{{ template.name }}”? The Frame, Source
+						Items, and every Graphic Item are replaced. The Screen's Feature Match Slot and canvas
+						size are kept.
 						<span
 							v-if="aspectMismatch(template)"
 							class="mt-1 block"
 							data-testid="layout-template-place-aspect-warning"
 						>
-							It was drawn for a canvas of a different shape than this Event's,
-							so its geometry may need adjusting once placed.
+							It was drawn for a canvas of a different shape than this Event's, so its geometry may
+							need adjusting once placed.
 						</span>
 					</GraphicsTemplateLibraryConfirmation>
 
@@ -363,9 +358,7 @@ async function place(templateId: string) {
 						@cancel="cancelRemove"
 					>
 						Delete “{{ template.name }}” from the library?
-						<template v-if="template.authored">
-							This cannot be undone.
-						</template>
+						<template v-if="template.authored"> This cannot be undone. </template>
 						<template v-else>
 							Importing its Template Package again adds it back as a new entry.
 						</template>

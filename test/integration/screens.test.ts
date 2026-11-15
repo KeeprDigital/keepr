@@ -11,7 +11,11 @@ describe('screens API', () => {
 	beforeAll(async () => {
 		const event = await $fetch('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Screens Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Screens Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 	});
@@ -19,8 +23,7 @@ describe('screens API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('creates a screen and returns 201', async () => {
@@ -101,7 +104,9 @@ describe('screens API', () => {
 		expect(result).toEqual({ success: true });
 
 		// Verify it's gone via slug
-		const res = await $fetchRaw(`/api/screen-output/events/${eventId}/screens/slug/integration-delete-me`);
+		const res = await $fetchRaw(
+			`/api/screen-output/events/${eventId}/screens/slug/integration-delete-me`,
+		);
 		expect(res.status).toBe(404);
 	});
 });

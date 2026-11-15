@@ -11,7 +11,10 @@ export interface EffectRendererHarness {
 	dispose: () => void;
 }
 
-export function createEffectRenderer(three: typeof THREE, host: HTMLElement): EffectRendererHarness {
+export function createEffectRenderer(
+	three: typeof THREE,
+	host: HTMLElement,
+): EffectRendererHarness {
 	const renderer = new three.WebGLRenderer({ antialias: true });
 	renderer.setPixelRatio(globalThis.devicePixelRatio || 1);
 	const canvas = renderer.domElement;

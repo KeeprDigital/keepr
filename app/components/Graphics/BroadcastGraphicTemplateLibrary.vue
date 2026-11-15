@@ -92,26 +92,22 @@ const {
  */
 const summary = computed(() => {
 	const count = templates.value.length;
-	if (count === 0)
-		return loading.value ? undefined : 'None';
-	return `${count} ${count === 1
-		? 'template'
-		: 'templates'}`;
+	if (count === 0) return loading.value ? undefined : 'None';
+	return `${count} ${count === 1 ? 'template' : 'templates'}`;
 });
 
 const saving = ref(false);
 
 /** Land the workspace's unsaved edits, or refuse to go on reading a Screen that lacks them. */
 async function landEdits() {
-	if (props.flushEdits && !await props.flushEdits())
+	if (props.flushEdits && !(await props.flushEdits()))
 		throw new Error('An edit to this Screen could not be saved. Retry the save, then try again.');
 }
 const canSave = computed(() => canAuthor.value && !!props.selectedGraphic && !saving.value);
 
 /** Save the selected Broadcast Graphic as a new template at revision 1. */
 async function save() {
-	if (!canSave.value || !props.selectedGraphic)
-		return;
+	if (!canSave.value || !props.selectedGraphic) return;
 	saving.value = true;
 	try {
 		await landEdits();
@@ -122,11 +118,9 @@ async function save() {
 		});
 		error.value = null;
 		await refresh();
-	}
-	catch (caught) {
+	} catch (caught) {
 		error.value = failureMessage(caught);
-	}
-	finally {
+	} finally {
 		saving.value = false;
 	}
 }
@@ -153,8 +147,7 @@ async function place(templateId: string) {
 			// suppressed, so the authoritative Screen is reloaded here.
 			await screenStore.getScreenById(props.eventId, props.screenId);
 			emit('placed', placed.graphic.id);
-		}
-		finally {
+		} finally {
 			placing.value = false;
 		}
 	});
@@ -275,9 +268,7 @@ async function place(templateId: string) {
 						@cancel="cancelRemove"
 					>
 						Delete “{{ template.name }}” from the library?
-						<template v-if="template.authored">
-							This cannot be undone.
-						</template>
+						<template v-if="template.authored"> This cannot be undone. </template>
 						<template v-else>
 							Importing its Template Package again adds it back as a new entry.
 						</template>

@@ -32,14 +32,19 @@ function mountDelegate(overrides: Partial<AnimationEffectParams<'rings'>> = {}) 
 }
 
 function ringsGroup(scene: THREE.Scene): THREE.Group {
-	const group = scene.children.find((child): child is THREE.Group => (child as THREE.Group).isGroup);
+	const group = scene.children.find(
+		(child): child is THREE.Group => (child as THREE.Group).isGroup,
+	);
 	expect(group).toBeDefined();
 	return group!;
 }
 
-function ringMeshes(scene: THREE.Scene): THREE.Mesh<THREE.ExtrudeGeometry, THREE.MeshLambertMaterial>[] {
+function ringMeshes(
+	scene: THREE.Scene,
+): THREE.Mesh<THREE.ExtrudeGeometry, THREE.MeshLambertMaterial>[] {
 	return ringsGroup(scene).children.filter(
-		(child): child is THREE.Mesh<THREE.ExtrudeGeometry, THREE.MeshLambertMaterial> => (child as THREE.Mesh).isMesh,
+		(child): child is THREE.Mesh<THREE.ExtrudeGeometry, THREE.MeshLambertMaterial> =>
+			(child as THREE.Mesh).isMesh,
 	);
 }
 
@@ -59,18 +64,17 @@ describe('createRingsDelegate', () => {
 		expect(camera.position.z).toBe(200);
 	});
 
-	it('builds the fork\'s tilted group of at least sixty extruded rings in its palette', () => {
+	it("builds the fork's tilted group of at least sixty extruded rings in its palette", () => {
 		const { scene } = mountDelegate();
 		const group = ringsGroup(scene);
 		expect(group.position.toArray()).toEqual([30, 0, 0]);
 		const meshes = ringMeshes(scene);
 		expect(meshes.length).toBeGreaterThanOrEqual(60);
-		const palette = new Set(RINGS_PALETTE.map(color => color.slice(1)));
+		const palette = new Set(RINGS_PALETTE.map((color) => color.slice(1)));
 		for (const mesh of meshes) {
 			expect(mesh.rotation.x).toBe(Math.PI / 2);
 			expect(palette.has(mesh.material.color.getHexString())).toBe(true);
-			if (mesh.material.transparent)
-				expect(mesh.material.opacity).toBeGreaterThanOrEqual(0.1);
+			if (mesh.material.transparent) expect(mesh.material.opacity).toBeGreaterThanOrEqual(0.1);
 		}
 	});
 
@@ -80,20 +84,19 @@ describe('createRingsDelegate', () => {
 		// Sampled out of order on purpose: an absolute closed form gives the same
 		// angle for a time however it is reached, where an accumulator would not.
 		delegate.update({ ...context, elapsedSeconds: 1 });
-		const early = meshes.map(mesh => mesh.rotation.z);
+		const early = meshes.map((mesh) => mesh.rotation.z);
 		delegate.update({ ...context, elapsedSeconds: 3 });
-		const late = meshes.map(mesh => mesh.rotation.z);
+		const late = meshes.map((mesh) => mesh.rotation.z);
 		delegate.update({ ...context, elapsedSeconds: 2 });
 		let moved = 0;
 		meshes.forEach((mesh, index) => {
 			expect(mesh.rotation.z).toBeCloseTo((early[index]! + late[index]!) / 2);
-			if (Math.abs(late[index]! - early[index]!) > 0.01)
-				moved++;
+			if (Math.abs(late[index]! - early[index]!) > 0.01) moved++;
 		});
 		expect(moved).toBeGreaterThan(0);
 	});
 
-	it('wobbles the group around the fork\'s base tilt as the closed form of its per-frame nudges', () => {
+	it("wobbles the group around the fork's base tilt as the closed form of its per-frame nudges", () => {
 		const { delegate, scene, context } = mountDelegate();
 		const group = ringsGroup(scene);
 		expect(group.rotation.x).toBeCloseTo(0.06667);
@@ -103,7 +106,7 @@ describe('createRingsDelegate', () => {
 		expect(group.rotation.z).toBeCloseTo(0.16667 + 0.07 * Math.sin(0.06 * 3));
 	});
 
-	it('clears to the background colour the fork\'s base cleared to, live on param change', () => {
+	it("clears to the background colour the fork's base cleared to, live on param change", () => {
 		const { scene, delegate, context, params } = mountDelegate();
 		expect((scene.background as THREE.Color).getHexString()).toBe(params.backgroundColor.slice(1));
 		delegate.applyParams({

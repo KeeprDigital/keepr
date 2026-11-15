@@ -36,11 +36,13 @@ const {
 		consumes: 'screens',
 		isLoaded: () => screenStore.isLoaded,
 		isLoading: () => screenStore.loading,
-		load: id => screenStore.loadScreensByEventId(id, { failure: 'raise' }),
+		load: (id) => screenStore.loadScreensByEventId(id, { failure: 'raise' }),
 	},
 ]);
 
-const showScreenList = computed(() => hasScreens.value || loading.value || !!error.value || !!initialError.value);
+const showScreenList = computed(
+	() => hasScreens.value || loading.value || !!error.value || !!initialError.value,
+);
 
 onBeforeUnmount(() => {
 	for (const screen of screenStore.screens) {
@@ -50,7 +52,7 @@ onBeforeUnmount(() => {
 
 // Keep presence subscriptions in sync even when the store mutates the array in place.
 watch(
-	() => screens.value.map(screen => screen.id),
+	() => screens.value.map((screen) => screen.id),
 	(newIds, oldIds = []) => {
 		const previousIds = new Set(oldIds);
 		const nextIds = new Set(newIds);
@@ -106,27 +108,22 @@ async function handleDeleteScreen(screen: Screen) {
 
 	if (confirmed) {
 		await confirmDelete();
-	}
-	else {
+	} else {
 		deleteScreen.value = null;
 	}
 }
 
 async function handleSetMode(screen: Screen, mode: ScreenMode) {
-	if (updatingScreenId.value)
-		return;
+	if (updatingScreenId.value) return;
 	updatingScreenId.value = screen.id;
-	await runRequest(
-		() => screenStore.setScreenMode(eventId.value, screen.id, mode),
-		{
-			success: {
-				title: 'Screen Updated',
-				description: `Screen mode changed to ${getScreenModeLabel(mode)}`,
-				color: 'success',
-			},
-			error: { title: 'Error', description: 'Failed to update screen mode', color: 'error' },
+	await runRequest(() => screenStore.setScreenMode(eventId.value, screen.id, mode), {
+		success: {
+			title: 'Screen Updated',
+			description: `Screen mode changed to ${getScreenModeLabel(mode)}`,
+			color: 'success',
 		},
-	);
+		error: { title: 'Error', description: 'Failed to update screen mode', color: 'error' },
+	});
 	updatingScreenId.value = null;
 }
 
@@ -143,39 +140,39 @@ async function handleSendCommand(screen: Screen, command: ScreenCommand) {
 		},
 		{
 			success: { title: 'Command Sent', description: labels[command], color: 'success' },
-			error: { title: 'Command Failed', description: 'Failed to send screen command', color: 'error' },
+			error: {
+				title: 'Command Failed',
+				description: 'Failed to send screen command',
+				color: 'error',
+			},
 		},
 	);
 }
 
 async function confirmDelete() {
-	if (!deleteScreen.value || !eventId.value)
-		return;
+	if (!deleteScreen.value || !eventId.value) return;
 
 	isDeleting.value = true;
 	deleteModal.patch({ loading: true });
 
-	await runRequest(
-		() => screenStore.removeScreen(eventId.value!, deleteScreen.value!.id),
-		{
-			success: {
-				title: 'Screen Deleted',
-				description: `Screen "${deleteScreen.value.name}" has been deleted`,
-				color: 'success',
-			},
-			error: {
-				title: 'Error',
-				description: 'Failed to delete screen',
-				color: 'error',
-			},
-			onSuccess: () => {
-				deleteScreen.value = null;
-			},
-			onFailure: ({ error }) => {
-				console.error('Failed to delete screen:', error);
-			},
+	await runRequest(() => screenStore.removeScreen(eventId.value!, deleteScreen.value!.id), {
+		success: {
+			title: 'Screen Deleted',
+			description: `Screen "${deleteScreen.value.name}" has been deleted`,
+			color: 'success',
 		},
-	);
+		error: {
+			title: 'Error',
+			description: 'Failed to delete screen',
+			color: 'error',
+		},
+		onSuccess: () => {
+			deleteScreen.value = null;
+		},
+		onFailure: ({ error }) => {
+			console.error('Failed to delete screen:', error);
+		},
+	});
 	isDeleting.value = false;
 	deleteModal.patch({ loading: false });
 }
@@ -184,12 +181,7 @@ async function confirmDelete() {
 <template>
 	<NuxtLayout name="default">
 		<template v-if="hasScreens" #actions>
-			<UButton
-				icon="i-lucide-plus"
-				@click="handleCreateScreen"
-			>
-				Add Screen
-			</UButton>
+			<UButton icon="i-lucide-plus" @click="handleCreateScreen"> Add Screen </UButton>
 		</template>
 
 		<UContainer>
@@ -200,11 +192,7 @@ async function confirmDelete() {
 				description="This event could not be loaded."
 			/>
 
-			<UIInitialLoadError
-				v-else-if="initialError"
-				:error="initialError"
-				@retry="retry"
-			/>
+			<UIInitialLoadError v-else-if="initialError" :error="initialError" @retry="retry" />
 
 			<UIEmptyState
 				v-else-if="!showScreenList"

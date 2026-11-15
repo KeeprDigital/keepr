@@ -14,18 +14,17 @@ import { launchChromium } from '../../../../scripts/graphics-acceptance/chromium
 
 const mode = process.argv[3];
 if (mode === 'own-cleanup') {
-	process.once('SIGTERM', () => setTimeout(() => {
-		process.stdout.write('own cleanup finished\n');
-		process.exit(0);
-	}, 500));
+	process.once('SIGTERM', () =>
+		setTimeout(() => {
+			process.stdout.write('own cleanup finished\n');
+			process.exit(0);
+		}, 500),
+	);
 }
 
 const browser = await launchChromium(process.argv[2], [], {
-	terminateGraceMs: mode === 'patient'
-		? 3_600_000
-		: 200,
+	terminateGraceMs: mode === 'patient' ? 3_600_000 : 200,
 });
 process.stdout.write(`${JSON.stringify({ pid: browser.pid, profile: browser.profile })}\n`);
-if (mode === 'exit')
-	process.exit(3);
+if (mode === 'exit') process.exit(3);
 setInterval(() => {}, 1_000);

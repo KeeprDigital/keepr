@@ -31,11 +31,7 @@ function clearHistory() {
 					:key="card.id"
 					class="flex flex-col gap-1"
 				>
-					<OpCardImage
-						:card="card"
-						selectable
-						@selected="selectCard(card)"
-					/>
+					<OpCardImage :card="card" selectable @selected="selectCard(card)" />
 					<div class="text-center">
 						{{ card.name }}
 					</div>
@@ -43,9 +39,7 @@ function clearHistory() {
 			</div>
 		</template>
 		<template #footer>
-			<UButton @click="clearHistory">
-				Clear
-			</UButton>
+			<UButton @click="clearHistory"> Clear </UButton>
 		</template>
 	</UModal>
 </template>

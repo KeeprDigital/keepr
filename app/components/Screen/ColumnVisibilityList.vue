@@ -19,9 +19,13 @@ const emit = defineEmits<{ update: [columns: Column[]] }>();
 
 const localColumns = ref<Column[]>([]) as Ref<Column[]>;
 
-watch(() => props.columns, (columns) => {
-	localColumns.value = columns.map(column => ({ ...column }));
-}, { immediate: true, deep: true });
+watch(
+	() => props.columns,
+	(columns) => {
+		localColumns.value = columns.map((column) => ({ ...column }));
+	},
+	{ immediate: true, deep: true },
+);
 
 function columnLabel(column: Column) {
 	// The cast is needed: inside the generic, `column.key` widens to `string`.
@@ -59,7 +63,11 @@ function toggleVisibility(index: number) {
 				name="i-lucide-grip-vertical"
 				class="drag-handle cursor-grab active:cursor-grabbing text-muted shrink-0"
 			/>
-			<span class="flex-1 text-sm" :class="{ 'text-muted': !column.visible }" data-testid="column-label">
+			<span
+				class="flex-1 text-sm"
+				:class="{ 'text-muted': !column.visible }"
+				data-testid="column-label"
+			>
 				{{ columnLabel(column) }}
 			</span>
 			<USwitch

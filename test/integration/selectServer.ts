@@ -24,31 +24,34 @@ import {
  */
 
 function poolServer(): IntegrationServerAddress {
-	const servers = JSON.parse(process.env[INTEGRATION_SERVER_LIST_ENV] ?? '[]') as IntegrationServerAddress[];
+	const servers = JSON.parse(
+		process.env[INTEGRATION_SERVER_LIST_ENV] ?? '[]',
+	) as IntegrationServerAddress[];
 	const poolId = Number(process.env.VITEST_POOL_ID ?? '1');
 	const server = servers[poolId - 1];
 	if (!server) {
 		throw new Error(
-			`Integration worker ${poolId} has no server: globalSetup started ${servers.length}. `
-			+ 'vitest.integration.config.ts must set maxWorkers to integrationServerCount().',
+			`Integration worker ${poolId} has no server: globalSetup started ${servers.length}. ` +
+				'vitest.integration.config.ts must set maxWorkers to integrationServerCount().',
 		);
 	}
 	return server;
 }
 
 function realtimeServer(): IntegrationServerAddress {
-	const server = JSON.parse(process.env[INTEGRATION_REALTIME_SERVER_ENV] ?? 'null') as IntegrationServerAddress | null;
+	const server = JSON.parse(
+		process.env[INTEGRATION_REALTIME_SERVER_ENV] ?? 'null',
+	) as IntegrationServerAddress | null;
 	if (!server)
-		throw new Error('The realtime integration project has no server: globalSetup did not name one.');
+		throw new Error(
+			'The realtime integration project has no server: globalSetup did not name one.',
+		);
 	return server;
 }
 
 const realtime = process.env[INTEGRATION_REALTIME_PROJECT_ENV] === 'true';
-const server = realtime
-	? realtimeServer()
-	: poolServer();
-if (!realtime)
-	process.env[INTEGRATION_KEYLESS_WORKER_ENV] = 'true';
+const server = realtime ? realtimeServer() : poolServer();
+if (!realtime) process.env[INTEGRATION_KEYLESS_WORKER_ENV] = 'true';
 
 process.env.NUXT_TEST_CONTEXT = testContextFor(server);
 process.env[INTEGRATION_WRANGLER_PERSIST_DIR_ENV] = server.persistDir;

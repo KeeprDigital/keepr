@@ -27,11 +27,9 @@ export function assertWorkerConfigurationDoesNotArmLocalAuthBypass(configuration
 }
 
 function configurationArmsLocalAuthBypass(value: unknown): boolean {
-	if (Array.isArray(value))
-		return value.some(configurationArmsLocalAuthBypass);
-	if (value === null || typeof value !== 'object')
-		return false;
-	return Object.entries(value).some(([name, nested]) =>
-		name === LOCAL_AUTH_BYPASS_NAME || configurationArmsLocalAuthBypass(nested),
+	if (Array.isArray(value)) return value.some(configurationArmsLocalAuthBypass);
+	if (value === null || typeof value !== 'object') return false;
+	return Object.entries(value).some(
+		([name, nested]) => name === LOCAL_AUTH_BYPASS_NAME || configurationArmsLocalAuthBypass(nested),
 	);
 }

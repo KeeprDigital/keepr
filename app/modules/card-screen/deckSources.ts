@@ -44,42 +44,38 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 		return toValue(state.featureMatches).some((match) => {
 			const slots = [match.player1Data, match.player2Data];
 			return slots.some((slot) => {
-				if (slot && Object.hasOwn(slot, 'deckId'))
-					return slot.deckId != null;
-				if (getMtgGameData(slot?.gameData).deckName)
-					return true;
+				if (slot && Object.hasOwn(slot, 'deckId')) return slot.deckId != null;
+				if (getMtgGameData(slot?.gameData).deckName) return true;
 				const slotName = slot?.name;
-				if (!slotName)
-					return false;
-				return players.some(p =>
-					p.name.toLowerCase() === slotName.toLowerCase()
-					&& getMtgGameData(p.gameData).deckName,
+				if (!slotName) return false;
+				return players.some(
+					(p) =>
+						p.name.toLowerCase() === slotName.toLowerCase() && getMtgGameData(p.gameData).deckName,
 				);
 			});
 		});
 	});
 
 	const canUsePlayerDeckMode = computed(() => {
-		return toValue(state.players).some(p => getMtgGameData(p.gameData).deckName);
+		return toValue(state.players).some((p) => getMtgGameData(p.gameData).deckName);
 	});
 
 	function findPlayerByName(playerName: string): Player | undefined {
-		return toValue(state.players).find(
-			p => p.name.toLowerCase() === playerName.toLowerCase(),
-		);
+		return toValue(state.players).find((p) => p.name.toLowerCase() === playerName.toLowerCase());
 	}
 
-	function resolveMatchPlayer(playerId: number | null | undefined, playerName: string | null | undefined): Player | undefined {
+	function resolveMatchPlayer(
+		playerId: number | null | undefined,
+		playerName: string | null | undefined,
+	): Player | undefined {
 		if (playerId != null) {
 			// A durable Match identity must never fall through to a different player
 			// merely because two entrants share a display name.
-			return toValue(state.players).find(player => player.id === playerId);
+			return toValue(state.players).find((player) => player.id === playerId);
 		}
 
 		// Legacy/manual snapshots may only have retained display data.
-		return playerName
-			? findPlayerByName(playerName)
-			: undefined;
+		return playerName ? findPlayerByName(playerName) : undefined;
 	}
 
 	function resolveMatchPlayerLabel(
@@ -89,15 +85,12 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 		deckId: number | null | undefined,
 	): string | undefined {
 		const resolvedName = playerName?.trim() || player?.name.trim();
-		if (resolvedName)
-			return resolvedName;
+		if (resolvedName) return resolvedName;
 
 		// A historical match can outlive the active-player projection. Stable IDs
 		// are still sufficient to load its exact submitted deck, so retain a
 		// deterministic label for Card Spotlight display rather than dropping it.
-		return playerId != null && deckId != null
-			? `Player ${playerId}`
-			: undefined;
+		return playerId != null && deckId != null ? `Player ${playerId}` : undefined;
 	}
 
 	async function resolvePlayerDeckResponse(
@@ -108,31 +101,27 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 		// `null` is an authoritative match snapshot: this side had no submitted
 		// deck. Only `undefined` represents legacy data that may use format/primary
 		// fallback selection.
-		if (deckId === null)
-			return null;
+		if (deckId === null) return null;
 
-		const resolvedPlayerId = player?.id ?? (deckId != null
-			? playerId
-			: null);
-		if (resolvedPlayerId == null || (deckId === undefined && !getMtgGameData(player?.gameData).deckName))
+		const resolvedPlayerId = player?.id ?? (deckId != null ? playerId : null);
+		if (
+			resolvedPlayerId == null ||
+			(deckId === undefined && !getMtgGameData(player?.gameData).deckName)
+		)
 			return null;
 
 		const evtId = toValue(state.eventId);
-		if (!evtId)
-			return null;
+		if (!evtId) return null;
 
-		const selectedRound = state.deckListRoundId.value == null
-			? null
-			: roundStore.rounds.find(round => round.id === state.deckListRoundId.value) ?? null;
+		const selectedRound =
+			state.deckListRoundId.value == null
+				? null
+				: (roundStore.rounds.find((round) => round.id === state.deckListRoundId.value) ?? null);
 		return deckCache.readDeck(
 			resolvedPlayerId,
 			evtId,
 			player?.updatedAt ?? `match-deck:${deckId}`,
-			deckId !== undefined
-				? { deckId }
-				: selectedRound
-					? { phaseId: selectedRound.phaseId }
-					: {},
+			deckId !== undefined ? { deckId } : selectedRound ? { phaseId: selectedRound.phaseId } : {},
 		);
 	}
 
@@ -140,15 +129,17 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 	 * Build a PlayerDeckList from a deck response and the player's game data.
 	 * Returns null when no deck response is available (deck not yet loaded).
 	 */
-	function buildDeckList(playerName: string, deckResponse: PlayerDeckResponse | null): PlayerDeckList | null {
-		if (!deckResponse)
-			return null;
+	function buildDeckList(
+		playerName: string,
+		deckResponse: PlayerDeckResponse | null,
+	): PlayerDeckList | null {
+		if (!deckResponse) return null;
 		return createPlayerDeckList(deckResponse);
 	}
 
 	/** Convert PlayerDeckResponse cards to DeckListCard-compatible format for Scryfall batch. */
 	function toDeckListCards(deck: PlayerDeckResponse | null): DeckListCard[] {
-		return (deck?.cards ?? []).map(c => ({
+		return (deck?.cards ?? []).map((c) => ({
 			name: c.name,
 			setCode: null,
 			quantity: c.quantity,
@@ -185,7 +176,10 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			: null;
 	}
 
-	function buildEmptyDeckSource(playerName: string, deckResponse: PlayerDeckResponse | null): MatchPlayerDeckData {
+	function buildEmptyDeckSource(
+		playerName: string,
+		deckResponse: PlayerDeckResponse | null,
+	): MatchPlayerDeckData {
 		return {
 			playerName,
 			deckList: buildDeckList(playerName, deckResponse),
@@ -198,7 +192,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 	}
 
 	function deriveDeckTokens(cards: DeckListCard[]) {
-		return uniqueDeckTokens(cards.flatMap(card => card.deckTokens ?? []));
+		return uniqueDeckTokens(cards.flatMap((card) => card.deckTokens ?? []));
 	}
 
 	function tokenImageUrl(scryfallId: string): string {
@@ -244,7 +238,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 	}
 
 	function buildTokenList(tokens: ReturnType<typeof deriveDeckTokens>): DeckListTokenWithData[] {
-		return tokens.map(token => ({
+		return tokens.map((token) => ({
 			...token,
 			mtgCard: tokenToMtgCard(token),
 		}));
@@ -296,23 +290,29 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 	 * rendering, keep it" from "the deck itself changed mid-outage, swap it in"
 	 * (#465 review, applied here by #471).
 	 */
-	let renderedMatchupSources: { p1: PlayerDeckResponse | null; p2: PlayerDeckResponse | null } | null = null;
+	let renderedMatchupSources: {
+		p1: PlayerDeckResponse | null;
+		p2: PlayerDeckResponse | null;
+	} | null = null;
 
 	/**
 	 * One surface's slot in the reload-free recovery path (#465, #471): while
 	 * degraded, the lifecycle arms a silent re-fetch of that surface on the Deck
 	 * mode's slow cadence.
 	 */
-	const matchupRefetch = useDegradedRefetch<{ p1: PlayerDeckResponse | null; p2: PlayerDeckResponse | null }>({
+	const matchupRefetch = useDegradedRefetch<{
+		p1: PlayerDeckResponse | null;
+		p2: PlayerDeckResponse | null;
+	}>({
 		refetch: () => {
 			if (lastMatchupArgs) {
 				void runMatchupDeckListLoad(lastMatchupArgs, { silent: true });
 			}
 		},
-		isUnchanged: next =>
-			renderedMatchupSources !== null
-			&& renderedMatchupSources.p1 === next.p1
-			&& renderedMatchupSources.p2 === next.p2,
+		isUnchanged: (next) =>
+			renderedMatchupSources !== null &&
+			renderedMatchupSources.p1 === next.p1 &&
+			renderedMatchupSources.p2 === next.p2,
 	});
 
 	async function runMatchupDeckListLoad(args: MatchupDeckListArgs, options: { silent: boolean }) {
@@ -329,12 +329,8 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			const p1Name = resolveMatchPlayerLabel(player1Name, p1, player1Id, player1DeckId);
 			const p2Name = resolveMatchPlayerLabel(player2Name, p2, player2Id, player2DeckId);
 			const [p1DeckResponse, p2DeckResponse] = await Promise.all([
-				p1Name
-					? resolvePlayerDeckResponse(p1, player1Id, player1DeckId)
-					: null,
-				p2Name
-					? resolvePlayerDeckResponse(p2, player2Id, player2DeckId)
-					: null,
+				p1Name ? resolvePlayerDeckResponse(p1, player1Id, player1DeckId) : null,
+				p2Name ? resolvePlayerDeckResponse(p2, player2Id, player2DeckId) : null,
 			]);
 
 			const p1Cards = toDeckListCards(p1DeckResponse);
@@ -345,17 +341,17 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			const allCards = [
 				...p1Cards,
 				...p2Cards,
-				...[
-					toCompanionCard(p1DeckResponse),
-					toCompanionCard(p2DeckResponse),
-				].filter(card => card !== null),
+				...[toCompanionCard(p1DeckResponse), toCompanionCard(p2DeckResponse)].filter(
+					(card) => card !== null,
+				),
 			];
-			const { cards: cardDataMap, degraded } = allCards.length > 0
-				? await fetchScryfallCards(allCards)
-				: {
-						cards: new Map<string, MtgCard>(),
-						degraded: false,
-					};
+			const { cards: cardDataMap, degraded } =
+				allCards.length > 0
+					? await fetchScryfallCards(allCards)
+					: {
+							cards: new Map<string, MtgCard>(),
+							degraded: false,
+						};
 
 			if (flight.stale) {
 				return;
@@ -364,7 +360,9 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			// A still-degraded re-fetch of unchanged decks keeps the current
 			// rendering rather than rebuilding an identical placeholder surface on
 			// every cadence tick.
-			if (matchupRefetch.completeLoad(degraded, { p1: p1DeckResponse, p2: p2DeckResponse }) === 'keep') {
+			if (
+				matchupRefetch.completeLoad(degraded, { p1: p1DeckResponse, p2: p2DeckResponse }) === 'keep'
+			) {
 				return;
 			}
 
@@ -376,8 +374,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 				? buildDeckSource(p2Name, p2DeckResponse, p2Cards, cardDataMap)
 				: null;
 			renderedMatchupSources = { p1: p1DeckResponse, p2: p2DeckResponse };
-		}
-		catch (err) {
+		} catch (err) {
 			console.error('Failed to load match deck lists:', err);
 			if (flight.stale) {
 				return;
@@ -391,8 +388,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			state.deckListPlayer1.value = null;
 			state.deckListPlayer2.value = null;
 			renderedMatchupSources = null;
-		}
-		finally {
+		} finally {
 			if (!options.silent) {
 				state.loadingDeckList.value = false;
 			}
@@ -407,9 +403,8 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 
 	/** A Slot's two decks, on the sides its followed Session seats each player (ADR-0058). */
 	function slotMatchupArgs(slotId: number): MatchupDeckListArgs | null {
-		const match = toValue(state.featureMatches).find(m => m.id === slotId);
-		if (!match)
-			return null;
+		const match = toValue(state.featureMatches).find((m) => m.id === slotId);
+		if (!match) return null;
 		const slot = withFollowedFeatureMatchSession(match, featureMatchStateStore);
 		const player1 = featureMatchSidePlayer(slot, 'player1');
 		const player2 = featureMatchSidePlayer(slot, 'player2');
@@ -423,17 +418,15 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 		};
 	}
 
-	const shownSlotArgs = computed(() => shownSlotId.value === null
-		? null
-		: JSON.stringify(slotMatchupArgs(shownSlotId.value)));
+	const shownSlotArgs = computed(() =>
+		shownSlotId.value === null ? null : JSON.stringify(slotMatchupArgs(shownSlotId.value)),
+	);
 
 	// A swap, or any edit to who the shown Slot seats, reloads its decks in place.
 	watch([shownSlotId, shownSlotArgs], ([slotId, args], [previousSlotId, previousArgs]) => {
-		if (slotId === null || slotId !== previousSlotId || args === previousArgs)
-			return;
+		if (slotId === null || slotId !== previousSlotId || args === previousArgs) return;
 		const next = slotMatchupArgs(slotId);
-		if (next)
-			void runMatchupDeckListLoad(next, { silent: true });
+		if (next) void runMatchupDeckListLoad(next, { silent: true });
 	});
 
 	async function loadMatchupDeckLists(
@@ -461,8 +454,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 	/** A Feature Match Slot's two decks, kept on the sides its followed Session seats each player. */
 	async function loadMatchDeckLists(matchId: number) {
 		const args = slotMatchupArgs(matchId);
-		if (!args)
-			return;
+		if (!args) return;
 		shownSlotId.value = matchId;
 		await runMatchupDeckListLoad(args, { silent: false });
 	}
@@ -497,14 +489,14 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 				void runPlayerDeckLoad(lastPlayerDeckPlayerId, { silent: true });
 			}
 		},
-		isUnchanged: next => renderedPlayerDeckSource !== null && renderedPlayerDeckSource === next,
+		isUnchanged: (next) => renderedPlayerDeckSource !== null && renderedPlayerDeckSource === next,
 	});
 
 	async function runPlayerDeckLoad(playerId: number, options: { silent: boolean }) {
 		const flight = playerDeckRefetch.begin();
 		lastPlayerDeckPlayerId = playerId;
 
-		const player = toValue(state.players).find(p => p.id === playerId);
+		const player = toValue(state.players).find((p) => p.id === playerId);
 		const evtId = toValue(state.eventId);
 		if (!player || !getMtgGameData(player.gameData).deckName || !evtId) {
 			// A degraded rendering keeps re-fetching even when one attempt finds
@@ -522,14 +514,13 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			const deckResponse = await deckCache.readDeck(player.id, evtId, player.updatedAt);
 			const deckCards = toDeckListCards(deckResponse);
 			const companionCard = toCompanionCard(deckResponse);
-			const { cards: cardDataMap, degraded } = deckCards.length > 0
-				? await fetchScryfallCards(companionCard
-						? [...deckCards, companionCard]
-						: deckCards)
-				: {
-						cards: new Map<string, MtgCard>(),
-						degraded: false,
-					};
+			const { cards: cardDataMap, degraded } =
+				deckCards.length > 0
+					? await fetchScryfallCards(companionCard ? [...deckCards, companionCard] : deckCards)
+					: {
+							cards: new Map<string, MtgCard>(),
+							degraded: false,
+						};
 
 			if (flight.stale) {
 				return;
@@ -541,10 +532,14 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 				return;
 			}
 
-			state.playerDeckData.value = buildDeckSource(player.name, deckResponse, deckCards, cardDataMap);
+			state.playerDeckData.value = buildDeckSource(
+				player.name,
+				deckResponse,
+				deckCards,
+				cardDataMap,
+			);
 			renderedPlayerDeckSource = deckResponse;
-		}
-		catch (err) {
+		} catch (err) {
 			console.error('Failed to load player deck:', err);
 			if (flight.stale) {
 				return;
@@ -555,8 +550,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			}
 			state.playerDeckData.value = null;
 			renderedPlayerDeckSource = null;
-		}
-		finally {
+		} finally {
 			if (!options.silent) {
 				state.loadingPlayerDeck.value = false;
 			}
@@ -580,7 +574,9 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 	 * at once; consumed combined because one Screen has one `cardDataHealth` ref
 	 * to report through.
 	 */
-	const cardDataDegraded = computed(() => matchupRefetch.degraded.value || playerDeckRefetch.degraded.value);
+	const cardDataDegraded = computed(
+		() => matchupRefetch.degraded.value || playerDeckRefetch.degraded.value,
+	);
 
 	function clearPlayerDeck() {
 		settlePlayerDeckDegradation();

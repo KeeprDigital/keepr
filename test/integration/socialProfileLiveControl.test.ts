@@ -29,17 +29,13 @@ function socialProfileGraphic(updatePolicy?: 'staged' | 'live'): BroadcastGraphi
 		dwellMs: 8_000,
 		transition: 'crossfade' as const,
 		transitionDurationMs: TRANSITION_DURATION_MS,
-		...(updatePolicy
-			? { updatePolicy }
-			: {}),
+		...(updatePolicy ? { updatePolicy } : {}),
 	};
 
 	return {
 		id: GRAPHIC_ID,
 		name: 'Talent lower third',
-		sources: [
-			{ key: 'talent', label: 'Talent', kind: 'talent' },
-		],
+		sources: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
 		socialProfileProjections: [projection],
 		items: [
 			{
@@ -87,7 +83,7 @@ function eventTalentSocialProfileGraphic(graphicId: string): BroadcastGraphicCon
 				from: { sourceKey: 'event', relation: 'commentator1' },
 			},
 		],
-		socialProfileProjections: graphic.socialProfileProjections?.map(projection => ({
+		socialProfileProjections: graphic.socialProfileProjections?.map((projection) => ({
 			...projection,
 			sourceKey: 'talent1',
 		})),
@@ -100,7 +96,11 @@ describe('manual Social Profile Projection command API', () => {
 	beforeAll(async () => {
 		const event = await $fetch<{ id: number }>('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Social Profile Live Control', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Social Profile Live Control',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 	});
@@ -108,8 +108,7 @@ describe('manual Social Profile Projection command API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('takes the first accepted profile of an operator-selected Talent through the real command route', async () => {
@@ -131,9 +130,13 @@ describe('manual Social Profile Projection command API', () => {
 			payload: { graphicId: GRAPHIC_ID },
 		});
 
-		expect((taken.currentState as typeof taken.currentState & {
-			socialProfileProjections: Record<string, Record<string, unknown>>;
-		}).socialProfileProjections[GRAPHIC_ID]?.[PROJECTION_KEY]).toMatchObject({
+		expect(
+			(
+				taken.currentState as typeof taken.currentState & {
+					socialProfileProjections: Record<string, Record<string, unknown>>;
+				}
+			).socialProfileProjections[GRAPHIC_ID]?.[PROJECTION_KEY],
+		).toMatchObject({
 			talent: { id: talent.id, name: 'Avery Quinn' },
 			acceptedProfiles: [
 				{
@@ -166,13 +169,9 @@ describe('manual Social Profile Projection command API', () => {
 				socialProfiles: { twitch: 'BeforeLive', x: 'OnAirX' },
 			},
 		});
-		const harness = await createGraphicsHarness(
-			eventId,
-			'social-profile-live-reresolution',
-			[
-				socialProfileGraphic('live'),
-			],
-		);
+		const harness = await createGraphicsHarness(eventId, 'social-profile-live-reresolution', [
+			socialProfileGraphic('live'),
+		]);
 
 		await selectBroadcastGraphicSource(harness, GRAPHIC_ID, 'talent', talent.id);
 		const taken = await harness.send({
@@ -191,7 +190,9 @@ describe('manual Social Profile Projection command API', () => {
 
 		const refreshed = await harness.reload();
 		expect(refreshed.sequence).toBeGreaterThan(taken.sequence);
-		expect(refreshed.currentState.socialProfileProjections?.[GRAPHIC_ID]?.[PROJECTION_KEY]).toMatchObject({
+		expect(
+			refreshed.currentState.socialProfileProjections?.[GRAPHIC_ID]?.[PROJECTION_KEY],
+		).toMatchObject({
 			acceptedProfiles: [
 				{ network: 'twitch', handle: 'AfterLive' },
 				{ network: 'youtube', handle: 'NewlyAdded' },
@@ -220,7 +221,9 @@ describe('manual Social Profile Projection command API', () => {
 			body: { commentator1TalentId: first.id },
 		});
 		const graphic = eventTalentSocialProfileGraphic('talent-1-live-profile');
-		const harness = await createGraphicsHarness(eventId, 'social-profile-derived-reassignment', [graphic]);
+		const harness = await createGraphicsHarness(eventId, 'social-profile-derived-reassignment', [
+			graphic,
+		]);
 		await harness.send({
 			commandId: playoutCommandId('social-profile-derived-reassignment-take'),
 			type: 'Take',
@@ -233,11 +236,11 @@ describe('manual Social Profile Projection command API', () => {
 		});
 
 		const refreshed = await harness.reload();
-		expect(refreshed.currentState.socialProfileProjections?.[graphic.id]?.[PROJECTION_KEY]).toMatchObject({
+		expect(
+			refreshed.currentState.socialProfileProjections?.[graphic.id]?.[PROJECTION_KEY],
+		).toMatchObject({
 			talent: { id: replacement.id, name: 'Replacement Caster' },
-			acceptedProfiles: [
-				{ network: 'youtube', handle: 'ReplacementLive' },
-			],
+			acceptedProfiles: [{ network: 'youtube', handle: 'ReplacementLive' }],
 			currentNetwork: 'youtube',
 		});
 	});

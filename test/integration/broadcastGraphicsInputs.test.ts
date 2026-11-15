@@ -24,9 +24,7 @@ const GRAPHIC = 'lower-third';
 const NAME = integrationTextInput('name', { default: 'Unnamed' });
 
 function graphicWith(inputs: GraphicInputDeclaration[]) {
-	return [
-		integrationBroadcastGraphicWithInputs(GRAPHIC, inputs),
-	];
+	return [integrationBroadcastGraphicWithInputs(GRAPHIC, inputs)];
 }
 
 describe('broadcast graphics Graphic Input command API', () => {
@@ -35,7 +33,11 @@ describe('broadcast graphics Graphic Input command API', () => {
 	beforeAll(async () => {
 		const event = await $fetch<{ id: number }>('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Graphic Inputs Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Graphic Inputs Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 	});
@@ -43,15 +45,15 @@ describe('broadcast graphics Graphic Input command API', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('keeps a staged edit off air until Update Graphic accepts the complete set', async () => {
-		const harness = await createGraphicsHarness(eventId, 'inputs-update', graphicWith([
-			NAME,
-			integrationTextInput('title'),
-		]));
+		const harness = await createGraphicsHarness(
+			eventId,
+			'inputs-update',
+			graphicWith([NAME, integrationTextInput('title')]),
+		);
 		await harness.send({
 			commandId: playoutCommandId('take'),
 			type: 'Take',
@@ -72,7 +74,10 @@ describe('broadcast graphics Graphic Input command API', () => {
 			},
 		} as BroadcastGraphicsCommand);
 
-		expect(updated.currentState.inputs[GRAPHIC]!.accepted).toEqual({ name: 'Ava Reed', title: 'Champion' });
+		expect(updated.currentState.inputs[GRAPHIC]!.accepted).toEqual({
+			name: 'Ava Reed',
+			title: 'Champion',
+		});
 	});
 
 	it('rejects an acceptance another operator has already superseded', async () => {

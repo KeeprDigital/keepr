@@ -20,36 +20,26 @@ const visibleBuckets = computed(() => {
 		}
 	}
 	const buckets = Array.from({ length: maxBucket + 1 }, (_, i) => i);
-	if ((props.curve[CURVE_MAX_BUCKET] ?? 0) > 0)
-		buckets.push(CURVE_MAX_BUCKET);
+	if ((props.curve[CURVE_MAX_BUCKET] ?? 0) > 0) buckets.push(CURVE_MAX_BUCKET);
 	return buckets;
 });
 
 const chartHeight = computed(() => props.height ?? 140);
 
 const chartData = computed(() =>
-	visibleBuckets.value.map(cmc => ({
-		label: cmc === CURVE_MAX_BUCKET
-			? `${CURVE_MAX_BUCKET}+`
-			: String(cmc),
+	visibleBuckets.value.map((cmc) => ({
+		label: cmc === CURVE_MAX_BUCKET ? `${CURVE_MAX_BUCKET}+` : String(cmc),
 		count: props.curve[cmc] ?? 0,
 	})),
 );
 
-const maxCount = computed(() => Math.max(...chartData.value.map(d => d.count), 0));
+const maxCount = computed(() => Math.max(...chartData.value.map((d) => d.count), 0));
 
 const countAxis = computed(() => {
 	const max = maxCount.value;
-	if (max === 0)
-		return { interval: 1, max: 1 };
+	if (max === 0) return { interval: 1, max: 1 };
 
-	const idealStep = max <= 4
-		? 1
-		: max <= 10
-			? 2
-			: max <= 20
-				? 5
-				: 10;
+	const idealStep = max <= 4 ? 1 : max <= 10 ? 2 : max <= 20 ? 5 : 10;
 	let interval = idealStep;
 	while (interval > 1 && Math.ceil(max / interval) < 4)
 		interval = Math.max(1, Math.floor(interval / 2));
@@ -77,7 +67,7 @@ const chartOption = computed<ECOption>(() => ({
 	},
 	xAxis: {
 		type: 'category',
-		data: chartData.value.map(entry => entry.label),
+		data: chartData.value.map((entry) => entry.label),
 	},
 	yAxis: {
 		type: 'value',
@@ -92,7 +82,7 @@ const chartOption = computed<ECOption>(() => ({
 		{
 			type: 'bar',
 			silent: true,
-			data: chartData.value.map(entry => entry.count),
+			data: chartData.value.map((entry) => entry.count),
 			barMaxWidth: 32,
 			emphasis: {
 				disabled: true,
@@ -109,10 +99,5 @@ const chartOption = computed<ECOption>(() => ({
 </script>
 
 <template>
-	<VChart
-		:option="chartOption"
-		autoresize
-		class="w-full"
-		:style="{ height: `${chartHeight}px` }"
-	/>
+	<VChart :option="chartOption" autoresize class="w-full" :style="{ height: `${chartHeight}px` }" />
 </template>

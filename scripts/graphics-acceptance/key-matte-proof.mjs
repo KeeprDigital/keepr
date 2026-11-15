@@ -33,7 +33,10 @@ export const KEY_MATTE_PROOF_VIEWPORT = Object.freeze({
  * rasterises.
  */
 export async function bundleKeyMattePage() {
-	return await bundleAcceptancePage(new URL('./key-matte-page.mjs', import.meta.url), 'key-matte-bundle-failed');
+	return await bundleAcceptancePage(
+		new URL('./key-matte-page.mjs', import.meta.url),
+		'key-matte-bundle-failed',
+	);
 }
 
 /**
@@ -60,9 +63,12 @@ export function keyMatteProofPage() {
 }
 
 async function evaluate(page, expression) {
-	const evaluated = await page.command('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
-	if (evaluated.exceptionDetails)
-		throw new AcceptanceFailure('key-matte-page-failed');
+	const evaluated = await page.command('Runtime.evaluate', {
+		expression,
+		awaitPromise: true,
+		returnByValue: true,
+	});
+	if (evaluated.exceptionDetails) throw new AcceptanceFailure('key-matte-page-failed');
 	return evaluated.result?.value;
 }
 
@@ -88,10 +94,9 @@ export async function observeKeyMatte(page, { timeoutMs = KEY_MATTE_PROOF_TIMEOU
 	});
 
 	const deadline = Date.now() + timeoutMs;
-	while (await evaluate(page, `document.body?.dataset.ready === 'true'`) !== true) {
-		if (Date.now() > deadline)
-			return { outcome: 'timed-out' };
-		await new Promise(resolve => setTimeout(resolve, 100));
+	while ((await evaluate(page, `document.body?.dataset.ready === 'true'`)) !== true) {
+		if (Date.now() > deadline) return { outcome: 'timed-out' };
+		await new Promise((resolve) => setTimeout(resolve, 100));
 	}
 
 	const captures = {};
@@ -144,7 +149,7 @@ export function judgeKeyMatteScene(scene, floors = KEY_MATTE_PROOF_FLOORS) {
  * see a glow missing from the Key Output, and then no pass means anything.
  */
 export function judgeKeyMatteReport(report) {
-	const scenes = new Map((report?.scenes ?? []).map(scene => [scene.name, scene]));
+	const scenes = new Map((report?.scenes ?? []).map((scene) => [scene.name, scene]));
 	const failures = [];
 	for (const name of KEY_MATTE_PROOF_HOSTS) {
 		const scene = scenes.get(name);
@@ -153,8 +158,7 @@ export function judgeKeyMatteReport(report) {
 				code: 'key-matte-scene-missing',
 				detail: { scene: name },
 			});
-		}
-		else {
+		} else {
 			failures.push(...judgeKeyMatteScene(scene));
 		}
 	}
@@ -164,8 +168,9 @@ export function judgeKeyMatteReport(report) {
 			code: 'key-matte-scene-missing',
 			detail: { scene: KEY_MATTE_PROOF_CONTROL },
 		});
-	}
-	else if (!judgeKeyMatteScene(control).some(failure => failure.code === 'key-matte-diverges-from-fill')) {
+	} else if (
+		!judgeKeyMatteScene(control).some((failure) => failure.code === 'key-matte-diverges-from-fill')
+	) {
 		failures.push({
 			code: 'key-matte-checks-not-biting',
 			detail: { scene: KEY_MATTE_PROOF_CONTROL },

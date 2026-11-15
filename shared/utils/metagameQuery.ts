@@ -6,7 +6,11 @@ import type {
 	MetagameSortBy,
 } from '~~/shared/types/enums';
 import type { MetagameQueryParams } from '~~/shared/types/metagame';
-import type { ArchetypeSpotlightModeConfig, MetagameModeConfig, TopCardsModeConfig } from '~~/shared/types/screenConfig';
+import type {
+	ArchetypeSpotlightModeConfig,
+	MetagameModeConfig,
+	TopCardsModeConfig,
+} from '~~/shared/types/screenConfig';
 import type { MetagameCardTypeBucket } from '~~/shared/utils/metagame';
 
 /**
@@ -47,18 +51,15 @@ export interface MetagameArchetypeDetailOptions extends MetagameConversionInput 
 /** The query naming a Metagame Scope: only the field its scope reads, so a Screen's other fields never reach it. */
 export function buildMetagameScopeQuery(input: MetagameScopeInput): MetagameQueryParams {
 	const query: MetagameQueryParams = { scope: input.scope };
-	if (input.scope === 'topN')
-		query.topN = input.topN;
-	if (input.scope === 'minPoints' && input.minPoints != null)
-		query.minPoints = input.minPoints;
+	if (input.scope === 'topN') query.topN = input.topN;
+	if (input.scope === 'minPoints' && input.minPoints != null) query.minPoints = input.minPoints;
 	if (input.scope === 'playerList' && input.playerListId != null)
 		query.playerListId = input.playerListId;
 	return query;
 }
 
 function buildConversionQuery(options: MetagameConversionInput) {
-	if (options.conversionMetric == null || options.conversionThreshold == null)
-		return {};
+	if (options.conversionMetric == null || options.conversionThreshold == null) return {};
 
 	return {
 		conversionMetric: options.conversionMetric,
@@ -73,9 +74,7 @@ export function buildArchetypeBreakdownQuery(
 	return {
 		...buildMetagameScopeQuery(scope),
 		sortBy: options.sortBy ?? 'metaShare',
-		...(options.limit != null
-			? { limit: options.limit }
-			: {}),
+		...(options.limit != null ? { limit: options.limit } : {}),
 		...buildConversionQuery(options),
 	};
 }
@@ -88,20 +87,14 @@ export function buildCardBreakdownQuery(
 		...buildMetagameScopeQuery(scope),
 		sortBy: options.sortBy ?? 'inclusionRate',
 		limit: options.limit ?? 50,
-		...(options.board
-			? { board: options.board }
-			: {}),
-		...(options.archetypeId != null
-			? { archetypeId: options.archetypeId }
-			: {}),
+		...(options.board ? { board: options.board } : {}),
+		...(options.archetypeId != null ? { archetypeId: options.archetypeId } : {}),
 		...(options.excludeTypes?.length
 			? {
 					excludeTypes: options.excludeTypes.join(','),
 				}
 			: {}),
-		...(options.pointedOnly
-			? { pointedOnly: 'true' }
-			: {}),
+		...(options.pointedOnly ? { pointedOnly: 'true' } : {}),
 	};
 }
 
@@ -111,9 +104,7 @@ export function buildArchetypeDetailQuery(
 ) {
 	return {
 		...buildMetagameScopeQuery(scope),
-		...(options.board
-			? { board: options.board }
-			: {}),
+		...(options.board ? { board: options.board } : {}),
 		...buildConversionQuery(options),
 	};
 }
@@ -152,16 +143,15 @@ export function metagameScreenQuery(config: MetagameModeConfig, target: Conversi
  * page's own query for the same scope, board and target, so the Screen shows
  * that page's numbers. `null` while no Archetype is picked.
  */
-export function archetypeSpotlightScreenQuery(config: ArchetypeSpotlightModeConfig, target: ConversionTarget) {
-	if (config.archetypeId == null)
-		return null;
+export function archetypeSpotlightScreenQuery(
+	config: ArchetypeSpotlightModeConfig,
+	target: ConversionTarget,
+) {
+	if (config.archetypeId == null) return null;
 
 	return {
 		archetypeId: config.archetypeId,
-		query: buildArchetypeDetailQuery(
-			config,
-			{ board: config.board, ...target },
-		),
+		query: buildArchetypeDetailQuery(config, { board: config.board, ...target }),
 	};
 }
 
@@ -171,17 +161,14 @@ export function archetypeSpotlightScreenQuery(config: ArchetypeSpotlightModeConf
  * pointed land is as much a pointed pick as any other card.
  */
 export function topCardsScreenQuery(config: TopCardsModeConfig) {
-	return buildCardBreakdownQuery(
-		config,
-		{
-			sortBy: config.sortBy,
-			limit: config.limit,
-			board: config.board,
-			archetypeId: config.archetypeId,
-			excludeTypes: config.pointedOnly
-				? config.excludedCardTypes.filter(type => type !== 'Land')
-				: config.excludedCardTypes,
-			pointedOnly: config.pointedOnly,
-		},
-	);
+	return buildCardBreakdownQuery(config, {
+		sortBy: config.sortBy,
+		limit: config.limit,
+		board: config.board,
+		archetypeId: config.archetypeId,
+		excludeTypes: config.pointedOnly
+			? config.excludedCardTypes.filter((type) => type !== 'Land')
+			: config.excludedCardTypes,
+		pointedOnly: config.pointedOnly,
+	});
 }

@@ -88,18 +88,16 @@ export function meleeService(credentials: MeleeCredentials, options: MeleeServic
 		while (hasMore && page <= MAX_PAGES) {
 			// ignoreCache bypasses Melee's response cache; without it, list
 			// responses may serve stale standings/pairings during a live event.
-			const url = `${baseUrl}${baseUrl.includes('?')
-				? '&'
-				: '?'}page=${page}&pageSize=${pageSize}&ignoreCache=true`;
+			const url = `${baseUrl}${
+				baseUrl.includes('?') ? '&' : '?'
+			}page=${page}&pageSize=${pageSize}&ignoreCache=true`;
 			const response = await fetchWithAuth(url, pageSchema, { endpoint, page });
 			// Melee's RecordsFiltered is the record count of the current page, not
 			// the DataTables-style collection total; RecordsTotal carries the
 			// collection total (verified against melee.gg player and standings
 			// endpoints, 2026-08).
-			if (response.Page !== page)
-				paginationError('unexpected page number');
-			if (response.PageSize !== pageSize)
-				paginationError('unexpected page size');
+			if (response.Page !== page) paginationError('unexpected page number');
+			if (response.PageSize !== pageSize) paginationError('unexpected page size');
 			if (response.RecordsFiltered !== response.Content.length)
 				paginationError('a page record count did not match its content');
 			if (response.RecordsFiltered > response.RecordsTotal)
@@ -149,11 +147,9 @@ export function meleeService(credentials: MeleeCredentials, options: MeleeServic
 	// ── Tournament ──
 
 	const fetchEvent = async (): Promise<MeleeEventParsed> => {
-		return await fetchWithAuth(
-			`${API_URL}/tournament/${encodedEventId}`,
-			meleeEventSchema,
-			{ endpoint: 'event' },
-		);
+		return await fetchWithAuth(`${API_URL}/tournament/${encodedEventId}`, meleeEventSchema, {
+			endpoint: 'event',
+		});
 	};
 
 	// ── Players ──
@@ -199,10 +195,7 @@ export function meleeService(credentials: MeleeCredentials, options: MeleeServic
 	// ── Composite ──
 
 	const fetchMergedPlayers = async () => {
-		const [players, standings] = await Promise.all([
-			fetchPlayers(),
-			fetchCurrentStandings(),
-		]);
+		const [players, standings] = await Promise.all([fetchPlayers(), fetchCurrentStandings()]);
 
 		return mapMeleePlayersToDb(players, standings);
 	};

@@ -4,10 +4,7 @@ import { requireUserId } from '~~/server/utils/auth';
 
 export default defineEventHandler(async (event) => {
 	await requireUserId(event);
-	const { id: eventId, screenId } = await getValidatedRouterParams(
-		event,
-		screenParamsSchema.parse,
-	);
+	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);
 	const result = await screenOutputAssetCapabilityManagerForEvent(event).current({
 		eventId,
 		screenId,

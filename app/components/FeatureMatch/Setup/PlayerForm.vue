@@ -31,7 +31,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:playerId': [value: number | null];
-	'submit': [];
+	submit: [];
 }>();
 
 const player = defineModel<PlayerData>({
@@ -46,11 +46,10 @@ const hasPlayers = computed(() => !props.commanderEvent && (props.players?.lengt
 const searchTerm = ref('');
 
 const playerItems = computed<(InputMenuItem & { id: number })[]>(() => {
-	if (!props.players?.length)
-		return [];
+	if (!props.players?.length) return [];
 	return props.players
-		.filter(p => playerMatchesSearch(p, searchTerm.value))
-		.map(p => ({
+		.filter((p) => playerMatchesSearch(p, searchTerm.value))
+		.map((p) => ({
 			label: playerLabel(p),
 			id: p.id,
 		}));
@@ -62,7 +61,7 @@ function onPlayerSelected(value: number | null) {
 	emit('update:playerId', value);
 
 	if (value) {
-		const selected = props.players?.find(p => p.id === value);
+		const selected = props.players?.find((p) => p.id === value);
 		if (selected) {
 			player.value = {
 				name: selected.name,
@@ -78,9 +77,14 @@ function onPlayerSelected(value: number | null) {
 				lgs: selected.lgs ?? undefined,
 				// A linked One Piece side shows the Player's Deck List and its Leader,
 				// which the save fills in, in place of the side's own (ADR-0074).
-				gameData: props.game === 'op'
-					? { type: 'op', leader: null, deckList: getOpGameData(selected.gameData).deckList ?? null }
-					: selected.gameData ?? undefined,
+				gameData:
+					props.game === 'op'
+						? {
+								type: 'op',
+								leader: null,
+								deckList: getOpGameData(selected.gameData).deckList ?? null,
+							}
+						: (selected.gameData ?? undefined),
 			};
 		}
 	}
@@ -122,20 +126,17 @@ const opGameData = computed({
  * editor in place of its own paste and Leader picker. The edit is a Player
  * write, which reaches this side and every other Slot showing the Player.
  */
-const linkedPlayer = computed(() => props.game === 'op' && props.playerId != null
-	? props.players?.find(p => p.id === props.playerId) ?? null
-	: null);
+const linkedPlayer = computed(() =>
+	props.game === 'op' && props.playerId != null
+		? (props.players?.find((p) => p.id === props.playerId) ?? null)
+		: null,
+);
 const linkedDeckList = computed(() => opGameData.value.deckList ?? null);
 const editingPlayerDeckList = ref(false);
 </script>
 
 <template>
-	<UForm
-		:id="formId"
-		:state="player"
-		class="w-full flex flex-col gap-4"
-		@submit="emit('submit')"
-	>
+	<UForm :id="formId" :state="player" class="w-full flex flex-col gap-4" @submit="emit('submit')">
 		<!-- Player Picker -->
 		<UFormField v-if="hasPlayers" label="Player" name="player">
 			<UInputMenu
@@ -155,22 +156,10 @@ const editingPlayerDeckList = ref(false);
 		<!-- Identity -->
 		<div class="flex gap-4">
 			<UFormField label="Name" name="name" :class="props.pronounsEnabled ? 'flex-2' : 'flex-1'">
-				<UInput
-					v-model="player.name"
-					:placeholder="player.nickname"
-					class="w-full"
-				/>
+				<UInput v-model="player.name" :placeholder="player.nickname" class="w-full" />
 			</UFormField>
-			<UFormField
-				v-if="props.pronounsEnabled"
-				label="Pronouns"
-				name="pronouns"
-				class="flex-1"
-			>
-				<UInput
-					v-model="player.pronouns"
-					class="w-full"
-				/>
+			<UFormField v-if="props.pronounsEnabled" label="Pronouns" name="pronouns" class="flex-1">
+				<UInput v-model="player.pronouns" class="w-full" />
 			</UFormField>
 		</div>
 
@@ -209,13 +198,15 @@ const editingPlayerDeckList = ref(false);
 					class="h-14 rounded-sm"
 					style="aspect-ratio: 600 / 838"
 					loading="lazy"
-				>
+				/>
 				<div class="min-w-0 flex-1" data-leader>
 					<p class="truncate font-medium">
 						{{ opGameData.leader?.name ?? linkedDeckList?.leaderNumber ?? 'No Leader' }}
 					</p>
 					<p class="flex items-center gap-2 text-sm text-muted">
-						{{ linkedDeckList ? `${linkedDeckList.mainboardCount} Mainboard cards` : 'No Deck List' }}
+						{{
+							linkedDeckList ? `${linkedDeckList.mainboardCount} Mainboard cards` : 'No Deck List'
+						}}
 						<OpColorDisplay v-if="opGameData.leader" :colors="opGameData.leader.colors" size="sm" />
 					</p>
 				</div>
@@ -291,16 +282,8 @@ const editingPlayerDeckList = ref(false);
 				/>
 			</UFormField>
 		</template>
-		<UFormField
-			v-if="props.lgsEnabled"
-			label="LGS"
-			name="lgs"
-			class="w-full"
-		>
-			<UInput
-				v-model="player.lgs"
-				class="w-full"
-			/>
+		<UFormField v-if="props.lgsEnabled" label="LGS" name="lgs" class="w-full">
+			<UInput v-model="player.lgs" class="w-full" />
 		</UFormField>
 	</UForm>
 </template>

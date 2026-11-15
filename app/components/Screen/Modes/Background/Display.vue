@@ -8,10 +8,9 @@ const config = useScreenModeConfig(context, 'background');
 const { themeTokens } = context;
 
 /** The Screen's own stack, else its Theme's background. */
-const layers = computed<BackgroundLayer[]>(() => screenBackgroundLayers(
-	config.value.layers,
-	themeTokens?.value ?? DEFAULT_THEME_TOKENS,
-));
+const layers = computed<BackgroundLayer[]>(() =>
+	screenBackgroundLayers(config.value.layers, themeTokens?.value ?? DEFAULT_THEME_TOKENS),
+);
 
 // Its stack reads no data; what it shows marks itself pending while it loads.
 useScreenModeReady(true);

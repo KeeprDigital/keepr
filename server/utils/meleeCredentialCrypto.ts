@@ -39,8 +39,7 @@ export class MeleeCredentialCryptoError extends Error {
 
 function bytesToBase64(bytes: Uint8Array): string {
 	let binary = '';
-	for (const byte of bytes)
-		binary += String.fromCharCode(byte);
+	for (const byte of bytes) binary += String.fromCharCode(byte);
 	return btoa(binary);
 }
 
@@ -48,11 +47,9 @@ function base64ToBytes(value: string, field: string): Uint8Array<ArrayBuffer> {
 	try {
 		const binary = atob(value);
 		const bytes = new Uint8Array(binary.length);
-		for (let index = 0; index < binary.length; index++)
-			bytes[index] = binary.charCodeAt(index);
+		for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
 		return bytes;
-	}
-	catch {
+	} catch {
 		throw new MeleeCredentialCryptoError(
 			'MELEE_CREDENTIAL_INVALID_BASE64',
 			`Stored Melee credential ${field} is not valid base64`,
@@ -68,8 +65,7 @@ function parseEnvelope(storedValue: string): MeleeCredentialEnvelope {
 	let parsed: unknown;
 	try {
 		parsed = JSON.parse(storedValue.slice(ENVELOPE_PREFIX.length));
-	}
-	catch {
+	} catch {
 		throw new MeleeCredentialCryptoError(
 			'MELEE_CREDENTIAL_MALFORMED',
 			'Stored Melee credential envelope is malformed',
@@ -125,15 +121,8 @@ async function importAesKey(keyBase64: string, keyVersion: string, usage: KeyUsa
 	}
 
 	try {
-		return await crypto.subtle.importKey(
-			'raw',
-			keyBytes,
-			{ name: 'AES-GCM' },
-			false,
-			[usage],
-		);
-	}
-	catch {
+		return await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, [usage]);
+	} catch {
 		throw new MeleeCredentialCryptoError(
 			'MELEE_CREDENTIAL_INVALID_KEY',
 			`Melee credential encryption key version "${keyVersion}" could not be imported`,
@@ -186,8 +175,7 @@ export async function encryptMeleeCredential(
 			key,
 			textEncoder.encode(plaintext),
 		);
-	}
-	catch {
+	} catch {
 		throw new MeleeCredentialCryptoError(
 			'MELEE_CREDENTIAL_ENCRYPTION_FAILED',
 			'Melee client secret could not be encrypted',
@@ -251,8 +239,7 @@ export async function decryptMeleeCredential(
 			keyVersion: envelope.keyVersion,
 			needsReEncryption: envelope.keyVersion !== keyring.activeKeyVersion,
 		};
-	}
-	catch {
+	} catch {
 		throw new MeleeCredentialCryptoError(
 			'MELEE_CREDENTIAL_DECRYPTION_FAILED',
 			'Stored Melee credential could not be decrypted; verify the configured key and envelope integrity',

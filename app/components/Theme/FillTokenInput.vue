@@ -18,9 +18,12 @@ const emit = defineEmits<{
 }>();
 
 function edit(change: GraphicFillEdit) {
-	emit('commit', applyGraphicFillEdit(props.modelValue, change, {
-		gradientEndColor: FOUNDATION_TOKENS['surface-raised'].default,
-	}));
+	emit(
+		'commit',
+		applyGraphicFillEdit(props.modelValue, change, {
+			gradientEndColor: FOUNDATION_TOKENS['surface-raised'].default,
+		}),
+	);
 }
 </script>
 

@@ -45,17 +45,13 @@ const EVENT_DATA = {
 			externalId: '0001234',
 		},
 	],
-	lists: [
-		{ id: 9, name: 'Feature Table', memberCount: 4 },
-	],
+	lists: [{ id: 9, name: 'Feature Table', memberCount: 4 }],
 	archetypes: [
 		{ id: 21, name: 'Azorius Control' },
 		{ id: 22, name: 'Mono Red' },
 	],
 	// One deck is assigned to Azorius Control; Mono Red is an Empty Archetype.
-	decks: [
-		{ id: 41, playerId: 7, archetypeId: 21 },
-	],
+	decks: [{ id: 41, playerId: 7, archetypeId: 21 }],
 	featureMatches: [
 		{ id: 11, label: 'Match 1 — A vs B' },
 		{ id: 12, label: 'Match 2' },
@@ -63,11 +59,13 @@ const EVENT_DATA = {
 };
 
 const stores = vi.hoisted(() => {
-	const store = <Items extends string, Load extends string>(items: Items, load: Load) => ({
-		isLoaded: false,
-		[items]: [] as Record<string, unknown>[],
-		[load]: vi.fn(),
-	}) as { isLoaded: boolean } & Record<Items, Record<string, any>[]> & Record<Load, ReturnType<typeof vi.fn>>;
+	const store = <Items extends string, Load extends string>(items: Items, load: Load) =>
+		({
+			isLoaded: false,
+			[items]: [] as Record<string, unknown>[],
+			[load]: vi.fn(),
+		}) as { isLoaded: boolean } & Record<Items, Record<string, any>[]> &
+			Record<Load, ReturnType<typeof vi.fn>>;
 	return {
 		round: store('rounds', 'loadRoundsByEventId'),
 		phase: store('phases', 'loadPhasesByEventId'),
@@ -105,18 +103,26 @@ mockNuxtImport('useArchetypeStore', () => () => held.archetype);
 mockNuxtImport('usePlayerDeckStore', () => () => held.playerDeck);
 mockNuxtImport('useFeatureMatchStore', () => () => held.featureMatch);
 mockNuxtImport('useEventStore', () => () => stores.event);
-mockNuxtImport('useFeatureMatchMenuItems', () => () => computed(() =>
-	held.featureMatch.featureMatches.map(slot => ({ label: slot.label, value: slot.id }))));
+mockNuxtImport(
+	'useFeatureMatchMenuItems',
+	() => () =>
+		computed(() =>
+			held.featureMatch.featureMatches.map((slot) => ({ label: slot.label, value: slot.id })),
+		),
+);
 vi.mock('~/modules/event-data/resync', () => ({
 	useConsumedEventData: vi.fn(),
 }));
 
 /** Each store answers its load for Event 1 with the Event's data, as the network would. */
 function answerLoads() {
-	const answer = (store: { isLoaded: boolean }, load: ReturnType<typeof vi.fn>, items: Record<string, unknown>) =>
+	const answer = (
+		store: { isLoaded: boolean },
+		load: ReturnType<typeof vi.fn>,
+		items: Record<string, unknown>,
+	) =>
 		load.mockImplementation(async (eventId: number) => {
-			if (eventId === 1)
-				Object.assign(store, { isLoaded: true }, items);
+			if (eventId === 1) Object.assign(store, { isLoaded: true }, items);
 		});
 	answer(held.round, held.round.loadRoundsByEventId, { rounds: EVENT_DATA.rounds });
 	answer(held.phase, held.phase.loadPhasesByEventId, { phases: EVENT_DATA.phases });
@@ -124,7 +130,9 @@ function answerLoads() {
 	answer(held.playerList, held.playerList.loadByEventId, { lists: EVENT_DATA.lists });
 	answer(held.archetype, held.archetype.loadByEventId, { archetypes: EVENT_DATA.archetypes });
 	answer(held.playerDeck, held.playerDeck.loadByEventId, { decks: EVENT_DATA.decks });
-	answer(held.featureMatch, held.featureMatch.loadFeatureMatchesByEventId, { featureMatches: EVENT_DATA.featureMatches });
+	answer(held.featureMatch, held.featureMatch.loadFeatureMatchesByEventId, {
+		featureMatches: EVENT_DATA.featureMatches,
+	});
 }
 
 interface PickerKind {
@@ -207,8 +215,7 @@ const KINDS: PickerKind[] = [
 describe('event reference pickers', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
-		for (const store of Object.values(held))
-			store.isLoaded = false;
+		for (const store of Object.values(held)) store.isLoaded = false;
 		Object.assign(held.round, { rounds: [] });
 		Object.assign(held.phase, { phases: [] });
 		Object.assign(held.player, { players: [] });
@@ -233,29 +240,37 @@ describe('event reference pickers', () => {
 	type Picker = Awaited<ReturnType<typeof mountPicker>>;
 
 	/** What the picker offers, its null option aside, whichever control it is. */
-	const offered = (wrapper: Picker, nullLabel = '') => wrapper.findAll('option, [role="option"]')
-		.map(option => option.text())
-		.filter(text => text && text !== nullLabel);
+	const offered = (wrapper: Picker, nullLabel = '') =>
+		wrapper
+			.findAll('option, [role="option"]')
+			.map((option) => option.text())
+			.filter((text) => text && text !== nullLabel);
 
-	async function pick(wrapper: Picker, { searchable }: PickerKind, option: { label: string; id: number } | null) {
-		if (!searchable)
-			await wrapper.get('select').setValue(String(option?.id ?? null));
-		else if (!option)
-			await wrapper.get('[aria-label="Clear"]').trigger('click');
+	async function pick(
+		wrapper: Picker,
+		{ searchable }: PickerKind,
+		option: { label: string; id: number } | null,
+	) {
+		if (!searchable) await wrapper.get('select').setValue(String(option?.id ?? null));
+		else if (!option) await wrapper.get('[aria-label="Clear"]').trigger('click');
 		else
-			await wrapper.findAll('[role="option"]').find(candidate => candidate.text() === option.label)!.trigger('click');
+			await wrapper
+				.findAll('[role="option"]')
+				.find((candidate) => candidate.text() === option.label)!
+				.trigger('click');
 	}
 
-	it.each(KINDS)('the $kind picker loads what it lists and names its field after its kind', async (kind) => {
-		const wrapper = await mountPicker(kind.picker);
+	it.each(KINDS)(
+		'the $kind picker loads what it lists and names its field after its kind',
+		async (kind) => {
+			const wrapper = await mountPicker(kind.picker);
 
-		expect(offered(wrapper, kind.nullLabel)).toEqual(kind.offers);
-		expect(wrapper.get('label span').text()).toBe(kind.kind);
-		expect(wrapper.html()).toContain(kind.nullLabel);
-		expect(vi.mocked(useConsumedEventData).mock.calls).toEqual([
-			[kind.rereads],
-		]);
-	});
+			expect(offered(wrapper, kind.nullLabel)).toEqual(kind.offers);
+			expect(wrapper.get('label span').text()).toBe(kind.kind);
+			expect(wrapper.html()).toContain(kind.nullLabel);
+			expect(vi.mocked(useConsumedEventData).mock.calls).toEqual([[kind.rereads]]);
+		},
+	);
 
 	it.each(KINDS)('the $kind picker emits the id picked, and null when cleared', async (kind) => {
 		const picking = await mountPicker(kind.picker);
@@ -263,12 +278,8 @@ describe('event reference pickers', () => {
 		const clearing = await mountPicker(kind.picker, { modelValue: kind.pick.id });
 		await pick(clearing, kind, null);
 
-		expect(picking.emitted('update:modelValue')).toEqual([
-			[kind.pick.id],
-		]);
-		expect(clearing.emitted('update:modelValue')).toEqual([
-			[null],
-		]);
+		expect(picking.emitted('update:modelValue')).toEqual([[kind.pick.id]]);
+		expect(clearing.emitted('update:modelValue')).toEqual([[null]]);
 	});
 
 	it.each([
@@ -302,7 +313,11 @@ describe('event reference pickers', () => {
 
 	it.each([
 		{ name: 'says where to make one once the Event is known to have none', lists: [], hint: true },
-		{ name: 'says nothing of making one for an Event that has one', lists: EVENT_DATA.lists, hint: false },
+		{
+			name: 'says nothing of making one for an Event that has one',
+			lists: EVENT_DATA.lists,
+			hint: false,
+		},
 	])('the Player List picker $name', async ({ lists, hint }) => {
 		held.playerList.loadByEventId.mockImplementation(async () => {
 			Object.assign(held.playerList, { isLoaded: true, lists });
@@ -315,9 +330,8 @@ describe('event reference pickers', () => {
 
 	it('the Player picker offers only the Players its caller labels, under those labels', async () => {
 		const wrapper = await mountPicker(PlayerField, {
-			offer: (player: { id: number; name: string }) => player.id === 7
-				? `${player.name} - Azorius Control`
-				: null,
+			offer: (player: { id: number; name: string }) =>
+				player.id === 7 ? `${player.name} - Azorius Control` : null,
 		});
 
 		expect(offered(wrapper)).toEqual(['Nadia Rivers - Azorius Control']);

@@ -120,14 +120,17 @@ describe('useEventPageLoading', () => {
 			loaded = true;
 		});
 
-		usePage([
-			{
-				consumes: 'players',
-				isLoaded: () => loaded,
-				isLoading: () => false,
-				load,
-			},
-		], afterLoad);
+		usePage(
+			[
+				{
+					consumes: 'players',
+					isLoaded: () => loaded,
+					isLoading: () => false,
+					load,
+				},
+			],
+			afterLoad,
+		);
 		await flushPromises();
 
 		expect(load).toHaveBeenCalledWith(1);
@@ -161,18 +164,24 @@ describe('useEventPageLoading', () => {
 
 	it('keeps initialLoading true while afterLoad is still running', async () => {
 		let resolveAfterLoad: (() => void) | null = null;
-		const afterLoad = vi.fn().mockImplementation(() => new Promise<void>((resolve) => {
-			resolveAfterLoad = resolve;
-		}));
+		const afterLoad = vi.fn().mockImplementation(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveAfterLoad = resolve;
+				}),
+		);
 
-		const { initialLoading } = usePage([
-			{
-				consumes: 'rounds' as const,
-				isLoaded: () => true,
-				isLoading: () => false,
-				load: vi.fn(),
-			},
-		], afterLoad);
+		const { initialLoading } = usePage(
+			[
+				{
+					consumes: 'rounds' as const,
+					isLoaded: () => true,
+					isLoading: () => false,
+					load: vi.fn(),
+				},
+			],
+			afterLoad,
+		);
 		await flushPromises();
 
 		expect(initialLoading.value).toBe(true);
@@ -192,20 +201,24 @@ describe('useEventPageLoading', () => {
 		});
 		const afterLoad = vi.fn();
 		let loadedEventId: number | null = null;
-		const load = vi.fn()
+		const load = vi
+			.fn()
 			.mockReturnValueOnce(first)
 			.mockImplementationOnce(async (id: number) => {
 				loadedEventId = id;
 			});
 
-		const { initialError } = usePage([
-			{
-				consumes: 'players',
-				isLoaded: () => loadedEventId === mockEventStore.eventId,
-				isLoading: () => false,
-				load,
-			},
-		], afterLoad);
+		const { initialError } = usePage(
+			[
+				{
+					consumes: 'players',
+					isLoaded: () => loadedEventId === mockEventStore.eventId,
+					isLoading: () => false,
+					load,
+				},
+			],
+			afterLoad,
+		);
 		await flushPromises();
 		mockEventStore.eventId = 2;
 		await flushPromises();

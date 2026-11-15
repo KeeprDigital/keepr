@@ -17,7 +17,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 vi.stubGlobal('useRuntimeConfig', () => ({ bandaiKeeprApiKey: '', bandaiKeeprApiUrl: '' }));
 
 const harness = await createSqliteD1Harness();
@@ -36,8 +37,12 @@ afterAll(async () => {
 	await harness.close();
 });
 
-async function stageSlot(event: { variant: Variant; featureMatchDefaultStartingLife?: number }, seats: Record<string, ManualPlayerSlotData> = {}) {
-	const [created] = await db.insert(schema.events)
+async function stageSlot(
+	event: { variant: Variant; featureMatchDefaultStartingLife?: number },
+	seats: Record<string, ManualPlayerSlotData> = {},
+) {
+	const [created] = await db
+		.insert(schema.events)
 		.values({
 			name: 'Event',
 			game: 'mtg',
@@ -55,20 +60,28 @@ async function stageSlot(event: { variant: Variant; featureMatchDefaultStartingL
 
 /** Ana, Ben and Cyd in Seats 1 to 3 of a Commander Slot, Seat 4 empty. */
 function commanderSlot(startingLife = 40) {
-	return stageSlot({ variant: 'commander', featureMatchDefaultStartingLife: startingLife }, {
-		player1Data: seat('Ana', [ATRAXA]),
-		player2Data: seat('Ben', [TYMNA]),
-		player3Data: seat('Cyd', [TYMNA, KRAUM]),
-	});
+	return stageSlot(
+		{ variant: 'commander', featureMatchDefaultStartingLife: startingLife },
+		{
+			player1Data: seat('Ana', [ATRAXA]),
+			player2Data: seat('Ben', [TYMNA]),
+			player3Data: seat('Cyd', [TYMNA, KRAUM]),
+		},
+	);
 }
 
 /** The Slot's active Session as a reload reads it. */
 async function session(eventId: number, slotId: number) {
-	return mapFeatureMatchToResponse((await featureMatchService().findById(slotId, eventId))!).activeSession!;
+	return mapFeatureMatchToResponse((await featureMatchService().findById(slotId, eventId))!)
+		.activeSession!;
 }
 
 /** One operator command sent to the Slot's Session, sequenced where it must be. */
-async function send(eventId: number, slotId: number, command: Pick<FeatureMatchSessionCommand, 'type' | 'payload'>) {
+async function send(
+	eventId: number,
+	slotId: number,
+	command: Pick<FeatureMatchSessionCommand, 'type' | 'payload'>,
+) {
 	const active = await session(eventId, slotId);
 	return featureMatchSessionModule().applyCommand(active.id, eventId, {
 		commandId: `${command.type}-${active.sequence}`,
@@ -77,16 +90,22 @@ async function send(eventId: number, slotId: number, command: Pick<FeatureMatchS
 	} as FeatureMatchSessionCommand);
 }
 
-const lifeOf = (state: Awaited<ReturnType<typeof session>>['currentState']) => SEAT_VALUES.map(seatKey => state[seatKey]?.lifeTotal);
+const lifeOf = (state: Awaited<ReturnType<typeof session>>['currentState']) =>
+	SEAT_VALUES.map((seatKey) => state[seatKey]?.lifeTotal);
 
-describe('a Commander Slot\'s Session', () => {
-	it('opens with its four Seats, each at the Event\'s starting life', async () => {
+describe("a Commander Slot's Session", () => {
+	it("opens with its four Seats, each at the Event's starting life", async () => {
 		const { eventId, slotId } = await commanderSlot(30);
 
 		const { sourceSnapshot, currentState } = await session(eventId, slotId);
 
 		expect(sourceSnapshot.variant).toBe('commander');
-		expect(SEAT_VALUES.map(seatKey => sourceSnapshot[seatKey]?.data?.name ?? null)).toEqual(['Ana', 'Ben', 'Cyd', null]);
+		expect(SEAT_VALUES.map((seatKey) => sourceSnapshot[seatKey]?.data?.name ?? null)).toEqual([
+			'Ana',
+			'Ben',
+			'Cyd',
+			null,
+		]);
 		expect(sourceSnapshot.player3?.data?.gameData).toMatchObject({
 			commanders: [TYMNA, KRAUM],
 		});
@@ -109,19 +128,20 @@ describe('a Commander Slot\'s Session', () => {
 		const { currentState } = await session(eventId, slotId);
 		expect(currentState.player2).toMatchObject({
 			lifeTotal: 35,
-			commanderDamage: [
-				{ seat: 'player1', commander: 1, damage: 5 },
-			],
+			commanderDamage: [{ seat: 'player1', commander: 1, damage: 5 }],
 		});
-		expect(published.filter(message => message.type === 'featureMatchSession:eventApplied').map(message => message.payload))
-			.toMatchObject([
-				{
-					eventType: 'AdjustCommanderDamage',
-					currentState: {
-						player2: { lifeTotal: 35 },
-					},
+		expect(
+			published
+				.filter((message) => message.type === 'featureMatchSession:eventApplied')
+				.map((message) => message.payload),
+		).toMatchObject([
+			{
+				eventType: 'AdjustCommanderDamage',
+				currentState: {
+					player2: { lifeTotal: 35 },
 				},
-			]);
+			},
+		]);
 	});
 
 	it('gives a Seat filled mid-Session the starting life, and keeps the Session', async () => {
@@ -146,7 +166,7 @@ describe('a Commander Slot\'s Session', () => {
 		expect(lifeOf(after.currentState)).toEqual([31, 40, 40, 40]);
 	});
 
-	it('moves each player\'s live state with them on Swap Seats, as one Session event', async () => {
+	it("moves each player's live state with them on Swap Seats, as one Session event", async () => {
 		const { eventId, slotId } = await commanderSlot();
 		await send(eventId, slotId, {
 			type: 'AdjustLife',
@@ -167,18 +187,26 @@ describe('a Commander Slot\'s Session', () => {
 
 		const after = await session(eventId, slotId);
 		expect([after.id, after.sequence]).toEqual([before.id, before.sequence + 1]);
-		expect(SEAT_VALUES.map(seatKey => after.sourceSnapshot[seatKey]?.data?.name ?? null)).toEqual(['Cyd', 'Ben', 'Ana', null]);
+		expect(SEAT_VALUES.map((seatKey) => after.sourceSnapshot[seatKey]?.data?.name ?? null)).toEqual(
+			['Cyd', 'Ben', 'Ana', null],
+		);
 		expect(lifeOf(after.currentState)).toEqual([40, 40, 25, 40]);
-		expect([after.currentState.player1.eliminated, after.currentState.player3?.eliminated]).toEqual([true, false]);
+		expect([after.currentState.player1.eliminated, after.currentState.player3?.eliminated]).toEqual(
+			[true, false],
+		);
 		expect(answer.activeSession?.currentState).toEqual(after.currentState);
 	});
 });
 
-describe('a Two-Player Slot\'s Session', () => {
-	const twoPlayerSlot = () => stageSlot({ variant: 'two-player' }, {
-		player1Data: { name: 'Ana' },
-		player2Data: { name: 'Ben' },
-	});
+describe("a Two-Player Slot's Session", () => {
+	const twoPlayerSlot = () =>
+		stageSlot(
+			{ variant: 'two-player' },
+			{
+				player1Data: { name: 'Ana' },
+				player2Data: { name: 'Ben' },
+			},
+		);
 
 	// The snapshot and state are public contracts: neither gains a Seat 3 or 4 or a Variant.
 	it('opens with the snapshot and state it always has', async () => {
@@ -186,7 +214,9 @@ describe('a Two-Player Slot\'s Session', () => {
 
 		const { sourceSnapshot, currentState } = await session(eventId, slotId);
 
-		expect(Object.keys(sourceSnapshot).filter(key => /^player[34]$|^variant$/.test(key))).toEqual([]);
+		expect(Object.keys(sourceSnapshot).filter((key) => /^player[34]$|^variant$/.test(key))).toEqual(
+			[],
+		);
 		expect(Object.keys(currentState).sort()).toEqual([
 			'activePlayer',
 			'clock',
@@ -210,10 +240,12 @@ describe('a Two-Player Slot\'s Session', () => {
 		const { eventId, slotId } = await twoPlayerSlot();
 		const before = await session(eventId, slotId);
 
-		await expect(send(eventId, slotId, {
-			type: 'AdjustLife',
-			payload: { player: 'player3', delta: -1 },
-		})).rejects.toMatchObject({ statusCode: 400 });
+		await expect(
+			send(eventId, slotId, {
+				type: 'AdjustLife',
+				payload: { player: 'player3', delta: -1 },
+			}),
+		).rejects.toMatchObject({ statusCode: 400 });
 
 		expect((await session(eventId, slotId)).sequence).toBe(before.sequence);
 	});

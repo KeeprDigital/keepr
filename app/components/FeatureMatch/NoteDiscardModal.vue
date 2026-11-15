@@ -25,7 +25,8 @@ function matchLabel(discard: FeatureMatchNoteDiscard) {
 		<template #body>
 			<div class="space-y-4">
 				<p class="text-sm text-muted">
-					This reassignment ends the following Assignments. Review the exact Notes that will be lost.
+					This reassignment ends the following Assignments. Review the exact Notes that will be
+					lost.
 				</p>
 				<div
 					v-for="discard in assignments"
@@ -43,12 +44,8 @@ function matchLabel(discard: FeatureMatchNoteDiscard) {
 		</template>
 
 		<template #footer>
-			<UButton color="neutral" variant="ghost" @click="emit('close', false)">
-				Cancel
-			</UButton>
-			<UButton color="error" @click="emit('close', true)">
-				Discard and reassign
-			</UButton>
+			<UButton color="neutral" variant="ghost" @click="emit('close', false)"> Cancel </UButton>
+			<UButton color="error" @click="emit('close', true)"> Discard and reassign </UButton>
 		</template>
 	</UModal>
 </template>

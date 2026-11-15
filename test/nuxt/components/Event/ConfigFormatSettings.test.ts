@@ -22,17 +22,12 @@ function fieldsFor(variant: 'two-player' | 'commander') {
 			stubs: { ...nuxtUiStubs, EventConfigFormFooter: true },
 		},
 	});
-	return wrapper.findAll('[data-field]').map(field => field.attributes('data-field'));
+	return wrapper.findAll('[data-field]').map((field) => field.attributes('data-field'));
 }
 
 // A Commander game is a single game with no extra turns, and its Event syncs no Deck Lists to score (ADR-0087).
-describe('an Event\'s Match Format settings', () => {
-	const TWO_PLAYER_ONLY = [
-		'pointsSystem',
-		'bestOf',
-		'extraTurnsEnabled',
-		'extraTurns',
-	];
+describe("an Event's Match Format settings", () => {
+	const TWO_PLAYER_ONLY = ['pointsSystem', 'bestOf', 'extraTurnsEnabled', 'extraTurns'];
 
 	it('offers a Two-Player Event the points system, best-of and extra turns', () => {
 		expect(fieldsFor('two-player')).toEqual(expect.arrayContaining(TWO_PLAYER_ONLY));
@@ -42,7 +37,6 @@ describe('an Event\'s Match Format settings', () => {
 		const fields = fieldsFor('commander');
 
 		expect(fields).toEqual(expect.arrayContaining(['startingLife', 'clockType']));
-		for (const field of TWO_PLAYER_ONLY)
-			expect(fields).not.toContain(field);
+		for (const field of TWO_PLAYER_ONLY) expect(fields).not.toContain(field);
 	});
 });

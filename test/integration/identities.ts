@@ -55,7 +55,9 @@ export async function anotherUser(label: string): Promise<string> {
 		body: JSON.stringify({ email, password, name: `Integration ${label}` }),
 	});
 	if (!ensured.ok)
-		throw new Error(`The integration suite could not create '${label}': ${ensured.status} from the first-admin bootstrap.`);
+		throw new Error(
+			`The integration suite could not create '${label}': ${ensured.status} from the first-admin bootstrap.`,
+		);
 
 	return await signIn(email, password);
 }
@@ -79,7 +81,7 @@ async function signIn(email: string, password: string): Promise<string> {
 			'content-type': 'application/json',
 			// Better Auth refuses a state-changing request with no `Origin` — the
 			// same CSRF defence `client.ts` documents at its own sign-in.
-			'origin': url('/'),
+			origin: url('/'),
 		},
 		body: JSON.stringify({ email, password }),
 	});
@@ -90,12 +92,15 @@ async function signIn(email: string, password: string): Promise<string> {
 	// server this suite spawns sets it unprefixed and a built server prefixes it
 	// `__Secure-` (`useSecureCookies`, `server/utils/authOptions.ts`), and the
 	// suite should not depend on which kind of server it is talking to.
-	const cookie = response.headers.getSetCookie()
-		.map(value => value.split(';', 1)[0] ?? '')
-		.filter(pair => pair.includes('='))
+	const cookie = response.headers
+		.getSetCookie()
+		.map((value) => value.split(';', 1)[0] ?? '')
+		.filter((pair) => pair.includes('='))
 		.join('; ');
 	if (!cookie)
-		throw new Error(`The integration suite signed in as '${email}' and was issued no session cookie.`);
+		throw new Error(
+			`The integration suite signed in as '${email}' and was issued no session cookie.`,
+		);
 
 	return cookie;
 }

@@ -21,8 +21,7 @@ async function settlesPromptly(promise: Promise<unknown>) {
 	void promise.then(() => {
 		settled = true;
 	});
-	for (let tick = 0; tick < 5; tick++)
-		await Promise.resolve();
+	for (let tick = 0; tick < 5; tick++) await Promise.resolve();
 	return settled;
 }
 

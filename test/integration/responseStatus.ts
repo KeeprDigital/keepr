@@ -9,10 +9,7 @@ import { requestLedger } from './requestLedger';
  * fails in a `beforeAll`, where no test has (#687), so its message carries them.
  */
 function requestsSoFar(): string {
-	return [
-		'requests:',
-		...requestLedger.report().map(line => `  ${line}`),
-	].join('\n');
+	return ['requests:', ...requestLedger.report().map((line) => `  ${line}`)].join('\n');
 }
 
 /**
@@ -28,14 +25,18 @@ function requestsSoFar(): string {
  * it can be tested without a server.
  */
 export async function expectResponseStatus(response: Response, expected: number): Promise<void> {
-	if (response.status === expected)
-		return;
-	const body = await response.clone().text().catch((error: unknown) => `<body unreadable: ${String(error)}>`);
+	if (response.status === expected) return;
+	const body = await response
+		.clone()
+		.text()
+		.catch((error: unknown) => `<body unreadable: ${String(error)}>`);
 	expect(response.status, `response body: ${body}\n${requestsSoFar()}`).toBe(expected);
 }
 
 /** An operation that reached a result — published, reused, or a revision — so `result` is there to read. */
-export type OperationWithResult = GraphicsIngestionOperation & { result: NonNullable<GraphicsIngestionOperation['result']> };
+export type OperationWithResult = GraphicsIngestionOperation & {
+	result: NonNullable<GraphicsIngestionOperation['result']>;
+};
 
 /**
  * Require that an operation reached a result, or fail with its stage, what it
@@ -43,9 +44,14 @@ export type OperationWithResult = GraphicsIngestionOperation & { result: NonNull
  * way — a `$fetch`, which throws on a refusal but not on a 200 that published
  * nothing.
  */
-export function expectResultOf(operation: GraphicsIngestionOperation, answered = JSON.stringify(operation)): OperationWithResult {
+export function expectResultOf(
+	operation: GraphicsIngestionOperation,
+	answered = JSON.stringify(operation),
+): OperationWithResult {
 	if (!operation.result)
-		expect.fail(`operation reached no result (stage ${operation.stage}): ${answered}\n${requestsSoFar()}`);
+		expect.fail(
+			`operation reached no result (stage ${operation.stage}): ${answered}\n${requestsSoFar()}`,
+		);
 	return operation as OperationWithResult;
 }
 

@@ -1,7 +1,13 @@
 import type { TcgPlusImportAnswer, TcgPlusImportPreview } from '~~/shared/types/tcgPlusImport';
 
 /** Where a TCG+ Import stands: nothing chosen, a preview on the way or shown, the import on the way or done, or a failure. */
-export type TcgPlusImportStatus = 'idle' | 'previewing' | 'previewed' | 'importing' | 'imported' | 'failed';
+export type TcgPlusImportStatus =
+	| 'idle'
+	| 'previewing'
+	| 'previewed'
+	| 'importing'
+	| 'imported'
+	| 'failed';
 
 const PREVIEW_REQUEST = Symbol('tcgplus-preview');
 
@@ -23,17 +29,11 @@ export function useTcgPlusImport(eventId: () => number | null) {
 	const importing = ref(false);
 
 	const status = computed<TcgPlusImportStatus>(() => {
-		if (previewing.value)
-			return 'previewing';
-		if (importing.value)
-			return 'importing';
-		if (error.value)
-			return 'failed';
-		if (answer.value)
-			return 'imported';
-		return preview.value
-			? 'previewed'
-			: 'idle';
+		if (previewing.value) return 'previewing';
+		if (importing.value) return 'importing';
+		if (error.value) return 'failed';
+		if (answer.value) return 'imported';
+		return preview.value ? 'previewed' : 'idle';
 	});
 
 	function reset() {
@@ -44,16 +44,14 @@ export function useTcgPlusImport(eventId: () => number | null) {
 
 	async function choose(file: File) {
 		const id = eventId();
-		if (!id)
-			return;
+		if (!id) return;
 		reset();
 		fileName.value = file.name;
 		previewing.value = true;
 		let text: string;
 		try {
 			text = await file.text();
-		}
-		catch (readError) {
+		} catch (readError) {
 			previewing.value = false;
 			error.value = getErrorMessage(readError, 'The file could not be read');
 			return;
@@ -73,14 +71,13 @@ export function useTcgPlusImport(eventId: () => number | null) {
 
 	async function confirm() {
 		const id = eventId();
-		if (!id || !csv.value || !preview.value)
-			return;
+		if (!id || !csv.value || !preview.value) return;
 		error.value = null;
 		await runRequest(() => repository.commit(id, csv.value!), {
 			loadingRef: importing,
 			errorRef: error,
 			error: false,
-			success: imported => ({ title: imported.message, color: 'success' }),
+			success: (imported) => ({ title: imported.message, color: 'success' }),
 			onSuccess: (imported) => {
 				answer.value = imported;
 				preview.value = null;

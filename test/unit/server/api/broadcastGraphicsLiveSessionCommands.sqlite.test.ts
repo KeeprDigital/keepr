@@ -8,7 +8,10 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { createCommandIdSequence, seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
+import {
+	createCommandIdSequence,
+	seedBroadcastGraphicsScreen,
+} from '~~/test/helpers/broadcastGraphicsScreen';
 import { stubH3Event } from '~~/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
@@ -17,11 +20,20 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // that a reload answers it. Only the clock, Ably and the Graphics Asset Library are faked.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
-interface StubEvent { params: Record<string, string>; body?: unknown }
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
+interface StubEvent {
+	params: Record<string, string>;
+	body?: unknown;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('readValidatedBody', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -37,14 +49,21 @@ vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => ({}),
 }));
 
-const sendCommand = (await import('~~/server/api/events/[id]/screens/[screenId]/broadcast-graphics/live-sessions/[sessionId]/commands.post')).default as unknown as (event: H3Event) => Promise<BroadcastGraphicsCommandResult>;
-const readLiveSession = (await import('~~/server/api/events/[id]/screens/[screenId]/broadcast-graphics/live-session.get')).default as unknown as (event: H3Event) => Promise<BroadcastGraphicsLiveSessionResponse>;
+const sendCommand = (
+	await import('~~/server/api/events/[id]/screens/[screenId]/broadcast-graphics/live-sessions/[sessionId]/commands.post')
+).default as unknown as (event: H3Event) => Promise<BroadcastGraphicsCommandResult>;
+const readLiveSession = (
+	await import('~~/server/api/events/[id]/screens/[screenId]/broadcast-graphics/live-session.get')
+).default as unknown as (event: H3Event) => Promise<BroadcastGraphicsLiveSessionResponse>;
 
 const GRAPHIC = 'lower-third';
 const TAKEN_AT = Date.UTC(2026, 0, 1, 12);
 const PHASE_MS = 5_000;
 
-function textInput(key: string, updatePolicy: GraphicInputDeclaration['updatePolicy']): GraphicInputDeclaration {
+function textInput(
+	key: string,
+	updatePolicy: GraphicInputDeclaration['updatePolicy'],
+): GraphicInputDeclaration {
 	return {
 		type: 'text',
 		key,
@@ -84,17 +103,20 @@ async function liveControl(graphic: BroadcastGraphicConfig) {
 	return {
 		eventId,
 		reload,
-		send: (type: string, payload: Record<string, unknown> = {}) => sendCommand(stubH3Event({
-			params: {
-				...params,
-				sessionId: String(session.id),
-			},
-			body: {
-				commandId: nextCommandId(),
-				type,
-				payload: { graphicId: GRAPHIC, ...payload },
-			},
-		})),
+		send: (type: string, payload: Record<string, unknown> = {}) =>
+			sendCommand(
+				stubH3Event({
+					params: {
+						...params,
+						sessionId: String(session.id),
+					},
+					body: {
+						commandId: nextCommandId(),
+						type,
+						payload: { graphicId: GRAPHIC, ...payload },
+					},
+				}),
+			),
 	};
 }
 
@@ -118,29 +140,31 @@ describe('a Resolve Bindings command', () => {
 			id: GRAPHIC,
 			name: 'Lower third',
 			items: [],
-			inputs: [
-				textInput('name', 'live'),
-			],
-			sources: [
-				{ key: 'player', label: 'Player', kind: 'player' },
-			],
-			bindings: [
-				{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' },
-			],
+			inputs: [textInput('name', 'live')],
+			sources: [{ key: 'player', label: 'Player', kind: 'player' }],
+			bindings: [{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }],
 		});
-		const [player] = await db.insert(schema.players)
+		const [player] = await db
+			.insert(schema.players)
 			.values({ eventId: live.eventId, name: 'Rae Okonjo' })
 			.returning({ id: schema.players.id });
 		await live.send('Select Source', { sourceKey: 'player', selectionId: player!.id });
 		await live.send('Take');
 		// Stored behind the Live Session's back, so nothing but the command re-resolves it.
-		await db.update(schema.players).set({ name: 'Rae Okonjo-Bell' }).where(eq(schema.players.id, player!.id));
-		expect((await live.reload()).currentState.inputs[GRAPHIC]!.accepted).toEqual({ name: 'Rae Okonjo' });
+		await db
+			.update(schema.players)
+			.set({ name: 'Rae Okonjo-Bell' })
+			.where(eq(schema.players.id, player!.id));
+		expect((await live.reload()).currentState.inputs[GRAPHIC]!.accepted).toEqual({
+			name: 'Rae Okonjo',
+		});
 
 		const resolved = await live.send('Resolve Bindings');
 
 		expect(resolved.currentState.inputs[GRAPHIC]!.accepted).toEqual({ name: 'Rae Okonjo-Bell' });
-		expect((await live.reload()).currentState.inputs[GRAPHIC]!.accepted).toEqual({ name: 'Rae Okonjo-Bell' });
+		expect((await live.reload()).currentState.inputs[GRAPHIC]!.accepted).toEqual({
+			name: 'Rae Okonjo-Bell',
+		});
 	});
 });
 
@@ -151,10 +175,7 @@ describe('an Update Graphic on a Broadcast Graphic with an authored update phase
 			id: GRAPHIC,
 			name: 'Lower third',
 			items: [],
-			inputs: [
-				textInput('name', 'staged'),
-				textInput('title', 'staged'),
-			],
+			inputs: [textInput('name', 'staged'), textInput('title', 'staged')],
 			animation: {
 				enter: phase(PHASE_MS),
 				update: phase(PHASE_MS),

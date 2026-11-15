@@ -49,7 +49,12 @@ function acceptedReport(digest: string) {
 	};
 }
 
-async function publishedAsset(catalogue: Catalogue, key: string, assetId: GraphicAssetId, digest: string) {
+async function publishedAsset(
+	catalogue: Catalogue,
+	key: string,
+	assetId: GraphicAssetId,
+	digest: string,
+) {
 	const created = await catalogue.initiateGraphicsIngestion({
 		id: graphicsIngestionOperationId(key),
 		idempotencyKey: key,
@@ -93,8 +98,18 @@ async function publishedAsset(catalogue: Catalogue, key: string, assetId: Graphi
 describe('findRevisionContents against genuine SQLite', () => {
 	it('answers one row per distinct resolvable pair, in parity with the singular lookup', async () => {
 		const catalogue = createD1GraphicsAssetCatalogue(harness.database);
-		const logo = await publishedAsset(catalogue, 'logo', graphicAssetId('asset-logo'), 'a'.repeat(64));
-		const banner = await publishedAsset(catalogue, 'banner', graphicAssetId('asset-banner'), 'b'.repeat(64));
+		const logo = await publishedAsset(
+			catalogue,
+			'logo',
+			graphicAssetId('asset-logo'),
+			'a'.repeat(64),
+		);
+		const banner = await publishedAsset(
+			catalogue,
+			'banner',
+			graphicAssetId('asset-banner'),
+			'b'.repeat(64),
+		);
 		const missing = {
 			assetId: logo.assetId,
 			revisionId: graphicAssetRevisionId('missing-revision'),
@@ -103,14 +118,15 @@ describe('findRevisionContents against genuine SQLite', () => {
 		const rows = await catalogue.findRevisionContents([logo, banner, missing, logo]);
 
 		// Two distinct resolvable pairs: the duplicate folded, the miss left no hole.
-		expect(rows.map(row => ({ assetId: row.assetId, revisionId: row.revisionId })))
-			.toEqual(expect.arrayContaining([logo, banner]));
+		expect(rows.map((row) => ({ assetId: row.assetId, revisionId: row.revisionId }))).toEqual(
+			expect.arrayContaining([logo, banner]),
+		);
 		expect(rows).toHaveLength(2);
 
 		// Parity: each row is the singular lookup's answer plus the pair it is for.
 		for (const pair of [logo, banner]) {
 			const singular = await catalogue.findRevisionContent(pair);
-			expect(rows.find(row => row.revisionId === pair.revisionId)).toEqual({
+			expect(rows.find((row) => row.revisionId === pair.revisionId)).toEqual({
 				...pair,
 				...singular,
 			});

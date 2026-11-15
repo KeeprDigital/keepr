@@ -14,19 +14,21 @@ import { requireBrowserSessionId } from '~~/server/utils/auth';
  * depends on the stored lease rather than on which verb the client chose.
  * `takeover` is the one thing a client must say deliberately.
  */
-const acquireSchema = z.object({
-	takeover: z.boolean().optional(),
-	/**
-	 * The cadence the client promises to keep asking at; the lease deadline follows
-	 * from it, bounded at both ends.
-	 */
-	heartbeatIntervalMs: z.number().int().positive().max(300_000).optional(),
-}).strict();
+const acquireSchema = z
+	.object({
+		takeover: z.boolean().optional(),
+		/**
+		 * The cadence the client promises to keep asking at; the lease deadline follows
+		 * from it, bounded at both ends.
+		 */
+		heartbeatIntervalMs: z.number().int().positive().max(300_000).optional(),
+	})
+	.strict();
 
 export default defineEventHandler(async (event) => {
 	const sessionId = await requireBrowserSessionId(event);
 	const { id: eventId, screenId } = await getValidatedRouterParams(event, screenParamsSchema.parse);
-	const body = acquireSchema.parse(await readBody(event) ?? {});
+	const body = acquireSchema.parse((await readBody(event)) ?? {});
 
 	const screen = await screenService().findById(screenId, eventId);
 	if (!screen)

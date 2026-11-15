@@ -1,24 +1,27 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
-	note: string;
-	draft: string;
-	saving: boolean;
-	error: string | null;
-	confirmingClear: boolean;
-	hasNote: boolean;
-	compact?: boolean;
-}>(), {
-	compact: false,
-});
+withDefaults(
+	defineProps<{
+		note: string;
+		draft: string;
+		saving: boolean;
+		error: string | null;
+		confirmingClear: boolean;
+		hasNote: boolean;
+		compact?: boolean;
+	}>(),
+	{
+		compact: false,
+	},
+);
 
 defineEmits<{
 	'update:draft': [value: string];
-	'keydown': [event: KeyboardEvent];
-	'save': [];
-	'cancel': [];
-	'requestClear': [];
-	'keepNote': [];
-	'confirmClear': [];
+	keydown: [event: KeyboardEvent];
+	save: [];
+	cancel: [];
+	requestClear: [];
+	keepNote: [];
+	confirmClear: [];
 }>();
 </script>
 
@@ -39,12 +42,7 @@ defineEmits<{
 			<span>Ctrl+Enter or Cmd+Enter to save</span>
 			<span>{{ draft.length.toLocaleString() }} / 5,000</span>
 		</div>
-		<p
-			v-if="error"
-			data-testid="note-error"
-			class="text-sm text-error"
-			role="alert"
-		>
+		<p v-if="error" data-testid="note-error" class="text-sm text-error" role="alert">
 			{{ error }}
 		</p>
 		<div
@@ -52,19 +50,12 @@ defineEmits<{
 			data-testid="note-clear-confirmation"
 			class="rounded-md border border-error/40 bg-error/5 p-3"
 		>
-			<p class="text-sm font-medium">
-				Clear this Note?
-			</p>
+			<p class="text-sm font-medium">Clear this Note?</p>
 			<p class="mt-1 whitespace-pre-wrap break-words text-sm text-muted">
 				{{ note }}
 			</p>
 			<div class="mt-3 flex flex-wrap justify-end gap-2">
-				<UButton
-					color="neutral"
-					variant="ghost"
-					size="sm"
-					@click="$emit('keepNote')"
-				>
+				<UButton color="neutral" variant="ghost" size="sm" @click="$emit('keepNote')">
 					Keep Note
 				</UButton>
 				<UButton

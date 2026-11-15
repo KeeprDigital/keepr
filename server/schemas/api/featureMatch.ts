@@ -1,35 +1,22 @@
-import {
-	createInsertSchema,
-	createUpdateSchema,
-} from 'drizzle-zod';
+import { createInsertSchema, createUpdateSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { featureMatches } from '~~/server/db/schema';
 import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
-import {
-	PLAYER_SIDE_VALUES,
-	RESET_TYPE_VALUES,
-	SEAT_VALUES,
-} from '~~/shared/types/enums';
+import { PLAYER_SIDE_VALUES, RESET_TYPE_VALUES, SEAT_VALUES } from '~~/shared/types/enums';
 import { isMergeableFeatureMatchCommand } from '~~/shared/types/featureMatchSession';
 import { COMMANDER_NUMBER_VALUES } from '~~/shared/types/featureMatchState';
 import { playerGameDataSchema, slotSeatGameDataSchema } from './player';
 
 function blankStringToNull(value: unknown) {
-	if (typeof value !== 'string')
-		return value;
+	if (typeof value !== 'string') return value;
 	const trimmed = value.trim();
-	return trimmed.length > 0
-		? trimmed
-		: null;
+	return trimmed.length > 0 ? trimmed : null;
 }
 
 function blankStringToUndefined(value: unknown) {
-	if (typeof value !== 'string')
-		return value;
+	if (typeof value !== 'string') return value;
 	const trimmed = value.trim();
-	return trimmed.length > 0
-		? trimmed
-		: undefined;
+	return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function nullableStringSchema(max: number) {
@@ -47,21 +34,17 @@ const nullableNonnegativeIntegerSchema = z.preprocess(
 );
 
 function optionalBoundedIntegerSchema(min: number, max: number) {
-	return z.preprocess(
-		blankStringToUndefined,
-		z.coerce.number().int().min(min).max(max).optional(),
-	);
+	return z.preprocess(blankStringToUndefined, z.coerce.number().int().min(min).max(max).optional());
 }
 
 function hasMeaningfulValue(value: unknown): boolean {
-	if (value === undefined || value === null)
-		return false;
-	if (typeof value === 'string')
-		return value.trim().length > 0;
+	if (value === undefined || value === null) return false;
+	if (typeof value === 'string') return value.trim().length > 0;
 	if (typeof value === 'object') {
-		if (Array.isArray(value))
-			return value.some(hasMeaningfulValue);
-		return Object.entries(value).some(([key, entry]) => key !== 'type' && hasMeaningfulValue(entry));
+		if (Array.isArray(value)) return value.some(hasMeaningfulValue);
+		return Object.entries(value).some(
+			([key, entry]) => key !== 'type' && hasMeaningfulValue(entry),
+		);
 	}
 	return true;
 }
@@ -87,9 +70,7 @@ const createFeatureMatchPlayerDataSchema = z
 	.strict();
 
 const updateFeatureMatchPlayerDataSchema = z.preprocess(
-	value => value === ''
-		? null
-		: value,
+	(value) => (value === '' ? null : value),
 	z
 		.object({
 			name: nullableStringSchema(200),
@@ -107,9 +88,7 @@ const updateFeatureMatchPlayerDataSchema = z.preprocess(
 			gameData: slotSeatGameDataSchema.nullable().optional(),
 		})
 		.strict()
-		.transform(data => hasMeaningfulValue(data)
-			? data
-			: null)
+		.transform((data) => (hasMeaningfulValue(data) ? data : null))
 		.nullable()
 		.optional(),
 );
@@ -174,12 +153,11 @@ export const updateFeatureMatchSchema = createUpdateSchema(featureMatches)
 	.strict();
 
 // SWAP SEATS
-export const swapFeatureMatchSeatsSchema = z.object({
-	seats: z.tuple([
-		z.enum(SEAT_VALUES),
-		z.enum(SEAT_VALUES),
-	]),
-}).strict();
+export const swapFeatureMatchSeatsSchema = z
+	.object({
+		seats: z.tuple([z.enum(SEAT_VALUES), z.enum(SEAT_VALUES)]),
+	})
+	.strict();
 
 // ROUTE PARAMS
 export const featureMatchSlotParamsSchema = z.object({
@@ -268,332 +246,365 @@ const startOvertimePayloadSchema = z
 // receipt and sequence claim cover the whole save. Exported so a test can pin
 // this union's membership to FEATURE_MATCH_BATCHABLE_COMMAND_TYPES.
 export const featureMatchBatchSubCommandSchema = z.discriminatedUnion('type', [
-	z.object({
-		type: z.literal('SetLife'),
-		payload: setLifePayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('SetCounters'),
-		payload: setCountersPayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('SetCardsKept'),
-		payload: setCardsKeptPayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('SetSideboardRevealed'),
-		payload: setSideboardRevealedPayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('SetClock'),
-		payload: setClockPayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('SelectFirstPlayer'),
-		payload: firstPlayerPayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('SetFirstPlayer'),
-		payload: firstPlayerPayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('SetActivePlayer'),
-		payload: setActivePlayerPayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('SetTurnNumber'),
-		payload: setTurnNumberPayloadSchema,
-	}).strict(),
-	z.object({
-		type: z.literal('StartOvertime'),
-		payload: startOvertimePayloadSchema,
-	}).strict(),
-]);
-// SnapshotCorrected is deliberately absent from the client command schema:
-// authoritative snapshots carry Melee provenance and are replayed as truth,
-// so only the server may construct them (featureMatchService.update builds
-// them from the database via buildSourceSnapshot). SwapSeats is absent for the
-// same reason: it carries the snapshot of a Slot whose Seats were exchanged.
-export const featureMatchCommandSchema = z.discriminatedUnion('type', [
 	z
 		.object({
-			...commandBaseSchema,
-			type: z.literal('AdjustLife'),
-			payload: z
-				.object({
-					player: seatSchema,
-					delta: z.number().int(),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
 			type: z.literal('SetLife'),
 			payload: setLifePayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
 			type: z.literal('SetCounters'),
 			payload: setCountersPayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
 			type: z.literal('SetCardsKept'),
 			payload: setCardsKeptPayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
 			type: z.literal('SetSideboardRevealed'),
 			payload: setSideboardRevealedPayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
-			type: z.literal('AdjustClock'),
-			payload: z.object({
-				deltaMs: z.number().int(),
-			}).strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
 			type: z.literal('SetClock'),
 			payload: setClockPayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
-			type: z.literal('StartClock'),
-			payload: emptyPayloadSchema,
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('PauseClock'),
-			payload: emptyPayloadSchema,
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('ResetClock'),
-			payload: z
-				.object({
-					durationMs: z.number().int().nonnegative().optional(),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('RestartClock'),
-			payload: emptyPayloadSchema,
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
 			type: z.literal('SelectFirstPlayer'),
 			payload: firstPlayerPayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
 			type: z.literal('SetFirstPlayer'),
 			payload: firstPlayerPayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
 			type: z.literal('SetActivePlayer'),
 			payload: setActivePlayerPayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
 			type: z.literal('SetTurnNumber'),
 			payload: setTurnNumberPayloadSchema,
 		})
 		.strict(),
 	z
 		.object({
-			...commandBaseSchema,
-			type: z.literal('RecordGameWin'),
-			payload: z
-				.object({
-					player: playerSideSchema,
-					resetLife: z.boolean().optional(),
-					resetCounters: z.boolean().optional(),
-					startingLife: z.number().int().nonnegative().optional(),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('UndoGameWin'),
-			payload: z
-				.object({
-					player: playerSideSchema,
-					resetLife: z.boolean().optional(),
-					resetCounters: z.boolean().optional(),
-					startingLife: z.number().int().nonnegative().optional(),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('ResetState'),
-			payload: z
-				.object({
-					type: z.enum(RESET_TYPE_VALUES),
-					startingLife: z.number().int().nonnegative().optional(),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
 			type: z.literal('StartOvertime'),
 			payload: startOvertimePayloadSchema,
 		})
 		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('StepTurn'),
-			payload: z
-				.object({
-					delta: z.number().int().min(-100).max(100).refine(value => value !== 0, {
-						message: 'delta must be non-zero',
+]);
+// SnapshotCorrected is deliberately absent from the client command schema:
+// authoritative snapshots carry Melee provenance and are replayed as truth,
+// so only the server may construct them (featureMatchService.update builds
+// them from the database via buildSourceSnapshot). SwapSeats is absent for the
+// same reason: it carries the snapshot of a Slot whose Seats were exchanged.
+export const featureMatchCommandSchema = z
+	.discriminatedUnion('type', [
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('AdjustLife'),
+				payload: z
+					.object({
+						player: seatSchema,
+						delta: z.number().int(),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetLife'),
+				payload: setLifePayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetCounters'),
+				payload: setCountersPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetCardsKept'),
+				payload: setCardsKeptPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetSideboardRevealed'),
+				payload: setSideboardRevealedPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('AdjustClock'),
+				payload: z
+					.object({
+						deltaMs: z.number().int(),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetClock'),
+				payload: setClockPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('StartClock'),
+				payload: emptyPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('PauseClock'),
+				payload: emptyPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('ResetClock'),
+				payload: z
+					.object({
+						durationMs: z.number().int().nonnegative().optional(),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('RestartClock'),
+				payload: emptyPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SelectFirstPlayer'),
+				payload: firstPlayerPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetFirstPlayer'),
+				payload: firstPlayerPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetActivePlayer'),
+				payload: setActivePlayerPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetTurnNumber'),
+				payload: setTurnNumberPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('RecordGameWin'),
+				payload: z
+					.object({
+						player: playerSideSchema,
+						resetLife: z.boolean().optional(),
+						resetCounters: z.boolean().optional(),
+						startingLife: z.number().int().nonnegative().optional(),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('UndoGameWin'),
+				payload: z
+					.object({
+						player: playerSideSchema,
+						resetLife: z.boolean().optional(),
+						resetCounters: z.boolean().optional(),
+						startingLife: z.number().int().nonnegative().optional(),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('ResetState'),
+				payload: z
+					.object({
+						type: z.enum(RESET_TYPE_VALUES),
+						startingLife: z.number().int().nonnegative().optional(),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('StartOvertime'),
+				payload: startOvertimePayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('StepTurn'),
+				payload: z
+					.object({
+						delta: z
+							.number()
+							.int()
+							.min(-100)
+							.max(100)
+							.refine((value) => value !== 0, {
+								message: 'delta must be non-zero',
+							}),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('StepOvertime'),
+				payload: z
+					.object({
+						delta: z
+							.number()
+							.int()
+							.min(-100)
+							.max(100)
+							.refine((value) => value !== 0, {
+								message: 'delta must be non-zero',
+							}),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SwapPlayers'),
+				payload: emptyPayloadSchema,
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('AdjustCommanderDamage'),
+				payload: z
+					.object({
+						player: seatSchema,
+						from: seatSchema,
+						commander: z.union(COMMANDER_NUMBER_VALUES.map((number) => z.literal(number))),
+						delta: z
+							.number()
+							.int()
+							.refine((value) => value !== 0, {
+								message: 'delta must be non-zero',
+							}),
+					})
+					.strict()
+					.refine((payload) => payload.player !== payload.from, {
+						message: 'A Seat takes Commander Damage from an opposing Commander',
+						path: ['from'],
 					}),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('StepOvertime'),
-			payload: z
-				.object({
-					delta: z.number().int().min(-100).max(100).refine(value => value !== 0, {
-						message: 'delta must be non-zero',
-					}),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('SwapPlayers'),
-			payload: emptyPayloadSchema,
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('AdjustCommanderDamage'),
-			payload: z
-				.object({
-					player: seatSchema,
-					from: seatSchema,
-					commander: z.union(COMMANDER_NUMBER_VALUES.map(number => z.literal(number))),
-					delta: z.number().int().refine(value => value !== 0, {
-						message: 'delta must be non-zero',
-					}),
-				})
-				.strict()
-				.refine(payload => payload.player !== payload.from, {
-					message: 'A Seat takes Commander Damage from an opposing Commander',
-					path: ['from'],
-				}),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('SetEliminated'),
-			payload: z
-				.object({
-					player: seatSchema,
-					eliminated: z.boolean(),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('SetOutcome'),
-			payload: z
-				.object({
-					// A winning Seat, `{ winner: null }` for a draw, or `null` to take it back.
-					outcome: z.object({
-						winner: seatSchema.nullable(),
-					}).strict().nullable(),
-				})
-				.strict(),
-		})
-		.strict(),
-	z
-		.object({
-			...commandBaseSchema,
-			type: z.literal('Batch'),
-			payload: z
-				.object({
-					commands: z.array(featureMatchBatchSubCommandSchema).min(1).max(20),
-				})
-				.strict(),
-		})
-		.strict(),
-]).superRefine((command, context) => {
-	// A mergeable command can be safely retried against the latest projection.
-	// Every other command must identify the exact projection it was based on.
-	// Asked of the shared merge policy rather than a second list, so the two
-	// cannot drift; the server-only command that policy also admits is absent
-	// from the union above and unreachable here.
-	if (!isMergeableFeatureMatchCommand(command.type)
-		&& command.baseSequence === undefined) {
-		context.addIssue({
-			code: 'custom',
-			path: ['baseSequence'],
-			message: 'baseSequence is required for non-mergeable commands',
-		});
-	}
-});
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetEliminated'),
+				payload: z
+					.object({
+						player: seatSchema,
+						eliminated: z.boolean(),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('SetOutcome'),
+				payload: z
+					.object({
+						// A winning Seat, `{ winner: null }` for a draw, or `null` to take it back.
+						outcome: z
+							.object({
+								winner: seatSchema.nullable(),
+							})
+							.strict()
+							.nullable(),
+					})
+					.strict(),
+			})
+			.strict(),
+		z
+			.object({
+				...commandBaseSchema,
+				type: z.literal('Batch'),
+				payload: z
+					.object({
+						commands: z.array(featureMatchBatchSubCommandSchema).min(1).max(20),
+					})
+					.strict(),
+			})
+			.strict(),
+	])
+	.superRefine((command, context) => {
+		// A mergeable command can be safely retried against the latest projection.
+		// Every other command must identify the exact projection it was based on.
+		// Asked of the shared merge policy rather than a second list, so the two
+		// cannot drift; the server-only command that policy also admits is absent
+		// from the union above and unreachable here.
+		if (!isMergeableFeatureMatchCommand(command.type) && command.baseSequence === undefined) {
+			context.addIssue({
+				code: 'custom',
+				path: ['baseSequence'],
+				message: 'baseSequence is required for non-mergeable commands',
+			});
+		}
+	});
 
 /* TYPES */
 export type CreateFeatureMatchInput = z.infer<typeof createFeatureMatchSchema>;
 export type UpdateFeatureMatchInput = z.infer<typeof updateFeatureMatchSchema>;
-export type ReorderFeatureMatchSlotInput = z.infer<
-  typeof reorderFeatureMatchSlotSchema
->;
-export type FeatureMatchCommandInput = z.infer<
-  typeof featureMatchCommandSchema
->;
+export type ReorderFeatureMatchSlotInput = z.infer<typeof reorderFeatureMatchSlotSchema>;
+export type FeatureMatchCommandInput = z.infer<typeof featureMatchCommandSchema>;
 
-export type FeatureMatchSessionParams = z.infer<
-  typeof featureMatchSessionParamsSchema
->;
+export type FeatureMatchSessionParams = z.infer<typeof featureMatchSessionParamsSchema>;

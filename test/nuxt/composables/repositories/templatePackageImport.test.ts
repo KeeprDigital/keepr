@@ -32,72 +32,79 @@ const packageKinds = [
 	},
 ] as const;
 
-describe.each(packageKinds)('importing a $extension Template Package', ({ extension, repository }) => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockFetch.mockImplementation(async (path: string) => {
-			if (path.endsWith('/multipart')) {
-				return {
-					id: 'operation-1',
-					transfer: {
-						method: 'multipart',
-						partByteLength: GRAPHICS_MULTIPART_PART_BYTES,
-						maximumConcurrentParts: 3,
-						maximumPartAttempts: 3,
-						partCount: 2,
-						cleanupPending: false,
-						completedParts: [],
-					},
-				} as unknown as GraphicsIngestionOperation;
-			}
-			return { id: 'operation-1', stage: 'awaiting-installation' } as GraphicsIngestionOperation;
+describe.each(packageKinds)(
+	'importing a $extension Template Package',
+	({ extension, repository }) => {
+		beforeEach(() => {
+			vi.clearAllMocks();
+			mockFetch.mockImplementation(async (path: string) => {
+				if (path.endsWith('/multipart')) {
+					return {
+						id: 'operation-1',
+						transfer: {
+							method: 'multipart',
+							partByteLength: GRAPHICS_MULTIPART_PART_BYTES,
+							maximumConcurrentParts: 3,
+							maximumPartAttempts: 3,
+							partCount: 2,
+							cleanupPending: false,
+							completedParts: [],
+						},
+					} as unknown as GraphicsIngestionOperation;
+				}
+				return { id: 'operation-1', stage: 'awaiting-installation' } as GraphicsIngestionOperation;
+			});
 		});
-	});
 
-	it('declares the archive as a Template Package rather than as one Graphic Asset', async () => {
-		const file = fileOfByteLength(`lower-third${extension}`, 2048);
+		it('declares the archive as a Template Package rather than as one Graphic Asset', async () => {
+			const file = fileOfByteLength(`lower-third${extension}`, 2048);
 
-		await repository().receivePackage(file);
+			await repository().receivePackage(file);
 
-		expect(mockFetch).toHaveBeenNthCalledWith(1, ingestion, expect.objectContaining({
-			method: 'POST',
-			body: expect.objectContaining({
-				source: 'template-package',
-				sourceFileName: `lower-third${extension}`,
-				declaredByteLength: 2048,
-			}),
-		}));
-	});
+			expect(mockFetch).toHaveBeenNthCalledWith(
+				1,
+				ingestion,
+				expect.objectContaining({
+					method: 'POST',
+					body: expect.objectContaining({
+						source: 'template-package',
+						sourceFileName: `lower-third${extension}`,
+						declaredByteLength: 2048,
+					}),
+				}),
+			);
+		});
 
-	it('sends a package that fits one request as a single transfer', async () => {
-		const file = fileOfByteLength(`lower-third${extension}`, GRAPHICS_MULTIPART_PART_BYTES);
+		it('sends a package that fits one request as a single transfer', async () => {
+			const file = fileOfByteLength(`lower-third${extension}`, GRAPHICS_MULTIPART_PART_BYTES);
 
-		await repository().receivePackage(file);
+			await repository().receivePackage(file);
 
-		expect(requests()).toEqual([
-			`POST ${ingestion}`,
-			`PUT ${ingestion}/operation-1/content`,
-		]);
-	});
+			expect(requests()).toEqual([`POST ${ingestion}`, `PUT ${ingestion}/operation-1/content`]);
+		});
 
-	/**
-	 * The defect this pins: a package carrying whole Graphic Assets routinely
-	 * outgrows a single request, and export will emit one far larger than this.
-	 * An import that only knew how to PUT the archive in one piece refused every
-	 * package the same installation was willing to produce.
-	 */
-	it('sends a package too long for one request as a resumable multipart transfer', async () => {
-		const file = fileOfByteLength(`motion-overlay${extension}`, GRAPHICS_MULTIPART_PART_BYTES + 1);
+		/**
+		 * The defect this pins: a package carrying whole Graphic Assets routinely
+		 * outgrows a single request, and export will emit one far larger than this.
+		 * An import that only knew how to PUT the archive in one piece refused every
+		 * package the same installation was willing to produce.
+		 */
+		it('sends a package too long for one request as a resumable multipart transfer', async () => {
+			const file = fileOfByteLength(
+				`motion-overlay${extension}`,
+				GRAPHICS_MULTIPART_PART_BYTES + 1,
+			);
 
-		const received = await repository().receivePackage(file);
+			const received = await repository().receivePackage(file);
 
-		expect(requests()).toEqual([
-			`POST ${ingestion}`,
-			`POST ${ingestion}/operation-1/multipart`,
-			`PUT ${ingestion}/operation-1/multipart/parts/1`,
-			`PUT ${ingestion}/operation-1/multipart/parts/2`,
-			`POST ${ingestion}/operation-1/multipart/complete`,
-		]);
-		expect(received.stage).toBe('awaiting-installation');
-	});
-});
+			expect(requests()).toEqual([
+				`POST ${ingestion}`,
+				`POST ${ingestion}/operation-1/multipart`,
+				`PUT ${ingestion}/operation-1/multipart/parts/1`,
+				`PUT ${ingestion}/operation-1/multipart/parts/2`,
+				`POST ${ingestion}/operation-1/multipart/complete`,
+			]);
+			expect(received.stage).toBe('awaiting-installation');
+		});
+	},
+);

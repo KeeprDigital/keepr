@@ -1,9 +1,5 @@
 import type { EventDataLoadOptions } from '~/modules/event-data/lifecycle';
-import type {
-	CreatePlayerListInput,
-	PlayerListSummary,
-	UpdatePlayerListInput,
-} from '~/types';
+import type { CreatePlayerListInput, PlayerListSummary, UpdatePlayerListInput } from '~/types';
 import type { MessageData } from '~/types/realtime';
 import { useEventDataLifecycle } from '~/modules/event-data/lifecycle';
 import { usePlayerListMembersRuntime } from '~/modules/event-data/playerListMembers';
@@ -12,7 +8,11 @@ export const usePlayerListStore = defineStore('playerList', () => {
 	const repo = usePlayerListRepository();
 
 	let memberRuntime: ReturnType<typeof usePlayerListMembersRuntime>;
-	const lifecycle = useEventDataLifecycle<PlayerListSummary, CreatePlayerListInput, UpdatePlayerListInput>({
+	const lifecycle = useEventDataLifecycle<
+		PlayerListSummary,
+		CreatePlayerListInput,
+		UpdatePlayerListInput
+	>({
 		repository: {
 			...repo,
 			create: async (eventId, input) => {
@@ -21,8 +21,7 @@ export const usePlayerListStore = defineStore('playerList', () => {
 			},
 			remove: async (eventId, listId) => {
 				const result = await repo.remove(eventId, listId);
-				if (!result.success)
-					throw new Error('Failed to delete player list');
+				if (!result.success) throw new Error('Failed to delete player list');
 				return result;
 			},
 		},
@@ -53,18 +52,20 @@ export const usePlayerListStore = defineStore('playerList', () => {
 	const getCachedMemberIds = memberRuntime.getCachedMemberIds;
 
 	async function loadByEventId(eventId: number, load?: EventDataLoadOptions) {
-		return lifecycle.loadFrom(eventId, async () => {
-			const listsData = await repo.list(eventId);
+		return lifecycle.loadFrom(
+			eventId,
+			async () => {
+				const listsData = await repo.list(eventId);
 
-			// Preload member IDs for all lists in parallel (lightweight, just number arrays).
-			if (listsData.length > 0) {
-				await Promise.all(
-					listsData.map(list => loadListMembers(eventId, list.id)),
-				);
-			}
+				// Preload member IDs for all lists in parallel (lightweight, just number arrays).
+				if (listsData.length > 0) {
+					await Promise.all(listsData.map((list) => loadListMembers(eventId, list.id)));
+				}
 
-			return listsData;
-		}, load);
+				return listsData;
+			},
+			load,
+		);
 	}
 
 	async function createList(eventId: number, input: CreatePlayerListInput) {
@@ -80,13 +81,10 @@ export const usePlayerListStore = defineStore('playerList', () => {
 		const cachedIds = memberRuntime.clearListMembers(listId);
 		try {
 			const removed = await lifecycle.remove(eventId, listId);
-			if (removed === null && flight.current)
-				memberRuntime.restoreListMembers(listId, cachedIds);
+			if (removed === null && flight.current) memberRuntime.restoreListMembers(listId, cachedIds);
 			return removed;
-		}
-		catch (err) {
-			if (flight.current)
-				memberRuntime.restoreListMembers(listId, cachedIds);
+		} catch (err) {
+			if (flight.current) memberRuntime.restoreListMembers(listId, cachedIds);
 			throw err;
 		}
 	}
@@ -94,11 +92,14 @@ export const usePlayerListStore = defineStore('playerList', () => {
 	// ── Realtime Handlers ──
 
 	function applyRemoteCreated(data: MessageData<'playerList:created'>) {
-		lifecycle.applyRemoteCreated({ ...data.playerList, memberCount: data.playerList.memberCount ?? 0 });
+		lifecycle.applyRemoteCreated({
+			...data.playerList,
+			memberCount: data.playerList.memberCount ?? 0,
+		});
 	}
 
 	function applyRemoteUpdated(data: MessageData<'playerList:updated'>) {
-		const index = lists.value.findIndex(l => l.id === data.playerList.id);
+		const index = lists.value.findIndex((l) => l.id === data.playerList.id);
 		if (index !== -1) {
 			lists.value[index] = {
 				...lists.value[index]!,

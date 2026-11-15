@@ -20,10 +20,7 @@ const options: Array<{ value: MetagameAdminView; icon: string; label: string }> 
 <template>
 	<UFieldGroup size="xs">
 		<template v-for="option in options" :key="option.value">
-			<UTooltip
-				v-if="!tableOnly || option.value === 'table'"
-				:text="option.label"
-			>
+			<UTooltip v-if="!tableOnly || option.value === 'table'" :text="option.label">
 				<UButton
 					:icon="option.icon"
 					:label="option.label"

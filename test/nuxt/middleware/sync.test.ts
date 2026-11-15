@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockEventStore, mockNavigateTo } = vi.hoisted(() => ({
 	mockEventStore: {
-		event: null as { game?: 'mtg' | 'op'; meleeEnabled?: boolean; meleeConfigured?: boolean; initialSetupCompletedAt?: Date | null } | null,
+		event: null as {
+			game?: 'mtg' | 'op';
+			meleeEnabled?: boolean;
+			meleeConfigured?: boolean;
+			initialSetupCompletedAt?: Date | null;
+		} | null,
 	},
 	mockNavigateTo: vi.fn(),
 }));
@@ -27,14 +32,8 @@ describe('sync middleware', () => {
 	});
 
 	it.each([
-		[
-			'melee is disabled',
-			{ game: 'mtg', meleeEnabled: false, meleeConfigured: false },
-		],
-		[
-			'melee is not configured',
-			{ game: 'mtg', meleeEnabled: true, meleeConfigured: false },
-		],
+		['melee is disabled', { game: 'mtg', meleeEnabled: false, meleeConfigured: false }],
+		['melee is not configured', { game: 'mtg', meleeEnabled: true, meleeConfigured: false }],
 	] as const)('sends a Magic Event to integrations when %s', async (_label, event) => {
 		mockEventStore.event = { ...event, initialSetupCompletedAt: null };
 

@@ -48,18 +48,16 @@ const FALLBACK_PASSWORD_MODULE = /@better-auth\/utils\/dist\/password\.[mc]js$/;
  */
 function classifySources(sources) {
 	return {
-		native: sources.filter(source => NATIVE_PASSWORD_MODULE.test(source)),
-		fallback: sources.filter(source => FALLBACK_PASSWORD_MODULE.test(source)),
+		native: sources.filter((source) => NATIVE_PASSWORD_MODULE.test(source)),
+		fallback: sources.filter((source) => FALLBACK_PASSWORD_MODULE.test(source)),
 	};
 }
 
 function* sourceMapFiles(directory) {
 	for (const entry of readdirSync(directory, { withFileTypes: true })) {
 		const entryPath = join(directory, entry.name);
-		if (entry.isDirectory())
-			yield* sourceMapFiles(entryPath);
-		else if (entry.name.endsWith('.map'))
-			yield entryPath;
+		if (entry.isDirectory()) yield* sourceMapFiles(entryPath);
+		else if (entry.name.endsWith('.map')) yield entryPath;
 	}
 }
 
@@ -75,7 +73,9 @@ function selfTest() {
 	const failures = [];
 	const nativeOnly = classifySources([native, bystander]);
 	if (nativeOnly.native.length !== 1 || nativeOnly.fallback.length !== 0)
-		failures.push('the native module was not classified as native — this scan cannot pass an honest build.');
+		failures.push(
+			'the native module was not classified as native — this scan cannot pass an honest build.',
+		);
 	const fallbackOnly = classifySources([fallback, bystander]);
 	if (fallbackOnly.fallback.length !== 1 || fallbackOnly.native.length !== 0)
 		failures.push('a planted fallback module was not reported — this scan cannot fail.');
@@ -94,18 +94,15 @@ export function nativeScryptScan(directory) {
 			ok: false,
 			lines: [
 				'assert-native-scrypt: SELF-TEST FAILED — the guard cannot be trusted, so the bundle was not scanned.',
-				...broken.map(failure => `  ${failure}`),
+				...broken.map((failure) => `  ${failure}`),
 			],
 		};
 	}
 
 	let files;
 	try {
-		files = [
-			...sourceMapFiles(directory),
-		];
-	}
-	catch (error) {
+		files = [...sourceMapFiles(directory)];
+	} catch (error) {
 		return {
 			ok: false,
 			lines: [`assert-native-scrypt: cannot read ${directory} — ${error.message}`],
@@ -115,7 +112,9 @@ export function nativeScryptScan(directory) {
 	if (files.length === 0) {
 		return {
 			ok: false,
-			lines: [`assert-native-scrypt: no source maps under ${directory}. A scan of nothing is not a pass.`],
+			lines: [
+				`assert-native-scrypt: no source maps under ${directory}. A scan of nothing is not a pass.`,
+			],
 		};
 	}
 
@@ -125,15 +124,14 @@ export function nativeScryptScan(directory) {
 		let sources;
 		try {
 			sources = JSON.parse(readFileSync(file, 'utf8')).sources ?? [];
-		}
-		catch {
+		} catch {
 			// A source map that does not parse cannot name the password module
 			// either way; the presence requirement below still holds.
 			continue;
 		}
 		const classified = classifySources(sources);
-		nativeSites.push(...classified.native.map(source => `${file}: ${source}`));
-		fallbackSites.push(...classified.fallback.map(source => `${file}: ${source}`));
+		nativeSites.push(...classified.native.map((source) => `${file}: ${source}`));
+		fallbackSites.push(...classified.fallback.map((source) => `${file}: ${source}`));
 	}
 
 	if (fallbackSites.length > 0) {
@@ -143,9 +141,9 @@ export function nativeScryptScan(directory) {
 				'assert-native-scrypt: the pure-JS scrypt fallback is in the Worker bundle.',
 				'The bundler did not resolve `@better-auth/utils/password` through the `workerd`',
 				'export condition, so every password hash would run @noble/hashes scrypt in JS',
-				'instead of native `node:crypto` scrypt (ADR-0010, #393). Check the bundler\'s',
+				"instead of native `node:crypto` scrypt (ADR-0010, #393). Check the bundler's",
 				'export conditions and the `@better-auth/utils` exports map at its pinned version.',
-				...fallbackSites.map(site => `  ${site}`),
+				...fallbackSites.map((site) => `  ${site}`),
 			],
 		};
 	}
@@ -163,7 +161,9 @@ export function nativeScryptScan(directory) {
 
 	return {
 		ok: true,
-		lines: [`assert-native-scrypt: self-test passed; password hashing resolved to native node:crypto scrypt (${nativeSites.length} source-map site(s), no fallback) under ${directory}`],
+		lines: [
+			`assert-native-scrypt: self-test passed; password hashing resolved to native node:crypto scrypt (${nativeSites.length} source-map site(s), no fallback) under ${directory}`,
+		],
 	};
 }
 
@@ -173,22 +173,22 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
 
 	if (target === '--self-test') {
 		const broken = selfTest();
-		for (const failure of broken)
-			process.stderr.write(`assert-native-scrypt: ${failure}\n`);
+		for (const failure of broken) process.stderr.write(`assert-native-scrypt: ${failure}\n`);
 		if (broken.length === 0)
-			process.stdout.write('assert-native-scrypt: self-test passed — the guard reports a planted fallback and accepts the native module.\n');
-		process.exit(broken.length === 0
-			? 0
-			: 1);
+			process.stdout.write(
+				'assert-native-scrypt: self-test passed — the guard reports a planted fallback and accepts the native module.\n',
+			);
+		process.exit(broken.length === 0 ? 0 : 1);
 	}
 
 	if (!target) {
-		process.stderr.write('assert-native-scrypt: name the build output directory to scan, or pass --self-test.\n');
+		process.stderr.write(
+			'assert-native-scrypt: name the build output directory to scan, or pass --self-test.\n',
+		);
 		process.exit(1);
 	}
 
 	const scan = nativeScryptScan(target);
-	for (const line of scan.lines)
-		(scan.ok ? process.stdout : process.stderr).write(`${line}\n`);
+	for (const line of scan.lines) (scan.ok ? process.stdout : process.stderr).write(`${line}\n`);
 	process.exit(scan.ok ? 0 : 1);
 }

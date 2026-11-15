@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { Seat } from '~~/shared/types/enums';
-import type { FeatureMatchData, FeatureMatchFormData, PlayerData, PlayerDisplayConfig, UpdateFeatureMatchInput } from '~/types';
+import type {
+	FeatureMatchData,
+	FeatureMatchFormData,
+	PlayerData,
+	PlayerDisplayConfig,
+	UpdateFeatureMatchInput,
+} from '~/types';
 import { SEAT_VALUES } from '~~/shared/types/enums';
 import { seatNumber, SLOT_SEAT_DATA_KEY } from '~~/shared/utils/featureMatchSidePlayer';
 import { playerDisplayName } from '~~/shared/utils/playerName';
@@ -30,7 +36,7 @@ const stateLoading = ref(false);
 const tokensModalOpen = ref(false);
 
 const isVerticalArena = computed(() => eventStore.event?.featureMatchOrientation === 'vertical');
-const game = computed(() => (eventStore.event?.game ?? 'mtg'));
+const game = computed(() => eventStore.event?.game ?? 'mtg');
 const eventKind = useEventKind();
 /** A Commander Event's Slot has four Seats, each typed and holding Commanders (ADR-0087). */
 const isCommander = computed(() => eventKind.value === 'mtg-commander');
@@ -39,15 +45,21 @@ const isCommander = computed(() => eventKind.value === 'mtg-commander');
 const matchState = computed(() => {
 	return featureMatchStateStore.featureMatchStates.get(props.match.id) ?? null;
 });
-const featureMatchAssignment = computed(() => assignmentStore.assignments.find(assignment =>
-	assignment.slotId === props.match.id && assignment.matchId === props.match.matchId,
-) ?? null);
+const featureMatchAssignment = computed(
+	() =>
+		assignmentStore.assignments.find(
+			(assignment) =>
+				assignment.slotId === props.match.id && assignment.matchId === props.match.matchId,
+		) ?? null,
+);
 const assignmentNote = computed(() => featureMatchAssignment.value?.note ?? '');
-const featureMatchNotesEnabled = computed(() => eventStore.event?.featureMatchNotesEnabled ?? false);
+const featureMatchNotesEnabled = computed(
+	() => eventStore.event?.featureMatchNotesEnabled ?? false,
+);
 const sourceMatch = ref<import('~/types').Match | null>(null);
-const sourceRound = computed(() => sourceMatch.value
-	? roundStore.getRoundById(sourceMatch.value.roundId)
-	: undefined);
+const sourceRound = computed(() =>
+	sourceMatch.value ? roundStore.getRoundById(sourceMatch.value.roundId) : undefined,
+);
 
 watch(
 	() => props.match.matchId,
@@ -59,10 +71,8 @@ watch(
 			releaseRound?.();
 		});
 		sourceMatch.value = null;
-		if (!eventStore.eventId || !matchId)
-			return;
-		if (!roundStore.isLoaded)
-			await roundStore.loadRoundsByEventId(eventStore.eventId);
+		if (!eventStore.eventId || !matchId) return;
+		if (!roundStore.isLoaded) await roundStore.loadRoundsByEventId(eventStore.eventId);
 		const linkedMatch = await matchRepository.getById(eventStore.eventId, matchId);
 		if (linkedMatch && !stale) {
 			sourceMatch.value = linkedMatch;
@@ -82,8 +92,7 @@ onMounted(async () => {
 		stateLoading.value = true;
 		try {
 			await featureMatchStateStore.loadState(eventStore.eventId, props.match.id);
-		}
-		finally {
+		} finally {
 			stateLoading.value = false;
 		}
 	}
@@ -95,12 +104,14 @@ onMounted(async () => {
 // ──────────────── Form State ────────────────
 
 function seatFormData(data: FeatureMatchData['player1Data'] | undefined): PlayerData {
-	return data
-		? toPlayerData(data)
-		: { ...DEFAULT_PLAYER_DATA };
+	return data ? toPlayerData(data) : { ...DEFAULT_PLAYER_DATA };
 }
 
-function normalizeMatchData({ player3Data, player4Data, ...match }: FeatureMatchData): FeatureMatchFormData {
+function normalizeMatchData({
+	player3Data,
+	player4Data,
+	...match
+}: FeatureMatchData): FeatureMatchFormData {
 	return {
 		...match,
 		player1Data: seatFormData(match.player1Data),
@@ -151,28 +162,32 @@ const hasMeleeMatches = computed(() => {
  * sides, says this: it is the one record of how the Session's order relates to
  * the Slot's.
  */
-const sidesSwapped = computed(() =>
-	withFollowedFeatureMatchSession(props.match, featureMatchStateStore).activeSession?.sourceSnapshot.playersSwapped ?? false);
+const sidesSwapped = computed(
+	() =>
+		withFollowedFeatureMatchSession(props.match, featureMatchStateStore).activeSession
+			?.sourceSnapshot.playersSwapped ?? false,
+);
 
 function slotSideOf(shown: PlayerSide): PlayerSide {
-	if (!sidesSwapped.value)
-		return shown;
-	return shown === 'player1'
-		? 'player2'
-		: 'player1';
+	if (!sidesSwapped.value) return shown;
+	return shown === 'player1' ? 'player2' : 'player1';
 }
 
 function shownSideData(shown: PlayerSide) {
 	return computed({
 		get: () => formData.value[`${slotSideOf(shown)}Data`]!,
-		set: (newValue: PlayerData) => { formData.value[`${slotSideOf(shown)}Data`] = newValue; },
+		set: (newValue: PlayerData) => {
+			formData.value[`${slotSideOf(shown)}Data`] = newValue;
+		},
 	});
 }
 
 function shownSidePlayerId(shown: PlayerSide) {
 	return computed({
 		get: () => formData.value[`${slotSideOf(shown)}Id`],
-		set: (newValue: number | null) => { formData.value[`${slotSideOf(shown)}Id`] = newValue; },
+		set: (newValue: number | null) => {
+			formData.value[`${slotSideOf(shown)}Id`] = newValue;
+		},
 	});
 }
 
@@ -181,7 +196,8 @@ const player2Data = shownSideData('player2');
 const player1Id = shownSidePlayerId('player1');
 const player2Id = shownSidePlayerId('player2');
 
-const seatFormId = (seat: Seat) => `feature-match-${props.match.id}-player-${seatNumber(seat)}-form`;
+const seatFormId = (seat: Seat) =>
+	`feature-match-${props.match.id}-player-${seatNumber(seat)}-form`;
 const player1FormId = computed(() => seatFormId('player1'));
 const player2FormId = computed(() => seatFormId('player2'));
 
@@ -199,9 +215,9 @@ const SEAT_TABLE_POSITION = {
 	player4: 'bottom-left',
 } as const satisfies Record<Seat, string>;
 /** The Seats whose forms the panel shows. */
-const shownSeats = computed<readonly Seat[]>(() => isCommander.value
-	? SEAT_VALUES
-	: ['player1', 'player2']);
+const shownSeats = computed<readonly Seat[]>(() =>
+	isCommander.value ? SEAT_VALUES : ['player1', 'player2'],
+);
 const seatLabel = (seat: Seat) => `Seat ${seatNumber(seat)}`;
 
 // ──────────────── Composables ────────────────
@@ -247,38 +263,34 @@ const {
 	resetActionItems,
 } = useFeatureMatchGameMode(() => props.match.id, matchState);
 
-const {
-	meleeModalOpen,
-	swapPlayers,
-	swapSeats,
-	clearMatch,
-	populateFromMelee,
-} = useFeatureMatchSetupActions({
-	formData,
-	getDeckForCurrentPhase,
-});
+const { meleeModalOpen, swapPlayers, swapSeats, clearMatch, populateFromMelee } =
+	useFeatureMatchSetupActions({
+		formData,
+		getDeckForCurrentPhase,
+	});
 
 /** Swap Seats, offered from each Seat: every other Seat it can change places with. */
 function swapSeatItems(seat: Seat) {
-	return SEAT_VALUES
-		.filter(other => other !== seat)
-		.map(other => ({
-			label: `With ${seatLabel(other)}`,
-			onSelect: () => { void swapSeats(seat, other); },
-		}));
+	return SEAT_VALUES.filter((other) => other !== seat).map((other) => ({
+		label: `With ${seatLabel(other)}`,
+		onSelect: () => {
+			void swapSeats(seat, other);
+		},
+	}));
 }
 
 // ──────────────── Sideboard Reveal ────────────────
 
 // The control is match-level while the model stays per-player (#490): checked
 // only when both sideboards are revealed, and a toggle writes both together.
-const sideboardsRevealed = computed(() =>
-	(matchState.value?.player1.sideboardRevealed ?? false)
-	&& (matchState.value?.player2.sideboardRevealed ?? false));
+const sideboardsRevealed = computed(
+	() =>
+		(matchState.value?.player1.sideboardRevealed ?? false) &&
+		(matchState.value?.player2.sideboardRevealed ?? false),
+);
 
 function handleSideboardRevealChange(revealed: boolean) {
-	if (!eventStore.eventId)
-		return;
+	if (!eventStore.eventId) return;
 	void featureMatchStateStore.setSideboardRevealed(eventStore.eventId, props.match.id, revealed);
 }
 
@@ -293,17 +305,15 @@ function playerDisplayConfig(side: PlayerSide): PlayerDisplayConfig {
 		showPronouns: pronounsEnabled.value,
 		showRecord: standingsEnabled.value,
 		showLgs: lgsEnabled.value,
-		hasDeckList: side === 'player1'
-			? player1HasDeckList.value
-			: player2HasDeckList.value,
+		hasDeckList: side === 'player1' ? player1HasDeckList.value : player2HasDeckList.value,
 		activePlayerTrackingEnabled: activePlayerTrackingEnabled.value,
 		seatLabel: isVerticalArena.value
-			? (side === 'player1'
-					? 'Top'
-					: 'Bottom')
-			: (side === 'player1'
-					? 'Left'
-					: 'Right'),
+			? side === 'player1'
+				? 'Top'
+				: 'Bottom'
+			: side === 'player1'
+				? 'Left'
+				: 'Right',
 		mulliganPhase: inMulliganPhase.value,
 		startingHandSize: startingHandSize.value,
 	};
@@ -326,40 +336,43 @@ const matchTitle = computed(() => `Match ${props.matchNumber}`);
 const saving = ref(false);
 
 async function saveAssignmentNote(note: string) {
-	if (!eventStore.eventId || !featureMatchAssignment.value)
-		return;
-	await assignmentStore.updateAssignment(eventStore.eventId, featureMatchAssignment.value.id, { note: note.trim() || null });
+	if (!eventStore.eventId || !featureMatchAssignment.value) return;
+	await assignmentStore.updateAssignment(eventStore.eventId, featureMatchAssignment.value.id, {
+		note: note.trim() || null,
+	});
 }
 
 async function save() {
-	if (!eventStore.eventId)
-		return;
+	if (!eventStore.eventId) return;
 
 	const updateData: UpdateFeatureMatchInput = buildFeatureMatchSetupUpdate(getChanges());
-	if (Object.keys(updateData).length === 0)
-		return;
+	if (Object.keys(updateData).length === 0) return;
 
-	await runSave(() => runRequest(
-		async () => {
-			const updatedMatch = await featureMatchStore.updateFeatureMatch(eventStore.eventId!, formData.value.id, updateData);
-			if (!updatedMatch)
-				throw new Error(featureMatchStore.error ?? 'The match was not updated.');
-			return updatedMatch;
-		},
-		{
-			loadingRef: saving,
-			success: { title: 'Match updated successfully', color: 'success' },
-			error: () => ({
-				title: 'Failed to update match',
-				description: featureMatchStore.error ?? 'The match was not updated.',
-				color: 'error',
-			}),
-			onFailure: ({ error }) => {
-				if (error)
-					console.error('Failed to save match:', error);
+	await runSave(() =>
+		runRequest(
+			async () => {
+				const updatedMatch = await featureMatchStore.updateFeatureMatch(
+					eventStore.eventId!,
+					formData.value.id,
+					updateData,
+				);
+				if (!updatedMatch) throw new Error(featureMatchStore.error ?? 'The match was not updated.');
+				return updatedMatch;
 			},
-		},
-	));
+			{
+				loadingRef: saving,
+				success: { title: 'Match updated successfully', color: 'success' },
+				error: () => ({
+					title: 'Failed to update match',
+					description: featureMatchStore.error ?? 'The match was not updated.',
+					color: 'error',
+				}),
+				onFailure: ({ error }) => {
+					if (error) console.error('Failed to save match:', error);
+				},
+			},
+		),
+	);
 }
 </script>
 
@@ -469,14 +482,22 @@ async function save() {
 						icon="i-lucide-trophy"
 						:color="formData.playerDisplayMode === 'score' ? 'primary' : 'neutral'"
 						:variant="formData.playerDisplayMode === 'score' ? 'subtle' : 'outline'"
-						@click="() => { formData.playerDisplayMode = 'score' }"
+						@click="
+							() => {
+								formData.playerDisplayMode = 'score';
+							}
+						"
 					/>
 					<UButton
 						label="Position"
 						icon="i-lucide-hash"
 						:color="formData.playerDisplayMode === 'position' ? 'primary' : 'neutral'"
 						:variant="formData.playerDisplayMode === 'position' ? 'subtle' : 'outline'"
-						@click="() => { formData.playerDisplayMode = 'position' }"
+						@click="
+							() => {
+								formData.playerDisplayMode = 'position';
+							}
+						"
 					/>
 				</UFieldGroup>
 
@@ -503,7 +524,11 @@ async function save() {
 							icon="i-lucide-download"
 							color="neutral"
 							variant="outline"
-							@click="() => { meleeModalOpen = true }"
+							@click="
+								() => {
+									meleeModalOpen = true;
+								}
+							"
 						/>
 					</template>
 				</div>
@@ -512,18 +537,10 @@ async function save() {
 			<!-- Match Metadata -->
 			<div class="match-metadata-grid">
 				<UFormField label="Round" name="roundName">
-					<UInput
-						v-model="roundNameInput"
-						:placeholder="roundPlaceholder"
-						class="w-full"
-					/>
+					<UInput v-model="roundNameInput" :placeholder="roundPlaceholder" class="w-full" />
 				</UFormField>
 				<UFormField label="Format" name="formatName">
-					<UInput
-						v-model="formatNameInput"
-						placeholder="Format"
-						class="w-full"
-					/>
+					<UInput v-model="formatNameInput" placeholder="Format" class="w-full" />
 				</UFormField>
 			</div>
 
@@ -622,13 +639,7 @@ async function save() {
 		<template #footer>
 			<!-- Setup mode: Save/Reset + Reorder -->
 			<div v-if="panelView === 'setup'" class="flex justify-between items-center gap-4">
-				<UButton
-					label="Reset"
-					color="error"
-					variant="ghost"
-					:disabled="!isDirty"
-					@click="reset"
-				/>
+				<UButton label="Reset" color="error" variant="ghost" :disabled="!isDirty" @click="reset" />
 				<UFieldGroup>
 					<UButton
 						icon="i-lucide-chevron-up"
@@ -636,7 +647,11 @@ async function save() {
 						variant="subtle"
 						:disabled="isFirst"
 						aria-label="Move match up"
-						@click="() => { void featureMatchStore.reorderFeatureMatch(match.id, 'up') }"
+						@click="
+							() => {
+								void featureMatchStore.reorderFeatureMatch(match.id, 'up');
+							}
+						"
 					/>
 					<UButton
 						icon="i-lucide-chevron-down"
@@ -644,7 +659,11 @@ async function save() {
 						variant="subtle"
 						:disabled="isLast"
 						aria-label="Move match down"
-						@click="() => { void featureMatchStore.reorderFeatureMatch(match.id, 'down') }"
+						@click="
+							() => {
+								void featureMatchStore.reorderFeatureMatch(match.id, 'down');
+							}
+						"
 					/>
 				</UFieldGroup>
 				<UButton
@@ -679,24 +698,20 @@ async function save() {
 					color="neutral"
 					variant="ghost"
 					:disabled="!hasAnyDeckList"
-					@click="() => { tokensModalOpen = true }"
+					@click="
+						() => {
+							tokensModalOpen = true;
+						}
+					"
 				/>
 				<UDropdownMenu
 					v-if="matchActionItems.length > 0"
 					:items="matchActionItems"
 					:content="{ align: 'end' }"
 				>
-					<UButton
-						label="Actions"
-						icon="i-lucide-repeat-2"
-						color="neutral"
-						variant="ghost"
-					/>
+					<UButton label="Actions" icon="i-lucide-repeat-2" color="neutral" variant="ghost" />
 				</UDropdownMenu>
-				<UDropdownMenu
-					:items="resetActionItems"
-					:content="{ align: 'end' }"
-				>
+				<UDropdownMenu :items="resetActionItems" :content="{ align: 'end' }">
 					<UButton
 						label="Reset"
 						icon="i-lucide-refresh-cw"
@@ -710,10 +725,7 @@ async function save() {
 	</UCard>
 
 	<!-- Melee Populate Modal -->
-	<FeatureMatchPanelMeleeModal
-		v-model:open="meleeModalOpen"
-		@populate="populateFromMelee"
-	/>
+	<FeatureMatchPanelMeleeModal v-model:open="meleeModalOpen" @populate="populateFromMelee" />
 	<FeatureMatchTokensModal
 		v-model:open="tokensModalOpen"
 		:match-title="matchTitle"

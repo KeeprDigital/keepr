@@ -22,10 +22,15 @@ interface TableRowLayoutOptions {
 export function useTableRowLayout(target: MaybeComputedElementRef, options: TableRowLayoutOptions) {
 	const { height } = useElementSize(target);
 
-	return computed(() => tableRowLayoutStyle(options.prefix, tableRowLayout({
-		density: options.density,
-		measuredHeight: height.value,
-		rowCount: toValue(options.rowCount),
-		insetY: toValue(options.insetY),
-	})));
+	return computed(() =>
+		tableRowLayoutStyle(
+			options.prefix,
+			tableRowLayout({
+				density: options.density,
+				measuredHeight: height.value,
+				rowCount: toValue(options.rowCount),
+				insetY: toValue(options.insetY),
+			}),
+		),
+	);
 }

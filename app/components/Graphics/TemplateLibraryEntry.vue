@@ -36,19 +36,15 @@ const emit = defineEmits<{
 
 function onNameChanged(event: Event) {
 	const next = (event.target as HTMLInputElement).value.trim();
-	if (next.length === 0 || next === props.name)
-		return;
+	if (next.length === 0 || next === props.name) return;
 	emit('rename', next);
 }
 
 /** An emptied description clears it rather than storing an empty string. */
 function onDescriptionChanged(event: Event) {
 	const next = (event.target as HTMLInputElement).value.trim();
-	if (next === (props.description ?? ''))
-		return;
-	emit('describe', next.length === 0
-		? null
-		: next);
+	if (next === (props.description ?? '')) return;
+	emit('describe', next.length === 0 ? null : next);
 }
 </script>
 
@@ -70,13 +66,9 @@ function onDescriptionChanged(event: Event) {
 					{{ name }}
 				</p>
 				<p class="mt-0.5 truncate text-xs text-muted">
-					<slot name="meta" /> · revision {{ revision }}<span
-						v-if="builtIn"
-						:data-testid="`${testId}-built-in`"
-					> · built-in</span><span
-						v-else-if="!authored"
-						:data-testid="`${testId}-imported`"
-					> · imported</span>
+					<slot name="meta" /> · revision {{ revision
+					}}<span v-if="builtIn" :data-testid="`${testId}-built-in`"> · built-in</span
+					><span v-else-if="!authored" :data-testid="`${testId}-imported`"> · imported</span>
 				</p>
 				<UInput
 					v-if="revisable"

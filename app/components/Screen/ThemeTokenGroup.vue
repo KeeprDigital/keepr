@@ -6,14 +6,19 @@ import { placeScreenThemeTokens } from '~~/shared/screenThemeOverrides';
 // `group` as their `settingsGroup`, under a "Look" subheading after the
 // group's config controls, or `heading` where one card holds several Looks.
 
-const props = withDefaults(defineProps<{
-	screen: Screen;
-	eventId: number;
-	group: string;
-	heading?: string;
-}>(), { heading: 'Look' });
+const props = withDefaults(
+	defineProps<{
+		screen: Screen;
+		eventId: number;
+		group: string;
+		heading?: string;
+	}>(),
+	{ heading: 'Look' },
+);
 
-const names = computed(() => placeScreenThemeTokens(props.screen.currentMode).groups[props.group] ?? []);
+const names = computed(
+	() => placeScreenThemeTokens(props.screen.currentMode).groups[props.group] ?? [],
+);
 </script>
 
 <template>

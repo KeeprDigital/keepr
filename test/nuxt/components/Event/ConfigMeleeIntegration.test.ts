@@ -84,7 +84,7 @@ function fieldValue(wrapper: Wrapper, field: string) {
 }
 
 function button(wrapper: Wrapper, label: string) {
-	return wrapper.findAll('button').find(candidate => candidate.text() === label)!;
+	return wrapper.findAll('button').find((candidate) => candidate.text() === label)!;
 }
 
 async function disableIntegration(wrapper: Wrapper) {
@@ -128,10 +128,12 @@ describe('configMeleeIntegration', () => {
 
 		await disableIntegration(wrapper);
 
-		expect(open).toHaveBeenCalledWith(expect.objectContaining({
-			title: 'Disable Melee Integration',
-			confirmLabel: 'Disable and Clear Data',
-		}));
+		expect(open).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Disable Melee Integration',
+				confirmLabel: 'Disable and Clear Data',
+			}),
+		);
 		expect(mockEventRepo.updateMeleeConfig).not.toHaveBeenCalled();
 	});
 
@@ -147,10 +149,12 @@ describe('configMeleeIntegration', () => {
 		await wrapper.find('form').trigger('submit');
 		await flushPromises();
 
-		expect(open).toHaveBeenCalledWith(expect.objectContaining({
-			title: 'Change Melee Event',
-			confirmLabel: 'Change Event and Clear Data',
-		}));
+		expect(open).toHaveBeenCalledWith(
+			expect.objectContaining({
+				title: 'Change Melee Event',
+				confirmLabel: 'Change Event and Clear Data',
+			}),
+		);
 		expect(mockEventRepo.updateMeleeConfig).not.toHaveBeenCalled();
 	});
 
@@ -164,9 +168,12 @@ describe('configMeleeIntegration', () => {
 
 		await disableIntegration(wrapper);
 
-		expect(mockEventRepo.updateMeleeConfig).toHaveBeenCalledWith(1, expect.objectContaining({
-			meleeEnabled: false,
-		}));
+		expect(mockEventRepo.updateMeleeConfig).toHaveBeenCalledWith(
+			1,
+			expect.objectContaining({
+				meleeEnabled: false,
+			}),
+		);
 		// Asked to raise a failed reload, which is how the card hears of one.
 		expect(mockRefreshAfterMeleeReset).toHaveBeenCalledWith(1, { failure: 'raise' });
 		expect(mockEventStore.setEvent).toHaveBeenCalledWith({ meleeConfigured: true });
@@ -178,7 +185,8 @@ describe('configMeleeIntegration', () => {
 			result: Promise.resolve(true),
 		});
 		mockOverlay.create.mockReturnValue({ open });
-		const kept = 'Phase "Swiss" was imported from Melee.gg and holds manual Rounds or Matches, so it was kept as a manual Phase';
+		const kept =
+			'Phase "Swiss" was imported from Melee.gg and holds manual Rounds or Matches, so it was kept as a manual Phase';
 		mockEventRepo.updateMeleeConfig.mockResolvedValue({
 			meleeConfigured: false,
 			warnings: [kept],
@@ -188,14 +196,18 @@ describe('configMeleeIntegration', () => {
 
 		await disableIntegration(wrapper);
 
-		expect(open).toHaveBeenCalledWith(expect.objectContaining({
-			message: expect.stringContaining('Manual rounds and matches stay'),
-		}));
+		expect(open).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message: expect.stringContaining('Manual rounds and matches stay'),
+			}),
+		);
 		expect(mockEventStore.setEvent).toHaveBeenCalledWith({ meleeConfigured: false });
-		expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({
-			color: 'warning',
-			description: kept,
-		}));
+		expect(mockToast.add).toHaveBeenCalledWith(
+			expect.objectContaining({
+				color: 'warning',
+				description: kept,
+			}),
+		);
 	});
 
 	it('keeps a committed destructive change successful when the local refresh fails', async () => {
@@ -212,10 +224,12 @@ describe('configMeleeIntegration', () => {
 
 		expect(mockEventRepo.updateMeleeConfig).toHaveBeenCalledOnce();
 		expect(mockEventStore.setEvent).toHaveBeenCalledWith({ meleeConfigured: true });
-		expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({
-			color: 'warning',
-			description: expect.stringContaining('Reload this page'),
-		}));
+		expect(mockToast.add).toHaveBeenCalledWith(
+			expect.objectContaining({
+				color: 'warning',
+				description: expect.stringContaining('Reload this page'),
+			}),
+		);
 		expect(mockToast.add).not.toHaveBeenCalledWith(expect.objectContaining({ color: 'error' }));
 		warn.mockRestore();
 	});
@@ -226,11 +240,13 @@ describe('configMeleeIntegration', () => {
 
 	// The banner replaces the form, so it carries both what failed and why (#271).
 	it('names what failed and quotes the refusal the server wrote', async () => {
-		mockEventRepo.getMeleeConfig.mockRejectedValueOnce(transportFailure({
-			status: 403,
-			body: { message: 'This Event belongs to another installation' },
-			request: `[GET] "/api/events/1/melee/config"`,
-		}));
+		mockEventRepo.getMeleeConfig.mockRejectedValueOnce(
+			transportFailure({
+				status: 403,
+				body: { message: 'This Event belongs to another installation' },
+				request: `[GET] "/api/events/1/melee/config"`,
+			}),
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 
@@ -239,11 +255,13 @@ describe('configMeleeIntegration', () => {
 	});
 
 	it('relays a preserved 503 naming the setting that was never configured', async () => {
-		mockEventRepo.getMeleeConfig.mockRejectedValueOnce(transportFailure({
-			status: 503,
-			body: { message: 'NUXT_MELEE_CREDENTIAL_KEY is not configured' },
-			request: `[GET] "/api/events/1/melee/config"`,
-		}));
+		mockEventRepo.getMeleeConfig.mockRejectedValueOnce(
+			transportFailure({
+				status: 503,
+				body: { message: 'NUXT_MELEE_CREDENTIAL_KEY is not configured' },
+				request: `[GET] "/api/events/1/melee/config"`,
+			}),
+		);
 		const wrapper = await mountComponent();
 		await flushPromises();
 
@@ -296,9 +314,12 @@ describe('configMeleeIntegration', () => {
 
 	it('keeps an edit typed while the save is in flight unsaved', async () => {
 		let land = () => {};
-		mockEventRepo.updateMeleeConfig.mockImplementation(() => new Promise((resolve) => {
-			land = () => resolve({ meleeConfigured: true });
-		}));
+		mockEventRepo.updateMeleeConfig.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					land = () => resolve({ meleeConfigured: true });
+				}),
+		);
 		const { wrapper, pageIsDirty } = await mountUnderGuard();
 		await flushPromises();
 

@@ -31,9 +31,7 @@ function getConnectedCount(screenId: number): number {
 		<UCard variant="subtle" class="max-w-xl mx-auto">
 			<div class="flex flex-col items-center gap-3 py-6">
 				<UIcon name="i-lucide-alert-circle" class="h-12 w-12 text-error" />
-				<h3 class="text-lg font-semibold">
-					Unable to load screens
-				</h3>
+				<h3 class="text-lg font-semibold">Unable to load screens</h3>
 				<p class="text-sm text-muted text-center">
 					{{ props.error }}
 				</p>

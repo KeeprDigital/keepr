@@ -3,7 +3,12 @@ import type { BackgroundLayersCapableMode } from '~~/shared/screenModes';
 import type { Screen, ScreenCommand, ScreenMode } from '~/types';
 import { screenModeSupportsBackgroundLayers } from '~~/shared/screenModes';
 import { useEditorFocusMode } from '~/modules/graphics/editorFocusMode';
-import { getScreenModeConfigurationPolicy, getScreenModeLabel, getScreenModeSettingsComponent, useEventScreenModeSelectOptions } from '~/modules/screen-mode';
+import {
+	getScreenModeConfigurationPolicy,
+	getScreenModeLabel,
+	getScreenModeSettingsComponent,
+	useEventScreenModeSelectOptions,
+} from '~/modules/screen-mode';
 
 definePageMeta({
 	title: 'Screen Configuration',
@@ -38,16 +43,18 @@ const { active: editorFocus } = useEditorFocusMode();
 
 const screenModeConfigurationPolicy = computed(() => {
 	const mode = screen.value?.currentMode;
-	return mode
-		? getScreenModeConfigurationPolicy(mode)
-		: null;
+	return mode ? getScreenModeConfigurationPolicy(mode) : null;
 });
-const usesFullWidthConfiguration = computed(() => screenModeConfigurationPolicy.value?.fullWidthConfiguration === true);
-const isControlScreen = computed(() => screenModeConfigurationPolicy.value?.displayType === 'control');
+const usesFullWidthConfiguration = computed(
+	() => screenModeConfigurationPolicy.value?.fullWidthConfiguration === true,
+);
+const isControlScreen = computed(
+	() => screenModeConfigurationPolicy.value?.displayType === 'control',
+);
 // Connected count from presence
-const connectedCount = computed(() => screen.value
-	? screenStore.getConnectedCount(screen.value.id)
-	: 0);
+const connectedCount = computed(() =>
+	screen.value ? screenStore.getConnectedCount(screen.value.id) : 0,
+);
 
 // Outputs self-reporting degraded card data through presence (#465). They are
 // already re-fetching on their own; this row is where the operator learns that
@@ -59,22 +66,23 @@ const outdatedOutputCount = useOutdatedScreenOutputs(() => screenId.value);
 
 const modeSettingsComponent = computed(() => {
 	const mode = screen.value?.currentMode;
-	if (!mode)
-		return null;
+	if (!mode) return null;
 	return getScreenModeSettingsComponent(mode);
 });
 
 // The current mode, when it carries its own Background Layers stack.
 const backgroundLayersMode = computed<BackgroundLayersCapableMode | null>(() => {
 	const mode = screen.value?.currentMode;
-	return mode && screenModeSupportsBackgroundLayers(mode)
-		? mode
-		: null;
+	return mode && screenModeSupportsBackgroundLayers(mode) ? mode : null;
 });
 
 // Reset: restores the current mode's display settings (preserves bindings and Theme overrides).
 // A mode whose reset is an authoring write says so while its Graphics Authoring Lease is another's.
-const modeControlsRef = ref<{ resetConfig?: () => void; resetBlockedReason?: string; saving?: boolean } | null>(null);
+const modeControlsRef = ref<{
+	resetConfig?: () => void;
+	resetBlockedReason?: string;
+	saving?: boolean;
+} | null>(null);
 const showResetConfirm = ref(false);
 const showCapabilityRotationConfirm = ref(false);
 const rotatingCapability = ref(false);
@@ -82,9 +90,9 @@ const rotatingCapability = ref(false);
 const backgroundLayersControlsRef = ref<{ saving?: boolean } | null>(null);
 
 // Centralized saving indicator — true when mode or background-layer config is saving
-const isSaving = computed(() =>
-	modeControlsRef.value?.saving === true
-	|| backgroundLayersControlsRef.value?.saving === true,
+const isSaving = computed(
+	() =>
+		modeControlsRef.value?.saving === true || backgroundLayersControlsRef.value?.saving === true,
 );
 
 const resetBlockedReason = computed(() => modeControlsRef.value?.resetBlockedReason);
@@ -103,8 +111,7 @@ function confirmResetAll() {
  * screen and typing it produces an output with no media (#231).
  */
 const screenUrl = computed(() => {
-	if (!screen.value)
-		return '';
+	if (!screen.value) return '';
 	const baseUrl = window.location.origin;
 	return `${baseUrl}/event/${eventId.value}/screen/${screen.value.slug}`;
 });
@@ -116,8 +123,7 @@ const modeOptions = useEventScreenModeSelectOptions();
 let watchedPresenceId: number | null = null;
 
 function releasePresence() {
-	if (watchedPresenceId === null)
-		return;
+	if (watchedPresenceId === null) return;
 	screenStore.unsubscribeFromScreenPresence(watchedPresenceId);
 	watchedPresenceId = null;
 }
@@ -129,43 +135,43 @@ function releasePresence() {
 // superseded, so a slow load for an intermediate screenId can't overwrite
 // `screen`/`loading` or open a presence subscription nothing will ever close.
 async function loadScreen(id: number) {
-	if (!eventId.value)
-		return;
-	await runRequest(
-		() => screenStore.getScreenById(eventId.value, id),
-		{
-			latestKey: 'screen',
-			loadingRef: loading,
-			success: false,
-			error: {
-				title: 'Error',
-				description: 'Failed to load screen',
-				color: 'error',
-			},
-			onSuccess: (data) => {
-				screen.value = data;
-				// Subscribe to presence after screen loads
-				releasePresence();
-				screenStore.subscribeToScreenPresence(id);
-				watchedPresenceId = id;
-			},
+	if (!eventId.value) return;
+	await runRequest(() => screenStore.getScreenById(eventId.value, id), {
+		latestKey: 'screen',
+		loadingRef: loading,
+		success: false,
+		error: {
+			title: 'Error',
+			description: 'Failed to load screen',
+			color: 'error',
 		},
-	);
+		onSuccess: (data) => {
+			screen.value = data;
+			// Subscribe to presence after screen loads
+			releasePresence();
+			screenStore.subscribeToScreenPresence(id);
+			watchedPresenceId = id;
+		},
+	});
 }
 
-watch(screenId, (newId) => {
-	releasePresence();
-	if (newId) {
-		screen.value = null;
-		void loadScreen(newId);
-	}
-}, { immediate: true });
+watch(
+	screenId,
+	(newId) => {
+		releasePresence();
+		if (newId) {
+			screen.value = null;
+			void loadScreen(newId);
+		}
+	},
+	{ immediate: true },
+);
 
 onBeforeUnmount(releasePresence);
 
 // Keep screen in sync with store updates (targeted by ID, avoids deep watch)
-const storeScreen = computed(() =>
-	screenStore.screens.find(s => s.id === screenId.value) ?? null,
+const storeScreen = computed(
+	() => screenStore.screens.find((s) => s.id === screenId.value) ?? null,
 );
 watch(storeScreen, (updated, previous) => {
 	if (updated) {
@@ -179,35 +185,31 @@ watch(storeScreen, (updated, previous) => {
 });
 
 async function setMode(mode: ScreenMode) {
-	if (!screen.value || isUpdating.value || mode === screen.value.currentMode)
-		return;
+	if (!screen.value || isUpdating.value || mode === screen.value.currentMode) return;
 
-	await runRequest(
-		() => screenStore.setScreenMode(eventId.value, screen.value!.id, mode),
-		{
-			loadingRef: isUpdating,
-			success: {
-				title: 'Mode Changed',
-				description: `Screen mode set to ${getScreenModeLabel(mode)}`,
-				color: 'success',
-			},
-			error: {
-				title: 'Error',
-				description: 'Failed to change screen mode',
-				color: 'error',
-			},
+	await runRequest(() => screenStore.setScreenMode(eventId.value, screen.value!.id, mode), {
+		loadingRef: isUpdating,
+		success: {
+			title: 'Mode Changed',
+			description: `Screen mode set to ${getScreenModeLabel(mode)}`,
+			color: 'success',
 		},
-	);
+		error: {
+			title: 'Error',
+			description: 'Failed to change screen mode',
+			color: 'error',
+		},
+	});
 }
 
 async function rotateAssetCapability() {
-	if (!screen.value)
-		return;
+	if (!screen.value) return;
 	await runRequest(
-		() => $fetch<{ assetCapability: string }>(
-			`/api/events/${eventId.value}/screens/${screen.value!.id}/asset-capability`,
-			{ method: 'POST' },
-		),
+		() =>
+			$fetch<{ assetCapability: string }>(
+				`/api/events/${eventId.value}/screens/${screen.value!.id}/asset-capability`,
+				{ method: 'POST' },
+			),
 		{
 			loadingRef: rotatingCapability,
 			success: {
@@ -274,8 +276,7 @@ const moreActionItems = computed(() => [
 ]);
 
 async function sendCommand(command: ScreenCommand) {
-	if (!screen.value)
-		return;
+	if (!screen.value) return;
 	const labels: Record<ScreenCommand, string> = {
 		refresh: 'Refresh command sent',
 		identify: 'Identify command sent',
@@ -305,14 +306,14 @@ async function sendCommand(command: ScreenCommand) {
 <template>
 	<NuxtLayout name="default" :editor-focus="editorFocus">
 		<template v-if="editorFocus && screen" #navbar-center>
-			<span class="hidden truncate text-sm text-muted sm:inline" data-testid="focused-screen-name">{{ screen.name }}</span>
+			<span
+				class="hidden truncate text-sm text-muted sm:inline"
+				data-testid="focused-screen-name"
+				>{{ screen.name }}</span
+			>
 		</template>
 		<template #actions>
-			<UButton
-				variant="outline"
-				icon="i-lucide-arrow-left"
-				:to="`/event/${eventId}/screens`"
-			>
+			<UButton variant="outline" icon="i-lucide-arrow-left" :to="`/event/${eventId}/screens`">
 				Back to Screens
 			</UButton>
 		</template>
@@ -338,11 +339,7 @@ async function sendCommand(command: ScreenCommand) {
 									<h2 class="text-xl font-semibold">
 										{{ screen.name }}
 									</h2>
-									<UBadge
-										size="xs"
-										:color="isControlScreen ? 'info' : 'neutral'"
-										variant="subtle"
-									>
+									<UBadge size="xs" :color="isControlScreen ? 'info' : 'neutral'" variant="subtle">
 										<UIcon
 											:name="isControlScreen ? 'i-lucide-sliders-horizontal' : 'i-lucide-monitor'"
 											class="size-3 mr-1"
@@ -400,26 +397,29 @@ async function sendCommand(command: ScreenCommand) {
 							</UFieldGroup>
 
 							<!-- Status Indicators -->
-							<UBadge v-if="isSaving" color="warning" variant="subtle">
-								Saving...
-							</UBadge>
-							<span v-if="connectedCount > 0" class="flex items-center gap-1.5 text-xs text-success">
+							<UBadge v-if="isSaving" color="warning" variant="subtle"> Saving... </UBadge>
+							<span
+								v-if="connectedCount > 0"
+								class="flex items-center gap-1.5 text-xs text-success"
+							>
 								<span class="relative flex size-2">
-									<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75" />
+									<span
+										class="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75"
+									/>
 									<span class="relative inline-flex rounded-full size-2 bg-current" />
 								</span>
 								{{ connectedCount }} live
 							</span>
-							<span v-else class="text-xs text-muted">
-								No clients
-							</span>
+							<span v-else class="text-xs text-muted"> No clients </span>
 							<span
 								v-if="degradedCardDataCount > 0"
 								class="flex items-center gap-1.5 text-xs text-warning"
 								data-testid="card-data-degraded"
 							>
 								<UIcon name="i-lucide-triangle-alert" class="size-3.5" />
-								Card data incomplete on {{ degradedCardDataCount }} {{ degradedCardDataCount === 1 ? 'output' : 'outputs' }} — re-fetching until Scryfall answers
+								Card data incomplete on {{ degradedCardDataCount }}
+								{{ degradedCardDataCount === 1 ? 'output' : 'outputs' }} — re-fetching until
+								Scryfall answers
 							</span>
 							<span
 								v-if="outdatedOutputCount > 0"
@@ -427,7 +427,9 @@ async function sendCommand(command: ScreenCommand) {
 								data-testid="outputs-outdated"
 							>
 								<UIcon name="i-lucide-triangle-alert" class="size-3.5" />
-								{{ outdatedOutputCount }} outdated {{ outdatedOutputCount === 1 ? 'output' : 'outputs' }} — refresh to load the current version
+								{{ outdatedOutputCount }} outdated
+								{{ outdatedOutputCount === 1 ? 'output' : 'outputs' }} — refresh to load the current
+								version
 							</span>
 						</div>
 					</div>
@@ -444,7 +446,11 @@ async function sendCommand(command: ScreenCommand) {
 								color="neutral"
 								label="Cancel"
 								:disabled="rotatingCapability"
-								@click="() => { showCapabilityRotationConfirm = false }"
+								@click="
+									() => {
+										showCapabilityRotationConfirm = false;
+									}
+								"
 							/>
 							<UButton
 								color="warning"
@@ -466,13 +472,13 @@ async function sendCommand(command: ScreenCommand) {
 								variant="ghost"
 								color="neutral"
 								label="Cancel"
-								@click="() => { showResetConfirm = false }"
+								@click="
+									() => {
+										showResetConfirm = false;
+									}
+								"
 							/>
-							<UButton
-								color="error"
-								label="Reset"
-								@click="confirmResetAll"
-							/>
+							<UButton color="error" label="Reset" @click="confirmResetAll" />
 						</template>
 					</UModal>
 				</UCard>

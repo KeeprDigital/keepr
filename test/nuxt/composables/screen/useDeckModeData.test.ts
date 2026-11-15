@@ -13,26 +13,21 @@ const mockReadDeck = vi.fn();
 const mockFetchScryfallCards = vi.fn();
 const mockBuildDeckListArrays = vi.fn();
 const mockGetSelectedBroadcastDeckList = vi.fn();
-const mockOnChannel = vi.fn<(
-	channel: string,
-	type: string,
-	handler: (message: Record<string, unknown>) => void,
-) => () => void>(() => vi.fn());
+const mockOnChannel = vi.fn<
+	(channel: string, type: string, handler: (message: Record<string, unknown>) => void) => () => void
+>(() => vi.fn());
 
 const mockPlayerId = ref<number | null>(null);
 const mockBroadcastDeckListId = ref<number | null>(null);
 const mockEventId = ref<number | null>(1);
 const mockPlayerDecks = vi.fn(async (playerId: number) => {
 	const player = await mockReadPlayer(mockEventId.value, playerId);
-	if (!player)
-		throw Object.assign(new Error('Not found'), { statusCode: 404 });
+	if (!player) throw Object.assign(new Error('Not found'), { statusCode: 404 });
 	const deck = await mockReadDeck(playerId, mockEventId.value, player.updatedAt);
 	return {
 		player,
 		decks: {
-			decks: deck
-				? [deck]
-				: [],
+			decks: deck ? [deck] : [],
 			selectedDeckId: deck?.id ?? null,
 		},
 	};
@@ -53,12 +48,12 @@ const mockRealtime = reactive({
 });
 
 mockNuxtImport('useScreenOutputReads', () => () => ({
-	scope: computed(() => mockEventId.value
-		? { eventId: mockEventId.value, screenId: mockScreen.value.id }
-		: null),
-	scopeKey: computed(() => mockEventId.value
-		? `${mockEventId.value}:${mockScreen.value.id}`
-		: null),
+	scope: computed(() =>
+		mockEventId.value ? { eventId: mockEventId.value, screenId: mockScreen.value.id } : null,
+	),
+	scopeKey: computed(() =>
+		mockEventId.value ? `${mockEventId.value}:${mockScreen.value.id}` : null,
+	),
 	playerDecks: mockPlayerDecks,
 	cardData: mockFetchScryfallCards,
 }));
@@ -76,12 +71,17 @@ const screenContext = screenContextOf({
 });
 /** The Deck List's board settings, beside its Deck Source. */
 const mockBoards = ref<Record<string, unknown>>({});
-mockNuxtImport('useScreenModeConfig', () => (_mode: string) => computed(() => ({
-	...mockBoards.value,
-	deckSource: mockBroadcastDeckListId.value === null
-		? { type: 'player' as const, playerId: mockPlayerId.value }
-		: { type: 'broadcast' as const, broadcastDeckListId: mockBroadcastDeckListId.value },
-})));
+mockNuxtImport(
+	'useScreenModeConfig',
+	() => (_mode: string) =>
+		computed(() => ({
+			...mockBoards.value,
+			deckSource:
+				mockBroadcastDeckListId.value === null
+					? { type: 'player' as const, playerId: mockPlayerId.value }
+					: { type: 'broadcast' as const, broadcastDeckListId: mockBroadcastDeckListId.value },
+		})),
+);
 mockNuxtImport('useScryfallBatch', () => () => ({
 	fetchScryfallCards: mockFetchScryfallCards,
 	buildDeckListArrays: mockBuildDeckListArrays,
@@ -89,7 +89,10 @@ mockNuxtImport('useScryfallBatch', () => () => ({
 
 const images = stubImageLoading();
 
-function createDeckResponse(cards: Array<Record<string, unknown>>, metadata: { id?: number; name?: string; colors?: string } = {}) {
+function createDeckResponse(
+	cards: Array<Record<string, unknown>>,
+	metadata: { id?: number; name?: string; colors?: string } = {},
+) {
 	return {
 		id: metadata.id ?? 10,
 		externalId: `deck-${metadata.id ?? 10}`,
@@ -137,21 +140,29 @@ function createEnrichedCard(name: string, imageUrl = `https://img.test/${name}.j
 }
 
 /** Players the Screen Output reads, each with a one-card deck, keyed by id. */
-function servePlayers(players: Record<number, { name: string; deckName?: string; card?: string; updatedAt?: () => string }>) {
+function servePlayers(
+	players: Record<
+		number,
+		{ name: string; deckName?: string; card?: string; updatedAt?: () => string }
+	>,
+) {
 	mockReadPlayer.mockImplementation(async (_eventId: number, playerId: number) => {
 		const player = players[playerId];
-		return player && {
-			id: playerId,
-			name: player.name,
-			updatedAt: player.updatedAt?.(),
-			gameData: { type: 'mtg', deckName: player.deckName ?? 'Azorius Control', deckColors: 'WU' },
-		};
+		return (
+			player && {
+				id: playerId,
+				name: player.name,
+				updatedAt: player.updatedAt?.(),
+				gameData: { type: 'mtg', deckName: player.deckName ?? 'Azorius Control', deckColors: 'WU' },
+			}
+		);
 	});
 	mockReadDeck.mockImplementation(async (playerId: number) => {
 		const player = players[playerId];
-		return createDeckResponse([
-			createDeckCard({ name: player?.card ?? 'Counterspell' }),
-		], { id: playerId * 10, name: player?.deckName });
+		return createDeckResponse([createDeckCard({ name: player?.card ?? 'Counterspell' })], {
+			id: playerId * 10,
+			name: player?.deckName,
+		});
 	});
 }
 
@@ -169,7 +180,11 @@ function scryfallAnswers(...degraded: boolean[]) {
 	});
 }
 
-function broadcastEntry(id: number, canonicalName: string, overrides: Record<string, unknown> = {}) {
+function broadcastEntry(
+	id: number,
+	canonicalName: string,
+	overrides: Record<string, unknown> = {},
+) {
 	return {
 		id,
 		listId: 23,
@@ -190,10 +205,16 @@ function broadcastEntry(id: number, canonicalName: string, overrides: Record<str
 	};
 }
 
-function createBroadcastList(revision: number, name: string, entries: Array<Record<string, unknown>> = [], metadata: Record<string, unknown> = {}) {
-	const quantity = (compartment: string) => entries
-		.filter(entry => entry.compartment === compartment)
-		.reduce((total, entry) => total + Number(entry.quantity ?? 0), 0);
+function createBroadcastList(
+	revision: number,
+	name: string,
+	entries: Array<Record<string, unknown>> = [],
+	metadata: Record<string, unknown> = {},
+) {
+	const quantity = (compartment: string) =>
+		entries
+			.filter((entry) => entry.compartment === compartment)
+			.reduce((total, entry) => total + Number(entry.quantity ?? 0), 0);
 	return {
 		id: 23,
 		eventId: 1,
@@ -203,7 +224,7 @@ function createBroadcastList(revision: number, name: string, entries: Array<Reco
 		revision,
 		mainboardQuantity: quantity('mainboard'),
 		sideboardQuantity: quantity('sideboard'),
-		hasCompanion: entries.some(entry => entry.compartment === 'companion'),
+		hasCompanion: entries.some((entry) => entry.compartment === 'companion'),
 		sourceText: 'saved source',
 		entries,
 		createdAt: new Date(0),
@@ -215,16 +236,19 @@ function createBroadcastList(revision: number, name: string, entries: Array<Reco
 /** Builds deck rows from the cards as Scryfall-enriched or, with `mtgCard: null`, as placeholders. */
 function buildPlaceholders() {
 	mockBuildDeckListArrays.mockImplementation((cards: Array<Record<string, unknown>>) => ({
-		mainboard: cards.filter(card => card.compartment === 'mainboard').map(card => ({ ...card, mtgCard: null })),
-		sideboard: cards.filter(card => card.compartment === 'sideboard').map(card => ({ ...card, mtgCard: null })),
+		mainboard: cards
+			.filter((card) => card.compartment === 'mainboard')
+			.map((card) => ({ ...card, mtgCard: null })),
+		sideboard: cards
+			.filter((card) => card.compartment === 'sideboard')
+			.map((card) => ({ ...card, mtgCard: null })),
 	}));
 }
 
 /** Delivers an Event-channel message to the listeners registered for it. */
 function deliver(type: string, payload: Record<string, unknown>) {
 	for (const [channel, messageType, handler] of mockOnChannel.mock.calls) {
-		if (channel === 'event:1' && messageType === type)
-			handler({ eventId: 1, ...payload });
+		if (channel === 'event:1' && messageType === type) handler({ eventId: 1, ...payload });
 	}
 }
 
@@ -245,7 +269,7 @@ describe('useDeckModeData', () => {
 	}
 
 	function mainboardNames(result: ReturnType<typeof mountDeckModeData>) {
-		return result.mainboard.value.map(card => card.name);
+		return result.mainboard.value.map((card) => card.name);
 	}
 
 	beforeEach(() => {
@@ -268,18 +292,19 @@ describe('useDeckModeData', () => {
 		mockGetSelectedBroadcastDeckList.mockResolvedValue(null);
 		scryfallAnswers(false);
 		mockBuildDeckListArrays.mockImplementation((cards: Array<{ name: string }>) => ({
-			mainboard: cards.map(card => createEnrichedCard(card.name)),
+			mainboard: cards.map((card) => createEnrichedCard(card.name)),
 			sideboard: [],
 		}));
 	});
 
 	afterEach(() => {
-		activeScopes.splice(0).forEach(scope => scope.stop());
+		activeScopes.splice(0).forEach((scope) => scope.stop());
 		vi.useRealTimers();
 	});
 
 	it('starts blank with no loading state when no player is selected', () => {
-		const { primaryHeader, secondaryHeader, mainboard, sideboard, loading, hasDisplayedDeck } = mountDeckModeData();
+		const { primaryHeader, secondaryHeader, mainboard, sideboard, loading, hasDisplayedDeck } =
+			mountDeckModeData();
 
 		expect(primaryHeader.value).toBe('');
 		expect(secondaryHeader.value).toBe('');
@@ -291,7 +316,8 @@ describe('useDeckModeData', () => {
 
 	it('loads the initial deck immediately and preloads its images', async () => {
 		mockPlayerId.value = 5;
-		const { primaryHeader, secondaryHeader, deckColors, hasDisplayedDeck, displayedDeckVersion } = mountDeckModeData();
+		const { primaryHeader, secondaryHeader, deckColors, hasDisplayedDeck, displayedDeckVersion } =
+			mountDeckModeData();
 		await flushPromises();
 
 		expect(primaryHeader.value).toBe('Alice');
@@ -306,27 +332,35 @@ describe('useDeckModeData', () => {
 	it.each([
 		{ view: 'grid', shownWhileArtLoads: false },
 		{ view: 'list', shownWhileArtLoads: true },
-	])('a $view Mainboard goes on program while its art still loads: $shownWhileArtLoads', async ({ view, shownWhileArtLoads }) => {
-		const art = 'https://img.test/Counterspell.jpg';
-		mockBoards.value = {
-			mainboard: { view },
-		};
-		mockPlayerId.value = 5;
-		images.hold(art);
-		const { hasDisplayedDeck } = mountDeckModeData();
-		await flushPromises();
+	])(
+		'a $view Mainboard goes on program while its art still loads: $shownWhileArtLoads',
+		async ({ view, shownWhileArtLoads }) => {
+			const art = 'https://img.test/Counterspell.jpg';
+			mockBoards.value = {
+				mainboard: { view },
+			};
+			mockPlayerId.value = 5;
+			images.hold(art);
+			const { hasDisplayedDeck } = mountDeckModeData();
+			await flushPromises();
 
-		expect(images.requested).toContain(art);
-		expect(hasDisplayedDeck.value).toBe(shownWhileArtLoads);
-		images.release(art);
-		await flushPromises();
-		expect(hasDisplayedDeck.value).toBe(true);
-	});
+			expect(images.requested).toContain(art);
+			expect(hasDisplayedDeck.value).toBe(shownWhileArtLoads);
+			images.release(art);
+			await flushPromises();
+			expect(hasDisplayedDeck.value).toBe(true);
+		},
+	);
 
 	// A hundred-card grid draws Scryfall's small image, which its cards are no wider than (#1201).
-	it('preloads a hundred-card grid\'s small art and draws it', async () => {
-		mockReadDeck.mockResolvedValue(createDeckResponse(Array.from({ length: 100 }, (_, index) =>
-			createDeckCard({ name: `Card ${index}`, quantity: 1 }))));
+	it("preloads a hundred-card grid's small art and draws it", async () => {
+		mockReadDeck.mockResolvedValue(
+			createDeckResponse(
+				Array.from({ length: 100 }, (_, index) =>
+					createDeckCard({ name: `Card ${index}`, quantity: 1 }),
+				),
+			),
+		);
 		mockPlayerId.value = 5;
 		const { art, hasDisplayedDeck } = mountDeckModeData();
 		await flushPromises();
@@ -337,7 +371,7 @@ describe('useDeckModeData', () => {
 		expect(images.requested).not.toContain('https://img.test/Card 0.jpg');
 	});
 
-	it('warms a listed board\'s art only once the art on show has loaded', async () => {
+	it("warms a listed board's art only once the art on show has loaded", async () => {
 		const shown = 'https://img.test/Duress.jpg';
 		const listed = 'https://img.test/Counterspell.jpg';
 		mockBoards.value = {
@@ -345,16 +379,14 @@ describe('useDeckModeData', () => {
 			sideboard: { view: 'grid' },
 		};
 		// The deck's own cards; a Player has no Commanders.
-		mockBuildDeckListArrays.mockImplementation((cards: unknown[]) => cards.length > 0
-			? {
-					mainboard: [
-						createEnrichedCard('Counterspell'),
-					],
-					sideboard: [
-						createEnrichedCard('Duress'),
-					],
-				}
-			: { mainboard: [], sideboard: [] });
+		mockBuildDeckListArrays.mockImplementation((cards: unknown[]) =>
+			cards.length > 0
+				? {
+						mainboard: [createEnrichedCard('Counterspell')],
+						sideboard: [createEnrichedCard('Duress')],
+					}
+				: { mainboard: [], sideboard: [] },
+		);
 		mockPlayerId.value = 5;
 		images.hold(shown);
 		const { hasDisplayedDeck } = mountDeckModeData();
@@ -373,35 +405,43 @@ describe('useDeckModeData', () => {
 		});
 
 		it('projects through the source-independent display state', async () => {
-			mockGetSelectedBroadcastDeckList.mockResolvedValue(createBroadcastList(4, 'Feature Table', [
-				broadcastEntry(1, 'Lightning Bolt', {
-					quantity: 4,
-					deckCounterTypes: ['storm'],
-				}),
-				broadcastEntry(2, 'Birds of Paradise', { cardType: 'Creature — Bird' }),
-				broadcastEntry(3, 'Surgical Extraction', {
-					compartment: 'sideboard',
-					quantity: 2,
-					deckCounterTypes: ['poison'],
-				}),
-				broadcastEntry(4, 'Lutri, the Spellchaser', {
-					compartment: 'companion',
-					deckCounterTypes: ['energy'],
-				}),
-			], { archetypeLabel: 'Jeskai Control', colors: 'WUR' }));
+			mockGetSelectedBroadcastDeckList.mockResolvedValue(
+				createBroadcastList(
+					4,
+					'Feature Table',
+					[
+						broadcastEntry(1, 'Lightning Bolt', {
+							quantity: 4,
+							deckCounterTypes: ['storm'],
+						}),
+						broadcastEntry(2, 'Birds of Paradise', { cardType: 'Creature — Bird' }),
+						broadcastEntry(3, 'Surgical Extraction', {
+							compartment: 'sideboard',
+							quantity: 2,
+							deckCounterTypes: ['poison'],
+						}),
+						broadcastEntry(4, 'Lutri, the Spellchaser', {
+							compartment: 'companion',
+							deckCounterTypes: ['energy'],
+						}),
+					],
+					{ archetypeLabel: 'Jeskai Control', colors: 'WUR' },
+				),
+			);
 			buildPlaceholders();
 
 			const result = mountDeckModeData();
 			await flushPromises();
 
 			expect(mockGetSelectedBroadcastDeckList).toHaveBeenCalledWith(1, 1, 'output-capability');
-			expect(mockFetchScryfallCards.mock.calls[0]![0].map((card: { name: string }) => card.name))
-				.toEqual([
-					'Lightning Bolt',
-					'Birds of Paradise',
-					'Surgical Extraction',
-					'Lutri, the Spellchaser',
-				]);
+			expect(
+				mockFetchScryfallCards.mock.calls[0]![0].map((card: { name: string }) => card.name),
+			).toEqual([
+				'Lightning Bolt',
+				'Birds of Paradise',
+				'Surgical Extraction',
+				'Lutri, the Spellchaser',
+			]);
 			expect(result.primaryHeader.value).toBe('Feature Table');
 			expect(result.secondaryHeader.value).toBe('Jeskai Control');
 			expect(result.deckColors.value).toBe('WUR');
@@ -412,9 +452,12 @@ describe('useDeckModeData', () => {
 			]);
 			// The companion is a card image of its own, its art read with the deck's.
 			expect(result.companion.value).toMatchObject({ cardId: 4, name: 'Lutri, the Spellchaser' });
-			expect(result.companionCard.value).toMatchObject({ name: 'Lutri, the Spellchaser', quantity: 1 });
+			expect(result.companionCard.value).toMatchObject({
+				name: 'Lutri, the Spellchaser',
+				quantity: 1,
+			});
 			expect(mainboardNames(result)).toEqual(['Lightning Bolt', 'Birds of Paradise']);
-			expect(result.sideboard.value.map(card => card.name)).toEqual(['Surgical Extraction']);
+			expect(result.sideboard.value.map((card) => card.name)).toEqual(['Surgical Extraction']);
 		});
 
 		it('keeps the displayed revision until an update notification fetches and stages its successor', async () => {
@@ -456,13 +499,17 @@ describe('useDeckModeData', () => {
 			const result = mountDeckModeData();
 			await vi.advanceTimersByTimeAsync(0);
 
-			mockGetSelectedBroadcastDeckList.mockRejectedValueOnce(new Error('canonical read unavailable'));
+			mockGetSelectedBroadcastDeckList.mockRejectedValueOnce(
+				new Error('canonical read unavailable'),
+			);
 			deliver('broadcastDeckList:updated', { listId: 23, revision: 2 });
 			await vi.advanceTimersByTimeAsync(0);
 			expect(result.primaryHeader.value).toBe('On air');
 			expect(result.pendingSwapVersion.value).toBe(0);
 
-			mockGetSelectedBroadcastDeckList.mockResolvedValue(createBroadcastList(2, 'Recovered revision'));
+			mockGetSelectedBroadcastDeckList.mockResolvedValue(
+				createBroadcastList(2, 'Recovered revision'),
+			);
 			await vi.advanceTimersByTimeAsync(60_000);
 			expect(result.primaryHeader.value).toBe('On air');
 			expect(result.pendingSwapVersion.value).toBe(1);
@@ -500,11 +547,11 @@ describe('useDeckModeData', () => {
 			const failedUrl = 'https://img.test/unavailable.jpg';
 			mockGetSelectedBroadcastDeckList
 				.mockResolvedValueOnce(createBroadcastList(1, 'On air'))
-				.mockResolvedValue(createBroadcastList(2, 'New revision', [
-					broadcastEntry(1, 'Lightning Bolt'),
-				]));
+				.mockResolvedValue(
+					createBroadcastList(2, 'New revision', [broadcastEntry(1, 'Lightning Bolt')]),
+				);
 			mockBuildDeckListArrays.mockImplementation((cards: Array<{ name: string }>) => ({
-				mainboard: cards.map(card => createEnrichedCard(card.name, failedUrl)),
+				mainboard: cards.map((card) => createEnrichedCard(card.name, failedUrl)),
 				sideboard: [],
 			}));
 			images.fail(failedUrl);
@@ -555,11 +602,13 @@ describe('useDeckModeData', () => {
 		it('ignores a stale read when the selected deck changes rapidly', async () => {
 			let releaseBob!: () => void;
 			const readPlayer = mockReadPlayer.getMockImplementation()!;
-			mockReadPlayer.mockImplementation((eventId: number, playerId: number) => playerId === 2
-				? new Promise((resolve) => {
-						releaseBob = () => resolve(readPlayer(eventId, playerId));
-					})
-				: readPlayer(eventId, playerId));
+			mockReadPlayer.mockImplementation((eventId: number, playerId: number) =>
+				playerId === 2
+					? new Promise((resolve) => {
+							releaseBob = () => resolve(readPlayer(eventId, playerId));
+						})
+					: readPlayer(eventId, playerId),
+			);
 			mockPlayerId.value = 1;
 			const result = mountDeckModeData();
 			await flushPromises();
@@ -663,9 +712,7 @@ describe('useDeckModeData', () => {
 			expect(result.pendingSwapVersion.value).toBe(0);
 
 			updatedAt = '2026-08-21T01:00:00.000Z';
-			mockReadDeck.mockResolvedValue(createDeckResponse([
-				createDeckCard({ name: 'Brainstorm' }),
-			]));
+			mockReadDeck.mockResolvedValue(createDeckResponse([createDeckCard({ name: 'Brainstorm' })]));
 			deliver('player:updated', {
 				player: { id: 5, name: 'Alice', updatedAt },
 			});
@@ -721,7 +768,7 @@ describe('useDeckModeData', () => {
 			mockPlayerId.value = 6;
 			await vi.advanceTimersByTimeAsync(0);
 			expect(mockCardDataHealth.value).toBe('degraded');
-			activeScopes.splice(0).forEach(scope => scope.stop());
+			activeScopes.splice(0).forEach((scope) => scope.stop());
 			expect(mockCardDataHealth.value).toBe('complete');
 		});
 	});
@@ -737,8 +784,7 @@ describe('useDeckModeData', () => {
 
 		/** The server commits an edit and announces it on the Event channel. */
 		function applyPlayerUpdated(next: typeof serverPlayer) {
-			if (next.id === serverPlayer.id)
-				serverPlayer = next;
+			if (next.id === serverPlayer.id) serverPlayer = next;
 			deliver('player:updated', { player: next });
 		}
 
@@ -758,19 +804,20 @@ describe('useDeckModeData', () => {
 			serverPlayer = { id: 5, name: 'Alice', updatedAt: BEFORE_EDIT };
 			resolved = false;
 			mockReadPlayer.mockImplementation(async (_eventId: number, playerId: number) =>
-				playerId === serverPlayer.id
-					? serverPlayer
-					: null);
-			mockReadDeck.mockImplementation(async (_playerId: number, _eventId: number, updatedAt: string) =>
-				createDeckResponse([
-					createDeckCard({
-						name: resolved
-							? 'Lightning Bolt'
-							: updatedAt === BEFORE_EDIT
-								? 'Counterspell'
-								: 'Brainstorm',
-					}),
-				]));
+				playerId === serverPlayer.id ? serverPlayer : null,
+			);
+			mockReadDeck.mockImplementation(
+				async (_playerId: number, _eventId: number, updatedAt: string) =>
+					createDeckResponse([
+						createDeckCard({
+							name: resolved
+								? 'Lightning Bolt'
+								: updatedAt === BEFORE_EDIT
+									? 'Counterspell'
+									: 'Brainstorm',
+						}),
+					]),
+			);
 			mockPlayerId.value = 5;
 		});
 
@@ -788,7 +835,7 @@ describe('useDeckModeData', () => {
 			expect(mainboardNames(result)).toEqual(['Brainstorm']);
 		});
 
-		it('does not swap for a read answering what is on program, and reads nothing for another Player\'s update', async () => {
+		it("does not swap for a read answering what is on program, and reads nothing for another Player's update", async () => {
 			const result = mountDeckModeData();
 			await flushPromises();
 
@@ -853,9 +900,9 @@ describe('useDeckModeData', () => {
 
 		it('keeps an unchanged deck on program when only the Player revision moved', async () => {
 			// A Round sync refreshes Players' records, moving their revision but not their Deck List.
-			mockReadDeck.mockImplementation(async () => createDeckResponse([
-				createDeckCard({ name: 'Counterspell' }),
-			]));
+			mockReadDeck.mockImplementation(async () =>
+				createDeckResponse([createDeckCard({ name: 'Counterspell' })]),
+			);
 			const result = mountDeckModeData();
 			await flushPromises();
 
@@ -945,7 +992,7 @@ describe('useDeckModeData', () => {
 			expect(result.error.value).toBe('Player has no deck list');
 		});
 
-		it('leaves a deleted Player\'s deck once the Screen clears its Deck Source, and stops re-reading them (#651)', async () => {
+		it("leaves a deleted Player's deck once the Screen clears its Deck Source, and stops re-reading them (#651)", async () => {
 			vi.useFakeTimers();
 			vi.spyOn(console, 'error').mockImplementation(() => {});
 			const result = mountDeckModeData();
@@ -975,12 +1022,12 @@ describe('useDeckModeData', () => {
 		});
 
 		it('shows a deck imported after the Player was selected without one', async () => {
-			mockReadDeck.mockImplementation(async (_playerId: number, _eventId: number, updatedAt: string) =>
-				createDeckResponse(updatedAt === BEFORE_EDIT
-					? []
-					: [
-							createDeckCard({ name: 'Brainstorm' }),
-						]));
+			mockReadDeck.mockImplementation(
+				async (_playerId: number, _eventId: number, updatedAt: string) =>
+					createDeckResponse(
+						updatedAt === BEFORE_EDIT ? [] : [createDeckCard({ name: 'Brainstorm' })],
+					),
+			);
 			const result = mountDeckModeData();
 			await flushPromises();
 			expect(result.error.value).toBe('Player has no deck list');

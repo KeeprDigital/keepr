@@ -5,7 +5,7 @@ const timeAgo = useTimeAgo(
 	computed(() => lastSyncedAt.value ?? Date.now()),
 	{
 		showSecond: true,
-		scheduler: tick => useIntervalFn(tick, 1000),
+		scheduler: (tick) => useIntervalFn(tick, 1000),
 	},
 );
 
@@ -13,9 +13,7 @@ const statusIcon = computed(() => (isSynced.value ? 'i-lucide-clock-3' : 'i-luci
 
 const offsetLabel = computed(() => {
 	const ms = Math.round(serverTimeOffset.value);
-	const sign = ms >= 0
-		? '+'
-		: '';
+	const sign = ms >= 0 ? '+' : '';
 	return `${sign}${ms}ms`;
 });
 </script>
@@ -35,9 +33,7 @@ const offsetLabel = computed(() => {
 			<UIcon
 				:name="statusIcon"
 				class="size-4"
-				:class="[
-					isSynced ? 'text-success' : 'text-warning',
-				]"
+				:class="[isSynced ? 'text-success' : 'text-warning']"
 			/>
 		</button>
 
@@ -46,9 +42,7 @@ const offsetLabel = computed(() => {
 				<div class="flex items-center gap-2">
 					<span
 						class="size-2 rounded-full shrink-0"
-						:class="[
-							isSynced ? 'bg-success' : 'bg-warning',
-						]"
+						:class="[isSynced ? 'bg-success' : 'bg-warning']"
 					/>
 					<span class="text-sm font-medium text-highlighted">
 						{{ isSynced ? 'Server Time Synced' : 'Not Synced' }}

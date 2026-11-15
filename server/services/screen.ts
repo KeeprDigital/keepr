@@ -7,7 +7,15 @@ import type { CreateScreenInput, UpdateScreenInput } from '~~/shared/api';
 import type { StoredThemeTokens } from '~~/shared/modules/theme';
 import { and, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
-import { archetypes, eventTalents, featureMatches, phases, players, rounds, screens } from '~~/server/db/schema';
+import {
+	archetypes,
+	eventTalents,
+	featureMatches,
+	phases,
+	players,
+	rounds,
+	screens,
+} from '~~/server/db/schema';
 import {
 	graphicsAuthoringLeaseConflict,
 	graphicsAuthoringLeaseFenceCondition,
@@ -29,18 +37,23 @@ import { isGraphicAssetReferencingScreenMode } from '~~/shared/utils/graphicsAss
  * Players: the Screen guard triggers prove a Deck Source's Player exists, so a
  * Screen left naming a deleted Player could never be written again (#651).
  */
-export function buildClearDeckSourcePlayersQuery(eventId: number, playerIds: number[] | SQLWrapper) {
+export function buildClearDeckSourcePlayersQuery(
+	eventId: number,
+	playerIds: number[] | SQLWrapper,
+) {
 	return db
 		.update(screens)
 		.set({
 			modeConfigs: sql`json_set(${screens.modeConfigs}, '$.deck.deckSource.playerId', json('null'))`,
 			stateVersion: sql`${screens.stateVersion} + 1`,
 		})
-		.where(and(
-			eq(screens.eventId, eventId),
-			sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.type') = 'player'`,
-			inArray(sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.playerId')`, playerIds),
-		))
+		.where(
+			and(
+				eq(screens.eventId, eventId),
+				sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.type') = 'player'`,
+				inArray(sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.playerId')`, playerIds),
+			),
+		)
 		.returning();
 }
 
@@ -56,11 +69,13 @@ export function buildClearDeckSourceSlotsQuery(eventId: number, slotIds: number[
 			modeConfigs: sql`json_set(${screens.modeConfigs}, '$.deck.deckSource.slotId', json('null'))`,
 			stateVersion: sql`${screens.stateVersion} + 1`,
 		})
-		.where(and(
-			eq(screens.eventId, eventId),
-			sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.type') = 'featureMatchSlot'`,
-			inArray(sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.slotId')`, slotIds),
-		))
+		.where(
+			and(
+				eq(screens.eventId, eventId),
+				sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.type') = 'featureMatchSlot'`,
+				inArray(sql`json_extract(${screens.modeConfigs}, '$.deck.deckSource.slotId')`, slotIds),
+			),
+		)
 		.returning();
 }
 
@@ -84,10 +99,12 @@ export function buildReleaseManualBracketPlayersQuery(eventId: number) {
 			modeConfigs: sql`json_set(${screens.modeConfigs}, ${path}, json(${kept}))`,
 			stateVersion: sql`${screens.stateVersion} + 1`,
 		})
-		.where(and(
-			eq(screens.eventId, eventId),
-			sql`exists (select 1 from json_each(${screens.modeConfigs}, ${path}) as item where ${released})`,
-		))
+		.where(
+			and(
+				eq(screens.eventId, eventId),
+				sql`exists (select 1 from json_each(${screens.modeConfigs}, ${path}) as item where ${released})`,
+			),
+		)
 		.returning();
 }
 
@@ -102,10 +119,14 @@ const RELEASED_EVENT_REFERENCE_TABLES = {
 };
 
 /** The released kinds whose field holds a list of ids: a release drops the missing ids and keeps the rest in order. */
-const RELEASED_EVENT_REFERENCE_LISTS: ReadonlySet<ReleasedEventReferenceKind> = new Set(['talentLineup']);
+const RELEASED_EVENT_REFERENCE_LISTS: ReadonlySet<ReleasedEventReferenceKind> = new Set([
+	'talentLineup',
+]);
 
 /** The released kinds whose field its mode's config requires: a release sets it to null, where an optional field is removed. */
-const RELEASED_EVENT_REFERENCE_NULLED: ReadonlySet<ReleasedEventReferenceKind> = new Set(['featureMatchSlot']);
+const RELEASED_EVENT_REFERENCE_NULLED: ReadonlySet<ReleasedEventReferenceKind> = new Set([
+	'featureMatchSlot',
+]);
 
 export type ReleasedEventReferenceKind = keyof typeof RELEASED_EVENT_REFERENCE_TABLES;
 
@@ -118,12 +139,14 @@ export type ReleasedEventReferenceKind = keyof typeof RELEASED_EVENT_REFERENCE_T
  * as a Talent lineup, loses only the missing ids, the rest in order (ADR-0070).
  * A Feature Match Slot reference is set to null, the field kept.
  */
-export function buildReleaseScreenEventReferencesQuery(eventId: number, kinds: readonly ReleasedEventReferenceKind[]) {
-	const released = SCREEN_MODE_VALUES.flatMap(mode =>
+export function buildReleaseScreenEventReferencesQuery(
+	eventId: number,
+	kinds: readonly ReleasedEventReferenceKind[],
+) {
+	const released = SCREEN_MODE_VALUES.flatMap((mode) =>
 		Object.entries(SCREEN_MODES[mode].eventReferences).flatMap(([field, kind]) => {
-			const releasedKind = kinds.find(candidate => candidate === kind);
-			if (!releasedKind)
-				return [];
+			const releasedKind = kinds.find((candidate) => candidate === kind);
+			if (!releasedKind) return [];
 			const table = RELEASED_EVENT_REFERENCE_TABLES[releasedKind];
 			const path = `$."${mode}".${field}`;
 			const held = sql`(select ${table.id} from ${table} where ${table.eventId} = ${eventId})`;
@@ -137,7 +160,8 @@ export function buildReleaseScreenEventReferencesQuery(eventId: number, kinds: r
 					{
 						missing,
 						// A merge patch replaces an array whole.
-						release: (configs: SQL) => sql`json_patch(${configs}, case when ${missing} then json_object(${mode}, json_object(${field}, json(${kept}))) else '{}' end)`,
+						release: (configs: SQL) =>
+							sql`json_patch(${configs}, case when ${missing} then json_object(${mode}, json_object(${field}, json(${kept}))) else '{}' end)`,
 					},
 				];
 			}
@@ -149,7 +173,8 @@ export function buildReleaseScreenEventReferencesQuery(eventId: number, kinds: r
 					{
 						missing,
 						// A merge patch cannot write a null, so the id is replaced where it stands: by null, or by itself.
-						release: (configs: SQL) => sql`json_replace(${configs}, ${path}, case when ${missing} then null else ${value} end)`,
+						release: (configs: SQL) =>
+							sql`json_replace(${configs}, ${path}, case when ${missing} then null else ${value} end)`,
 					},
 				];
 			}
@@ -160,23 +185,25 @@ export function buildReleaseScreenEventReferencesQuery(eventId: number, kinds: r
 			return [
 				{
 					missing,
-					release: (configs: SQL) => sql`json_patch(${configs}, case when ${missing} then ${removal} else '{}' end)`,
+					release: (configs: SQL) =>
+						sql`json_patch(${configs}, case when ${missing} then ${removal} else '{}' end)`,
 				},
 			];
-		}));
+		}),
+	);
 	if (released.length === 0)
 		throw new Error(`No Screen Mode declares an Event Reference of ${kinds.join(', ')}`);
 
 	return db
 		.update(screens)
 		.set({
-			modeConfigs: released.reduce<SQL>((configs, { release }) => release(configs), sql`${screens.modeConfigs}`),
+			modeConfigs: released.reduce<SQL>(
+				(configs, { release }) => release(configs),
+				sql`${screens.modeConfigs}`,
+			),
 			stateVersion: sql`${screens.stateVersion} + 1`,
 		})
-		.where(and(
-			eq(screens.eventId, eventId),
-			or(...released.map(({ missing }) => missing)),
-		))
+		.where(and(eq(screens.eventId, eventId), or(...released.map(({ missing }) => missing))))
 		.returning();
 }
 
@@ -186,13 +213,18 @@ export function buildReleaseScreenEventReferencesQuery(eventId: number, kinds: r
  * batches it before deleting the merged record, so a Screen goes on showing
  * what the record's decks moved to where a delete would leave it showing none.
  */
-export function buildRepointScreenEventReferencesQuery(eventId: number, kind: 'archetype', fromId: number, toId: number) {
-	const paths = SCREEN_MODE_VALUES.flatMap(mode =>
-		Object.entries(SCREEN_MODES[mode].eventReferences).flatMap(([field, declared]) => declared === kind
-			? [`$."${mode}".${field}`]
-			: []));
-	if (paths.length === 0)
-		throw new Error(`No Screen Mode declares an Event Reference of ${kind}`);
+export function buildRepointScreenEventReferencesQuery(
+	eventId: number,
+	kind: 'archetype',
+	fromId: number,
+	toId: number,
+) {
+	const paths = SCREEN_MODE_VALUES.flatMap((mode) =>
+		Object.entries(SCREEN_MODES[mode].eventReferences).flatMap(([field, declared]) =>
+			declared === kind ? [`$."${mode}".${field}`] : [],
+		),
+	);
+	if (paths.length === 0) throw new Error(`No Screen Mode declares an Event Reference of ${kind}`);
 
 	const names = (path: string) => sql`json_extract(${screens.modeConfigs}, ${path}) = ${fromId}`;
 	return db
@@ -200,25 +232,20 @@ export function buildRepointScreenEventReferencesQuery(eventId: number, kind: 'a
 		.set({
 			// `json_replace` writes only a field that is there, so a Screen naming nothing gains none.
 			modeConfigs: paths.reduce<SQL>(
-				(configs, path) => sql`json_replace(${configs}, ${path}, case when ${names(path)} then ${toId} else json_extract(${screens.modeConfigs}, ${path}) end)`,
+				(configs, path) =>
+					sql`json_replace(${configs}, ${path}, case when ${names(path)} then ${toId} else json_extract(${screens.modeConfigs}, ${path}) end)`,
 				sql`${screens.modeConfigs}`,
 			),
 			stateVersion: sql`${screens.stateVersion} + 1`,
 		})
-		.where(and(
-			eq(screens.eventId, eventId),
-			or(...paths.map(names)),
-		))
+		.where(and(eq(screens.eventId, eventId), or(...paths.map(names))))
 		.returning();
 }
 
 export function screenService() {
 	const findById = async (id: number, eventId: number): Promise<DbScreen | undefined> => {
 		return await db.query.screens.findFirst({
-			where: and(
-				eq(screens.id, id),
-				eq(screens.eventId, eventId),
-			),
+			where: and(eq(screens.id, id), eq(screens.eventId, eventId)),
 		});
 	};
 
@@ -244,10 +271,7 @@ export function screenService() {
 	};
 
 	const findIdsByEventId = async (eventId: number): Promise<Array<{ id: number }>> => {
-		return await db
-			.select({ id: screens.id })
-			.from(screens)
-			.where(eq(screens.eventId, eventId));
+		return await db.select({ id: screens.id }).from(screens).where(eq(screens.eventId, eventId));
 	};
 
 	const create = async (
@@ -265,8 +289,7 @@ export function screenService() {
 					...capability,
 				})
 				.returning();
-		}
-		catch (error) {
+		} catch (error) {
 			mapDeckSourceConflict(error);
 		}
 
@@ -286,17 +309,17 @@ export function screenService() {
 		const [updated] = await db
 			.update(screens)
 			.set(replacement)
-			.where(and(
-				eq(screens.id, id),
-				eq(screens.eventId, eventId),
-				eq(screens.assetCapabilityVersion, expectedVersion),
-			))
+			.where(
+				and(
+					eq(screens.id, id),
+					eq(screens.eventId, eventId),
+					eq(screens.assetCapabilityVersion, expectedVersion),
+				),
+			)
 			.returning();
-		if (updated)
-			return updated;
+		if (updated) return updated;
 		const screen = await findById(id, eventId);
-		if (!screen)
-			return undefined;
+		if (!screen) return undefined;
 		throw new StateConflictError('Screen Output Asset Capability', id);
 	};
 
@@ -327,29 +350,26 @@ export function screenService() {
 				db
 					.update(screens)
 					.set({ ...data, stateVersion: currentVersion + 1 })
-					.where(and(
-						eq(screens.id, id),
-						eq(screens.eventId, eventId),
-						eq(screens.stateVersion, currentVersion),
-						leaseFence
-							? graphicsAuthoringLeaseFenceCondition(leaseFence, Date.now())
-							: undefined,
-					))
+					.where(
+						and(
+							eq(screens.id, id),
+							eq(screens.eventId, eventId),
+							eq(screens.stateVersion, currentVersion),
+							leaseFence ? graphicsAuthoringLeaseFenceCondition(leaseFence, Date.now()) : undefined,
+						),
+					)
 					.returning(),
 				...companions,
 			] as [BatchItem<'sqlite'>, ...BatchItem<'sqlite'>[]]);
-		}
-		catch (error) {
+		} catch (error) {
 			mapDeckSourceConflict(error);
 		}
 		const [result] = written as DbScreen[];
 
-		if (result)
-			return result;
+		if (result) return result;
 
 		const screen = await findById(id, eventId);
-		if (!screen)
-			return undefined;
+		if (!screen) return undefined;
 
 		// With the version still standing, the fence is the only other condition
 		// the statement had.
@@ -410,12 +430,18 @@ export function screenService() {
 		}
 
 		const screen = await findById(id, eventId);
-		if (!screen)
-			return undefined;
+		if (!screen) return undefined;
 
 		const mergedConfigs = mergeScreenModeConfig(screen.modeConfigs ?? {}, mode, partialConfig);
 
-		return versionedWrite(id, eventId, { modeConfigs: mergedConfigs }, stateVersion ?? screen.stateVersion, [], leaseFence);
+		return versionedWrite(
+			id,
+			eventId,
+			{ modeConfigs: mergedConfigs },
+			stateVersion ?? screen.stateVersion,
+			[],
+			leaseFence,
+		);
 	};
 
 	/**
@@ -438,11 +464,12 @@ export function screenService() {
 		});
 	};
 
-	const slugExists = async (eventId: number, slug: string, excludeId?: number): Promise<boolean> => {
-		const conditions = [
-			eq(screens.eventId, eventId),
-			eq(screens.slug, slug),
-		];
+	const slugExists = async (
+		eventId: number,
+		slug: string,
+		excludeId?: number,
+	): Promise<boolean> => {
+		const conditions = [eq(screens.eventId, eventId), eq(screens.slug, slug)];
 
 		if (excludeId) {
 			conditions.push(ne(screens.id, excludeId));

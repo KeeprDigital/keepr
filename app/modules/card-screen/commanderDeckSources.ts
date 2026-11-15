@@ -52,8 +52,7 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 		const gameData = getMtgGameData(data?.gameData);
 		const commanders = gameData.commanders ?? [];
 		const playerName = playerDisplayName(data);
-		if (!playerName && commanders.length === 0)
-			return null;
+		if (!playerName && commanders.length === 0) return null;
 		return {
 			seat,
 			playerName,
@@ -66,62 +65,70 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 
 	/** The Seats of a Slot somebody sits in, as its followed Session seats them. */
 	function slotSeats(slotId: number): SeatedSeat[] | null {
-		const slot = toValue(state.featureMatches).find(candidate => candidate.id === slotId);
-		if (!slot)
-			return null;
+		const slot = toValue(state.featureMatches).find((candidate) => candidate.id === slotId);
+		if (!slot) return null;
 		const followed = withFollowedFeatureMatchSession(slot, featureMatchStateStore);
-		return SEAT_VALUES.flatMap(seat => seatedSeat(followed, seat) ?? []);
+		return SEAT_VALUES.flatMap((seat) => seatedSeat(followed, seat) ?? []);
 	}
 
 	/** Whether a Seat of the Slot holds a deck: its Commanders, with or without a list. */
 	function slotHoldsDecks(slotId: number): boolean {
-		return slotSeats(slotId)?.some(seat => seat.commanders.length > 0) ?? false;
+		return slotSeats(slotId)?.some((seat) => seat.commanders.length > 0) ?? false;
 	}
 
 	const canUseDeckListMode = computed(() =>
-		toValue(state.featureMatches).some(slot => slotHoldsDecks(slot.id)),
+		toValue(state.featureMatches).some((slot) => slotHoldsDecks(slot.id)),
 	);
 
 	/** Lists read so far, by Slot and id; a list never changes under its id. */
 	const listReads = new Map<string, Promise<CommanderDeckListEntry[]>>();
 
-	function readList(eventId: number, slotId: number, id: number): Promise<CommanderDeckListEntry[]> {
+	function readList(
+		eventId: number,
+		slotId: number,
+		id: number,
+	): Promise<CommanderDeckListEntry[]> {
 		const key = `${slotId}:${id}`;
 		const held = listReads.get(key);
-		if (held)
-			return held;
-		const read = deckLists.readCommander(eventId, slotId, id).then(list => list.entries);
+		if (held) return held;
+		const read = deckLists.readCommander(eventId, slotId, id).then((list) => list.entries);
 		listReads.set(key, read);
 		// A failed read is tried again next time rather than held.
 		read.catch(() => listReads.delete(key));
 		return read;
 	}
 
-	async function seatDeckData(eventId: number, slotId: number, seat: SeatedSeat): Promise<{ data: CommanderSeatDeckData; degraded: boolean }> {
+	async function seatDeckData(
+		eventId: number,
+		slotId: number,
+		seat: SeatedSeat,
+	): Promise<{ data: CommanderSeatDeckData; degraded: boolean }> {
 		let entries: CommanderDeckListEntry[] = [];
 		let failed = false;
 		if (seat.deckListId !== null) {
 			try {
 				entries = await readList(eventId, slotId, seat.deckListId);
-			}
-			catch (err) {
+			} catch (err) {
 				console.error('Failed to load Feature Match Deck List:', err);
 				failed = true;
 			}
 		}
-		const asCard = (card: { name: string; scryfallId: string }, quantity: number, cardType: string | null) => ({
+		const asCard = (
+			card: { name: string; scryfallId: string },
+			quantity: number,
+			cardType: string | null,
+		) => ({
 			name: card.name,
 			scryfallId: card.scryfallId,
 			quantity,
 			compartment: 'mainboard' as const,
 			cardType,
 		});
-		const commanders = seat.commanders.map(commander => asCard(commander, 1, null));
-		const mainboard = commanderMainboard(entries, seat.commanders).map(entry => asCard(entry, entry.quantity, entry.cardType));
-		const { cards, degraded } = await fetchScryfallCards([
-			...commanders,
-			...mainboard,
-		]);
+		const commanders = seat.commanders.map((commander) => asCard(commander, 1, null));
+		const mainboard = commanderMainboard(entries, seat.commanders).map((entry) =>
+			asCard(entry, entry.quantity, entry.cardType),
+		);
+		const { cards, degraded } = await fetchScryfallCards([...commanders, ...mainboard]);
 		return {
 			data: {
 				seat: seat.seat,
@@ -140,19 +147,18 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 	/** The Feature Match Slot whose Seats the page shows. */
 	const shownSlotId = ref<number | null>(null);
 
-	const shownSlotKey = computed(() => shownSlotId.value === null
-		? null
-		: JSON.stringify(slotSeats(shownSlotId.value)));
+	const shownSlotKey = computed(() =>
+		shownSlotId.value === null ? null : JSON.stringify(slotSeats(shownSlotId.value)),
+	);
 
 	/** Who the shown rendering's Seats seated, as `shownSlotKey` read when it loaded. */
 	let renderedKey: string | null = null;
 
 	const slotRefetch = useDegradedRefetch<string>({
 		refetch: () => {
-			if (shownSlotId.value !== null)
-				void runSlotLoad(shownSlotId.value, { silent: true });
+			if (shownSlotId.value !== null) void runSlotLoad(shownSlotId.value, { silent: true });
 		},
-		isUnchanged: key => key === renderedKey,
+		isUnchanged: (key) => key === renderedKey,
 	});
 
 	async function runSlotLoad(slotId: number, options: { silent: boolean }) {
@@ -168,27 +174,27 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 		const flight = slotRefetch.begin();
 		// A reload that overtakes a load still in flight takes its spinner over, and ends it.
 		const endsLoading = !options.silent || state.loadingDeckList.value;
-		if (!options.silent)
-			state.loadingDeckList.value = true;
+		if (!options.silent) state.loadingDeckList.value = true;
 		try {
-			const loaded = await Promise.all(seats.map(seat => seatDeckData(eventId, slotId, seat)));
-			if (flight.stale)
+			const loaded = await Promise.all(seats.map((seat) => seatDeckData(eventId, slotId, seat)));
+			if (flight.stale) return;
+			if (
+				slotRefetch.completeLoad(
+					loaded.some((seat) => seat.degraded),
+					key,
+				) === 'keep'
+			)
 				return;
-			if (slotRefetch.completeLoad(loaded.some(seat => seat.degraded), key) === 'keep')
-				return;
-			state.seats.value = loaded.map(seat => seat.data);
+			state.seats.value = loaded.map((seat) => seat.data);
 			renderedKey = key;
-		}
-		finally {
-			if (endsLoading && flight.current)
-				state.loadingDeckList.value = false;
+		} finally {
+			if (endsLoading && flight.current) state.loadingDeckList.value = false;
 		}
 	}
 
 	// Swap Seats, a new list, or any edit to who the shown Slot seats reloads it in place.
 	watch([shownSlotId, shownSlotKey], ([slotId, key], [previousSlotId, previousKey]) => {
-		if (slotId === null || slotId !== previousSlotId || key === previousKey)
-			return;
+		if (slotId === null || slotId !== previousSlotId || key === previousKey) return;
 		void runSlotLoad(slotId, { silent: true });
 	});
 

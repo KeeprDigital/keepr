@@ -131,10 +131,11 @@ describe('useConfigUpdate', () => {
 	});
 
 	// An edit its author may no longer write (#738): the store shows again, nothing is retried.
-	it('discards the named fields\' local edits, pending saves and refusals, keeping the others', async () => {
+	it("discards the named fields' local edits, pending saves and refusals, keeping the others", async () => {
 		const storeConfig = ref<Partial<TestConfig>>({ color: 'red', size: 10 });
 		const firstSave = deferred();
-		const saveToStore = vi.fn()
+		const saveToStore = vi
+			.fn()
 			.mockImplementationOnce(() => firstSave.promise)
 			.mockResolvedValue(undefined);
 		const { config, saveError, updateConfig, discard } = useConfigUpdate<TestConfig>({
@@ -161,7 +162,8 @@ describe('useConfigUpdate', () => {
 
 	it('treats a null store result as a failed save and retains the local override for retry', async () => {
 		const storeConfig = ref<Partial<TestConfig>>({ color: 'red' });
-		const saveToStore = vi.fn()
+		const saveToStore = vi
+			.fn()
 			.mockResolvedValueOnce(null)
 			.mockImplementationOnce(async (updates: Partial<TestConfig>) => {
 				storeConfig.value = {
@@ -218,7 +220,9 @@ describe('useConfigUpdate', () => {
 		}
 
 		it('is idle before any edit, saving while one is pending, and committed once the flush lands', async () => {
-			const { saveState, updateConfig } = createSaveStateSetup(vi.fn().mockResolvedValue({ ok: true }));
+			const { saveState, updateConfig } = createSaveStateSetup(
+				vi.fn().mockResolvedValue({ ok: true }),
+			);
 
 			expect(saveState.value).toBe('idle');
 
@@ -229,39 +233,50 @@ describe('useConfigUpdate', () => {
 			expect(saveState.value).toBe('committed');
 		});
 
-		it('is failed after a refused flush, carrying the failure\'s own sentence', async () => {
+		it("is failed after a refused flush, carrying the failure's own sentence", async () => {
 			const { saveState, saveError, updateConfig } = createSaveStateSetup(
-				vi.fn().mockRejectedValue(new Error('Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable')),
+				vi
+					.fn()
+					.mockRejectedValue(
+						new Error(
+							'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
+						),
+					),
 			);
 
 			updateConfig({ color: 'green' });
 			await vi.advanceTimersByTimeAsync(100);
 
 			expect(saveState.value).toBe('failed');
-			expect(saveError.value).toBe('Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable');
+			expect(saveError.value).toBe(
+				'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
+			);
 			// The toast quotes the same sentence rather than the caller's static
 			// wording — the widening #286 made safe (see useRequestFeedback).
-			expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({
-				description: 'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
-			}));
+			expect(mockToast.add).toHaveBeenCalledWith(
+				expect.objectContaining({
+					description:
+						'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
+				}),
+			);
 		});
 
-		it('falls back to the caller\'s static wording when the failure wrote no sentence', async () => {
+		it("falls back to the caller's static wording when the failure wrote no sentence", async () => {
 			const { updateConfig } = createSaveStateSetup(vi.fn().mockResolvedValue(null));
 
 			updateConfig({ color: 'green' });
 			await vi.advanceTimersByTimeAsync(100);
 
-			expect(mockToast.add).toHaveBeenCalledWith(expect.objectContaining({
-				description: 'Test error',
-			}));
+			expect(mockToast.add).toHaveBeenCalledWith(
+				expect.objectContaining({
+					description: 'Test error',
+				}),
+			);
 		});
 
 		it('returns to saving on a retry, and commits when the retry lands', async () => {
 			const { saveState, updateConfig, retry } = createSaveStateSetup(
-				vi.fn()
-					.mockRejectedValueOnce(new Error('refused'))
-					.mockResolvedValueOnce({ ok: true }),
+				vi.fn().mockRejectedValueOnce(new Error('refused')).mockResolvedValueOnce({ ok: true }),
 			);
 
 			updateConfig({ color: 'green' });
@@ -276,9 +291,7 @@ describe('useConfigUpdate', () => {
 
 		it('returns to saving when the author edits again after a failure', async () => {
 			const { saveState, updateConfig } = createSaveStateSetup(
-				vi.fn()
-					.mockRejectedValueOnce(new Error('refused'))
-					.mockResolvedValueOnce({ ok: true }),
+				vi.fn().mockRejectedValueOnce(new Error('refused')).mockResolvedValueOnce({ ok: true }),
 			);
 
 			updateConfig({ color: 'green' });
@@ -319,8 +332,9 @@ describe('useConfigUpdate', () => {
 			return { ...api, storeConfig, saveToStore };
 		}
 
-		it('stays failed when an unrelated field saves after another field\'s save was refused', async () => {
-			const { config, saveState, saveError, updateConfig, retry, storeConfig, saveToStore } = createPersistingSetup();
+		it("stays failed when an unrelated field saves after another field's save was refused", async () => {
+			const { config, saveState, saveError, updateConfig, retry, storeConfig, saveToStore } =
+				createPersistingSetup();
 			saveToStore.mockRejectedValueOnce(new Error('color refused'));
 
 			updateConfig({ color: 'green' });
@@ -345,7 +359,8 @@ describe('useConfigUpdate', () => {
 		});
 
 		it('does not keep an older refused value for retry once the field was edited again', async () => {
-			const { config, saveState, saveError, updateConfig, retry, storeConfig, saveToStore } = createPersistingSetup();
+			const { config, saveState, saveError, updateConfig, retry, storeConfig, saveToStore } =
+				createPersistingSetup();
 			const firstSave = deferred<unknown>();
 			saveToStore.mockImplementationOnce(() => firstSave.promise);
 
@@ -380,7 +395,8 @@ describe('useConfigUpdate', () => {
 		});
 
 		it('clears only the failure a newer write of the same field supersedes', async () => {
-			const { config, saveState, saveError, updateConfig, retry, storeConfig, saveToStore } = createPersistingSetup();
+			const { config, saveState, saveError, updateConfig, retry, storeConfig, saveToStore } =
+				createPersistingSetup();
 			saveToStore
 				.mockRejectedValueOnce(new Error('color refused'))
 				.mockRejectedValueOnce(new Error('size refused'));
@@ -407,7 +423,8 @@ describe('useConfigUpdate', () => {
 		});
 
 		it('quotes the refusal of the edit still outstanding, not of one since settled', async () => {
-			const { saveState, saveError, updateConfig, storeConfig, saveToStore } = createPersistingSetup();
+			const { saveState, saveError, updateConfig, storeConfig, saveToStore } =
+				createPersistingSetup();
 			saveToStore
 				.mockRejectedValueOnce(new Error('color refused'))
 				.mockRejectedValueOnce(new Error('size refused'));
@@ -426,8 +443,9 @@ describe('useConfigUpdate', () => {
 			expect(saveError.value).toBe('color refused');
 		});
 
-		it('keeps an outstanding refusal\'s sentence when a superseded request fails after it', async () => {
-			const { saveState, saveError, updateConfig, storeConfig, saveToStore } = createPersistingSetup();
+		it("keeps an outstanding refusal's sentence when a superseded request fails after it", async () => {
+			const { saveState, saveError, updateConfig, storeConfig, saveToStore } =
+				createPersistingSetup();
 			const sizeSave = deferred<unknown>();
 			saveToStore
 				.mockRejectedValueOnce(new Error('color refused'))
@@ -489,16 +507,16 @@ describe('useConfigUpdate', () => {
 	it('still writes an edit made while an earlier save was in flight when disposed', async () => {
 		const scope = effectScope();
 		const first = deferred<{ ok: boolean }>();
-		const saveToStore = vi.fn()
-			.mockReturnValueOnce(first.promise)
-			.mockResolvedValue({ ok: true });
+		const saveToStore = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue({ ok: true });
 
-		const { updateConfig } = scope.run(() => useConfigUpdate<TestConfig>({
-			getStoreConfig: () => ({}),
-			saveToStore,
-			defaults: { color: 'red', size: 10 },
-			debounceMs: 100,
-		}))!;
+		const { updateConfig } = scope.run(() =>
+			useConfigUpdate<TestConfig>({
+				getStoreConfig: () => ({}),
+				saveToStore,
+				defaults: { color: 'red', size: 10 },
+				debounceMs: 100,
+			}),
+		)!;
 
 		updateConfig({ color: 'green' });
 		await vi.advanceTimersByTimeAsync(100);
@@ -523,16 +541,16 @@ describe('useConfigUpdate', () => {
 
 	it('hands off an edit queued behind a save in flight when the Event scope ends', async () => {
 		const first = deferred<{ ok: boolean }>();
-		const saveToStore = vi.fn()
-			.mockReturnValueOnce(first.promise)
-			.mockResolvedValue({ ok: true });
+		const saveToStore = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue({ ok: true });
 		const scope = effectScope();
-		const { updateConfig, saving } = scope.run(() => useConfigUpdate<TestConfig>({
-			getStoreConfig: () => ({}),
-			saveToStore,
-			defaults: { color: 'red', size: 10 },
-			debounceMs: 100,
-		}))!;
+		const { updateConfig, saving } = scope.run(() =>
+			useConfigUpdate<TestConfig>({
+				getStoreConfig: () => ({}),
+				saveToStore,
+				defaults: { color: 'red', size: 10 },
+				debounceMs: 100,
+			}),
+		)!;
 
 		updateConfig({ color: 'green' });
 		await vi.advanceTimersByTimeAsync(100);
@@ -589,7 +607,8 @@ describe('useConfigUpdate', () => {
 		it('waits for a save in flight and the edit queued behind it', async () => {
 			const first = deferred<{ ok: boolean }>();
 			const second = deferred<{ ok: boolean }>();
-			const saveToStore = vi.fn()
+			const saveToStore = vi
+				.fn()
 				.mockReturnValueOnce(first.promise)
 				.mockReturnValueOnce(second.promise);
 			const { updateConfig, flush } = createFlushSetup(saveToStore);
@@ -612,18 +631,13 @@ describe('useConfigUpdate', () => {
 
 		it.each([
 			['true with nothing unsaved', undefined, true],
-			[
-				'false when an edit was refused, which stays unsaved',
-				new Error('Refused'),
-				false,
-			],
+			['false when an edit was refused, which stays unsaved', new Error('Refused'), false],
 		])('answers %s', async (_case, failure, answer) => {
 			const saveToStore = failure
 				? vi.fn().mockRejectedValue(failure)
 				: vi.fn().mockResolvedValue({ ok: true });
 			const { updateConfig, flush } = createFlushSetup(saveToStore);
-			if (failure)
-				updateConfig({ color: 'green' });
+			if (failure) updateConfig({ color: 'green' });
 
 			await expect(flush()).resolves.toBe(answer);
 		});

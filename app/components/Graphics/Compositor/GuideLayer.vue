@@ -52,16 +52,27 @@ const emit = defineEmits<{
 }>();
 
 function isLocked(guide: GraphicsItemGuide): boolean {
-	return props.lockedItems?.some(item => item.graphicId === guide.graphicId && item.itemId === guide.itemId) === true;
+	return (
+		props.lockedItems?.some(
+			(item) => item.graphicId === guide.graphicId && item.itemId === guide.itemId,
+		) === true
+	);
 }
 
 function selectItem(guide: GraphicsItemGuide, event?: MouseEvent | KeyboardEvent) {
 	if (!isLocked(guide))
-		emit('select', { type: 'item', graphicId: guide.graphicId, itemId: guide.itemId }, isSelectionToggle(event));
+		emit(
+			'select',
+			{ type: 'item', graphicId: guide.graphicId, itemId: guide.itemId },
+			isSelectionToggle(event),
+		);
 }
 
-const hasGuideLayer = computed(() =>
-	props.selectableCanvas === true || props.itemGuides.length > 0 || props.safeAreaGuides.length > 0,
+const hasGuideLayer = computed(
+	() =>
+		props.selectableCanvas === true ||
+		props.itemGuides.length > 0 ||
+		props.safeAreaGuides.length > 0,
 );
 </script>
 
@@ -89,13 +100,19 @@ const hasGuideLayer = computed(() =>
 			v-for="guide in itemGuides"
 			:key="`${guide.graphicId}:${guide.itemId}`"
 			class="item-guide"
-			:class="{ 'is-selected': guide.selected, 'is-in-selected-graphic': guide.inSelectedGraphic, 'is-locked': isLocked(guide) }"
+			:class="{
+				'is-selected': guide.selected,
+				'is-in-selected-graphic': guide.inSelectedGraphic,
+				'is-locked': isLocked(guide),
+			}"
 			:data-in-selected-graphic="String(guide.inSelectedGraphic)"
 			:data-item-guide="guide.itemId"
 			:style="guide.style"
-			v-bind="isLocked(guide)
-				? { 'data-locked': 'true', 'aria-hidden': 'true' }
-				: { 'role': 'button', 'tabindex': 0, 'aria-label': `Select ${guide.label}` }"
+			v-bind="
+				isLocked(guide)
+					? { 'data-locked': 'true', 'aria-hidden': 'true' }
+					: { role: 'button', tabindex: 0, 'aria-label': `Select ${guide.label}` }
+			"
 			@click.stop="selectItem(guide, $event)"
 			@keydown.enter.stop="selectItem(guide)"
 			@keydown.space.prevent.stop="selectItem(guide)"

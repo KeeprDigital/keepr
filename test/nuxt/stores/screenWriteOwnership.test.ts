@@ -103,13 +103,15 @@ describe('screen store writes and what overtakes them', () => {
 			mockRepo.getById.mockResolvedValueOnce(v3);
 			await store.applyRemoteUpdated({ eventId: 1, screenId: 1 } as never);
 
-			write.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				modeConfigs: {
-					metagame: { topN: 16 },
-				},
-			}));
+			write.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					modeConfigs: {
+						metagame: { topN: 16 },
+					},
+				}),
+			);
 			const answered = await save;
 
 			expect(store.screens[0]!.stateVersion).toBe(3);
@@ -130,19 +132,23 @@ describe('screen store writes and what overtakes them', () => {
 
 			const save = store.updateThemeOverrides(1, 1, { accent: '#fff' });
 			await sendPending();
-			mockRepo.getById.mockResolvedValueOnce(createMockScreen({
-				id: 1,
-				stateVersion: 3,
-				name: 'Renamed',
-				themeOverrides: { accent: '#fff' },
-			}));
+			mockRepo.getById.mockResolvedValueOnce(
+				createMockScreen({
+					id: 1,
+					stateVersion: 3,
+					name: 'Renamed',
+					themeOverrides: { accent: '#fff' },
+				}),
+			);
 			await store.applyRemoteUpdated({ eventId: 1, screenId: 1 } as never);
 
-			write.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				themeOverrides: { accent: '#fff' },
-			}));
+			write.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					themeOverrides: { accent: '#fff' },
+				}),
+			);
 			const answered = await save;
 
 			expect(store.screens[0]!).toMatchObject({ stateVersion: 3, name: 'Renamed' });
@@ -150,31 +156,37 @@ describe('screen store writes and what overtakes them', () => {
 		});
 
 		it('keeps the newer revision a reload brought while an ordinary Screen update was out', async () => {
-			store.screens = [
-				createMockScreen({ id: 1, stateVersion: 1, name: 'One' }),
-			];
+			store.screens = [createMockScreen({ id: 1, stateVersion: 1, name: 'One' })];
 			const write = served();
 			mockRepo.update.mockReturnValueOnce(write.promise);
 
 			const save = store.updateScreen(1, 1, { currentMode: 'card' });
 			await vi.advanceTimersByTimeAsync(0);
-			mockRepo.getById.mockResolvedValueOnce(createMockScreen({
-				id: 1,
+			mockRepo.getById.mockResolvedValueOnce(
+				createMockScreen({
+					id: 1,
+					stateVersion: 3,
+					name: 'Renamed',
+					currentMode: 'card',
+				}),
+			);
+			await store.applyRemoteUpdated({ eventId: 1, screenId: 1 } as never);
+
+			write.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					name: 'One',
+					currentMode: 'card',
+				}),
+			);
+			const answered = await save;
+
+			expect(store.screens[0]!).toMatchObject({
 				stateVersion: 3,
 				name: 'Renamed',
 				currentMode: 'card',
-			}));
-			await store.applyRemoteUpdated({ eventId: 1, screenId: 1 } as never);
-
-			write.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				name: 'One',
-				currentMode: 'card',
-			}));
-			const answered = await save;
-
-			expect(store.screens[0]!).toMatchObject({ stateVersion: 3, name: 'Renamed', currentMode: 'card' });
+			});
 			expect(answered?.stateVersion).toBe(3);
 		});
 
@@ -193,41 +205,45 @@ describe('screen store writes and what overtakes them', () => {
 			mockRepo.updateModeConfig
 				.mockRejectedValueOnce(stateConflictFailure())
 				.mockReturnValueOnce(retry.promise);
-			mockRepo.getById
-				.mockReturnValueOnce(refresh.promise)
-				.mockResolvedValueOnce(createMockScreen({
+			mockRepo.getById.mockReturnValueOnce(refresh.promise).mockResolvedValueOnce(
+				createMockScreen({
 					id: 1,
 					stateVersion: 3,
 					name: 'Renamed',
 					modeConfigs: {
 						metagame: { topN: 8 },
 					},
-				}));
+				}),
+			);
 
 			const save = store.updateModeConfig(1, 1, 'metagame', { topN: 16 });
 			await sendPending();
 			// The announcement's reload lands before the conflict's own refresh.
 			await store.applyRemoteUpdated({ eventId: 1, screenId: 1 } as never);
-			refresh.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				modeConfigs: {
-					metagame: { topN: 8 },
-				},
-			}));
+			refresh.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					modeConfigs: {
+						metagame: { topN: 8 },
+					},
+				}),
+			);
 			await vi.advanceTimersByTimeAsync(0);
 
 			expect(store.screens[0]!.stateVersion).toBe(3);
 			expect(store.screens[0]!.modeConfigs?.metagame).toEqual({ topN: 16 });
 			expect(mockRepo.updateModeConfig).toHaveBeenLastCalledWith(1, 1, 'metagame', { topN: 16 }, 3);
-			retry.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 4,
-				name: 'Renamed',
-				modeConfigs: {
-					metagame: { topN: 16 },
-				},
-			}));
+			retry.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 4,
+					name: 'Renamed',
+					modeConfigs: {
+						metagame: { topN: 16 },
+					},
+				}),
+			);
 			const answered = await save;
 			expect(answered?.stateVersion).toBe(4);
 			expect(store.screens[0]!).toMatchObject({ stateVersion: 4, name: 'Renamed' });
@@ -235,7 +251,7 @@ describe('screen store writes and what overtakes them', () => {
 	});
 
 	describe('what a write answers its caller with', () => {
-		it('is a server revision, never another write\'s unsettled fields', async () => {
+		it("is a server revision, never another write's unsettled fields", async () => {
 			store.screens = [
 				createMockScreen({
 					id: 1,
@@ -267,24 +283,28 @@ describe('screen store writes and what overtakes them', () => {
 			const renaming = store.updateScreen(1, 1, { name: 'Renamed' });
 			expect(store.screens[0]!.name).toBe('Renamed');
 
-			write.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				name: 'One',
-				modeConfigs: {
-					metagame: { topN: 16 },
-				},
-			}));
+			write.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					name: 'One',
+					modeConfigs: {
+						metagame: { topN: 16 },
+					},
+				}),
+			);
 			await expect(save).resolves.toEqual(v3);
 
-			rename.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 4,
-				name: 'Renamed',
-				modeConfigs: {
-					metagame: { topN: 16 },
-				},
-			}));
+			rename.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 4,
+					name: 'Renamed',
+					modeConfigs: {
+						metagame: { topN: 16 },
+					},
+				}),
+			);
 			await renaming;
 		});
 	});
@@ -305,14 +325,16 @@ describe('screen store writes and what overtakes them', () => {
 
 			const save = store.updateModeConfig(1, 1, 'metagame', { topN: 16 });
 			await sendPending();
-			mockRepo.getById.mockResolvedValueOnce(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				name: 'Renamed',
-				modeConfigs: {
-					metagame: { topN: 8, minPoints: 3 },
-				},
-			}));
+			mockRepo.getById.mockResolvedValueOnce(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					name: 'Renamed',
+					modeConfigs: {
+						metagame: { topN: 8, minPoints: 3 },
+					},
+				}),
+			);
 			await store.applyRemoteUpdated({ eventId: 1, screenId: 1 } as never);
 			// The reload does not take back the edit still out.
 			expect(store.screens[0]!.modeConfigs?.metagame).toMatchObject({ topN: 16, minPoints: 3 });
@@ -335,15 +357,15 @@ describe('screen store writes and what overtakes them', () => {
 				}),
 			];
 			const first = served();
-			mockRepo.updateModeConfig
-				.mockReturnValueOnce(first.promise)
-				.mockResolvedValueOnce(createMockScreen({
+			mockRepo.updateModeConfig.mockReturnValueOnce(first.promise).mockResolvedValueOnce(
+				createMockScreen({
 					id: 1,
 					stateVersion: 2,
 					modeConfigs: {
 						metagame: { topN: 32, limit: 20 },
 					},
-				}));
+				}),
+			);
 
 			const firstSave = store.updateModeConfig(1, 1, 'metagame', { topN: 16 });
 			await sendPending();
@@ -369,13 +391,15 @@ describe('screen store writes and what overtakes them', () => {
 			const write = served();
 			mockRepo.updateThemeOverrides.mockReturnValueOnce(write.promise);
 
-			const save = store.updateThemeOverrides(1, 1, { 'accent': null, 'standings.rise': '#000000' });
+			const save = store.updateThemeOverrides(1, 1, { accent: null, 'standings.rise': '#000000' });
 			expect(store.screens[0]!.themeOverrides).toEqual({ 'standings.rise': '#000000' });
-			mockRepo.getById.mockResolvedValueOnce(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				themeOverrides: { accent: '#ff0000', divider: '#00ff00' },
-			}));
+			mockRepo.getById.mockResolvedValueOnce(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					themeOverrides: { accent: '#ff0000', divider: '#00ff00' },
+				}),
+			);
 			await store.applyRemoteUpdated({ eventId: 1, screenId: 1 } as never);
 
 			write.reject(new Error('Refused'));
@@ -406,12 +430,14 @@ describe('screen store writes and what overtakes them', () => {
 			expect(store.screens[0]!.themeOverrides).toEqual({ accent: '#fff' });
 
 			await sendPending();
-			config.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				name: 'One',
-				themeOverrides: { accent: '#fff' },
-			}));
+			config.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					name: 'One',
+					themeOverrides: { accent: '#fff' },
+				}),
+			);
 			await Promise.allSettled([renaming, configuring]);
 			expect(store.screens[0]!).toMatchObject({
 				name: 'One',
@@ -435,11 +461,13 @@ describe('screen store writes and what overtakes them', () => {
 			const save = store.updateThemeOverrides(1, 1, { accent: '#fff' });
 			await sendPending();
 			store.applyRemoteDeleted({ eventId: 1, screenId: 1 } as never);
-			write.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				themeOverrides: { accent: '#fff' },
-			}));
+			write.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					themeOverrides: { accent: '#fff' },
+				}),
+			);
 			await save;
 
 			expect(store.screens).toEqual([]);
@@ -478,8 +506,7 @@ describe('screen store writes and what overtakes them', () => {
 				themeOverrides: { accent: '#000' },
 			});
 			const commit = (version: number, change: Partial<Screen>) => {
-				if (version !== held.stateVersion)
-					return Promise.reject(stateConflictFailure());
+				if (version !== held.stateVersion) return Promise.reject(stateConflictFailure());
 				held = {
 					...held,
 					...change,
@@ -488,27 +515,30 @@ describe('screen store writes and what overtakes them', () => {
 				return Promise.resolve(structuredClone(held));
 			};
 			mockRepo.getById.mockImplementation(async () => structuredClone(held));
-			mockRepo.updateModeConfig.mockImplementation(async (_e, _s, mode: 'metagame', patch, version: number) =>
-				commit(version, {
-					modeConfigs: {
-						...held.modeConfigs,
-						[mode]: {
-							...held.modeConfigs?.[mode],
-							...patch,
+			mockRepo.updateModeConfig.mockImplementation(
+				async (_e, _s, mode: 'metagame', patch, version: number) =>
+					commit(version, {
+						modeConfigs: {
+							...held.modeConfigs,
+							[mode]: {
+								...held.modeConfigs?.[mode],
+								...patch,
+							},
 						},
-					},
-				}));
+					}),
+			);
 			mockRepo.updateThemeOverrides.mockImplementation(async (_e, _s, patch, version: number) =>
 				commit(version, {
 					themeOverrides: {
 						...held.themeOverrides,
 						...patch,
 					},
-				}));
-			mockRepo.update.mockImplementation(async (_e, _s, { stateVersion, ...change }) => commit(stateVersion, change));
-			store.screens = [
-				structuredClone(held),
-			];
+				}),
+			);
+			mockRepo.update.mockImplementation(async (_e, _s, { stateVersion, ...change }) =>
+				commit(stateVersion, change),
+			);
+			store.screens = [structuredClone(held)];
 
 			const saves = Promise.all([
 				store.updateModeConfig(1, 1, 'metagame', { topN: 16 }),
@@ -572,23 +602,33 @@ describe('screen store writes and what overtakes them', () => {
 			const secondSave = store.updateModeConfig(1, 1, 'metagame', { limit: 20 });
 			await moveToEventTwo();
 
-			first.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				modeConfigs: {
-					metagame: { topN: 16 },
-				},
-			}));
+			first.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					modeConfigs: {
+						metagame: { topN: 16 },
+					},
+				}),
+			);
 			await expect(firstSave).resolves.toMatchObject({ stateVersion: 2 });
 			await vi.advanceTimersByTimeAsync(0);
-			expect(mockRepo.updateModeConfig).toHaveBeenLastCalledWith(1, 1, 'metagame', { limit: 20 }, 2);
-			second.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 3,
-				modeConfigs: {
-					metagame: { topN: 16, limit: 20 },
-				},
-			}));
+			expect(mockRepo.updateModeConfig).toHaveBeenLastCalledWith(
+				1,
+				1,
+				'metagame',
+				{ limit: 20 },
+				2,
+			);
+			second.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 3,
+					modeConfigs: {
+						metagame: { topN: 16, limit: 20 },
+					},
+				}),
+			);
 			await expect(secondSave).resolves.toMatchObject({ stateVersion: 3 });
 
 			expect(store.screens).toEqual([eventTwoScreen]);
@@ -603,18 +643,20 @@ describe('screen store writes and what overtakes them', () => {
 				}),
 			];
 			const conflict = served();
-			mockRepo.updateThemeOverrides
-				.mockReturnValueOnce(conflict.promise)
-				.mockResolvedValueOnce(createMockScreen({
+			mockRepo.updateThemeOverrides.mockReturnValueOnce(conflict.promise).mockResolvedValueOnce(
+				createMockScreen({
 					id: 1,
 					stateVersion: 6,
 					themeOverrides: { accent: '#fff' },
-				}));
-			mockRepo.getById.mockResolvedValueOnce(createMockScreen({
-				id: 1,
-				stateVersion: 5,
-				themeOverrides: { accent: '#000' },
-			}));
+				}),
+			);
+			mockRepo.getById.mockResolvedValueOnce(
+				createMockScreen({
+					id: 1,
+					stateVersion: 5,
+					themeOverrides: { accent: '#000' },
+				}),
+			);
 
 			const save = store.updateThemeOverrides(1, 1, { accent: '#fff' });
 			await sendPending();
@@ -682,13 +724,15 @@ describe('screen store writes and what overtakes them', () => {
 			mockRepo.list.mockResolvedValueOnce([reloaded]);
 			await store.loadScreensByEventId(1);
 
-			succeeded.resolve(createMockScreen({
-				id: 1,
-				stateVersion: 2,
-				modeConfigs: {
-					metagame: { topN: 16 },
-				},
-			}));
+			succeeded.resolve(
+				createMockScreen({
+					id: 1,
+					stateVersion: 2,
+					modeConfigs: {
+						metagame: { topN: 16 },
+					},
+				}),
+			);
 			failed.reject(new Error('Refused'));
 			await saving;
 			await expect(configuring).rejects.toThrow('Refused');

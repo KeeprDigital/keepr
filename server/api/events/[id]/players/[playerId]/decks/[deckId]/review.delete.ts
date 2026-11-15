@@ -11,7 +11,11 @@ const reviewParamsSchema = z.object({
 
 /** Clears a Deck List's review: it returns to unreviewed, and its Archetype stays. */
 export default defineEventHandler(async (event) => {
-	const { id: eventId, playerId, deckId } = await getValidatedRouterParams(event, reviewParamsSchema.parse);
+	const {
+		id: eventId,
+		playerId,
+		deckId,
+	} = await getValidatedRouterParams(event, reviewParamsSchema.parse);
 
 	return await playerUpdateModule().clearPlayerDeckReview({
 		eventId,

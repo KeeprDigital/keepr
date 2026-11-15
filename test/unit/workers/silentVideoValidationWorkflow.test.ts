@@ -34,7 +34,10 @@ interface ValidationOutput {
 }
 
 interface WorkflowModule {
-	SilentVideoValidationWorkflow: new (context: unknown, env: unknown) => {
+	SilentVideoValidationWorkflow: new (
+		context: unknown,
+		env: unknown,
+	) => {
 		run: (event: unknown, step: unknown) => Promise<ValidationOutput>;
 	};
 }
@@ -49,10 +52,12 @@ interface Fixture {
 	facts: { sha256: string; byteLength: number; canonicalMime: string };
 }
 
-const fixtures = JSON.parse(await readFile(
-	new URL('../../../scripts/silent-video-validator-fixtures.json', import.meta.url),
-	'utf8',
-)) as Record<string, Fixture>;
+const fixtures = JSON.parse(
+	await readFile(
+		new URL('../../../scripts/silent-video-validator-fixtures.json', import.meta.url),
+		'utf8',
+	),
+) as Record<string, Fixture>;
 
 // `validate-in-container` retries 5 times after its first attempt.
 const CONTAINER_ATTEMPTS = 6;
@@ -65,12 +70,7 @@ function validationParams() {
 	const factsDigest = createHash('sha256').update(JSON.stringify(facts)).digest('hex');
 	return {
 		operationId,
-		idempotencyKey: [
-			'silent-video-playback-v1',
-			operationId,
-			facts.sha256,
-			factsDigest,
-		].join(':'),
+		idempotencyKey: ['silent-video-playback-v1', operationId, facts.sha256, factsDigest].join(':'),
 		sourceDigest: facts.sha256,
 		sourceByteLength: facts.byteLength,
 		sourceContentType: facts.canonicalMime,
@@ -84,12 +84,15 @@ function retryingStep() {
 	const failures: { step: string; error: unknown }[] = [];
 	return {
 		failures,
-		async do(name: string, config: { retries?: { limit: number } }, attempt: () => Promise<unknown>) {
+		async do(
+			name: string,
+			config: { retries?: { limit: number } },
+			attempt: () => Promise<unknown>,
+		) {
 			for (let tried = 0; ; tried++) {
 				try {
 					return await attempt();
-				}
-				catch (error) {
+				} catch (error) {
 					failures.push({ step: name, error });
 					if (error instanceof NonRetryableError || tried >= (config.retries?.limit ?? 0))
 						throw error;
@@ -117,8 +120,7 @@ function validatorEnv(answers: (() => Response)[]) {
 					fetch: async (url: string) => {
 						containerRequests.push(url);
 						const answer = answers.shift();
-						if (!answer)
-							throw new Error('no answer left');
+						if (!answer) throw new Error('no answer left');
 						return answer();
 					},
 				}),
@@ -128,14 +130,19 @@ function validatorEnv(answers: (() => Response)[]) {
 }
 
 async function runWorkflow(answers: (() => Response)[]) {
-	const { SilentVideoValidationWorkflow } = await import(/* @vite-ignore */ WORKFLOW_MODULE) as WorkflowModule;
+	const { SilentVideoValidationWorkflow } = (await import(
+		/* @vite-ignore */ WORKFLOW_MODULE
+	)) as WorkflowModule;
 	const { env, containerRequests } = validatorEnv(answers);
 	const step = retryingStep();
 	const workflow = new SilentVideoValidationWorkflow({}, env);
-	const outcome = workflow.run({
-		payload: validationParams(),
-		instanceId: '00000000aa',
-	}, step);
+	const outcome = workflow.run(
+		{
+			payload: validationParams(),
+			instanceId: '00000000aa',
+		},
+		step,
+	);
 	return { outcome, step, containerRequests };
 }
 
@@ -153,7 +160,9 @@ describe('silent-video validation Workflow and a busy Container', () => {
 	});
 
 	it('leaves a validation that is busy on every attempt unsettled, not rejected', async () => {
-		const { outcome, step } = await runWorkflow(Array.from<() => Response>({ length: CONTAINER_ATTEMPTS }).fill(BUSY));
+		const { outcome, step } = await runWorkflow(
+			Array.from<() => Response>({ length: CONTAINER_ATTEMPTS }).fill(BUSY),
+		);
 		await expect(outcome).rejects.toThrow('Validation container failed with status 409');
 		expect(step.failures).toHaveLength(CONTAINER_ATTEMPTS);
 		expect(step.failures.every(({ error }) => !(error instanceof NonRetryableError))).toBe(true);

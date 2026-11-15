@@ -42,15 +42,22 @@ function projectedGraphic(groupAnimation?: GraphicContainerAnimation): Broadcast
 		{ id: 'lower-third', name: 'Talent lower third', items: [] },
 		{ kind: 'group', id: 'profile-group', ...CANVAS },
 	).graphic;
-	graphic = addGraphicGroupChild(graphic, { kind: 'text', groupId: 'profile-group', id: 'profile-text' }).graphic;
-	graphic = addGraphicGroupChild(graphic, { kind: 'social-network-icon', groupId: 'profile-group', id: 'profile-icon' }).graphic;
+	graphic = addGraphicGroupChild(graphic, {
+		kind: 'text',
+		groupId: 'profile-group',
+		id: 'profile-text',
+	}).graphic;
+	graphic = addGraphicGroupChild(graphic, {
+		kind: 'social-network-icon',
+		groupId: 'profile-group',
+		id: 'profile-icon',
+	}).graphic;
 	const group = graphic.items[0] as GraphicGroupItemConfig;
-	(group.children[0] as TextGraphicItemConfig).text = '{profile.networkLabel} · {profile.handle} · {profile.profileUrl}';
+	(group.children[0] as TextGraphicItemConfig).text =
+		'{profile.networkLabel} · {profile.handle} · {profile.profileUrl}';
 	(group.children[1] as SocialNetworkIconGraphicItemConfig).network = { projectionKey: 'profile' };
 	group.animation = groupAnimation;
-	graphic.sources = [
-		{ key: 'talent', label: 'Talent', kind: 'talent' },
-	];
+	graphic.sources = [{ key: 'talent', label: 'Talent', kind: 'talent' }];
 	graphic.socialProfileProjections = [
 		{
 			key: 'profile',
@@ -86,7 +93,10 @@ function values(profile: typeof TWITCH | typeof YOUTUBE) {
 	};
 }
 
-function render(graphic: BroadcastGraphicConfig, input: Partial<BroadcastGraphicsRenderModelInput> = {}) {
+function render(
+	graphic: BroadcastGraphicConfig,
+	input: Partial<BroadcastGraphicsRenderModelInput> = {},
+) {
 	return resolveBroadcastGraphicsRenderModel({
 		output: 'overlay',
 		...CANVAS,
@@ -98,9 +108,7 @@ function render(graphic: BroadcastGraphicConfig, input: Partial<BroadcastGraphic
 
 const UPDATING = {
 	animation: {
-		'lower-third': [
-			{ phase: 'update' as const, elapsed: 125 },
-		],
+		'lower-third': [{ phase: 'update' as const, elapsed: 125 }],
 	},
 };
 
@@ -121,18 +129,20 @@ describe('programmatic Social Profile Projection rendering', () => {
 
 	it('renders the synchronized transition as correlated Presentation Group layers clipped to its boundary', () => {
 		const group = render(projectedGraphic(), {
-			socialProfilePresentations: presentation([
-				layer(TWITCH, 1, -50),
-				layer(YOUTUBE, 1, 50),
-			], true),
+			socialProfilePresentations: presentation(
+				[layer(TWITCH, 1, -50), layer(YOUTUBE, 1, 50)],
+				true,
+			),
 		}).graphics[0]!.items[0]!;
 
 		expect(group.style).toMatchObject({ overflow: 'hidden' });
-		expect(group.presentationLayers?.map(entry => ({
-			style: entry.style,
-			text: entry.children?.[0]?.text,
-			icon: entry.children?.[1]?.icon?.name,
-		}))).toEqual([
+		expect(
+			group.presentationLayers?.map((entry) => ({
+				style: entry.style,
+				text: entry.children?.[0]?.text,
+				icon: entry.children?.[1]?.icon?.name,
+			})),
+		).toEqual([
 			{
 				style: expect.objectContaining({ opacity: 1, transform: 'translate(-50%, 0%)' }),
 				text: TWITCH_TEXT,
@@ -151,16 +161,13 @@ describe('programmatic Social Profile Projection rendering', () => {
 			...UPDATING,
 			socialProfileValues: values(YOUTUBE),
 			outgoingSocialProfileValues: values(YOUTUBE),
-			socialProfilePresentations: presentation([
-				layer(YOUTUBE),
-			]),
-			outgoingSocialProfilePresentations: presentation([
-				layer(TWITCH, 0.5),
-				layer(YOUTUBE, 0.5),
-			]),
+			socialProfilePresentations: presentation([layer(YOUTUBE)]),
+			outgoingSocialProfilePresentations: presentation([layer(TWITCH, 0.5), layer(YOUTUBE, 0.5)]),
 		}).graphics[0]!.items[0]!.crossTransition!;
 
-		expect(transition.outgoing.presentationLayers?.map(entry => entry.children?.[0]?.text)).toEqual([TWITCH_TEXT, YOUTUBE_TEXT]);
+		expect(
+			transition.outgoing.presentationLayers?.map((entry) => entry.children?.[0]?.text),
+		).toEqual([TWITCH_TEXT, YOUTUBE_TEXT]);
 		expect(transition.incoming.presentationLayers?.[0]?.children?.[0]?.text).toBe(YOUTUBE_TEXT);
 	});
 
@@ -172,16 +179,13 @@ describe('programmatic Social Profile Projection rendering', () => {
 			...UPDATING,
 			socialProfileValues: values(YOUTUBE),
 			outgoingSocialProfileValues: values(YOUTUBE),
-			socialProfilePresentations: presentation([
-				layer(YOUTUBE),
-			]),
-			outgoingSocialProfilePresentations: presentation([
-				layer(TWITCH, 0.5),
-				layer(YOUTUBE, 0.5),
-			]),
+			socialProfilePresentations: presentation([layer(YOUTUBE)]),
+			outgoingSocialProfilePresentations: presentation([layer(TWITCH, 0.5), layer(YOUTUBE, 0.5)]),
 		}).graphics[0]!.items[0]!.crossTransition!;
 
-		expect(transition.outgoing.presentationLayers?.map(entry => entry.children?.[0]?.style.opacity)).toEqual([0.5, 0.5]);
+		expect(
+			transition.outgoing.presentationLayers?.map((entry) => entry.children?.[0]?.style.opacity),
+		).toEqual([0.5, 0.5]);
 		expect(transition.incoming.presentationLayers?.[0]?.children?.[0]?.style.opacity).toBe(0.5);
 	});
 
@@ -203,71 +207,78 @@ describe('programmatic Social Profile Projection rendering', () => {
 			...UPDATING,
 			socialProfilePresentations: presentation([]),
 			outgoingSocialProfileValues: values(TWITCH),
-			outgoingSocialProfilePresentations: presentation([
-				layer(TWITCH),
-			]),
+			outgoingSocialProfilePresentations: presentation([layer(TWITCH)]),
 		}).graphics[0]!.items[0]!.crossTransition!;
 
 		expect(transition.outgoing.presentationLayers?.[0]?.children?.[0]?.text).toBe(TWITCH_TEXT);
-		expect(transition.outgoing.presentationLayers?.[0]?.children?.[1]?.icon?.name).toBe('i-simple-icons-twitch');
+		expect(transition.outgoing.presentationLayers?.[0]?.children?.[1]?.icon?.name).toBe(
+			'i-simple-icons-twitch',
+		);
 		expect(transition.incoming.style.visibility).toBe('hidden');
 	});
 
-	it.each(['enter', 'exit'] as const)('nests the synchronized Presentation Group transition inside %s motion', (phase) => {
-		const motion = {
-			duration: 1_000,
-			easing: 'linear' as const,
-			delay: 0,
-			fade: { opacity: 0 },
-			slide: { direction: 'south' as const, distanceMode: 'fixed' as const, distance: 100 },
-		};
-		const group = render(projectedGraphic({ enter: motion, exit: motion }), {
-			animation: {
-				'lower-third': [
-					{ phase, elapsed: 500 },
-				],
-			},
-			socialProfilePresentations: presentation([
-				layer(TWITCH, 1, -50),
-				layer(YOUTUBE, 1, 50),
-			], true),
-		}).graphics[0]!.items[0]!;
+	it.each(['enter', 'exit'] as const)(
+		'nests the synchronized Presentation Group transition inside %s motion',
+		(phase) => {
+			const motion = {
+				duration: 1_000,
+				easing: 'linear' as const,
+				delay: 0,
+				fade: { opacity: 0 },
+				slide: { direction: 'south' as const, distanceMode: 'fixed' as const, distance: 100 },
+			};
+			const group = render(projectedGraphic({ enter: motion, exit: motion }), {
+				animation: {
+					'lower-third': [{ phase, elapsed: 500 }],
+				},
+				socialProfilePresentations: presentation(
+					[layer(TWITCH, 1, -50), layer(YOUTUBE, 1, 50)],
+					true,
+				),
+			}).graphics[0]!.items[0]!;
 
-		expect(group.style).toMatchObject({ opacity: 0.5, overflow: 'hidden' });
-		expect(String(group.style.transform)).toContain('translate(0px, 50px)');
-		expect(group.presentationLayers?.map(entry => entry.style.transform)).toEqual(['translate(-50%, 0%)', 'translate(50%, 0%)']);
-	});
+			expect(group.style).toMatchObject({ opacity: 0.5, overflow: 'hidden' });
+			expect(String(group.style.transform)).toContain('translate(0px, 50px)');
+			expect(group.presentationLayers?.map((entry) => entry.style.transform)).toEqual([
+				'translate(-50%, 0%)',
+				'translate(50%, 0%)',
+			]);
+		},
+	);
 
 	it('preserves both concurrent lifecycle reveal masks around Social Profile layers', () => {
-		const group = render(projectedGraphic({
-			'on-screen': {
-				duration: 400,
-				easing: 'linear',
-				delay: 0,
-				pause: 0,
-				repeat: 1,
-				reveal: { edge: 'top' },
+		const group = render(
+			projectedGraphic({
+				'on-screen': {
+					duration: 400,
+					easing: 'linear',
+					delay: 0,
+					pause: 0,
+					repeat: 1,
+					reveal: { edge: 'top' },
+				},
+				exit: {
+					duration: 400,
+					easing: 'linear',
+					delay: 0,
+					reveal: { edge: 'left' },
+				},
+			}),
+			{
+				animation: {
+					'lower-third': [
+						{ phase: 'on-screen', elapsed: 100 },
+						{ phase: 'exit', elapsed: 200 },
+					],
+				},
+				socialProfilePresentations: presentation([layer(YOUTUBE, 0.5)], true),
 			},
-			'exit': {
-				duration: 400,
-				easing: 'linear',
-				delay: 0,
-				reveal: { edge: 'left' },
-			},
-		}), {
-			animation: {
-				'lower-third': [
-					{ phase: 'on-screen', elapsed: 100 },
-					{ phase: 'exit', elapsed: 200 },
-				],
-			},
-			socialProfilePresentations: presentation([
-				layer(YOUTUBE, 0.5),
-			], true),
-		}).graphics[0]!.items[0]!;
+		).graphics[0]!.items[0]!;
 
 		expect(group.style.maskImage).toBe('linear-gradient(to right, #ffffff 0 50%, #ffffff00 50%)');
-		expect(group.enclosed?.style.maskImage).toBe('linear-gradient(to bottom, #ffffff 0 50%, #ffffff00 50%)');
+		expect(group.enclosed?.style.maskImage).toBe(
+			'linear-gradient(to bottom, #ffffff 0 50%, #ffffff00 50%)',
+		);
 		expect(group.enclosed?.presentationLayers).toHaveLength(1);
 	});
 });

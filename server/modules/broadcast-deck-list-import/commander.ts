@@ -29,9 +29,9 @@ import {
  * these is safe to be wrong about. The Sideboard is dropped and counted.
  */
 
-export type CommanderDeckListImportError
-	= | BroadcastDeckListImportError
-		| (SourceLine & { code: 'NO_COMMANDER' | 'TOO_MANY_COMMANDERS'; message: string });
+export type CommanderDeckListImportError =
+	| BroadcastDeckListImportError
+	| (SourceLine & { code: 'NO_COMMANDER' | 'TOO_MANY_COMMANDERS'; message: string });
 
 export interface CommanderDeckListDocument {
 	/** The pasted text, its blank lines kept: they say where the Sideboard ends. */
@@ -44,9 +44,9 @@ export interface CommanderDeckListDocument {
 	sideboardDropped: number;
 }
 
-export type CommanderDeckListImportResult
-	= | { ok: true; document: CommanderDeckListDocument }
-		| { ok: false; errors: CommanderDeckListImportError[] };
+export type CommanderDeckListImportResult =
+	| { ok: true; document: CommanderDeckListDocument }
+	| { ok: false; errors: CommanderDeckListImportError[] };
 
 /** Where a card line sits: `trailing` is after the Sideboard and a blank line. */
 type Section = 'deck' | 'commander' | 'sideboard' | 'trailing';
@@ -89,23 +89,19 @@ export async function importCommanderDeckList(
 	for (const line of lines) {
 		const { sourceText } = line;
 		if (sourceText.length === 0) {
-			if (section === 'sideboard' && sideboardLines > 0)
-				section = 'trailing';
-			else if (kept.length > 0)
-				lastBlockStart = kept.length;
+			if (section === 'sideboard' && sideboardLines > 0) section = 'trailing';
+			else if (kept.length > 0) lastBlockStart = kept.length;
 			continue;
 		}
 		// The Arena copy opens with `About` and the deck's `Name`.
-		if (/^(?:about|name)(?:\s|$)/i.test(sourceText))
-			continue;
+		if (/^(?:about|name)(?:\s|$)/i.test(sourceText)) continue;
 		const heading = headingKey(sourceText);
 		const headingSection = HEADINGS.get(heading);
 		if (headingSection) {
 			section = headingSection;
 			sideboardLines = 0;
 			headed = true;
-			if (headingSection === 'commander')
-				commanderHeading ??= line;
+			if (headingSection === 'commander') commanderHeading ??= line;
 			continue;
 		}
 		if (UNREAD_SECTIONS.has(heading) || heading === 'companion') {
@@ -121,24 +117,18 @@ export async function importCommanderDeckList(
 		if (section === 'sideboard') {
 			// Dropped, not refused: a line the rules cannot read still goes, counted by the number it leads with.
 			sideboardLines++;
-			sideboardDropped += 'code' in parsed
-				? Number.parseInt(sourceText) || 1
-				: parsed.quantity;
-		}
-		else if ('code' in parsed) {
+			sideboardDropped += 'code' in parsed ? Number.parseInt(sourceText) || 1 : parsed.quantity;
+		} else if ('code' in parsed) {
 			errors.push(parsed);
-		}
-		else {
+		} else {
 			kept.push({ ...parsed, section });
 		}
 	}
 
-	const headedCommanders = kept.filter(row => row.section === 'commander');
-	const trailing = kept.filter(row => row.section === 'trailing');
+	const headedCommanders = kept.filter((row) => row.section === 'commander');
+	const trailing = kept.filter((row) => row.section === 'trailing');
 	// A deck with no Sideboard: its MTGO and plain-text copies end on a blank line and the Commanders.
-	const lastBlock = !headed && lastBlockStart !== null
-		? kept.slice(lastBlockStart)
-		: [];
+	const lastBlock = !headed && lastBlockStart !== null ? kept.slice(lastBlockStart) : [];
 	const offered = commanderHeading
 		? headedCommanders
 		: trailing.length > 0
@@ -147,7 +137,9 @@ export async function importCommanderDeckList(
 				? lastBlock
 				: kept.slice(0, 1);
 	if (commanderHeading && headedCommanders.length === 0)
-		errors.push(lineError(commanderHeading, 'NO_COMMANDER', 'A Commander heading needs a card under it'));
+		errors.push(
+			lineError(commanderHeading, 'NO_COMMANDER', 'A Commander heading needs a card under it'),
+		);
 	const extra = offered[MAX_SEAT_COMMANDERS];
 	if (extra)
 		errors.push(lineError(extra, 'TOO_MANY_COMMANDERS', 'A deck has one or two Commanders'));
@@ -155,7 +147,10 @@ export async function importCommanderDeckList(
 	const limitErrors = cardRowLimitErrors(kept);
 	errors.push(...limitErrors);
 	if (errors.length === 0 && kept.length === 0)
-		errors.push({ code: 'EMPTY_DECK_LIST', message: 'At least one card outside the Sideboard is required' });
+		errors.push({
+			code: 'EMPTY_DECK_LIST',
+			message: 'At least one card outside the Sideboard is required',
+		});
 	if (limitErrors.length > 0 || kept.length === 0) {
 		return {
 			ok: false,
@@ -181,8 +176,7 @@ export async function importCommanderDeckList(
 				message: `${card.canonicalName} exceeds the merged quantity limit of 999`,
 			});
 		}
-		if (offered.includes(row))
-			offeredCommanders.add(card.scryfallId);
+		if (offered.includes(row)) offeredCommanders.add(card.scryfallId);
 	}
 	if (errors.length > 0) {
 		return {
@@ -194,7 +188,10 @@ export async function importCommanderDeckList(
 	return {
 		ok: true,
 		document: {
-			sourceText: lines.map(line => line.sourceText).join('\n').replace(/^\n+|\n+$/g, ''),
+			sourceText: lines
+				.map((line) => line.sourceText)
+				.join('\n')
+				.replace(/^\n+|\n+$/g, ''),
 			entries,
 			offeredCommanders: [...offeredCommanders],
 			sideboardDropped,

@@ -24,19 +24,19 @@ const {
 		consumes: 'players',
 		isLoaded: () => playerStore.isLoaded,
 		isLoading: () => playerStore.loading,
-		load: id => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
+		load: (id) => playerStore.loadPlayersByEventId(id, { failure: 'raise' }),
 	},
 	{
 		consumes: 'archetypes',
 		isLoaded: () => archetypeStore.isLoaded,
 		isLoading: () => archetypeStore.loading,
-		load: id => archetypeStore.loadByEventId(id, { failure: 'raise' }),
+		load: (id) => archetypeStore.loadByEventId(id, { failure: 'raise' }),
 	},
 	{
 		consumes: 'playerDecks',
 		isLoaded: () => playerDeckStore.isLoaded,
 		isLoading: () => playerDeckStore.loading,
-		load: id => playerDeckStore.loadByEventId(id),
+		load: (id) => playerDeckStore.loadByEventId(id),
 	},
 ]);
 
@@ -132,11 +132,7 @@ const {
 			description="Sync player data from Melee first."
 		>
 			<template #actions>
-				<UButton
-					color="neutral"
-					variant="outline"
-					:to="`/event/${loadedEventId}/metagame`"
-				>
+				<UButton color="neutral" variant="outline" :to="`/event/${loadedEventId}/metagame`">
 					Back to Metagame
 				</UButton>
 			</template>
@@ -197,7 +193,11 @@ const {
 						v-if="queueFilter !== 'all'"
 						color="neutral"
 						variant="outline"
-						@click="() => { queueFilter = 'all' }"
+						@click="
+							() => {
+								queueFilter = 'all';
+							}
+						"
 					>
 						Show All Decks
 					</UButton>

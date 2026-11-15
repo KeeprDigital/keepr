@@ -1,5 +1,12 @@
 import type { MaybeRefOrGetter, Ref } from 'vue';
-import type { OpCardCategory, OpCardColor, OpCardDetail, OpCardSummary, OpPrinting, OpScreenCard } from '~~/shared/types/card/op';
+import type {
+	OpCardCategory,
+	OpCardColor,
+	OpCardDetail,
+	OpCardSummary,
+	OpPrinting,
+	OpScreenCard,
+} from '~~/shared/types/card/op';
 import type { OpCardSearchParams } from '~/composables/repositories/useOpCardRepository';
 import { computed, toRaw, toValue } from 'vue';
 import { cardTimeoutStartingAt } from '~~/shared/utils/card/timeout';
@@ -42,10 +49,8 @@ export function opCardSearchParams(search: OpCardSearch): OpCardSearchParams {
 		name: search.text.trim(),
 		limit: SEARCH_PAGE_SIZE,
 	};
-	if (search.color)
-		params.color = search.color;
-	if (search.category)
-		params.category = search.category;
+	if (search.color) params.color = search.color;
+	if (search.category) params.category = search.category;
 	return params;
 }
 
@@ -73,8 +78,7 @@ export function useOpCardSearch(state: OpCardSearchState) {
 
 	async function search(search: OpCardSearch) {
 		const eventId = toValue(state.eventId);
-		if (!eventId)
-			return;
+		if (!eventId) return;
 		const flight = searches.begin();
 		searchController?.abort();
 		searchController = null;
@@ -90,23 +94,17 @@ export function useOpCardSearch(state: OpCardSearchState) {
 		state.searching.value = true;
 		try {
 			const answer = await searchCards(eventId, opCardSearchParams(search), controller.signal);
-			if (!flight.current)
-				return;
+			if (!flight.current) return;
 			state.available.value = answer.available;
-			state.results.value = answer.available
-				? answer.items
-				: [];
+			state.results.value = answer.available ? answer.items : [];
 			state.searched.value = true;
 			state.searchError.value = null;
-		}
-		catch {
-			if (!flight.current)
-				return;
+		} catch {
+			if (!flight.current) return;
 			state.results.value = [];
 			state.searched.value = false;
 			state.searchError.value = SEARCH_FAILED;
-		}
-		finally {
+		} finally {
 			if (flight.current) {
 				state.searching.value = false;
 				searchController = null;
@@ -144,23 +142,19 @@ export function useOpSpotlightRuntime(state: OpSpotlightRuntimeState) {
 	/** Load a Card's Printings; answers whether the lookup is still the latest and found the Card. */
 	async function loadDetail(number: string): Promise<OpCardDetail | null> {
 		const eventId = toValue(state.eventId);
-		if (!eventId)
-			return null;
+		if (!eventId) return null;
 		const flight = lookups.begin();
 		try {
 			const answer = await lookupCard(eventId, number);
-			if (!flight.current)
-				return null;
+			if (!flight.current) return null;
 			if (!answer.available) {
 				state.available.value = false;
 				return null;
 			}
 			state.previewDetail.value = answer.card;
 			return answer.card;
-		}
-		catch {
-			if (flight.current)
-				state.searchError.value = SEARCH_FAILED;
+		} catch {
+			if (flight.current) state.searchError.value = SEARCH_FAILED;
 			return null;
 		}
 	}
@@ -178,7 +172,7 @@ export function useOpSpotlightRuntime(state: OpSpotlightRuntimeState) {
 	}
 
 	function pushToHistory(card: OpScreenCard) {
-		const history = state.selectionHistory.value.filter(entry => entry.number !== card.number);
+		const history = state.selectionHistory.value.filter((entry) => entry.number !== card.number);
 		state.selectionHistory.value = [
 			{
 				...toRaw(card),
@@ -198,12 +192,15 @@ export function useOpSpotlightRuntime(state: OpSpotlightRuntimeState) {
 	 * Preview a Card at the Printing named, or its first, and offer every
 	 * Printing it has. A Deck List entry names only its card number.
 	 */
-	async function selectCard(card: Pick<OpCardSummary, 'number'> & Partial<Pick<OpCardSummary, 'printingId'>>) {
-		state.showCardControls.value = !state.autoShowSelectedCard.value || state.activeScreenId.value === null;
+	async function selectCard(
+		card: Pick<OpCardSummary, 'number'> & Partial<Pick<OpCardSummary, 'printingId'>>,
+	) {
+		state.showCardControls.value =
+			!state.autoShowSelectedCard.value || state.activeScreenId.value === null;
 		const detail = await loadDetail(card.number);
-		const printing = detail?.printings.find(entry => entry.id === card.printingId) ?? detail?.printings[0];
-		if (!detail || !printing)
-			return;
+		const printing =
+			detail?.printings.find((entry) => entry.id === card.printingId) ?? detail?.printings[0];
+		if (!detail || !printing) return;
 		await preview(screenCardOf(detail, printing));
 	}
 
@@ -221,9 +218,8 @@ export function useOpSpotlightRuntime(state: OpSpotlightRuntimeState) {
 	/** Switch the preview to another Printing of the same Card. */
 	function selectPrinting(printingId: string) {
 		const detail = state.previewDetail.value;
-		const printing = detail?.printings.find(entry => entry.id === printingId);
-		if (!detail || !printing)
-			return;
+		const printing = detail?.printings.find((entry) => entry.id === printingId);
+		if (!detail || !printing) return;
 		const card = screenCardOf(detail, printing);
 		state.previewCard.value = card;
 		pushToHistory(card);
@@ -231,16 +227,17 @@ export function useOpSpotlightRuntime(state: OpSpotlightRuntimeState) {
 
 	async function showPreviewCard() {
 		const previewCard = state.previewCard.value;
-		if (!previewCard)
-			return;
+		if (!previewCard) return;
 		const { timeoutData: _held, ...card }: OpScreenCard = toRaw(previewCard);
 		const timeoutData = cardTimeoutStartingAt(toValue(state.cardTimeoutSeconds), getServerTime());
-		await state.saveActiveCard(timeoutData
-			? {
-					...card,
-					timeoutData,
-				}
-			: card);
+		await state.saveActiveCard(
+			timeoutData
+				? {
+						...card,
+						timeoutData,
+					}
+				: card,
+		);
 	}
 
 	function clearPreview() {

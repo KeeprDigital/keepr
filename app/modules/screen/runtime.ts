@@ -65,16 +65,14 @@ interface ScreenRuntimeState {
 const isConflictError = isStateConflictFetchFailure;
 
 function stripNullValues<T extends Record<string, unknown>>(value: T): Record<string, unknown> {
-	return Object.fromEntries(
-		Object.entries(value).filter(([, entryValue]) => entryValue !== null),
-	);
+	return Object.fromEntries(Object.entries(value).filter(([, entryValue]) => entryValue !== null));
 }
 
 /** The fields one unsettled write owns on a Screen, as the write names them. */
-type OwnedFields
-	= | { owner: symbol; kind: 'screen'; patch: Record<string, unknown> }
-		| { owner: symbol; kind: 'mode'; mode: ScreenMode; patch: Record<string, unknown> }
-		| { owner: symbol; kind: 'theme-overrides'; patch: Record<string, unknown> };
+type OwnedFields =
+	| { owner: symbol; kind: 'screen'; patch: Record<string, unknown> }
+	| { owner: symbol; kind: 'mode'; mode: ScreenMode; patch: Record<string, unknown> }
+	| { owner: symbol; kind: 'theme-overrides'; patch: Record<string, unknown> };
 
 /** A Screen with one write's fields laid over it; a `null` field reads as deleted. */
 function applyOwnedFields(screen: Screen, fields: OwnedFields): Screen {
@@ -189,27 +187,22 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	/** The revision a write is sent at: the newest one its own lifetime knows of. */
 	function versionToSend(writeLifetime: WriteLifetime, screenId: number): number {
 		const known = writeLifetime.versions.get(screenId) ?? 0;
-		if (writeLifetime.flight.stale)
-			return known;
+		if (writeLifetime.flight.stale) return known;
 		return Math.max(known, cachedRevision(screenId)?.stateVersion ?? 0);
 	}
 
 	/** Put a Screen where this client shows it: `screens`, and `activeScreen` when it is that one. */
 	function show(screen: Screen) {
-		const index = state.screens.value.findIndex(existing => existing.id === screen.id);
-		if (index === -1)
-			state.screens.value.push(screen);
-		else
-			state.screens.value[index] = screen;
+		const index = state.screens.value.findIndex((existing) => existing.id === screen.id);
+		if (index === -1) state.screens.value.push(screen);
+		else state.screens.value[index] = screen;
 
-		if (state.activeScreen.value?.id === screen.id)
-			state.activeScreen.value = screen;
+		if (state.activeScreen.value?.id === screen.id) state.activeScreen.value = screen;
 	}
 
 	function own(screenId: number, fields: OwnedFields) {
-		const shown = state.screens.value.find(existing => existing.id === screenId);
-		if (!shown)
-			return;
+		const shown = state.screens.value.find((existing) => existing.id === screenId);
+		if (!shown) return;
 		let owned = lifetime.owned.get(screenId);
 		if (!owned) {
 			owned = {
@@ -225,11 +218,9 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	/** Drop every field `owner` owns, and show what remains. */
 	function release(writeLifetime: WriteLifetime, screenId: number, owner: symbol) {
 		const owned = writeLifetime.owned.get(screenId);
-		if (!owned)
-			return;
-		owned.writes = owned.writes.filter(write => write.owner !== owner);
-		if (owned.writes.length === 0)
-			writeLifetime.owned.delete(screenId);
+		if (!owned) return;
+		owned.writes = owned.writes.filter((write) => write.owner !== owner);
+		if (owned.writes.length === 0) writeLifetime.owned.delete(screenId);
 		// A Screen deleted meanwhile stays deleted: releasing an edit of it shows nothing.
 		if (writeLifetime.flight.current && holdsScreen(screenId))
 			show(owned.writes.reduce(applyOwnedFields, owned.base));
@@ -242,8 +233,7 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	 */
 	function withOwnedFields(screen: Screen): Screen {
 		const owned = lifetime.owned.get(screen.id);
-		if (!owned)
-			return screen;
+		if (!owned) return screen;
 		owned.base = screen;
 		return owned.writes.reduce(applyOwnedFields, screen);
 	}
@@ -254,8 +244,7 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	 * none of them can move a Screen's `stateVersion` backwards (#703).
 	 */
 	function holdRevision(screen: Screen) {
-		if (isSupersededByCache(screen))
-			return;
+		if (isSupersededByCache(screen)) return;
 		show(withOwnedFields(screen));
 	}
 
@@ -266,22 +255,17 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	 * hold yet.
 	 */
 	function answerFor(writeLifetime: WriteLifetime, answer: Screen): Screen {
-		if (writeLifetime.flight.stale)
-			return answer;
+		if (writeLifetime.flight.stale) return answer;
 		const held = writeLifetime.owned.get(answer.id)?.base ?? cachedRevision(answer.id);
-		return held && held.stateVersion > answer.stateVersion
-			? toRaw(held)
-			: answer;
+		return held && held.stateVersion > answer.stateVersion ? toRaw(held) : answer;
 	}
 
 	function resolveAll<T>(deferred: Deferred<T>[], value: T) {
-		for (const item of deferred)
-			item.resolve(value);
+		for (const item of deferred) item.resolve(value);
 	}
 
 	function rejectAll<T>(deferred: Deferred<T>[], reason: unknown) {
-		for (const item of deferred)
-			item.reject(reason);
+		for (const item of deferred) item.reject(reason);
 	}
 
 	/** On a 409 conflict, refresh the local screen state then retry once. */
@@ -291,8 +275,7 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	): Promise<T> {
 		try {
 			return await action();
-		}
-		catch (err: unknown) {
+		} catch (err: unknown) {
 			if (isConflictError(err)) {
 				await refresh();
 				return await action();
@@ -309,11 +292,9 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	function makeRefreshScreen(eventId: number, screenId: number, writeLifetime: WriteLifetime) {
 		return async () => {
 			const freshScreen = await screenRepo.getById(eventId, screenId);
-			if (!freshScreen)
-				return;
+			if (!freshScreen) return;
 			heard(writeLifetime, freshScreen);
-			if (writeLifetime.flight.current && holdsScreen(screenId))
-				holdRevision(freshScreen);
+			if (writeLifetime.flight.current && holdsScreen(screenId)) holdRevision(freshScreen);
 		};
 	}
 
@@ -340,11 +321,9 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 						);
 						heard(writeLifetime, answer);
 						// A Screen deleted while the write was out stays deleted.
-						if (writeLifetime.flight.current && holdsScreen(screenId))
-							holdRevision(answer);
+						if (writeLifetime.flight.current && holdsScreen(screenId)) holdRevision(answer);
 						return answerFor(writeLifetime, answer);
-					}
-					finally {
+					} finally {
 						release(writeLifetime, screenId, owner);
 					}
 				},
@@ -385,8 +364,7 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 		return state.executeAction(
 			async () => {
 				const createdScreen = await screenRepo.create(eventId, input);
-				if (flight.current)
-					holdRevision(createdScreen);
+				if (flight.current) holdRevision(createdScreen);
 				return createdScreen;
 			},
 			{ errorRef: state.error, flight },
@@ -397,8 +375,12 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	 * An ordinary Screen update: shown at once, and written in its turn among the
 	 * Screen's other writes. It answers `null` on failure, as it always has.
 	 */
-	async function updateScreen(eventId: number, screenId: number, updates: Omit<UpdateScreenInput, 'stateVersion'>) {
-		if (!state.screens.value.some(s => s.id === screenId)) {
+	async function updateScreen(
+		eventId: number,
+		screenId: number,
+		updates: Omit<UpdateScreenInput, 'stateVersion'>,
+	) {
+		if (!state.screens.value.some((s) => s.id === screenId)) {
 			state.error.value = 'Screen not found';
 			return null;
 		}
@@ -408,10 +390,10 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 		own(screenId, { owner, kind: 'screen', patch: updates });
 
 		try {
-			return await runWrite(writeLifetime, eventId, screenId, owner, stateVersion =>
-				screenRepo.update(eventId, screenId, { ...updates, stateVersion }));
-		}
-		catch {
+			return await runWrite(writeLifetime, eventId, screenId, owner, (stateVersion) =>
+				screenRepo.update(eventId, screenId, { ...updates, stateVersion }),
+			);
+		} catch {
 			return null;
 		}
 	}
@@ -421,17 +403,21 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	}
 
 	function flushModeConfigWrites() {
-		const entries = [
-			...pendingModeConfigWrites.values(),
-		];
+		const entries = [...pendingModeConfigWrites.values()];
 		pendingModeConfigWrites.clear();
 		for (const entry of entries) {
-			void runWrite(entry.lifetime, entry.eventId, entry.screenId, entry.owner, stateVersion =>
-				screenRepo.updateModeConfig(entry.eventId, entry.screenId, entry.mode, entry.partialConfig, stateVersion))
-				.then(
-					written => resolveAll(entry.deferred, written),
-					error => rejectAll(entry.deferred, error),
-				);
+			void runWrite(entry.lifetime, entry.eventId, entry.screenId, entry.owner, (stateVersion) =>
+				screenRepo.updateModeConfig(
+					entry.eventId,
+					entry.screenId,
+					entry.mode,
+					entry.partialConfig,
+					stateVersion,
+				),
+			).then(
+				(written) => resolveAll(entry.deferred, written),
+				(error) => rejectAll(entry.deferred, error),
+			);
 		}
 	}
 	const modeConfigWriteDebounce = createCancelableDebounce(flushModeConfigWrites, 300, 1000);
@@ -447,23 +433,22 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 		mode: M,
 		partialConfig: ScreenModeConfigPatch<M>,
 	) {
-		if (!state.screens.value.some(s => s.id === screenId)) {
+		if (!state.screens.value.some((s) => s.id === screenId)) {
 			state.error.value = 'Screen not found';
 			return null;
 		}
 
 		const patch: Record<string, unknown> = toModeConfigPatch(mode, partialConfig);
 		const key = `mode:${screenId}:${mode}`;
-		const entry: PendingModeConfigWrite = pendingModeConfigWrites.get(key)
-			?? {
-				eventId,
-				screenId,
-				mode,
-				partialConfig: {},
-				owner: Symbol(key),
-				lifetime,
-				deferred: [],
-			};
+		const entry: PendingModeConfigWrite = pendingModeConfigWrites.get(key) ?? {
+			eventId,
+			screenId,
+			mode,
+			partialConfig: {},
+			owner: Symbol(key),
+			lifetime,
+			deferred: [],
+		};
 		pendingModeConfigWrites.set(key, entry);
 		entry.partialConfig = {
 			...entry.partialConfig,
@@ -487,8 +472,12 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	 * once, and written in its turn among the Screen's other writes. Each edit is
 	 * a finished one, so it is sent without a debounce. A failure rejects.
 	 */
-	async function updateThemeOverrides(eventId: number, screenId: number, tokens: Record<string, unknown>) {
-		if (!state.screens.value.some(s => s.id === screenId)) {
+	async function updateThemeOverrides(
+		eventId: number,
+		screenId: number,
+		tokens: Record<string, unknown>,
+	) {
+		if (!state.screens.value.some((s) => s.id === screenId)) {
 			state.error.value = 'Screen not found';
 			return null;
 		}
@@ -497,12 +486,13 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 		const writeLifetime = lifetime;
 		own(screenId, { owner, kind: 'theme-overrides', patch: tokens });
 
-		return await runWrite(writeLifetime, eventId, screenId, owner, stateVersion =>
-			screenRepo.updateThemeOverrides(eventId, screenId, tokens, stateVersion));
+		return await runWrite(writeLifetime, eventId, screenId, owner, (stateVersion) =>
+			screenRepo.updateThemeOverrides(eventId, screenId, tokens, stateVersion),
+		);
 	}
 
 	async function removeScreen(eventId: number, screenId: number) {
-		const index = state.screens.value.findIndex(s => s.id === screenId);
+		const index = state.screens.value.findIndex((s) => s.id === screenId);
 		if (index === -1) {
 			state.error.value = 'Screen not found';
 			return null;
@@ -515,19 +505,17 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 		return state.executeAction(
 			async () => {
 				const result = await screenRepo.remove(eventId, screenId);
-				if (!result.success)
-					throw new Error('Failed to delete screen');
+				if (!result.success) throw new Error('Failed to delete screen');
 				return result;
 			},
 			{
 				errorRef: state.error,
 				flight,
 				onError: () => {
-					const idx = state.screens.value.findIndex(s => s.id === screenId);
+					const idx = state.screens.value.findIndex((s) => s.id === screenId);
 					if (idx === -1) {
-						const insertIdx = index < state.screens.value.length
-							? index
-							: state.screens.value.length;
+						const insertIdx =
+							index < state.screens.value.length ? index : state.screens.value.length;
 						state.screens.value.splice(insertIdx, 0, removed);
 					}
 				},
@@ -600,13 +588,10 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	 * newest and the payload it had just refused.
 	 */
 	function cachedRevision(screenId: number): Screen | null {
-		const held = state.screens.value.filter(screen => screen.id === screenId);
-		if (state.activeScreen.value?.id === screenId)
-			held.push(state.activeScreen.value);
+		const held = state.screens.value.filter((screen) => screen.id === screenId);
+		if (state.activeScreen.value?.id === screenId) held.push(state.activeScreen.value);
 		return held.reduce<Screen | null>(
-			(newest, screen) => (!newest || screen.stateVersion > newest.stateVersion
-				? screen
-				: newest),
+			(newest, screen) => (!newest || screen.stateVersion > newest.stateVersion ? screen : newest),
 			null,
 		);
 	}
@@ -657,11 +642,9 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 		const flight = remoteScreenLoads.begin(`screen:${screenId}`);
 		try {
 			const screen = await fetchAnnouncedScreen(eventId, screenId);
-			if (flight.stale || !screen)
-				return;
+			if (flight.stale || !screen) return;
 			holdRevision(screen);
-		}
-		catch {
+		} catch {
 			// Best effort: a notification is not a write, and failing to catch up on
 			// one must not put an error in front of an operator who did nothing.
 		}
@@ -669,8 +652,10 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 
 	/** Whether this client holds the Screen, and so has something to catch up. */
 	function holdsScreen(screenId: number) {
-		return state.activeScreen.value?.id === screenId
-			|| state.screens.value.some(screen => screen.id === screenId);
+		return (
+			state.activeScreen.value?.id === screenId ||
+			state.screens.value.some((screen) => screen.id === screenId)
+		);
 	}
 
 	/**
@@ -681,22 +666,19 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	 * would be work it can never use.
 	 */
 	async function applyRemoteCreated(data: MessageData<'screen:created'>) {
-		if (state.currentEventId.value !== data.eventId)
-			return;
+		if (state.currentEventId.value !== data.eventId) return;
 		await reloadAnnouncedScreen(data.eventId, data.screenId);
 	}
 
 	async function applyRemoteUpdated(data: MessageData<'screen:updated'>) {
-		if (!holdsScreen(data.screenId) && state.currentEventId.value !== data.eventId)
-			return;
+		if (!holdsScreen(data.screenId) && state.currentEventId.value !== data.eventId) return;
 		await reloadAnnouncedScreen(data.eventId, data.screenId);
 	}
 
 	function applyRemoteDeleted(data: MessageData<'screen:deleted'>) {
 		lifetime.owned.delete(data.screenId);
-		state.screens.value = state.screens.value.filter(s => s.id !== data.screenId);
-		if (state.activeScreen.value?.id === data.screenId)
-			state.activeScreen.value = null;
+		state.screens.value = state.screens.value.filter((s) => s.id !== data.screenId);
+		if (state.activeScreen.value?.id === data.screenId) state.activeScreen.value = null;
 	}
 
 	function getConnectedCount(screenId: number): number {
@@ -704,8 +686,7 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	}
 
 	function subscribeToScreenPresence(screenId: number) {
-		if (!state.currentEventId.value)
-			return;
+		if (!state.currentEventId.value) return;
 		const held = presenceWatches.get(screenId);
 		if (held) {
 			held.holders += 1;
@@ -728,19 +709,16 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 			);
 
 			presenceWatches.set(screenId, { stop: unsubscribe, holders: 1 });
-		}
-		catch (err) {
+		} catch (err) {
 			console.warn(`Failed to subscribe to screen presence for screen ${screenId}:`, err);
 		}
 	}
 
 	function unsubscribeFromScreenPresence(screenId: number) {
 		const held = presenceWatches.get(screenId);
-		if (!held)
-			return;
+		if (!held) return;
 		held.holders -= 1;
-		if (held.holders > 0)
-			return;
+		if (held.holders > 0) return;
 		held.stop();
 		presenceWatches.delete(screenId);
 		const newMap = new Map(state.screenPresence.value);
@@ -750,14 +728,12 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 
 	// The Event scope is ending, so every watch stops whoever still holds it.
 	function unsubscribeFromAllPresence() {
-		for (const held of presenceWatches.values())
-			held.stop();
+		for (const held of presenceWatches.values()) held.stop();
 		presenceWatches.clear();
 	}
 
 	async function sendScreenCommand(screenId: number, command: ScreenCommand): Promise<void> {
-		if (!state.currentEventId.value)
-			return;
+		if (!state.currentEventId.value) return;
 
 		await $fetch(`/api/events/${state.currentEventId.value}/screens/${screenId}/command`, {
 			method: 'POST',
@@ -780,17 +756,14 @@ export function useScreenRuntime(state: ScreenRuntimeState) {
 	 */
 	function resetRuntime() {
 		modeConfigWriteDebounce.flushIfPending();
-		for (const screen of state.screens.value)
-			heard(lifetime, screen);
-		if (state.activeScreen.value)
-			heard(lifetime, state.activeScreen.value);
+		for (const screen of state.screens.value) heard(lifetime, screen);
+		if (state.activeScreen.value) heard(lifetime, state.activeScreen.value);
 		// A queued write with no armed timer is not constructible today — every entry
 		// is inserted in the same breath as a `schedule()` — but an entry left here
 		// would leave its caller's promise waiting forever, so it is settled rather
 		// than dropped.
 		const cancellation = new Error('Screen write cancelled because its Event scope changed');
-		for (const entry of pendingModeConfigWrites.values())
-			rejectAll(entry.deferred, cancellation);
+		for (const entry of pendingModeConfigWrites.values()) rejectAll(entry.deferred, cancellation);
 		pendingModeConfigWrites.clear();
 		lifetime = beginLifetime();
 		remoteScreenLoads.supersedeAll();

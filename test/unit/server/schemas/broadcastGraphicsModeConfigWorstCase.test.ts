@@ -53,22 +53,30 @@ const RECIPE = {
 	easing: 'ease-in-out' as const,
 	delay: 9999.5,
 	fade: { opacity: 0.85 },
-	slide: { direction: 'north-east' as const, distanceMode: 'clear-parent' as const, distance: 9999.5 },
+	slide: {
+		direction: 'north-east' as const,
+		distanceMode: 'clear-parent' as const,
+		distance: 9999.5,
+	},
 	scale: { factor: 1.95, origin: 'bottom-right' as const },
 	reveal: { edge: 'bottom' as const },
 };
 const ON_SCREEN = { ...RECIPE, pause: 59999.5, repeat: 100 };
 const ANIMATION = {
-	'enter': RECIPE,
+	enter: RECIPE,
 	'on-screen': ON_SCREEN,
-	'update': RECIPE,
-	'exit': RECIPE,
+	update: RECIPE,
+	exit: RECIPE,
 };
 const SURFACE_STYLE = {
 	fill: {
 		type: 'linear-gradient' as const,
 		angle: -359.99,
-		stops: Array.from({ length: 4 }, (_, index) => ({ color: '#0077a3', position: index / 3, opacity: 0.85 })),
+		stops: Array.from({ length: 4 }, (_, index) => ({
+			color: '#0077a3',
+			position: index / 3,
+			opacity: 0.85,
+		})),
 	},
 	fillOpacity: 0.85,
 	outline: { color: '#ffffff', width: 12.5 },
@@ -97,20 +105,24 @@ const TYPOGRAPHY = {
 	color: '#0077a3',
 };
 /** Every Theme binding slot, each naming the longest Foundation Token of its type. */
-const ITEM_THEME_BINDINGS = Object.fromEntries(GRAPHIC_THEME_SLOT_VALUES.map(slot => [
-	slot,
-	graphicThemeSlotTokens(slot).reduce((longest, name) => name.length > longest.length
-		? name
-		: longest, ''),
-]));
+const ITEM_THEME_BINDINGS = Object.fromEntries(
+	GRAPHIC_THEME_SLOT_VALUES.map((slot) => [
+		slot,
+		graphicThemeSlotTokens(slot).reduce(
+			(longest, name) => (name.length > longest.length ? name : longest),
+			'',
+		),
+	]),
+);
 const CONTAINER_THEME_BINDINGS = {
 	'animation.enter': ITEM_THEME_BINDINGS['animation.enter'],
 	'animation.update': ITEM_THEME_BINDINGS['animation.update'],
 	'animation.exit': ITEM_THEME_BINDINGS['animation.exit'],
 };
-const LONGEST_FIELD_ID = graphicBindingFieldIds().reduce((longest, id) => (id.length > longest.length
-	? id
-	: longest), '');
+const LONGEST_FIELD_ID = graphicBindingFieldIds().reduce(
+	(longest, id) => (id.length > longest.length ? id : longest),
+	'',
+);
 const PARENT_SOURCE_KEY = 'p'.repeat(MAX_GRAPHIC_INPUT_KEY_LENGTH);
 const BOX = {
 	anchor: 'bottom-right' as const,
@@ -126,10 +138,10 @@ function containerAnimation(itemIds: string[]) {
 	return {
 		...ANIMATION,
 		stagger: {
-			'enter': stagger,
+			enter: stagger,
 			'on-screen': stagger,
-			'update': stagger,
-			'exit': stagger,
+			update: stagger,
+			exit: stagger,
 		},
 	};
 }
@@ -138,13 +150,12 @@ const itemId = (index: number) => `i${index}`.padEnd(MAX_GRAPHIC_ITEM_ID_LENGTH,
 
 function item(id: string) {
 	return {
-		placeholderStyles: Object.fromEntries(Array.from(
-			{ length: MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM },
-			(_, index) => [
+		placeholderStyles: Object.fromEntries(
+			Array.from({ length: MAX_GRAPHIC_PLACEHOLDER_STYLES_PER_TEXT_ITEM }, (_, index) => [
 				`k${index}`.padEnd(MAX_GRAPHIC_INPUT_KEY_LENGTH, 'k'),
 				{ ...RUN_STYLE, color: '#0077a3' },
-			],
-		)),
+			]),
+		),
 		type: 'text' as const,
 		id,
 		label: 'L'.repeat(100),
@@ -178,7 +189,7 @@ function group(id: string, childIds: string[]) {
 		defaultChildSurfaceStyle: SURFACE_STYLE,
 		animation: containerAnimation(childIds),
 		themeBindings: ITEM_THEME_BINDINGS,
-		children: childIds.map(childId => ({
+		children: childIds.map((childId) => ({
 			...item(childId),
 			sizing: { mode: 'fixed' as const, size: 9999.5, weight: 99.5 },
 		})),
@@ -195,7 +206,12 @@ function items(total: number, arrangement: 'flat' | 'grouped') {
 	let placed = 0;
 	for (let index = 0; index < groupCount; index += 1) {
 		const share = Math.floor((total - placed) / (groupCount - index)) - 1;
-		result.push(group(itemId(placed), Array.from({ length: share }, (_, child) => itemId(placed + 1 + child))));
+		result.push(
+			group(
+				itemId(placed),
+				Array.from({ length: share }, (_, child) => itemId(placed + 1 + child)),
+			),
+		);
 		placed += share + 1;
 	}
 	expect(placed).toBe(total);
@@ -220,7 +236,11 @@ function worstCaseScreen(arrangement: 'flat' | 'grouped') {
 		channelId: channels[index % channels.length]!.id,
 	}));
 
-	function fill<T>(values: T[], perGraphic: number, add: (graphic: typeof graphics[number], value: T) => void) {
+	function fill<T>(
+		values: T[],
+		perGraphic: number,
+		add: (graphic: (typeof graphics)[number], value: T) => void,
+	) {
 		let index = 0;
 		for (const graphic of graphics) {
 			for (let taken = 0; taken < perGraphic && index < values.length; taken += 1, index += 1)
@@ -230,48 +250,69 @@ function worstCaseScreen(arrangement: 'flat' | 'grouped') {
 	}
 	const indices = (count: number) => Array.from({ length: count }, (_, index) => index);
 
-	fill(items(MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN, arrangement), MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC, (graphic, value) => graphic.items.push(value));
-	fill(indices(MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN), MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC, (graphic, index) => {
-		const key = `k${index}`.padEnd(MAX_GRAPHIC_INPUT_KEY_LENGTH, 'k');
-		graphic.inputs.push({
-			type: 'choice',
-			key,
-			label: 'L'.repeat(MAX_GRAPHIC_INPUT_LABEL_LENGTH),
-			required: true,
-			updatePolicy: 'staged',
-			default: 'd'.repeat(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
-			options: Array.from({ length: MAX_GRAPHIC_INPUT_CHOICE_OPTIONS }, () => ({
-				value: 'v'.repeat(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
-				label: 'L'.repeat(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
-			})),
-		});
-		graphic.bindings.push({ inputKey: key, sourceKey: PARENT_SOURCE_KEY, fieldId: LONGEST_FIELD_ID });
-	});
+	fill(
+		items(MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN, arrangement),
+		MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHIC,
+		(graphic, value) => graphic.items.push(value),
+	);
+	fill(
+		indices(MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHICS_SCREEN),
+		MAX_GRAPHIC_INPUTS_PER_BROADCAST_GRAPHIC,
+		(graphic, index) => {
+			const key = `k${index}`.padEnd(MAX_GRAPHIC_INPUT_KEY_LENGTH, 'k');
+			graphic.inputs.push({
+				type: 'choice',
+				key,
+				label: 'L'.repeat(MAX_GRAPHIC_INPUT_LABEL_LENGTH),
+				required: true,
+				updatePolicy: 'staged',
+				default: 'd'.repeat(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
+				options: Array.from({ length: MAX_GRAPHIC_INPUT_CHOICE_OPTIONS }, () => ({
+					value: 'v'.repeat(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
+					label: 'L'.repeat(MAX_GRAPHIC_INPUT_CHOICE_LENGTH),
+				})),
+			});
+			graphic.bindings.push({
+				inputKey: key,
+				sourceKey: PARENT_SOURCE_KEY,
+				fieldId: LONGEST_FIELD_ID,
+			});
+		},
+	);
 	// The first selection is the Feature Match Slot; the dearer derived ones follow it.
-	fill(indices(MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN), MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC, (graphic, index) => {
-		const label = 'L'.repeat(MAX_GRAPHIC_INPUT_LABEL_LENGTH);
-		graphic.sources.push(graphic.sources.length > 0
-			? {
-					key: `s${index}`.padEnd(MAX_GRAPHIC_INPUT_KEY_LENGTH, 's'),
-					label,
-					kind: 'player',
-					from: { sourceKey: PARENT_SOURCE_KEY, relation: 'player1' },
-				}
-			: { key: PARENT_SOURCE_KEY, label, kind: 'feature-match-slot' });
-	});
+	fill(
+		indices(MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHICS_SCREEN),
+		MAX_GRAPHIC_SOURCE_SELECTIONS_PER_BROADCAST_GRAPHIC,
+		(graphic, index) => {
+			const label = 'L'.repeat(MAX_GRAPHIC_INPUT_LABEL_LENGTH);
+			graphic.sources.push(
+				graphic.sources.length > 0
+					? {
+							key: `s${index}`.padEnd(MAX_GRAPHIC_INPUT_KEY_LENGTH, 's'),
+							label,
+							kind: 'player',
+							from: { sourceKey: PARENT_SOURCE_KEY, relation: 'player1' },
+						}
+					: { key: PARENT_SOURCE_KEY, label, kind: 'feature-match-slot' },
+			);
+		},
+	);
 	for (const graphic of graphics)
-		graphic.animation = containerAnimation(graphic.items.map(value => value.id));
+		graphic.animation = containerAnimation(graphic.items.map((value) => value.id));
 
 	return { graphics, channels };
 }
 
 function countGraphicItems(config: ReturnType<typeof worstCaseScreen>) {
-	return config.graphics.reduce((total, graphic) => total + graphic.items.reduce(
-		(count, value) => count + 1 + ('children' in value
-			? value.children.length
-			: 0),
+	return config.graphics.reduce(
+		(total, graphic) =>
+			total +
+			graphic.items.reduce(
+				(count, value) => count + 1 + ('children' in value ? value.children.length : 0),
+				0,
+			),
 		0,
-	), 0);
+	);
 }
 
 // ── a realistic Screen at the cap: ADR-0007's richest reconstructed graphic ──
@@ -279,7 +320,8 @@ function countGraphicItems(config: ReturnType<typeof worstCaseScreen>) {
 const REALISTIC_ITEMS_PER_GRAPHIC = 6;
 const REALISTIC_INPUTS_PER_GRAPHIC = 2;
 
-const realisticId = (graphic: number, index: number) => `3f2a9c1e-7b4d-4e2a-9f10-${String(graphic).padStart(6, '0')}${String(index).padStart(6, '0')}`;
+const realisticId = (graphic: number, index: number) =>
+	`3f2a9c1e-7b4d-4e2a-9f10-${String(graphic).padStart(6, '0')}${String(index).padStart(6, '0')}`;
 
 function realisticText(id: string) {
 	return {
@@ -387,59 +429,56 @@ function realisticStack(totalItems: number) {
 		maxLength: 60,
 	});
 
-	return Array.from({
-		length: Math.ceil(totalItems / REALISTIC_ITEMS_PER_GRAPHIC),
-	}, (_, index) => {
-		const take = Math.min(REALISTIC_ITEMS_PER_GRAPHIC, remaining);
-		remaining -= take;
-		const graphicItems = Array.from({ length: take }, (_, position) => (position % 3 === 0
-			? realisticText(realisticId(index, position))
-			: realisticShape(realisticId(index, position))));
-		const withInputs = remainingInputs >= REALISTIC_INPUTS_PER_GRAPHIC;
-		if (withInputs)
-			remainingInputs -= REALISTIC_INPUTS_PER_GRAPHIC;
+	return Array.from(
+		{
+			length: Math.ceil(totalItems / REALISTIC_ITEMS_PER_GRAPHIC),
+		},
+		(_, index) => {
+			const take = Math.min(REALISTIC_ITEMS_PER_GRAPHIC, remaining);
+			remaining -= take;
+			const graphicItems = Array.from({ length: take }, (_, position) =>
+				position % 3 === 0
+					? realisticText(realisticId(index, position))
+					: realisticShape(realisticId(index, position)),
+			);
+			const withInputs = remainingInputs >= REALISTIC_INPUTS_PER_GRAPHIC;
+			if (withInputs) remainingInputs -= REALISTIC_INPUTS_PER_GRAPHIC;
 
-		return {
-			id: realisticId(index, 999),
-			name: `Lower third ${index}`,
-			items: graphicItems,
-			...(withInputs
-				? {
-						inputs: [
-							textInput('name', 'Name', true),
-							textInput('role', 'Role', false),
-						],
-						sources: [
-							{ key: 'player', label: 'Player', kind: 'player' as const },
-						],
-						bindings: [
-							{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' },
-						],
-					}
-				: {}),
-			animation: {
-				enter: {
-					duration: 500,
-					easing: 'ease-out' as const,
-					delay: 0,
-					fade: { opacity: 0 },
-				},
-				exit: {
-					duration: 400,
-					easing: 'ease-in' as const,
-					delay: 0,
-					fade: { opacity: 0 },
-				},
-				stagger: {
+			return {
+				id: realisticId(index, 999),
+				name: `Lower third ${index}`,
+				items: graphicItems,
+				...(withInputs
+					? {
+							inputs: [textInput('name', 'Name', true), textInput('role', 'Role', false)],
+							sources: [{ key: 'player', label: 'Player', kind: 'player' as const }],
+							bindings: [{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }],
+						}
+					: {}),
+				animation: {
 					enter: {
-						order: 'list' as const,
-						step: 80,
-						itemIds: graphicItems.map(value => value.id),
+						duration: 500,
+						easing: 'ease-out' as const,
+						delay: 0,
+						fade: { opacity: 0 },
+					},
+					exit: {
+						duration: 400,
+						easing: 'ease-in' as const,
+						delay: 0,
+						fade: { opacity: 0 },
+					},
+					stagger: {
+						enter: {
+							order: 'list' as const,
+							step: 80,
+							itemIds: graphicItems.map((value) => value.id),
+						},
 					},
 				},
-			},
-		};
-	});
+			};
+		},
+	);
 }
 
 describe('broadcast Graphics byte measurements (ADR-0007)', () => {
@@ -448,7 +487,9 @@ describe('broadcast Graphics byte measurements (ADR-0007)', () => {
 
 		expect(broadcastGraphicsModeConfigSchema.safeParse(config).success).toBe(true);
 		expect(countGraphicItems(config)).toBe(MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN);
-		expect(jsonBytes(config)).toBe(MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN_WORST_CASE_BYTES);
+		expect(jsonBytes(config)).toBe(
+			MAX_GRAPHIC_ITEMS_PER_BROADCAST_GRAPHICS_SCREEN_WORST_CASE_BYTES,
+		);
 		expect(modeConfigsMapSchema.safeParse({ 'broadcast-graphics': config }).success).toBe(false);
 	});
 

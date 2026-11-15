@@ -15,14 +15,14 @@ describe('screen Output Asset Capability', () => {
 		});
 
 		expect(capability).toMatch(/^[\w-]{43}$/);
-		await expect(createScreenOutputAssetCapability({
-			signingKey,
-			seed: 'd7b2c796-67f2-4c46-b424-c77b657e6ce7',
-			version: 3,
-		})).resolves.toBe(capability);
 		await expect(
-			screenOutputAssetCapabilityDigest(capability),
-		).resolves.toMatch(/^[\da-f]{64}$/);
+			createScreenOutputAssetCapability({
+				signingKey,
+				seed: 'd7b2c796-67f2-4c46-b424-c77b657e6ce7',
+				version: 3,
+			}),
+		).resolves.toBe(capability);
+		await expect(screenOutputAssetCapabilityDigest(capability)).resolves.toMatch(/^[\da-f]{64}$/);
 		expect(await screenOutputAssetCapabilityDigest(capability)).not.toContain(capability);
 	});
 
@@ -48,10 +48,12 @@ describe('screen Output Asset Capability', () => {
 	});
 
 	it('rejects an invalid signing key before deriving a capability', async () => {
-		await expect(createScreenOutputAssetCapability({
-			signingKey: 'not-a-32-byte-base64-key',
-			seed: 'd7b2c796-67f2-4c46-b424-c77b657e6ce7',
-			version: 1,
-		})).rejects.toThrow('32-byte base64');
+		await expect(
+			createScreenOutputAssetCapability({
+				signingKey: 'not-a-32-byte-base64-key',
+				seed: 'd7b2c796-67f2-4c46-b424-c77b657e6ce7',
+				version: 1,
+			}),
+		).rejects.toThrow('32-byte base64');
 	});
 });

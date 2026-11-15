@@ -35,7 +35,7 @@ const CHAIN_METHODS = [
 	'having',
 ] as const;
 
-type ChainableQuery = Record<typeof CHAIN_METHODS[number], ReturnType<typeof vi.fn>>;
+type ChainableQuery = Record<(typeof CHAIN_METHODS)[number], ReturnType<typeof vi.fn>>;
 
 function createChainableQuery(): ChainableQuery {
 	const chain = {} as ChainableQuery;
@@ -156,10 +156,15 @@ export function resetDbMocks() {
  */
 export function getChain(op: 'select' | 'selectDistinct' | 'insert' | 'update' | 'delete') {
 	switch (op) {
-		case 'select': return selectChain;
-		case 'selectDistinct': return selectDistinctChain;
-		case 'insert': return insertChain;
-		case 'update': return updateChain;
-		case 'delete': return deleteChain;
+		case 'select':
+			return selectChain;
+		case 'selectDistinct':
+			return selectDistinctChain;
+		case 'insert':
+			return insertChain;
+		case 'update':
+			return updateChain;
+		case 'delete':
+			return deleteChain;
 	}
 }

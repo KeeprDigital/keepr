@@ -32,7 +32,7 @@ function transferFacts(partCount: number, heldPartNumbers: number[] = []) {
 		maximumPartAttempts: 3,
 		partCount,
 		cleanupPending: false,
-		completedParts: heldPartNumbers.map(partNumber => ({
+		completedParts: heldPartNumbers.map((partNumber) => ({
 			partNumber,
 			partIdentity: `operation-1:${partNumber}` as never,
 			byteLength: GRAPHICS_MULTIPART_PART_BYTES,
@@ -64,16 +64,14 @@ async function throughEveryWait<T>(start: () => Promise<T>): Promise<T> {
 	vi.useFakeTimers();
 	try {
 		const settled = start().then(
-			value => ({ value }),
+			(value) => ({ value }),
 			(error: unknown) => ({ error }),
 		);
 		await vi.runAllTimersAsync();
 		const outcome = await settled;
-		if ('error' in outcome)
-			throw outcome.error;
+		if ('error' in outcome) throw outcome.error;
 		return outcome.value;
-	}
-	finally {
+	} finally {
 		vi.useRealTimers();
 	}
 }
@@ -90,22 +88,21 @@ function refusingPartTwo(refusals: number, failure: () => unknown) {
 				transfer: transferFacts(2),
 			});
 		}
-		if (path.endsWith('/multipart/parts/2') && refused++ < refusals)
-			throw failure();
+		if (path.endsWith('/multipart/parts/2') && refused++ < refusals) throw failure();
 		return operation({ stage: 'completed' });
 	});
 }
 
 /** How many times part 2 has been sent so far. */
 function partTwoSends(): number {
-	return requests().filter(request => request.endsWith('/multipart/parts/2')).length;
+	return requests().filter((request) => request.endsWith('/multipart/parts/2')).length;
 }
 
 /** The length of each part sent, in the order it was sent. */
 function partSizes(): number[] {
 	return mockFetch.mock.calls
-		.filter(call => String(call[0]).includes('/multipart/parts/'))
-		.map(call => (call[1] as { body: Blob }).body.size);
+		.filter((call) => String(call[0]).includes('/multipart/parts/'))
+		.map((call) => (call[1] as { body: Blob }).body.size);
 }
 
 describe('useGraphicsIngestionTransfer', () => {
@@ -157,8 +154,7 @@ describe('useGraphicsIngestionTransfer', () => {
 					transfer: transferFacts(2),
 				});
 			}
-			if (path.endsWith('/multipart/complete'))
-				return completed;
+			if (path.endsWith('/multipart/complete')) return completed;
 			return operation();
 		});
 
@@ -210,15 +206,18 @@ describe('useGraphicsIngestionTransfer', () => {
 					transfer: transferFacts(2),
 				});
 			}
-			if (path.endsWith('/multipart/parts/2'))
-				throw new Error('Connection reset');
+			if (path.endsWith('/multipart/parts/2')) throw new Error('Connection reset');
 			return operation();
 		});
 
-		await expect(throughEveryWait(() => useGraphicsIngestionTransfer().transfer(
-			operation(),
-			sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
-		))).rejects.toThrow('Connection reset');
+		await expect(
+			throughEveryWait(() =>
+				useGraphicsIngestionTransfer().transfer(
+					operation(),
+					sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
+				),
+			),
+		).rejects.toThrow('Connection reset');
 
 		expect(partTwoSends()).toBe(3);
 		// A transfer that never finished sending must not be completed.
@@ -244,10 +243,12 @@ describe('useGraphicsIngestionTransfer', () => {
 			return operation();
 		});
 
-		await expect(useGraphicsIngestionTransfer().transfer(
-			operation(),
-			sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
-		)).rejects.toThrow('This browser is no longer signed in');
+		await expect(
+			useGraphicsIngestionTransfer().transfer(
+				operation(),
+				sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
+			),
+		).rejects.toThrow('This browser is no longer signed in');
 
 		expect(partTwoSends()).toBe(1);
 		expect(requests()).not.toContain(`POST ${ingestion}/operation-1/multipart/complete`);
@@ -271,34 +272,43 @@ describe('useGraphicsIngestionTransfer', () => {
 			return operation();
 		});
 
-		await expect(useGraphicsIngestionTransfer().transfer(
-			operation(),
-			sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
-		)).rejects.toThrow('Payload Too Large');
+		await expect(
+			useGraphicsIngestionTransfer().transfer(
+				operation(),
+				sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
+			),
+		).rejects.toThrow('Payload Too Large');
 
 		expect(partTwoSends()).toBe(1);
 		expect(requests()).not.toContain(`POST ${ingestion}/operation-1/multipart/complete`);
 	});
 
-	it.each([408, 429, 503])('spends the attempt budget on a %i, which a retry can outlive', async (status) => {
-		mockFetch.mockImplementation(async (path: string) => {
-			if (path.endsWith('/multipart')) {
-				return operation({
-					transfer: transferFacts(2),
-				});
-			}
-			if (path.endsWith('/multipart/parts/2'))
-				throw Object.assign(new Error(`Refused with ${status}`), { statusCode: status });
-			return operation();
-		});
+	it.each([408, 429, 503])(
+		'spends the attempt budget on a %i, which a retry can outlive',
+		async (status) => {
+			mockFetch.mockImplementation(async (path: string) => {
+				if (path.endsWith('/multipart')) {
+					return operation({
+						transfer: transferFacts(2),
+					});
+				}
+				if (path.endsWith('/multipart/parts/2'))
+					throw Object.assign(new Error(`Refused with ${status}`), { statusCode: status });
+				return operation();
+			});
 
-		await expect(throughEveryWait(() => useGraphicsIngestionTransfer().transfer(
-			operation(),
-			sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
-		))).rejects.toThrow(`Refused with ${status}`);
+			await expect(
+				throughEveryWait(() =>
+					useGraphicsIngestionTransfer().transfer(
+						operation(),
+						sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
+					),
+				),
+			).rejects.toThrow(`Refused with ${status}`);
 
-		expect(partTwoSends()).toBe(3);
-	});
+			expect(partTwoSends()).toBe(3);
+		},
+	);
 
 	/**
 	 * The library counts a part's attempts itself (#639): a part re-sent the
@@ -313,10 +323,11 @@ describe('useGraphicsIngestionTransfer', () => {
 			vi.useRealTimers();
 		});
 
-		const transferTwoParts = () => useGraphicsIngestionTransfer().transfer(
-			operation(),
-			sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
-		);
+		const transferTwoParts = () =>
+			useGraphicsIngestionTransfer().transfer(
+				operation(),
+				sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
+			);
 
 		it('waits the interval the library names in retry-after', async () => {
 			refusingPartTwo(1, () => unavailable('5'));
@@ -390,11 +401,8 @@ describe('useGraphicsIngestionTransfer', () => {
 		const observed: number[] = [];
 
 		await useGraphicsIngestionTransfer({
-			onOperation: snapshot => observed.push(snapshot.transferredByteLength),
-		}).transfer(
-			operation(),
-			sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1),
-		);
+			onOperation: (snapshot) => observed.push(snapshot.transferredByteLength),
+		}).transfer(operation(), sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1));
 
 		expect(observed).toEqual([0, GRAPHICS_MULTIPART_PART_BYTES, GRAPHICS_MULTIPART_PART_BYTES + 1]);
 	});
@@ -420,7 +428,7 @@ describe('useGraphicsIngestionTransfer', () => {
 			const observed: number[] = [];
 
 			const pending = useGraphicsIngestionTransfer({
-				onOperation: snapshot => observed.push(snapshot.transferredByteLength),
+				onOperation: (snapshot) => observed.push(snapshot.transferredByteLength),
 			}).transfer(operation(), sourceOfByteLength(1));
 
 			await vi.advanceTimersByTimeAsync(600);
@@ -433,10 +441,10 @@ describe('useGraphicsIngestionTransfer', () => {
 			expect(observed).toEqual([1, 2]);
 			// The poller stops with the request it was observing.
 			expect(observed.length).toBe(observedWhilePending);
-			expect(requests().filter(request => request === `GET ${ingestion}/operation-1`))
-				.toHaveLength(2);
-		}
-		finally {
+			expect(
+				requests().filter((request) => request === `GET ${ingestion}/operation-1`),
+			).toHaveLength(2);
+		} finally {
 			vi.useRealTimers();
 		}
 	});
@@ -447,23 +455,24 @@ describe('useGraphicsIngestionTransfer', () => {
 			let settle!: (operation: GraphicsIngestionOperation) => void;
 			mockFetch.mockImplementation((path: string, request?: { method?: string }) => {
 				if (path.endsWith('/multipart')) {
-					return Promise.resolve(operation({
-						transfer: transferFacts(1),
-					}));
+					return Promise.resolve(
+						operation({
+							transfer: transferFacts(1),
+						}),
+					);
 				}
 				if (path.endsWith('/multipart/complete')) {
 					return new Promise<GraphicsIngestionOperation>((resolve) => {
 						settle = resolve;
 					});
 				}
-				if (!request?.method)
-					return Promise.resolve(operation({ transferredByteLength: 42 }));
+				if (!request?.method) return Promise.resolve(operation({ transferredByteLength: 42 }));
 				return Promise.resolve(operation());
 			});
 			const observed: number[] = [];
 
 			const pending = useGraphicsIngestionTransfer({
-				onOperation: snapshot => observed.push(snapshot.transferredByteLength),
+				onOperation: (snapshot) => observed.push(snapshot.transferredByteLength),
 			}).transfer(operation(), sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES + 1));
 
 			await vi.advanceTimersByTimeAsync(300);
@@ -471,8 +480,7 @@ describe('useGraphicsIngestionTransfer', () => {
 			await pending;
 
 			expect(observed).toContain(42);
-		}
-		finally {
+		} finally {
 			vi.useRealTimers();
 		}
 	});
@@ -485,11 +493,12 @@ describe('useGraphicsIngestionTransfer', () => {
 			const poll = deferred<GraphicsIngestionOperation>();
 			const request = deferred<GraphicsIngestionOperation>();
 			mockFetch.mockImplementation((_path: string, sent?: { method?: string }) =>
-				sent?.method ? request.promise : poll.promise);
+				sent?.method ? request.promise : poll.promise,
+			);
 			const observed: string[] = [];
 
 			const pending = useGraphicsIngestionTransfer({
-				onOperation: snapshot => observed.push(snapshot.stage),
+				onOperation: (snapshot) => observed.push(snapshot.stage),
 			}).transfer(operation(), sourceOfByteLength(1));
 			await vi.advanceTimersByTimeAsync(300);
 			request.resolve(operation({ stage: 'completed' }));
@@ -499,8 +508,7 @@ describe('useGraphicsIngestionTransfer', () => {
 
 			expect(requests()).toContain(`GET ${ingestion}/operation-1`);
 			expect(observed).toEqual([]);
-		}
-		finally {
+		} finally {
 			vi.useRealTimers();
 		}
 	});
@@ -526,35 +534,39 @@ describe('useGraphicsIngestionTransfer', () => {
 	])('abandons $transfer when its signal aborts', async ({ byteLength, sent }) => {
 		vi.useFakeTimers();
 		try {
-			mockFetch.mockImplementation((path: string, request?: { method?: string; signal?: AbortSignal }) => {
-				if (path.endsWith('/multipart')) {
-					return Promise.resolve(operation({
-						transfer: transferFacts(4),
-					}));
-				}
-				if (!request?.method)
-					return Promise.resolve(operation());
-				// The network boundary: a request holding an aborted signal rejects.
-				return new Promise((_resolve, reject) => {
-					if (request.signal?.aborted)
-						reject(request.signal.reason);
-					request.signal?.addEventListener('abort', () => reject(request.signal!.reason));
-				});
-			});
+			mockFetch.mockImplementation(
+				(path: string, request?: { method?: string; signal?: AbortSignal }) => {
+					if (path.endsWith('/multipart')) {
+						return Promise.resolve(
+							operation({
+								transfer: transferFacts(4),
+							}),
+						);
+					}
+					if (!request?.method) return Promise.resolve(operation());
+					// The network boundary: a request holding an aborted signal rejects.
+					return new Promise((_resolve, reject) => {
+						if (request.signal?.aborted) reject(request.signal.reason);
+						request.signal?.addEventListener('abort', () => reject(request.signal!.reason));
+					});
+				},
+			);
 			const abort = new AbortController();
 			let outcome = 'pending';
 
 			void useGraphicsIngestionTransfer()
 				.transfer(operation(), sourceOfByteLength(byteLength), { signal: abort.signal })
-				.then(() => outcome = 'resolved', () => outcome = 'rejected');
+				.then(
+					() => (outcome = 'resolved'),
+					() => (outcome = 'rejected'),
+				);
 			await vi.advanceTimersByTimeAsync(100);
 			abort.abort();
 			await vi.advanceTimersByTimeAsync(120_000);
 
 			expect(outcome).toBe('rejected');
-			expect(requests().filter(request => !request.startsWith('GET '))).toEqual(sent);
-		}
-		finally {
+			expect(requests().filter((request) => !request.startsWith('GET '))).toEqual(sent);
+		} finally {
 			vi.useRealTimers();
 		}
 	});
@@ -562,9 +574,11 @@ describe('useGraphicsIngestionTransfer', () => {
 	it('says the same thing when a source that fits one request is refused', async () => {
 		mockFetch.mockRejectedValue(Object.assign(new Error('Unauthorized'), { statusCode: 401 }));
 
-		await expect(useGraphicsIngestionTransfer().transfer(
-			operation(),
-			sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES),
-		)).rejects.toThrow('This browser is no longer signed in');
+		await expect(
+			useGraphicsIngestionTransfer().transfer(
+				operation(),
+				sourceOfByteLength(GRAPHICS_MULTIPART_PART_BYTES),
+			),
+		).rejects.toThrow('This browser is no longer signed in');
 	});
 });

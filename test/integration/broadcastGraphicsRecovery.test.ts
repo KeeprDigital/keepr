@@ -38,7 +38,10 @@ async function corruptLiveState(sessionId: number): Promise<void> {
 	);
 }
 
-async function resetLiveState(eventId: number, screenId: number): Promise<BroadcastGraphicsLiveSessionResponse> {
+async function resetLiveState(
+	eventId: number,
+	screenId: number,
+): Promise<BroadcastGraphicsLiveSessionResponse> {
 	return await $fetch<BroadcastGraphicsLiveSessionResponse>(
 		`/api/events/${eventId}/screens/${screenId}/broadcast-graphics/live-session/reset`,
 		{ method: 'POST' },
@@ -51,7 +54,11 @@ describe('broadcast graphics recovery and multi-operator hardening', () => {
 	beforeAll(async () => {
 		const event = await $fetch<{ id: number }>('/api/events', {
 			method: 'POST',
-			body: { name: 'Integration Broadcast Graphics Hardening', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			body: {
+				name: 'Integration Broadcast Graphics Hardening',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			},
 		});
 		eventId = event.id;
 	});
@@ -59,16 +66,13 @@ describe('broadcast graphics recovery and multi-operator hardening', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	describe('what a mode change keeps and what it discards', () => {
 		it('turns every graphic off and advances the epoch, while prepared working values survive', async () => {
 			const harness = await createGraphicsHarness(eventId, 'hardening-mode-change', [
-				integrationBroadcastGraphicWithInputs('a', [
-					integrationTextInput('name'),
-				]),
+				integrationBroadcastGraphicWithInputs('a', [integrationTextInput('name')]),
 			]);
 			const endedSessionId = harness.session().id;
 
@@ -98,9 +102,7 @@ describe('broadcast graphics recovery and multi-operator hardening', () => {
 	describe('an explicit live-state reset', () => {
 		it('turns every graphic off, advances the epoch, and discards prepared values', async () => {
 			const harness = await createGraphicsHarness(eventId, 'hardening-reset', [
-				integrationBroadcastGraphicWithInputs('a', [
-					integrationTextInput('name'),
-				]),
+				integrationBroadcastGraphicWithInputs('a', [integrationTextInput('name')]),
 			]);
 			const endedSessionId = harness.session().id;
 
@@ -145,9 +147,7 @@ describe('broadcast graphics recovery and multi-operator hardening', () => {
 	describe('two operators on one Broadcast Graphic', () => {
 		it('rejects a stale edit to the same Graphic Input rather than overwriting it', async () => {
 			const harness = await createGraphicsHarness(eventId, 'hardening-same-field', [
-				integrationBroadcastGraphicWithInputs('a', [
-					integrationTextInput('name'),
-				]),
+				integrationBroadcastGraphicWithInputs('a', [integrationTextInput('name')]),
 			]);
 
 			await harness.send({
@@ -193,9 +193,7 @@ describe('broadcast graphics recovery and multi-operator hardening', () => {
 	describe('what every reader is told about the state it loads', () => {
 		it('clears that fault on the first accepted command, whatever kind it is', async () => {
 			const harness = await createGraphicsHarness(eventId, 'hardening-corrupt-cleared', [
-				integrationBroadcastGraphicWithInputs('a', [
-					integrationTextInput('name'),
-				]),
+				integrationBroadcastGraphicWithInputs('a', [integrationTextInput('name')]),
 			]);
 
 			await corruptLiveState(harness.session().id);

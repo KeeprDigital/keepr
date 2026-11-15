@@ -1,5 +1,8 @@
 import type { ScreenResponse } from '~~/shared/api';
-import type { ScreenOutputFeatureMatchResponse, ScreenOutputPlayerDecksResponse } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputFeatureMatchResponse,
+	ScreenOutputPlayerDecksResponse,
+} from '~~/shared/types/screenOutputReads';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { $fetch, anonymousFetch } from './client';
 
@@ -21,9 +24,7 @@ async function readJson<T>(response: Response): Promise<JsonResponse<T>> {
 	const text = await response.text();
 	return {
 		status: response.status,
-		data: (text
-			? JSON.parse(text)
-			: null) as T,
+		data: (text ? JSON.parse(text) : null) as T,
 	};
 }
 
@@ -37,40 +38,52 @@ describe('capability-only Screen Output reads', () => {
 	let capability: string;
 
 	function outputPath(resource: string, screenId = screen.id) {
-		return `/api/screen-output/events/${eventId}/screens/${screenId}${resource
-			? `/${resource}`
-			: ''}`;
+		return `/api/screen-output/events/${eventId}/screens/${screenId}${
+			resource ? `/${resource}` : ''
+		}`;
 	}
 
-	async function asOutput<T>(resource: string, credential: string | null = capability): Promise<JsonResponse<T>> {
-		return await readJson<T>(await anonymousFetch(outputPath(resource), {
-			headers: credential
-				? bearer(credential)
-				: undefined,
-		}));
+	async function asOutput<T>(
+		resource: string,
+		credential: string | null = capability,
+	): Promise<JsonResponse<T>> {
+		return await readJson<T>(
+			await anonymousFetch(outputPath(resource), {
+				headers: credential ? bearer(credential) : undefined,
+			}),
+		);
 	}
 
 	/** A further Screen in its own mode, read through its own capability. */
 	async function outputScreen(mode: string, label = mode) {
 		const created = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens`, {
 			method: 'POST',
-			body: { name: `Output ${label}`, slug: `output-reads-${label.toLowerCase()}-${eventId}`, currentMode: mode },
+			body: {
+				name: `Output ${label}`,
+				slug: `output-reads-${label.toLowerCase()}-${eventId}`,
+				currentMode: mode,
+			},
 		});
-		const ownCapability = (await $fetch<{ assetCapability: string }>(
-			`/api/events/${eventId}/screens/${created.id}/asset-capability`,
-		)).assetCapability;
+		const ownCapability = (
+			await $fetch<{ assetCapability: string }>(
+				`/api/events/${eventId}/screens/${created.id}/asset-capability`,
+			)
+		).assetCapability;
 		return {
 			screen: created,
 			capability: ownCapability,
 			async configure(config: Record<string, unknown>) {
-				await $fetch(`/api/events/${eventId}/screens/${created.id}/config/${mode}`, { method: 'PATCH', body: config });
+				await $fetch(`/api/events/${eventId}/screens/${created.id}/config/${mode}`, {
+					method: 'PATCH',
+					body: config,
+				});
 			},
 			async read<T>(resource: string, credential: string | null = ownCapability, query = '') {
-				return await readJson<T>(await anonymousFetch(`${outputPath(resource, created.id)}${query}`, {
-					headers: credential
-						? bearer(credential)
-						: undefined,
-				}));
+				return await readJson<T>(
+					await anonymousFetch(`${outputPath(resource, created.id)}${query}`, {
+						headers: credential ? bearer(credential) : undefined,
+					}),
+				);
 			},
 		};
 	}
@@ -86,16 +99,17 @@ describe('capability-only Screen Output reads', () => {
 			method: 'POST',
 			body: { name: 'Programme', slug: `output-reads-${eventId}`, currentMode: 'background' },
 		});
-		capability = (await $fetch<{ assetCapability: string }>(
-			`/api/events/${eventId}/screens/${screen.id}/asset-capability`,
-		)).assetCapability;
+		capability = (
+			await $fetch<{ assetCapability: string }>(
+				`/api/events/${eventId}/screens/${screen.id}/asset-capability`,
+			)
+		).assetCapability;
 	});
 
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	describe('the Event context', () => {
@@ -115,14 +129,17 @@ describe('capability-only Screen Output reads', () => {
 	});
 
 	describe('the Screen and its later changes', () => {
-		it('boots and follows an operator\'s change through capability reads alone', async () => {
+		it("boots and follows an operator's change through capability reads alone", async () => {
 			const output = await outputScreen('background');
-			const lookup = async () => await readJson<ScreenResponse>(await anonymousFetch(
-				`/api/screen-output/events/${eventId}/screens/slug/${output.screen.slug}`,
-				{
-					headers: bearer(output.capability),
-				},
-			));
+			const lookup = async () =>
+				await readJson<ScreenResponse>(
+					await anonymousFetch(
+						`/api/screen-output/events/${eventId}/screens/slug/${output.screen.slug}`,
+						{
+							headers: bearer(output.capability),
+						},
+					),
+				);
 			const player = await $fetch<{ id: number }>(`/api/events/${eventId}/players`, {
 				method: 'POST',
 				body: { name: 'Later Player' },
@@ -130,7 +147,10 @@ describe('capability-only Screen Output reads', () => {
 
 			const booted = await lookup();
 			expect(booted.status).toBe(200);
-			expect((await output.read('event')).data).toMatchObject({ id: eventId, name: 'Screen Output Reads Event' });
+			expect((await output.read('event')).data).toMatchObject({
+				id: eventId,
+				name: 'Screen Output Reads Event',
+			});
 
 			await $fetch(`/api/events/${eventId}/screens/${output.screen.id}`, {
 				method: 'PATCH',
@@ -151,32 +171,43 @@ describe('capability-only Screen Output reads', () => {
 					'player-history': { playerId: player.id },
 				},
 			});
-			expect((await output.read<{ player: { id: number } }>('player-history')).data.player.id).toBe(player.id);
+			expect((await output.read<{ player: { id: number } }>('player-history')).data.player.id).toBe(
+				player.id,
+			);
 		});
 	});
 
 	// An output holding only its Screen Output Link exchanges it, anonymously and
 	// naming no origin, for the capability every read above presents.
 	describe('exchanging a Screen Output Link', () => {
-		interface IssuedOutputAccess { assetCapability: string; outputLink: string }
-		interface ExchangedOutputAccess { eventId: number; screenId: number; assetCapability: string }
+		interface IssuedOutputAccess {
+			assetCapability: string;
+			outputLink: string;
+		}
+		interface ExchangedOutputAccess {
+			eventId: number;
+			screenId: number;
+			assetCapability: string;
+		}
 
 		async function issue(screenId: number) {
-			return await $fetch<IssuedOutputAccess>(`/api/events/${eventId}/screens/${screenId}/asset-capability`);
+			return await $fetch<IssuedOutputAccess>(
+				`/api/events/${eventId}/screens/${screenId}/asset-capability`,
+			);
 		}
 
 		async function exchange(body: string | undefined, contentType = 'application/json') {
 			const response = await anonymousFetch('/api/screen-output/link', {
 				method: 'POST',
-				headers: body === undefined
-					? undefined
-					: { 'content-type': contentType },
+				headers: body === undefined ? undefined : { 'content-type': contentType },
 				body,
 			});
 			return {
 				cacheControl: response.headers.get('cache-control'),
 				retryAfter: response.headers.get('retry-after'),
-				...await readJson<ExchangedOutputAccess & { statusCode?: number; message?: string }>(response),
+				...(await readJson<ExchangedOutputAccess & { statusCode?: number; message?: string }>(
+					response,
+				)),
 			};
 		}
 
@@ -211,9 +242,7 @@ describe('capability-only Screen Output reads', () => {
 				[undefined],
 				['not json'],
 				['not json', 'text/plain'],
-				[
-					JSON.stringify({ link: assetCapability }),
-				],
+				[JSON.stringify({ link: assetCapability })],
 			];
 			for (const [body, contentType] of presented) {
 				const refused = await exchange(body, contentType);
@@ -236,7 +265,7 @@ describe('capability-only Screen Output reads', () => {
 
 	// The two reads whose client names the resource, through real route and query parsing.
 	describe('feature Match', () => {
-		it('reads the shown Slot and a seated Player\'s decks', async () => {
+		it("reads the shown Slot and a seated Player's decks", async () => {
 			const player = await $fetch<{ id: number }>(`/api/events/${eventId}/players`, {
 				method: 'POST',
 				body: { name: 'Slot Player' },
@@ -248,11 +277,17 @@ describe('capability-only Screen Output reads', () => {
 			const overlay = await outputScreen('feature-match');
 			await overlay.configure({ featureMatchId: shown.id });
 
-			const slot = await overlay.read<ScreenOutputFeatureMatchResponse>(`feature-match-slots/${shown.id}`);
+			const slot = await overlay.read<ScreenOutputFeatureMatchResponse>(
+				`feature-match-slots/${shown.id}`,
+			);
 			expect(slot.status).toBe(200);
 			expect(slot.data.slot).toMatchObject({ id: shown.id, player1Id: player.id });
 
-			const decks = await overlay.read<ScreenOutputPlayerDecksResponse>(`players/${player.id}/decks`, overlay.capability, '?deckId=1');
+			const decks = await overlay.read<ScreenOutputPlayerDecksResponse>(
+				`players/${player.id}/decks`,
+				overlay.capability,
+				'?deckId=1',
+			);
 			expect(decks.status).toBe(200);
 			expect(decks.data).toMatchObject({
 				player: { id: player.id, name: 'Slot Player' },

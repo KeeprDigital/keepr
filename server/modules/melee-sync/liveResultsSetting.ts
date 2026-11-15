@@ -12,14 +12,18 @@ interface SetMeleeLiveResultsParams {
  * on starts a fresh poll, turning it off leaves the last poll state shown.
  * Answers and announces the updated Event.
  */
-export async function setMeleeLiveResults({ eventId, enabled, originConnectionId }: SetMeleeLiveResultsParams) {
+export async function setMeleeLiveResults({
+	eventId,
+	enabled,
+	originConnectionId,
+}: SetMeleeLiveResultsParams) {
 	const eventSvc = eventService();
 	const updated = enabled
 		? await eventSvc.enableMeleeLiveResults(eventId, new Date())
 		: await eventSvc.disableMeleeLiveResults(eventId);
 
 	if (!updated) {
-		if (!await eventSvc.exists(eventId))
+		if (!(await eventSvc.exists(eventId)))
 			throw createError({ statusCode: 404, message: 'Event not found' });
 		throw createError({
 			statusCode: 400,

@@ -55,7 +55,8 @@ function throwInvalidMeleeConfiguration(): never {
 	console.warn(JSON.stringify({ message: 'melee_credential_validation_failed' }));
 	throw createError({
 		statusCode: 400,
-		message: 'Could not validate Melee.gg credentials. Check the event ID, client ID, and client secret.',
+		message:
+			'Could not validate Melee.gg credentials. Check the event ID, client ID, and client secret.',
 	});
 }
 
@@ -67,7 +68,12 @@ function throwInvalidMeleeConfiguration(): never {
  * against sync commands via the sync lease so a stale command cannot
  * repopulate data after the boundary changed.
  */
-export async function updateMeleeConfiguration({ eventId, input, originConnectionId, requestEvent }: UpdateMeleeConfigurationParams) {
+export async function updateMeleeConfiguration({
+	eventId,
+	input,
+	originConnectionId,
+	requestEvent,
+}: UpdateMeleeConfigurationParams) {
 	const eventSvc = eventService();
 	// Configuration changes can delete imported data and swap the upstream Event.
 	// Serialize them with sync commands so a stale command cannot repopulate data
@@ -89,16 +95,17 @@ export async function updateMeleeConfiguration({ eventId, input, originConnectio
 			}),
 		};
 		const resetReason = !normalizedConfig.meleeEnabled
-			? 'disabled' as const
+			? ('disabled' as const)
 			: lockedEvent.meleeEventId !== normalizedConfig.meleeEventId
-				? 'event-changed' as const
+				? ('event-changed' as const)
 				: null;
 		let plaintextSecretForSave: string | undefined;
 
 		if (input.meleeEnabled) {
-			const storedOrSuppliedSecret = normalizedConfig.meleeClientSecret !== undefined
-				? normalizedConfig.meleeClientSecret
-				: lockedEvent.meleeClientSecret;
+			const storedOrSuppliedSecret =
+				normalizedConfig.meleeClientSecret !== undefined
+					? normalizedConfig.meleeClientSecret
+					: lockedEvent.meleeClientSecret;
 
 			try {
 				const credentials = await requireMeleeIntegration({
@@ -111,7 +118,9 @@ export async function updateMeleeConfiguration({ eventId, input, originConnectio
 				if (String(meleeEvent.ID) !== credentials.eventId) {
 					throw new MeleeEventMismatchError();
 				}
-				if (inspectMeleeGameCompatibility(lockedEvent.game, meleeEvent.Game).status === 'mismatch') {
+				if (
+					inspectMeleeGameCompatibility(lockedEvent.game, meleeEvent.Game).status === 'mismatch'
+				) {
 					throw createError({
 						statusCode: 422,
 						message: 'The selected Melee.gg tournament uses a different game than this Event',
@@ -119,15 +128,15 @@ export async function updateMeleeConfiguration({ eventId, input, originConnectio
 					});
 				}
 				plaintextSecretForSave = credentials.clientSecret;
-			}
-			catch (error) {
+			} catch (error) {
 				if (error instanceof MeleeCredentialCryptoError) {
 					throwMeleeCredentialCryptoError(error);
 				}
 				if (error instanceof MeleeTransportError) {
-					const rejectedConfiguration = error.category === 'http'
-						&& error.upstreamStatus !== null
-						&& [400, 401, 403, 404, 422].includes(error.upstreamStatus);
+					const rejectedConfiguration =
+						error.category === 'http' &&
+						error.upstreamStatus !== null &&
+						[400, 401, 403, 404, 422].includes(error.upstreamStatus);
 					if (!rejectedConfiguration) {
 						// Inside this branch rather than the enclosing `MeleeTransportError`
 						// one on purpose: the refusal below it is credentials Melee.gg
@@ -139,8 +148,7 @@ export async function updateMeleeConfiguration({ eventId, input, originConnectio
 					}
 					throwInvalidMeleeConfiguration();
 				}
-				if (error instanceof MeleeEventMismatchError)
-					throwInvalidMeleeConfiguration();
+				if (error instanceof MeleeEventMismatchError) throwInvalidMeleeConfiguration();
 
 				// Intentional client errors, database, programming, and other unknown
 				// failures propagate unchanged to the global error handler.
@@ -156,12 +164,10 @@ export async function updateMeleeConfiguration({ eventId, input, originConnectio
 				// older key versions under the currently active key.
 				...(plaintextSecretForSave !== undefined && { meleeClientSecret: plaintextSecretForSave }),
 			});
-		}
-		catch (error) {
+		} catch (error) {
 			// Encryption happens immediately before persistence. Preserve the same
 			// actionable error contract used when decrypting stored credentials.
-			if (error instanceof MeleeCredentialCryptoError)
-				throwMeleeCredentialCryptoError(error);
+			if (error instanceof MeleeCredentialCryptoError) throwMeleeCredentialCryptoError(error);
 			throw error;
 		}
 
@@ -196,24 +202,20 @@ export async function updateMeleeConfiguration({ eventId, input, originConnectio
 		}
 		// The reset keeps imported structure still holding manual Rounds or
 		// Matches (ADR-0040); the answer names each one, as a sync's does.
-		const warnings = resetReason
-			? describeKeptStructure(updated.keptStructure, resetReason)
-			: [];
+		const warnings = resetReason ? describeKeptStructure(updated.keptStructure, resetReason) : [];
 		return {
 			...response,
-			...(warnings.length > 0
-				? { warnings }
-				: {}),
+			...(warnings.length > 0 ? { warnings } : {}),
 		};
-	}
-	finally {
+	} finally {
 		try {
 			await releaseMeleeSyncLease(eventId, lease.token);
-		}
-		catch {
+		} catch {
 			// Configuration has already committed or failed at this point. Lease
 			// cleanup must not replace that result; its bounded TTL remains the fallback.
-			console.warn(`[Melee sync] Failed to finish configuration lease cleanup for event ${eventId}`);
+			console.warn(
+				`[Melee sync] Failed to finish configuration lease cleanup for event ${eventId}`,
+			);
 		}
 	}
 }

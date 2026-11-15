@@ -47,8 +47,7 @@ export async function betterAuthBootstrapPort(
 
 		findByEmail: async (email) => {
 			const found = await context.internalAdapter.findUserByEmail(email);
-			if (!found)
-				return null;
+			if (!found) return null;
 
 			// `role` is the admin plugin's additional field: it is on the row and on
 			// the schema this repo maintains (`server/db/schema/auth.ts`), but not on
@@ -113,8 +112,8 @@ export async function betterAuthBootstrapPort(
 function decodeRoles(role: string | null | undefined): string[] {
 	return (role ?? '')
 		.split(',')
-		.map(entry => entry.trim())
-		.filter(entry => entry.length > 0);
+		.map((entry) => entry.trim())
+		.filter((entry) => entry.length > 0);
 }
 
 function encodeRoles(roles: readonly string[]): string {

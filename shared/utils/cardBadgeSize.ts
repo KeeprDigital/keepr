@@ -16,9 +16,12 @@ export const DECK_AUTO_BADGE_RATIOS = {
 } as const;
 
 /** A badge's text size in px: its set size, or Auto's share of its card's width, to the hundredth and within a set size's bounds. */
-export function cardBadgeTextSize(size: number | undefined, cardWidth: number, autoRatio: number): number {
-	if (size !== undefined)
-		return size;
+export function cardBadgeTextSize(
+	size: number | undefined,
+	cardWidth: number,
+	autoRatio: number,
+): number {
+	if (size !== undefined) return size;
 	const auto = Math.round(cardWidth * autoRatio * 100) / 100;
 	return Math.min(CARD_BADGE_SIZE_BOUNDS.max, Math.max(CARD_BADGE_SIZE_BOUNDS.min, auto));
 }

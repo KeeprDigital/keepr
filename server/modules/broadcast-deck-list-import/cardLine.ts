@@ -56,13 +56,15 @@ export function headingKey(sourceText: string): string {
 }
 
 /** Errors in the order an operator reads them: by line, then those of the list as a whole. */
-export function orderedErrors<TError extends { code: string }>(errors: readonly TError[]): TError[] {
+export function orderedErrors<TError extends { code: string }>(
+	errors: readonly TError[],
+): TError[] {
 	const lineNumber = (error: TError) => (error as { lineNumber?: number }).lineNumber;
 	return [
 		...errors
-			.filter(error => lineNumber(error) !== undefined)
+			.filter((error) => lineNumber(error) !== undefined)
 			.toSorted((left, right) => lineNumber(left)! - lineNumber(right)!),
-		...errors.filter(error => lineNumber(error) === undefined),
+		...errors.filter((error) => lineNumber(error) === undefined),
 	];
 }
 
@@ -83,7 +85,10 @@ export function lineError<TCode extends string = BroadcastDeckListImportLineErro
 export function sourceLines(source: string): SourceLine[] | BroadcastDeckListImportListError {
 	if (new TextEncoder().encode(source).byteLength > MAX_SOURCE_BYTES)
 		return { code: 'SOURCE_TOO_LARGE', message: 'Source text must not exceed 64 KiB' };
-	const physicalLines = source.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n');
+	const physicalLines = source
+		.replace(/^\uFEFF/, '')
+		.replace(/\r\n?/g, '\n')
+		.split('\n');
 	if (physicalLines.length > MAX_PHYSICAL_LINES)
 		return { code: 'TOO_MANY_LINES', message: 'Source text must not exceed 500 physical lines' };
 	return physicalLines.map((sourceText, index) => ({
@@ -93,32 +98,39 @@ export function sourceLines(source: string): SourceLine[] | BroadcastDeckListImp
 }
 
 /** The limits a paste's card rows break together, which stop it before any card is resolved. */
-export function cardRowLimitErrors(rows: readonly ParsedCardLine[]): BroadcastDeckListImportListError[] {
+export function cardRowLimitErrors(
+	rows: readonly ParsedCardLine[],
+): BroadcastDeckListImportListError[] {
 	const errors: BroadcastDeckListImportListError[] = [];
 	if (rows.length > MAX_CARD_ROWS)
-		errors.push({ code: 'TOO_MANY_CARD_ROWS', message: 'A deck list must not exceed 250 parsed card rows' });
+		errors.push({
+			code: 'TOO_MANY_CARD_ROWS',
+			message: 'A deck list must not exceed 250 parsed card rows',
+		});
 	if (rows.reduce((total, row) => total + row.quantity, 0) > MAX_TOTAL_QUANTITY)
-		errors.push({ code: 'TOTAL_QUANTITY_EXCEEDED', message: 'Total card quantity must not exceed 2,000' });
+		errors.push({
+			code: 'TOTAL_QUANTITY_EXCEEDED',
+			message: 'Total card quantity must not exceed 2,000',
+		});
 	return errors;
 }
 
 export function quantityToken(sourceText: string): string | null {
 	const separatorIndex = sourceText.indexOf(' ');
-	return separatorIndex < 0
-		? null
-		: sourceText.slice(0, separatorIndex);
+	return separatorIndex < 0 ? null : sourceText.slice(0, separatorIndex);
 }
 
 /**
  * One card line: a quantity, a name, and the printing it names, by a set
  * alone or a set and collector number. `singleCopy` is a Companion's rule.
  */
-export function parseCardLine(line: SourceLine, singleCopy = false): ParsedCardLine | BroadcastDeckListImportLineError {
+export function parseCardLine(
+	line: SourceLine,
+	singleCopy = false,
+): ParsedCardLine | BroadcastDeckListImportLineError {
 	const { sourceText } = line;
 	const token = quantityToken(sourceText);
-	const quantityMatch = token === null
-		? null
-		: /^(\d+)x?$/i.exec(token);
+	const quantityMatch = token === null ? null : /^(\d+)x?$/i.exec(token);
 	if (!quantityMatch) {
 		return /^[+-]?\d/.test(sourceText)
 			? lineError(line, 'INVALID_QUANTITY', 'Quantity must be a whole number from 1 through 999')
@@ -129,28 +141,33 @@ export function parseCardLine(line: SourceLine, singleCopy = false): ParsedCardL
 	if (singleCopy && quantity !== 1)
 		return lineError(line, 'INVALID_COMPANION_QUANTITY', 'Companion quantity must be exactly one');
 	if (quantity < 1 || quantity > MAX_ENTRY_QUANTITY || /^x\s+/i.test(cardText))
-		return lineError(line, 'INVALID_QUANTITY', 'Quantity must be a whole number from 1 through 999');
+		return lineError(
+			line,
+			'INVALID_QUANTITY',
+			'Quantity must be a whole number from 1 through 999',
+		);
 	if (
-		/\s+(?:\*[a-z]+(?::[^*]+)?\*|#.+|\[[^\]]+\]|\^\S.*|foil)$/i.test(cardText)
-		|| /\([a-z\d]{1,20}\)\s+\S+\s+\S+$/i.test(cardText)
-		|| /\([a-z\d]+:[^)]+\)$/i.test(cardText)
-		|| cardText.includes('`')
+		/\s+(?:\*[a-z]+(?::[^*]+)?\*|#.+|\[[^\]]+\]|\^\S.*|foil)$/i.test(cardText) ||
+		/\([a-z\d]{1,20}\)\s+\S+\s+\S+$/i.test(cardText) ||
+		/\([a-z\d]+:[^)]+\)$/i.test(cardText) ||
+		cardText.includes('`')
 	) {
-		return lineError(line, 'UNSUPPORTED_SYNTAX', 'Card decorations and inline categories are not supported');
+		return lineError(
+			line,
+			'UNSUPPORTED_SYNTAX',
+			'Card decorations and inline categories are not supported',
+		);
 	}
 	const cardTokens = cardText.split(/\s+/);
 	const lastToken = cardTokens.at(-1) ?? '';
 	const penultimateToken = cardTokens.at(-2) ?? '';
 	const setOnlyMatch = /^\(([a-z\d]{1,20})\)$/i.exec(lastToken);
 	const setAndCollectorMatch = /^\(([a-z\d]{1,20})\)$/i.exec(penultimateToken);
-	const printingTokenCount = setOnlyMatch
-		? 1
-		: setAndCollectorMatch ? 2 : 0;
+	const printingTokenCount = setOnlyMatch ? 1 : setAndCollectorMatch ? 2 : 0;
 	const setCode = setOnlyMatch?.[1] ?? setAndCollectorMatch?.[1] ?? null;
 	const collectorNumber = setAndCollectorMatch ? lastToken : null;
-	const name = printingTokenCount === 0
-		? cardText
-		: cardTokens.slice(0, -printingTokenCount).join(' ');
+	const name =
+		printingTokenCount === 0 ? cardText : cardTokens.slice(0, -printingTokenCount).join(' ');
 
 	return {
 		lineNumber: line.lineNumber,
@@ -167,17 +184,22 @@ export async function resolveCardLines(
 	rows: readonly ParsedCardLine[],
 	resolver: BroadcastDeckListCardResolver,
 ): Promise<Array<ResolvedBroadcastDeckListCard | BroadcastDeckListImportLineError>> {
-	const resolutions = await resolver.resolve(rows.map(row => ({
-		name: row.name,
-		setCode: row.setCode,
-		collectorNumber: row.collectorNumber,
-	})));
+	const resolutions = await resolver.resolve(
+		rows.map((row) => ({
+			name: row.name,
+			setCode: row.setCode,
+			collectorNumber: row.collectorNumber,
+		})),
+	);
 	return rows.map((row, index) => {
 		const resolution = resolutions[index];
-		if (resolution?.status === 'resolved')
-			return resolution.card;
+		if (resolution?.status === 'resolved') return resolution.card;
 		return row.setCode !== null
-			? lineError(row, 'INVALID_PRINTING_HINT', `Could not resolve the requested printing of ${row.name}`)
+			? lineError(
+					row,
+					'INVALID_PRINTING_HINT',
+					`Could not resolve the requested printing of ${row.name}`,
+				)
 			: lineError(row, 'UNRESOLVED_CARD', `Could not resolve ${row.name}`);
 	});
 }
@@ -192,7 +214,7 @@ export function addToBoard(
 	card: ResolvedBroadcastDeckListCard,
 	quantity: number,
 ): BroadcastDeckListCanonicalEntry {
-	const held = board.find(entry => entry.scryfallId === card.scryfallId);
+	const held = board.find((entry) => entry.scryfallId === card.scryfallId);
 	if (held) {
 		held.quantity += quantity;
 		return held;

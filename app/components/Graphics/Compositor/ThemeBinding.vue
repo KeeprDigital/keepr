@@ -28,21 +28,21 @@ const emit = defineEmits<{
 const OWN = '__own__';
 
 const items = computed(() => [
-	...graphicThemeSlotTokens(props.themeSlot).map(name => ({ label: `Theme: ${FOUNDATION_TOKENS[name].label}`, value: name as string })),
+	...graphicThemeSlotTokens(props.themeSlot).map((name) => ({
+		label: `Theme: ${FOUNDATION_TOKENS[name].label}`,
+		value: name as string,
+	})),
 	{ label: 'Own value', value: OWN },
 ]);
 
-const selected = computed(() => props.current && items.value.some(item => item.value === props.current)
-	? props.current
-	: OWN);
+const selected = computed(() =>
+	props.current && items.value.some((item) => item.value === props.current) ? props.current : OWN,
+);
 
 function choose(value: string) {
-	if (value === selected.value)
-		return;
-	if (value === OWN)
-		emit('detach');
-	else
-		emit('bind', value);
+	if (value === selected.value) return;
+	if (value === OWN) emit('detach');
+	else emit('bind', value);
 }
 </script>
 

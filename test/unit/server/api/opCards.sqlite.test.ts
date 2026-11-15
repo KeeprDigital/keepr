@@ -16,12 +16,21 @@ const API_KEY = 'test-key';
 const runtimeConfig = { bandaiKeeprApiKey: API_KEY, bandaiKeeprApiUrl: API_URL };
 vi.stubGlobal('useRuntimeConfig', () => runtimeConfig);
 
-interface StubEvent { params: Record<string, string>; query?: Record<string, string | string[]> }
+interface StubEvent {
+	params: Record<string, string>;
+	query?: Record<string, string | string[]>;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('getValidatedQuery', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.query ?? {}));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('getValidatedQuery', async (event: StubEvent, parse: (value: unknown) => unknown) =>
+	parse(event.query ?? {}),
+);
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const zoro = {
 	number: 'OP01-001',
@@ -62,7 +71,8 @@ const zoroDetail = {
 };
 
 const requests: Request[] = [];
-let upstream: (request: Request) => Response = request => Response.json({ error: `unrouted ${request.url}` }, { status: 500 });
+let upstream: (request: Request) => Response = (request) =>
+	Response.json({ error: `unrouted ${request.url}` }, { status: 500 });
 vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
 	const request = new Request(input, init);
 	requests.push(request);
@@ -79,8 +89,7 @@ function bandaiKeepr(request: Request): Response {
 			offset: 0,
 		});
 	}
-	if (url.pathname === '/cards/OP01-001')
-		return Response.json(zoroDetail);
+	if (url.pathname === '/cards/OP01-001') return Response.json(zoroDetail);
 	return Response.json({ error: 'Card not found' }, { status: 404 });
 }
 
@@ -89,18 +98,14 @@ const cached = new Map<string, { response: Response; expires: number }>();
 vi.stubGlobal('caches', {
 	open: async () => ({
 		match: async (key: Request | string) => {
-			const entry = cached.get(typeof key === 'string'
-				? key
-				: key.url);
-			return entry && entry.expires > Date.now()
-				? entry.response.clone()
-				: undefined;
+			const entry = cached.get(typeof key === 'string' ? key : key.url);
+			return entry && entry.expires > Date.now() ? entry.response.clone() : undefined;
 		},
 		put: async (key: Request | string, response: Response) => {
-			const maxAge = Number(/max-age=(\d+)/.exec(response.headers.get('cache-control') ?? '')?.[1] ?? 0);
-			cached.set(typeof key === 'string'
-				? key
-				: key.url, {
+			const maxAge = Number(
+				/max-age=(\d+)/.exec(response.headers.get('cache-control') ?? '')?.[1] ?? 0,
+			);
+			cached.set(typeof key === 'string' ? key : key.url, {
 				response: response.clone(),
 				expires: Date.now() + maxAge * 1000,
 			});
@@ -109,31 +114,38 @@ vi.stubGlobal('caches', {
 });
 
 type Handler = (event: H3Event) => Promise<unknown>;
-const searchCards = (await import('~~/server/api/events/[id]/op-cards/index.get')).default as unknown as Handler;
-const lookupCard = (await import('~~/server/api/events/[id]/op-cards/[number].get')).default as unknown as Handler;
+const searchCards = (await import('~~/server/api/events/[id]/op-cards/index.get'))
+	.default as unknown as Handler;
+const lookupCard = (await import('~~/server/api/events/[id]/op-cards/[number].get'))
+	.default as unknown as Handler;
 
 let opEventId: number;
 let mtgEventId: number;
 
 function search(query: Record<string, string | string[]> = {}, eventId = opEventId) {
-	return searchCards(stubH3Event({
-		params: {
-			id: String(eventId),
-		},
-		query,
-	}));
+	return searchCards(
+		stubH3Event({
+			params: {
+				id: String(eventId),
+			},
+			query,
+		}),
+	);
 }
 function lookup(number: string, eventId = opEventId) {
-	return lookupCard(stubH3Event({
-		params: {
-			id: String(eventId),
-			number,
-		},
-	}));
+	return lookupCard(
+		stubH3Event({
+			params: {
+				id: String(eventId),
+				number,
+			},
+		}),
+	);
 }
 
 beforeAll(async () => {
-	const inserted = await db.insert(schema.events)
+	const inserted = await db
+		.insert(schema.events)
 		.values([
 			{ name: 'OP Regional', game: 'op', featureMatchOrientation: 'horizontal' },
 			{ name: 'MTG Open', game: 'mtg', featureMatchOrientation: 'horizontal' },
@@ -158,25 +170,19 @@ afterAll(async () => {
 
 describe('without bandai-keepr configured', () => {
 	it.each([
-		[
-			'no API key',
-			{ bandaiKeeprApiKey: '' },
-		],
-		[
-			'no API URL',
-			{ bandaiKeeprApiUrl: '' },
-		],
-		[
-			'a blank API key',
-			{ bandaiKeeprApiKey: '   ' },
-		],
-	])('with %s, search and lookup answer card data unavailable and call nothing', async (_case, config) => {
-		Object.assign(runtimeConfig, config);
+		['no API key', { bandaiKeeprApiKey: '' }],
+		['no API URL', { bandaiKeeprApiUrl: '' }],
+		['a blank API key', { bandaiKeeprApiKey: '   ' }],
+	])(
+		'with %s, search and lookup answer card data unavailable and call nothing',
+		async (_case, config) => {
+			Object.assign(runtimeConfig, config);
 
-		await expect(search({ q: 'zoro' })).resolves.toEqual({ available: false });
-		await expect(lookup('OP01-001')).resolves.toEqual({ available: false });
-		expect(requests).toEqual([]);
-	});
+			await expect(search({ q: 'zoro' })).resolves.toEqual({ available: false });
+			await expect(lookup('OP01-001')).resolves.toEqual({ available: false });
+			expect(requests).toEqual([]);
+		},
+	);
 });
 
 describe('searching cards', () => {
@@ -207,14 +213,8 @@ describe('searching cards', () => {
 	});
 
 	it.each([
-		[
-			{ name: ' luf ' },
-			{ name: 'luf', q: null },
-		],
-		[
-			{ q: 'draw' },
-			{ name: null, q: 'draw' },
-		],
+		[{ name: ' luf ' }, { name: 'luf', q: null }],
+		[{ q: 'draw' }, { name: null, q: 'draw' }],
 	])('forwards %o to bandai-keepr as its name or text search', async (query, forwarded) => {
 		await search(query);
 
@@ -226,11 +226,7 @@ describe('searching cards', () => {
 	});
 
 	it.each([
-		[
-			'a known number',
-			{ number: 'op01-001' },
-			['OP01-001'],
-		],
+		['a known number', { number: 'op01-001' }, ['OP01-001']],
 		[
 			'a known number in the category asked for',
 			{ number: 'OP01-001', category: 'leader' },
@@ -241,44 +237,33 @@ describe('searching cards', () => {
 			{ number: 'OP01-001', category: 'event' },
 			[],
 		],
-		[
-			'a known number outside the colour asked for',
-			{ number: 'OP01-001', color: 'Blue' },
-			[],
-		],
-		[
-			'an unknown number',
-			{ number: 'OP99-999' },
-			[],
-		],
+		['a known number outside the colour asked for', { number: 'OP01-001', color: 'Blue' }, []],
+		['an unknown number', { number: 'OP99-999' }, []],
 	])('by card number answers %s through the number lookup', async (_case, query, numbers) => {
-		const answer = await search(query) as { items: Array<{ number: string }>; total: number };
+		const answer = (await search(query)) as { items: Array<{ number: string }>; total: number };
 
-		expect(answer.items.map(card => card.number)).toEqual(numbers);
+		expect(answer.items.map((card) => card.number)).toEqual(numbers);
 		expect(answer.total).toBe(numbers.length);
-		expect(requests.map(request => new URL(request.url).pathname)).toEqual([`/cards/${query.number.toUpperCase()}`]);
+		expect(requests.map((request) => new URL(request.url).pathname)).toEqual([
+			`/cards/${query.number.toUpperCase()}`,
+		]);
 	});
 
 	it.each([
-		[
-			'an unknown colour',
-			{ color: 'red' },
-		],
-		[
-			'an unknown category',
-			{ category: 'don' },
-		],
-		[
-			'a malformed card number',
-			{ number: 'zoro' },
-		],
+		['an unknown colour', { color: 'red' }],
+		['an unknown category', { category: 'don' }],
+		['a malformed card number', { number: 'zoro' }],
 	])('refuses %s before calling bandai-keepr', async (_case, query) => {
 		await expect(search(query)).rejects.toThrow();
 		expect(requests).toEqual([]);
 	});
 
 	it('answers no cards for text bandai-keepr finds no words in', async () => {
-		upstream = () => Response.json({ error: 'Invalid query parameter "q": has no words to search for' }, { status: 400 });
+		upstream = () =>
+			Response.json(
+				{ error: 'Invalid query parameter "q": has no words to search for' },
+				{ status: 400 },
+			);
 
 		await expect(search({ q: '!!' })).resolves.toEqual({ available: true, items: [], total: 0 });
 	});
@@ -345,9 +330,7 @@ describe('looking up a card number', () => {
 		await lookup('OP01-001');
 		expect(requests).toHaveLength(2);
 		// The cache key carries no credential.
-		expect([
-			...cached.keys(),
-		].join(' ')).not.toContain(API_KEY);
+		expect([...cached.keys()].join(' ')).not.toContain(API_KEY);
 	});
 });
 
@@ -358,14 +341,20 @@ describe('when bandai-keepr fails', () => {
 	])('a search and a lookup raise its upstream failure when it %s', async (_case, status) => {
 		upstream = () => Response.json({ error: 'nope' }, { status });
 
-		await expect(search({ q: 'zoro' })).rejects.toMatchObject({ code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' });
-		await expect(lookup('OP01-001')).rejects.toMatchObject({ code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' });
+		await expect(search({ q: 'zoro' })).rejects.toMatchObject({
+			code: 'BANDAI_KEEPR_UPSTREAM_FAILURE',
+		});
+		await expect(lookup('OP01-001')).rejects.toMatchObject({
+			code: 'BANDAI_KEEPR_UPSTREAM_FAILURE',
+		});
 	});
 
 	it('a lookup raises it when the answer is not a Card', async () => {
 		upstream = () => Response.json({ number: 'OP01-001' });
 
-		await expect(lookup('OP01-001')).rejects.toMatchObject({ code: 'BANDAI_KEEPR_UPSTREAM_FAILURE' });
+		await expect(lookup('OP01-001')).rejects.toMatchObject({
+			code: 'BANDAI_KEEPR_UPSTREAM_FAILURE',
+		});
 	});
 });
 

@@ -10,7 +10,10 @@ import { featureMatchSampleDataset } from '~~/shared/featureMatchSampleDataset';
 import { featureMatchStressDataset } from '~~/shared/featureMatchStressDataset';
 import { paintBroadcastGraphicThemeBindings } from '~~/shared/modules/graphics';
 import { toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
-import { featureMatchOverlayGraphicAssetReferences, graphicItemsApplicationFonts } from '~~/shared/utils/graphicsAssetReferences';
+import {
+	featureMatchOverlayGraphicAssetReferences,
+	graphicItemsApplicationFonts,
+} from '~~/shared/utils/graphicsAssetReferences';
 import { useFeatureMatchOverlayAnimationPreview } from '~/composables/screen/useFeatureMatchOverlayAnimationPreview';
 import { useFeatureMatchOverlayModeData } from '~/composables/screen/useFeatureMatchOverlayModeData';
 import { useFeatureMatchOverlaySideboardData } from '~/composables/screen/useFeatureMatchOverlaySideboardData';
@@ -20,10 +23,16 @@ import {
 	FEATURE_MATCH_OVERLAY_PREVIEW_SELECT_MESSAGE,
 	isFeatureMatchOverlayPreviewSelectedTargetMessage,
 } from '~/modules/feature-match-overlay/previewMessages';
-import { frameBorderLine, resolveFeatureMatchOverlayRenderModel } from '~/modules/feature-match-overlay/renderModel';
+import {
+	frameBorderLine,
+	resolveFeatureMatchOverlayRenderModel,
+} from '~/modules/feature-match-overlay/renderModel';
 import { featureMatchOverlaySelectionKey } from '~/modules/feature-match-overlay/selection';
 import { resolveFeatureMatchOverlayThemeValues } from '~/modules/feature-match-overlay/themeTokens';
-import { featureMatchGraphicsContext, featureMatchTokenValues } from '~/modules/feature-match-overlay/tokenValues';
+import {
+	featureMatchGraphicsContext,
+	featureMatchTokenValues,
+} from '~/modules/feature-match-overlay/tokenValues';
 import { lockedGraphicItems } from '~/modules/graphics/editor/layerLocks';
 import {
 	GRAPHICS_PREVIEW_READY_MESSAGE,
@@ -38,7 +47,15 @@ import FeatureMatchOverlayFrameAnimation from './FrameAnimation.vue';
 import FeatureMatchOverlayFrameMedia from './FrameMedia.vue';
 
 const context = useScreenContext();
-const { isPreview, outputMode, previewGuides, previewSafeAreas, previewStressDataset, eventCanvas, sampleDataset } = context;
+const {
+	isPreview,
+	outputMode,
+	previewGuides,
+	previewSafeAreas,
+	previewStressDataset,
+	eventCanvas,
+	sampleDataset,
+} = context;
 const resolvedOutput = computed<FeatureMatchOverlayOutput>(() => outputMode?.value ?? 'overlay');
 const showPreviewGuides = computed(() => previewGuides?.value ?? false);
 const showSafeAreaGuides = computed(() => previewSafeAreas?.value ?? false);
@@ -47,7 +64,19 @@ const canvasWidth = computed(() => (eventCanvas?.value ?? DEFAULT_EVENT_CANVAS).
 const canvasHeight = computed(() => (eventCanvas?.value ?? DEFAULT_EVENT_CANVAS).height);
 const frameMaskId = `feature-match-overlay-frame-mask-${useId().replace(/[^\w-]/g, '')}`;
 const frameGlowFilterId = `feature-match-overlay-frame-glow-${useId().replace(/[^\w-]/g, '')}`;
-const { config, match, matchState, sourceMatch, round, phase, event, usesSampleDataset, loading, error, ready } = useFeatureMatchOverlayModeData(context);
+const {
+	config,
+	match,
+	matchState,
+	sourceMatch,
+	round,
+	phase,
+	event,
+	usesSampleDataset,
+	loading,
+	error,
+	ready,
+} = useFeatureMatchOverlayModeData(context);
 // Real sideboard card data for the Deck List Graphic Items (#491), fetched
 // client-side while the composition authors one. A sample-dataset preview has
 // no Slot and so no player ids, which is what keeps it from fetching.
@@ -60,7 +89,9 @@ const { sideboards } = useFeatureMatchOverlaySideboardData(context, config, matc
  */
 const themeSources = useScreenThemeSources();
 const themeTokens = useScreenGraphicThemeTokens(themeSources);
-const themeValues = computed(() => resolveFeatureMatchOverlayThemeValues(themeSources.value.theme, themeSources.value.overrides));
+const themeValues = computed(() =>
+	resolveFeatureMatchOverlayThemeValues(themeSources.value.theme, themeSources.value.overrides),
+);
 
 /**
  * Every Graphic Asset Revision this output paints: its layout's, read with its
@@ -68,7 +99,9 @@ const themeValues = computed(() => resolveFeatureMatchOverlayThemeValues(themeSo
  * Frame media. The Screen Output Asset Capability admits what the Screen's
  * resolved tokens supply (ADR-0050).
  */
-const paintedComposition = computed(() => paintBroadcastGraphicThemeBindings(config.value.layout.composition, themeTokens.value));
+const paintedComposition = computed(() =>
+	paintBroadcastGraphicThemeBindings(config.value.layout.composition, themeTokens.value),
+);
 const indexedGraphicAssetReferences = computed<ScreenGraphicAssetReference[]>(() => {
 	const painted = featureMatchOverlayGraphicAssetReferences({
 		...config.value,
@@ -89,13 +122,11 @@ const indexedGraphicAssetReferences = computed<ScreenGraphicAssetReference[]>(()
 			]
 		: painted;
 });
-const graphicAssetReferences = computed(() => indexedGraphicAssetReferences.value.map(item => item.reference));
-const {
-	contentUrl: graphicAssetContentUrl,
-	contentUrlsSettled,
-} = useScreenGraphicAssetContentUrls(
-	graphicAssetReferences,
+const graphicAssetReferences = computed(() =>
+	indexedGraphicAssetReferences.value.map((item) => item.reference),
 );
+const { contentUrl: graphicAssetContentUrl, contentUrlsSettled } =
+	useScreenGraphicAssetContentUrls(graphicAssetReferences);
 
 // Typography naming a library font paints in the family this registers. Keep the
 // output hidden while a load is still in flight so it cannot flash a fallback
@@ -109,14 +140,20 @@ const libraryFonts = useGraphicAssetFontFaces(
 	graphicAssetContentUrl,
 	contentUrlsSettled,
 );
-const { fontSources, fontsReady: libraryFontsReady, fontsFailed: libraryFontsFailed } = libraryFonts;
+const {
+	fontSources,
+	fontsReady: libraryFontsReady,
+	fontsFailed: libraryFontsFailed,
+} = libraryFonts;
 const { fontsReady, fontsFailed } = useCombinedFontFaces(
 	libraryFonts,
 	useApplicationFontFaces(() => graphicItemsApplicationFonts(paintedComposition.value.items)),
 );
 // Rendering Readiness: the Slot read has settled, its media URLs have resolved,
 // and its fonts have loaded or failed; the media itself is the host's to wait on.
-useScreenModeReady(() => ready.value && contentUrlsSettled.value && (fontsReady.value || fontsFailed.value));
+useScreenModeReady(
+	() => ready.value && contentUrlsSettled.value && (fontsReady.value || fontsFailed.value),
+);
 
 // The Frame's own media, each a Screen Media Source (ADR-0021). A library
 // revision resolves through the same content URLs as everything else this
@@ -126,8 +163,7 @@ const frameImageUrl = computed(() =>
 );
 const frameVideo = computed<ScreenVideoPlayback | undefined>(() => {
 	const media = config.value.layout.frame.mediaBackground;
-	if (!media?.enabled)
-		return undefined;
+	if (!media?.enabled) return undefined;
 	return {
 		url: screenMediaSourceUrl(media.source, graphicAssetContentUrl),
 		fit: media.fit,
@@ -139,14 +175,11 @@ const frameVideo = computed<ScreenVideoPlayback | undefined>(() => {
 // The Theme's Frame media, painted beneath the Frame's own image and video.
 const themeFrameImageUrl = computed(() => {
 	const media = themeValues.value.frameMedia;
-	return media?.kind === 'image'
-		? graphicAssetContentUrl(media)
-		: undefined;
+	return media?.kind === 'image' ? graphicAssetContentUrl(media) : undefined;
 });
 const themeFrameVideo = computed<ScreenVideoPlayback | undefined>(() => {
 	const media = themeValues.value.frameMedia;
-	if (media?.kind !== 'silent-video')
-		return undefined;
+	if (media?.kind !== 'silent-video') return undefined;
 	return {
 		url: graphicAssetContentUrl(media),
 		fit: 'cover',
@@ -188,15 +221,11 @@ const hostState = computed(() => ({
 	sourceMatch: sourceMatch.value,
 	round: round.value,
 	phase: phase.value,
-	displayTime: showsClock.value
-		? displayTime.value
-		: null,
+	displayTime: showsClock.value ? displayTime.value : null,
 }));
 
 /** The kind of Event this Screen is of, once its Event is known. */
-const displayedKind = computed(() => event.value
-	? eventKind(event.value)
-	: undefined);
+const displayedKind = computed(() => (event.value ? eventKind(event.value) : undefined));
 
 /**
  * The fixed dataset standing in for the live Match, or none.
@@ -212,15 +241,15 @@ const displayedKind = computed(() => event.value
 const fixedDataset = computed<FeatureMatchSample | null>(() => {
 	const kind = sampleDataset
 		? eventKind({ game: sampleDataset, variant: context.sampleVariant })
-		: displayedKind.value ?? 'mtg-two-player';
+		: (displayedKind.value ?? 'mtg-two-player');
 	if (previewStressDataset?.value) {
 		// An Untimed Match shows its Untimed Label where the clock would be: the
 		// active Session's clock says which it is, or else the Event's Match Format.
-		const clockType = matchState.value?.clock?.type ?? toFeatureMatchDefaults(event.value).clockType;
+		const clockType =
+			matchState.value?.clock?.type ?? toFeatureMatchDefaults(event.value).clockType;
 		return featureMatchStressDataset(kind, { untimed: clockType === 'untimed' });
 	}
-	if (!usesSampleDataset.value)
-		return null;
+	if (!usesSampleDataset.value) return null;
 	const sample = featureMatchSampleDataset(kind);
 	return {
 		...sample,
@@ -229,9 +258,7 @@ const fixedDataset = computed<FeatureMatchSample | null>(() => {
 			// The sample supplies awkward player values, not a pretend Match Format.
 			// Its win indicators follow the Event being authored; a Theme preview
 			// has none, so they follow the sample's Card Game.
-			bestOf: sampleDataset
-				? sample.context.bestOf
-				: toFeatureMatchDefaults(event.value).bestOf,
+			bestOf: sampleDataset ? sample.context.bestOf : toFeatureMatchDefaults(event.value).bestOf,
 		},
 	};
 });
@@ -241,19 +268,28 @@ const fixedDataset = computed<FeatureMatchSample | null>(() => {
  * watch below, so the flag a frame renders and the flag the trigger observed
  * are always the same reading.
  */
-const graphicsContext = computed(() => fixedDataset.value?.context
-	?? featureMatchGraphicsContext(hostState.value, sideboards.value));
+const graphicsContext = computed(
+	() =>
+		fixedDataset.value?.context ?? featureMatchGraphicsContext(hostState.value, sideboards.value),
+);
 
-const renderModel = computed(() => resolveFeatureMatchOverlayRenderModel({
-	config: config.value,
-	output: resolvedOutput.value,
-	surfaces: themeValues.value,
-	paintsMedia: Boolean(frameImageUrl.value || frameVideo.value?.url || themeValues.value.frameMedia || frameAnimationEnabled.value),
-	maskId: frameMaskId,
-	frameGlowFilterId,
-	// A Commander Slot's empty Seats frame nothing (ADR-0087).
-	emptySeats: graphicsContext.value.emptySeats,
-}));
+const renderModel = computed(() =>
+	resolveFeatureMatchOverlayRenderModel({
+		config: config.value,
+		output: resolvedOutput.value,
+		surfaces: themeValues.value,
+		paintsMedia: Boolean(
+			frameImageUrl.value ||
+			frameVideo.value?.url ||
+			themeValues.value.frameMedia ||
+			frameAnimationEnabled.value,
+		),
+		maskId: frameMaskId,
+		frameGlowFilterId,
+		// A Commander Slot's empty Seats frame nothing (ADR-0087).
+		emptySeats: graphicsContext.value.emptySeats,
+	}),
+);
 
 // The per-item reveal trigger (#492): a sideboardRevealed edge plays the Deck
 // List Graphic Items' authored enter/exit recipes through the compositor's
@@ -265,9 +301,7 @@ const renderModel = computed(() => resolveFeatureMatchOverlayRenderModel({
 // hidden then, and a Session arriving or leaving is no reveal or hide either.
 const { itemAnimation } = useFeatureMatchOverlaySideboardRevealAnimation(
 	config,
-	computed(() => fixedDataset.value || !matchState.value
-		? undefined
-		: graphicsContext.value),
+	computed(() => (fixedDataset.value || !matchState.value ? undefined : graphicsContext.value)),
 );
 
 // An editor's Graphic Animation Preview run (#749); a live output never has one.
@@ -277,25 +311,27 @@ const animationPreview = useFeatureMatchOverlayAnimationPreview(
 	isPreview,
 );
 
-const compositorRenderModel = computed(() => resolveFeatureMatchOverlayCompositorRenderModel({
-	output: resolvedOutput.value,
-	kind: fixedDataset.value?.kind ?? displayedKind.value,
-	canvasWidth: canvasWidth.value,
-	canvasHeight: canvasHeight.value,
-	layout: { composition: animationPreview.composition.value },
-	// A live Screen Output never has a fixed dataset, because it is never a preview.
-	tokenValues: fixedDataset.value?.tokenValues ?? featureMatchTokenValues(hostState.value),
-	featureMatch: graphicsContext.value,
-	itemAnimation: itemAnimation.value,
-	animation: animationPreview.animation.value,
-	// Editor-only, and asked for only by an embedded preview. A live Screen Output
-	// never sets either flag, so no guide can reach one.
-	itemGuides: showPreviewGuides.value,
-	safeAreaGuides: showSafeAreaGuides.value,
-	selectedTarget: selectedCompositorTarget.value,
-	graphicAssetContentUrl,
-	themeTokens: themeTokens.value,
-}));
+const compositorRenderModel = computed(() =>
+	resolveFeatureMatchOverlayCompositorRenderModel({
+		output: resolvedOutput.value,
+		kind: fixedDataset.value?.kind ?? displayedKind.value,
+		canvasWidth: canvasWidth.value,
+		canvasHeight: canvasHeight.value,
+		layout: { composition: animationPreview.composition.value },
+		// A live Screen Output never has a fixed dataset, because it is never a preview.
+		tokenValues: fixedDataset.value?.tokenValues ?? featureMatchTokenValues(hostState.value),
+		featureMatch: graphicsContext.value,
+		itemAnimation: itemAnimation.value,
+		animation: animationPreview.animation.value,
+		// Editor-only, and asked for only by an embedded preview. A live Screen Output
+		// never sets either flag, so no guide can reach one.
+		itemGuides: showPreviewGuides.value,
+		safeAreaGuides: showSafeAreaGuides.value,
+		selectedTarget: selectedCompositorTarget.value,
+		graphicAssetContentUrl,
+		themeTokens: themeTokens.value,
+	}),
+);
 
 const canvasStyle = computed(() => renderModel.value.canvasStyle);
 const sourceItems = computed(() => renderModel.value.sourceItems);
@@ -311,8 +347,7 @@ function guideStyle(item: { x: number; y: number; width: number; height: number 
 }
 
 function postPreviewMessage(message: Record<string, unknown>) {
-	if (!showPreviewGuides.value || !import.meta.client)
-		return;
+	if (!showPreviewGuides.value || !import.meta.client) return;
 
 	window.parent?.postMessage(message, window.location.origin);
 }
@@ -322,11 +357,15 @@ function postPreviewMessage(message: Record<string, unknown>) {
  * to add the layer to its selection or take it out (#740); the editor then
  * pushes what is marked back down, so this frame marks nothing itself.
  */
-function selectPreviewTarget(target: FeatureMatchOverlaySelectionTarget, event?: MouseEvent | KeyboardEvent) {
+function selectPreviewTarget(
+	target: FeatureMatchOverlaySelectionTarget,
+	event?: MouseEvent | KeyboardEvent,
+) {
 	const toggle = isSelectionToggle(event);
-	if (!toggle)
-		selectedPreviewTarget.value = target;
-	postPreviewMessage(previewSelectMessage(FEATURE_MATCH_OVERLAY_PREVIEW_SELECT_MESSAGE, target, toggle));
+	if (!toggle) selectedPreviewTarget.value = target;
+	postPreviewMessage(
+		previewSelectMessage(FEATURE_MATCH_OVERLAY_PREVIEW_SELECT_MESSAGE, target, toggle),
+	);
 }
 
 /**
@@ -340,22 +379,21 @@ function selectPreviewTarget(target: FeatureMatchOverlaySelectionTarget, event?:
  * selection itself and pushes both back down.
  */
 function selectCompositorPreviewTarget(target: GraphicsSelectionTarget, toggle = false) {
-	if (!showPreviewGuides.value)
-		return;
+	if (!showPreviewGuides.value) return;
 
-	if (!toggle)
-		selectedCompositorTarget.value = target;
+	if (!toggle) selectedCompositorTarget.value = target;
 	postPreviewMessage(previewSelectMessage(GRAPHICS_PREVIEW_SELECT_MESSAGE, target, toggle));
 
-	if (target.type === 'canvas')
-		selectPreviewTarget({ type: 'canvas' });
+	if (target.type === 'canvas') selectPreviewTarget({ type: 'canvas' });
 }
 
 function handleSelectedCompositorTargetMessage(message: MessageEvent) {
-	if (!isGraphicsPreviewSelectedTargetMessage(message, {
-		origin: window.location.origin,
-		source: window.parent,
-	})) {
+	if (
+		!isGraphicsPreviewSelectedTargetMessage(message, {
+			origin: window.location.origin,
+			source: window.parent,
+		})
+	) {
 		return;
 	}
 
@@ -363,7 +401,10 @@ function handleSelectedCompositorTargetMessage(message: MessageEvent) {
 }
 
 function isPreviewTargetSelected(target: FeatureMatchOverlaySelectionTarget) {
-	return featureMatchOverlaySelectionKey(selectedPreviewTarget.value) === featureMatchOverlaySelectionKey(target);
+	return (
+		featureMatchOverlaySelectionKey(selectedPreviewTarget.value) ===
+		featureMatchOverlaySelectionKey(target)
+	);
 }
 
 /**
@@ -374,19 +415,22 @@ function isPreviewTargetSelected(target: FeatureMatchOverlaySelectionTarget) {
 const lockedItems = computed(() => lockedGraphicItems([config.value.layout.composition]));
 
 function isSourceLocked(itemId: string) {
-	return config.value.layout.sources.some(source => source.id === itemId && source.locked === true);
+	return config.value.layout.sources.some(
+		(source) => source.id === itemId && source.locked === true,
+	);
 }
 
 function selectSourceGuide(itemId: string, event?: MouseEvent | KeyboardEvent) {
-	if (!isSourceLocked(itemId))
-		selectPreviewTarget({ type: 'source', itemId }, event);
+	if (!isSourceLocked(itemId)) selectPreviewTarget({ type: 'source', itemId }, event);
 }
 
 function handleSelectedPreviewTargetMessage(message: MessageEvent) {
-	if (!isFeatureMatchOverlayPreviewSelectedTargetMessage(message, {
-		origin: window.location.origin,
-		source: window.parent,
-	})) {
+	if (
+		!isFeatureMatchOverlayPreviewSelectedTargetMessage(message, {
+			origin: window.location.origin,
+			source: window.parent,
+		})
+	) {
 		return;
 	}
 
@@ -418,8 +462,7 @@ function handleSelectedPreviewTargetMessage(message: MessageEvent) {
  * `window.parent`, and would otherwise announce itself to itself.
  */
 function announcePreviewReady() {
-	if (!isPreview?.value || !import.meta.client || window.parent === window)
-		return;
+	if (!isPreview?.value || !import.meta.client || window.parent === window) return;
 
 	window.parent?.postMessage({ type: GRAPHICS_PREVIEW_READY_MESSAGE }, window.location.origin);
 }
@@ -465,7 +508,10 @@ onBeforeUnmount(() => {
 	<div
 		class="feature-match-overlay"
 		:class="`feature-match-overlay--${resolvedOutput}`"
-		:style="{ ...canvasStyle, visibility: libraryFontsReady || libraryFontsFailed ? undefined : 'hidden' }"
+		:style="{
+			...canvasStyle,
+			visibility: libraryFontsReady || libraryFontsFailed ? undefined : 'hidden',
+		}"
 		:data-export-ready="(!loading && !error && fontsReady && !fontsFailed).toString()"
 		:data-font-ready="fontsReady.toString()"
 		:data-font-error="fontsFailed.toString()"
@@ -473,7 +519,11 @@ onBeforeUnmount(() => {
 	>
 		<svg
 			class="frame-layer"
-			:data-frame-media="themeValues.frameMedia ? `${themeValues.frameMedia.assetId}/${themeValues.frameMedia.revisionId}` : 'none'"
+			:data-frame-media="
+				themeValues.frameMedia
+					? `${themeValues.frameMedia.assetId}/${themeValues.frameMedia.revisionId}`
+					: 'none'
+			"
 			:data-frame-animation-effect="themeValues.frameAnimationEffect.effect"
 			width="100%"
 			height="100%"
@@ -490,13 +540,7 @@ onBeforeUnmount(() => {
 					:width="canvasWidth"
 					:height="canvasHeight"
 				>
-					<rect
-						x="0"
-						y="0"
-						:width="canvasWidth"
-						:height="canvasHeight"
-						fill="white"
-					/>
+					<rect x="0" y="0" :width="canvasWidth" :height="canvasHeight" fill="white" />
 					<path
 						v-for="cutout in sourceCutouts"
 						:key="`cutout-${cutout.id}`"
@@ -565,14 +609,14 @@ onBeforeUnmount(() => {
 				:video="themeFrameVideo"
 				:canvas-width="canvasWidth"
 				:canvas-height="canvasHeight"
-				:cutout-paths="sourceCutouts.map(cutout => cutout.path)"
+				:cutout-paths="sourceCutouts.map((cutout) => cutout.path)"
 				:output="resolvedOutput"
 			/>
 			<FeatureMatchOverlayFrameMedia
 				:video="frameVideo"
 				:canvas-width="canvasWidth"
 				:canvas-height="canvasHeight"
-				:cutout-paths="sourceCutouts.map(cutout => cutout.path)"
+				:cutout-paths="sourceCutouts.map((cutout) => cutout.path)"
 				:output="resolvedOutput"
 			/>
 			<image
@@ -591,7 +635,7 @@ onBeforeUnmount(() => {
 				:effect="themeValues.frameAnimationEffect"
 				:canvas-width="canvasWidth"
 				:canvas-height="canvasHeight"
-				:cutout-paths="sourceCutouts.map(cutout => cutout.path)"
+				:cutout-paths="sourceCutouts.map((cutout) => cutout.path)"
 				:output="resolvedOutput"
 			/>
 			<g
@@ -622,15 +666,9 @@ onBeforeUnmount(() => {
 				:style="source.glowContainerStyle"
 				aria-hidden="true"
 			>
-				<div
-					class="feature-match-overlay__source-glow"
-					:style="source.glowStyle"
-				/>
+				<div class="feature-match-overlay__source-glow" :style="source.glowStyle" />
 			</div>
-			<div
-				:data-graphic-item-id="source.item.id"
-				:style="source.style"
-			/>
+			<div :data-graphic-item-id="source.item.id" :style="source.style" />
 		</template>
 
 		<!--
@@ -667,9 +705,11 @@ onBeforeUnmount(() => {
 						'is-locked': isSourceLocked(item.id),
 					}"
 					:style="guideStyle(item)"
-					v-bind="isSourceLocked(item.id)
-						? { 'data-locked': 'true', 'aria-hidden': 'true' }
-						: { 'role': 'button', 'tabindex': 0, 'aria-label': `Select ${item.label}` }"
+					v-bind="
+						isSourceLocked(item.id)
+							? { 'data-locked': 'true', 'aria-hidden': 'true' }
+							: { role: 'button', tabindex: 0, 'aria-label': `Select ${item.label}` }
+					"
 					@click.stop="selectSourceGuide(item.id, $event)"
 					@keydown.enter.stop="selectSourceGuide(item.id)"
 					@keydown.space.prevent.stop="selectSourceGuide(item.id)"

@@ -23,23 +23,27 @@ export function logGraphicsStoreFailure(
 	error: unknown,
 ): void {
 	try {
-		const record = error as { name?: unknown; code?: unknown; message?: unknown } | null | undefined;
+		const record = error as
+			| { name?: unknown; code?: unknown; message?: unknown }
+			| null
+			| undefined;
 		const code = record?.code;
-		console.warn(JSON.stringify({
-			message,
-			...context,
-			errorName: error instanceof Error
-				? error.name
-				: null,
-			errorCode: typeof code === 'string' || (typeof code === 'number' && Number.isFinite(code))
-				? code
-				: null,
-			reason: typeof record?.message === 'string'
-				? record.message.slice(0, MAX_STORE_FAILURE_REASON_CHARS)
-				: null,
-		}));
-	}
-	catch {
+		console.warn(
+			JSON.stringify({
+				message,
+				...context,
+				errorName: error instanceof Error ? error.name : null,
+				errorCode:
+					typeof code === 'string' || (typeof code === 'number' && Number.isFinite(code))
+						? code
+						: null,
+				reason:
+					typeof record?.message === 'string'
+						? record.message.slice(0, MAX_STORE_FAILURE_REASON_CHARS)
+						: null,
+			}),
+		);
+	} catch {
 		// An unreadable error, or a console that refuses: the outage is still answered.
 	}
 }

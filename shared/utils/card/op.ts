@@ -1,5 +1,10 @@
 import type { ScreenCard } from '../../types/card/mtg';
-import type { OpCardColor, OpCardSummary, OpCatalogueCard, OpScreenCard } from '../../types/card/op';
+import type {
+	OpCardColor,
+	OpCardSummary,
+	OpCatalogueCard,
+	OpScreenCard,
+} from '../../types/card/op';
 import type { OpLeader } from '../../types/game';
 import { OP_CARD_COLORS } from '../../types/card/op';
 
@@ -15,8 +20,7 @@ export function opPrintingImageUrl(printingId: string): string {
 export function isOpCardImageUrl(value: string): boolean {
 	try {
 		return new URL(value).origin === OP_CARD_IMAGE_ORIGIN;
-	}
-	catch {
+	} catch {
 		return false;
 	}
 }
@@ -27,28 +31,30 @@ const OP_CARD_NUMBER_PATTERN = /^[A-Z]{1,4}\d{0,2}-\d{3}$/;
 /** The card number `input` names, upper-cased, or `null` when it is not one. */
 export function parseOpCardNumber(input: string): string | null {
 	const candidate = input.trim().toUpperCase();
-	return OP_CARD_NUMBER_PATTERN.test(candidate)
-		? candidate
-		: null;
+	return OP_CARD_NUMBER_PATTERN.test(candidate) ? candidate : null;
 }
 
 /** Lower-cased words, punctuation as breaks: `Monkey.D.Luffy` is `monkey`, `d`, `luffy`. */
 function textWords(text: string): string[] {
-	return text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+	return text
+		.toLowerCase()
+		.split(/[^\p{L}\p{N}]+/u)
+		.filter(Boolean);
 }
 
 /**
  * Whether a card answers text typed to find it: part of its card number, or
  * every word typed starting a word of its name, number or colours.
  */
-export function opCardMatchesText(card: Pick<OpCardSummary, 'number' | 'name' | 'colors'>, text: string): boolean {
+export function opCardMatchesText(
+	card: Pick<OpCardSummary, 'number' | 'name' | 'colors'>,
+	text: string,
+): boolean {
 	const typed = text.trim();
-	if (!typed)
-		return false;
-	if (card.number.toUpperCase().includes(typed.toUpperCase()))
-		return true;
+	if (!typed) return false;
+	if (card.number.toUpperCase().includes(typed.toUpperCase())) return true;
 	const words = textWords([card.name, card.number, ...card.colors].join(' '));
-	return textWords(typed).every(part => words.some(word => word.startsWith(part)));
+	return textWords(typed).every((part) => words.some((word) => word.startsWith(part)));
 }
 
 /** Whether a Screen Card is the One Piece variant; an MTG card carries no `game`. */
@@ -87,5 +93,8 @@ export function formatOpColors(colors: readonly OpCardColor[]): string {
 
 /** The One Piece colours a `formatOpColors` text names; anything else is dropped. */
 export function parseOpColors(text: string): OpCardColor[] {
-	return text.split('/').map(part => part.trim()).filter(isOpCardColor);
+	return text
+		.split('/')
+		.map((part) => part.trim())
+		.filter(isOpCardColor);
 }

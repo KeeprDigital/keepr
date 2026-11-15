@@ -51,28 +51,22 @@ describe('useMetagamePage', () => {
 
 	// The Event's Conversion Target (ADR-0061) is re-derived on every Event change; only a changed target re-reads.
 	it.each([
-		[
-			{ conversionMetric: 'minPoints', conversionThreshold: 8 },
-			1,
-		],
-		[
-			{ conversionMetric: 'topN', conversionThreshold: 16 },
-			1,
-		],
-		[
-			{ conversionMetric: 'topN', conversionThreshold: 8 },
-			0,
-		],
-	])('re-reads its section when the Event\'s Conversion Target becomes %o: %i reads', async (target, reads) => {
-		mockMetagameStore.conversionTarget = { conversionMetric: 'topN', conversionThreshold: 8 };
-		const fetchSection = vi.fn(async () => {});
-		const page = effectScope();
-		page.run(() => useMetagamePage(fetchSection));
+		[{ conversionMetric: 'minPoints', conversionThreshold: 8 }, 1],
+		[{ conversionMetric: 'topN', conversionThreshold: 16 }, 1],
+		[{ conversionMetric: 'topN', conversionThreshold: 8 }, 0],
+	])(
+		"re-reads its section when the Event's Conversion Target becomes %o: %i reads",
+		async (target, reads) => {
+			mockMetagameStore.conversionTarget = { conversionMetric: 'topN', conversionThreshold: 8 };
+			const fetchSection = vi.fn(async () => {});
+			const page = effectScope();
+			page.run(() => useMetagamePage(fetchSection));
 
-		mockMetagameStore.conversionTarget = { ...target };
-		await flushPromises();
+			mockMetagameStore.conversionTarget = { ...target };
+			await flushPromises();
 
-		expect(fetchSection).toHaveBeenCalledTimes(reads);
-		page.stop();
-	});
+			expect(fetchSection).toHaveBeenCalledTimes(reads);
+			page.stop();
+		},
+	);
 });

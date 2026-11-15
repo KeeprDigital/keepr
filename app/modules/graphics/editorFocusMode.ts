@@ -22,20 +22,16 @@ const openHosts = shallowRef(0);
 function readStored(): boolean {
 	try {
 		return localStorage.getItem(STORAGE_KEY) === 'on';
-	}
-	catch {
+	} catch {
 		return false;
 	}
 }
 
 function writeStored(enabled: boolean) {
 	try {
-		if (enabled)
-			localStorage.setItem(STORAGE_KEY, 'on');
-		else
-			localStorage.removeItem(STORAGE_KEY);
-	}
-	catch {
+		if (enabled) localStorage.setItem(STORAGE_KEY, 'on');
+		else localStorage.removeItem(STORAGE_KEY);
+	} catch {
 		// Remembered for this visit only.
 	}
 }
@@ -50,8 +46,7 @@ export interface EditorFocusMode {
 
 export function useEditorFocusMode(): EditorFocusMode {
 	// Read on first use rather than at import, so the module loads anywhere.
-	if (enabledSetting.value === null)
-		enabledSetting.value = readStored();
+	if (enabledSetting.value === null) enabledSetting.value = readStored();
 
 	const enabled = computed<boolean>({
 		get: () => enabledSetting.value === true,

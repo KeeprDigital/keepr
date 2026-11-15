@@ -1,7 +1,15 @@
-import type { DeckLayoutGridBoard, DeckLayoutInput, DeckLayoutStackBoard } from '~~/shared/utils/deckLayout';
+import type {
+	DeckLayoutGridBoard,
+	DeckLayoutInput,
+	DeckLayoutStackBoard,
+} from '~~/shared/utils/deckLayout';
 import { describe, expect, it } from 'vitest';
 import { CARD_ASPECT } from '~~/shared/utils/cardGrid';
-import { MIN_STACK_REVEAL_SHARE, solveDeckGroups, solveDeckLayout } from '~~/shared/utils/deckLayout';
+import {
+	MIN_STACK_REVEAL_SHARE,
+	solveDeckGroups,
+	solveDeckLayout,
+} from '~~/shared/utils/deckLayout';
 
 function grid(count: number, columns: number | null = null, labelHeight = 0): DeckLayoutGridBoard {
 	return {
@@ -37,17 +45,15 @@ function space(input: Partial<DeckLayoutInput>): DeckLayoutInput {
 /** How far a solved layout reaches across and down: the boards beside or below each other. */
 function extent(input: DeckLayoutInput) {
 	const layout = solveDeckLayout(input)!;
-	const boards = [layout.mainboard, layout.sideboard].filter(board => board !== null);
-	const between = boards.length > 1
-		? input.boardGap
-		: 0;
+	const boards = [layout.mainboard, layout.sideboard].filter((board) => board !== null);
+	const between = boards.length > 1 ? input.boardGap : 0;
 	return input.placement === 'beside'
 		? {
 				width: boards.reduce((sum, board) => sum + board.width, 0) + between,
-				height: Math.max(...boards.map(board => board.height)),
+				height: Math.max(...boards.map((board) => board.height)),
 			}
 		: {
-				width: Math.max(...boards.map(board => board.width)),
+				width: Math.max(...boards.map((board) => board.width)),
 				height: boards.reduce((sum, board) => sum + board.height, 0) + between,
 			};
 }
@@ -91,31 +97,41 @@ describe('solveDeckLayout', () => {
 	});
 
 	it('gives the mainboard and sideboard one card size', () => {
-		const layout = solveDeckLayout(space({
-			mainboard: grid(23),
-			sideboard: stack(15),
-		}))!;
+		const layout = solveDeckLayout(
+			space({
+				mainboard: grid(23),
+				sideboard: stack(15),
+			}),
+		)!;
 
 		expect(layout.sideboard!.width).toBe(layout.cardWidth);
-		expect(layout.mainboard!.width).toBeCloseTo(layout.mainboard!.columns * layout.cardWidth + (layout.mainboard!.columns - 1) * 8);
+		expect(layout.mainboard!.width).toBeCloseTo(
+			layout.mainboard!.columns * layout.cardWidth + (layout.mainboard!.columns - 1) * 8,
+		);
 	});
 
 	// A stack shows less of each card before its cards shrink, never less than the name bar.
 	it.each([
 		{ name: 'keeps the set reveal while it fits', height: 1400, compressed: false },
-		{ name: 'shows less of each card where the set reveal would not fit', height: 700, compressed: true },
+		{
+			name: 'shows less of each card where the set reveal would not fit',
+			height: 700,
+			compressed: true,
+		},
 	])('$name', ({ height, compressed }) => {
-		const layout = solveDeckLayout(space({
-			height,
-			mainboard: grid(23, 8),
-			sideboard: stack(15, 60),
-		}))!;
-		const reveal = layout.sideboard!.view === 'stack'
-			? layout.sideboard!.reveal
-			: NaN;
+		const layout = solveDeckLayout(
+			space({
+				height,
+				mainboard: grid(23, 8),
+				sideboard: stack(15, 60),
+			}),
+		)!;
+		const reveal = layout.sideboard!.view === 'stack' ? layout.sideboard!.reveal : NaN;
 
 		expect(reveal < 60).toBe(compressed);
-		expect(reveal).toBeGreaterThanOrEqual(MIN_STACK_REVEAL_SHARE * (layout.cardWidth / CARD_ASPECT) - 0.001);
+		expect(reveal).toBeGreaterThanOrEqual(
+			MIN_STACK_REVEAL_SHARE * (layout.cardWidth / CARD_ASPECT) - 0.001,
+		);
 	});
 
 	// Full last rows score higher, so near-equal card sizes go to the fuller rows.
@@ -123,9 +139,13 @@ describe('solveDeckLayout', () => {
 		{ count: 13, columns: 7 },
 		{ count: 12, columns: 6 },
 	])('lays $count cards out in $columns columns', ({ count, columns }) => {
-		expect(solveDeckLayout(space({
-			mainboard: grid(count),
-		}))!.mainboard!.columns).toBe(columns);
+		expect(
+			solveDeckLayout(
+				space({
+					mainboard: grid(count),
+				}),
+			)!.mainboard!.columns,
+		).toBe(columns);
 	});
 
 	// A sideboard under the mainboard is never wider than it, so the deck reads as one block.
@@ -154,44 +174,60 @@ describe('solveDeckLayout', () => {
 			width: 1920,
 			height: 960,
 		},
-	])('lays $side sideboard cards below $main no wider than the mainboard, in $width×$height', ({ main, side, width, height }) => {
-		const layout = solveDeckLayout(space({
-			width,
-			height,
-			placement: 'below',
-			mainboard: grid(main),
-			sideboard: grid(side, null, 36),
-		}))!;
+	])(
+		'lays $side sideboard cards below $main no wider than the mainboard, in $width×$height',
+		({ main, side, width, height }) => {
+			const layout = solveDeckLayout(
+				space({
+					width,
+					height,
+					placement: 'below',
+					mainboard: grid(main),
+					sideboard: grid(side, null, 36),
+				}),
+			)!;
 
-		expect(layout.sideboard!.view === 'grid' && layout.sideboard!.columns).toBeLessThanOrEqual(layout.mainboard!.columns);
-	});
+			expect(layout.sideboard!.view === 'grid' && layout.sideboard!.columns).toBeLessThanOrEqual(
+				layout.mainboard!.columns,
+			);
+		},
+	);
 
 	// At any gap the deck spans the width: wider gaps trade a column for a row, never a bare side.
-	it.each([0, 8, 16, 24, 32, 40, 48].map(gap => ({ gap, height: 920 })))('spreads a deck across the space rather than leaving it empty beside it, $gap px apart', ({ gap, height }) => {
-		const input = space({
-			width: 1880,
-			height,
-			placement: 'below',
-			mainboard: {
-				...grid(23),
-				gap,
-			},
-			sideboard: {
-				...grid(8, null, 36),
-				gap,
-			},
-		});
-		const layout = solveDeckLayout(input)!;
+	it.each([0, 8, 16, 24, 32, 40, 48].map((gap) => ({ gap, height: 920 })))(
+		'spreads a deck across the space rather than leaving it empty beside it, $gap px apart',
+		({ gap, height }) => {
+			const input = space({
+				width: 1880,
+				height,
+				placement: 'below',
+				mainboard: {
+					...grid(23),
+					gap,
+				},
+				sideboard: {
+					...grid(8, null, 36),
+					gap,
+				},
+			});
+			const layout = solveDeckLayout(input)!;
 
-		expect(Math.max(layout.mainboard!.width, layout.sideboard!.width) / input.width).toBeGreaterThan(0.9);
-		expect(layout.sideboard!.view === 'grid' && layout.sideboard!.rows).toBe(1);
-	});
+			expect(
+				Math.max(layout.mainboard!.width, layout.sideboard!.width) / input.width,
+			).toBeGreaterThan(0.9);
+			expect(layout.sideboard!.view === 'grid' && layout.sideboard!.rows).toBe(1);
+		},
+	);
 
-	it('keeps a board\'s own column count', () => {
-		expect(solveDeckLayout(space({
-			mainboard: grid(23, 4),
-			sideboard: stack(15),
-		}))!.mainboard!.columns).toBe(4);
+	it("keeps a board's own column count", () => {
+		expect(
+			solveDeckLayout(
+				space({
+					mainboard: grid(23, 4),
+					sideboard: stack(15),
+				}),
+			)!.mainboard!.columns,
+		).toBe(4);
 	});
 
 	it.each([
@@ -214,20 +250,39 @@ describe('solveDeckLayout', () => {
 		{ main: 1, side: 0 },
 		{ main: 23, side: 15 },
 		{ main: 100, side: 15 },
-	].flatMap(counts => [
-		{ width: 1920, height: 960 },
-		{ width: 1080, height: 1800 },
-		{ width: 640, height: 300 },
-	].flatMap(canvas => (['beside', 'below'] as const).flatMap(placement => [null, 3, 20].flatMap(columns => [null, 48, 144, 900].flatMap(maxCardWidth => [null, 0, 8, 60].map(gap => ({
-		...counts,
-		...canvas,
+	].flatMap((counts) =>
+		[
+			{ width: 1920, height: 960 },
+			{ width: 1080, height: 1800 },
+			{ width: 640, height: 300 },
+		].flatMap((canvas) =>
+			(['beside', 'below'] as const).flatMap((placement) =>
+				[null, 3, 20].flatMap((columns) =>
+					[null, 48, 144, 900].flatMap((maxCardWidth) =>
+						[null, 0, 8, 60].map((gap) => ({
+							...counts,
+							...canvas,
+							placement,
+							columns,
+							maxCardWidth,
+							gap,
+						})),
+					),
+				),
+			),
+		),
+	);
+
+	function constrained({
+		main,
+		side,
+		width,
+		height,
 		placement,
 		columns,
 		maxCardWidth,
 		gap,
-	})))))));
-
-	function constrained({ main, side, width, height, placement, columns, maxCardWidth, gap }: typeof CONSTRAINED[number]): DeckLayoutInput {
+	}: (typeof CONSTRAINED)[number]): DeckLayoutInput {
 		return space({
 			width,
 			height,
@@ -237,17 +292,27 @@ describe('solveDeckLayout', () => {
 				gap,
 				maxCardWidth,
 			},
-			sideboard: side > 0
-				? {
-						...grid(side, null, 36),
-						gap,
-					}
-				: null,
+			sideboard:
+				side > 0
+					? {
+							...grid(side, null, 36),
+							gap,
+						}
+					: null,
 		});
 	}
 
 	/** The case a failure names, as its row title did. */
-	const named = ({ main, side, width, height, placement, columns, maxCardWidth, gap }: typeof CONSTRAINED[number]) =>
+	const named = ({
+		main,
+		side,
+		width,
+		height,
+		placement,
+		columns,
+		maxCardWidth,
+		gap,
+	}: (typeof CONSTRAINED)[number]) =>
 		`${main} and ${side} cards ${placement} in ${width}×${height}, columns ${columns}, max ${maxCardWidth}, gap ${gap}`;
 
 	// The deck never leaves its space, a max card size holds, and a set column count is kept.
@@ -262,11 +327,13 @@ describe('solveDeckLayout', () => {
 			expect(layout.cardWidth, which).toBeGreaterThan(0);
 			expect(width, which).toBeLessThanOrEqual(input.width + 0.001);
 			expect(height, which).toBeLessThanOrEqual(input.height + 0.001);
-			expect(layout.mainboard!.width, which).toBeCloseTo(layout.mainboard!.columns * layout.cardWidth + (layout.mainboard!.columns - 1) * layout.mainboard!.gap);
+			expect(layout.mainboard!.width, which).toBeCloseTo(
+				layout.mainboard!.columns * layout.cardWidth +
+					(layout.mainboard!.columns - 1) * layout.mainboard!.gap,
+			);
 			if (row.maxCardWidth !== null)
 				expect(layout.cardWidth, which).toBeLessThanOrEqual(row.maxCardWidth);
-			if (row.columns !== null)
-				expect(layout.mainboard!.columns, which).toBe(row.columns);
+			if (row.columns !== null) expect(layout.mainboard!.columns, which).toBe(row.columns);
 			if (row.gap !== null)
 				expect(layout.mainboard!.gap, which).toBeCloseTo(Math.min(row.gap, layout.cardWidth));
 		}
@@ -280,7 +347,10 @@ describe('solveDeckLayout', () => {
 			const { width, height } = extent(input);
 			const atMax = row.maxCardWidth !== null && layout.cardWidth === row.maxCardWidth;
 
-			expect(atMax || Math.min(input.width - width, input.height - height) < 0.001, named(row)).toBe(true);
+			expect(
+				atMax || Math.min(input.width - width, input.height - height) < 0.001,
+				named(row),
+			).toBe(true);
 		}
 	});
 
@@ -290,28 +360,32 @@ describe('solveDeckLayout', () => {
 		{ cardWidth: 72, gap: 4 },
 		{ cardWidth: 288, gap: 16 },
 	])('spaces $cardWidth px cards $gap px apart when gap is Auto', ({ cardWidth, gap }) => {
-		const layout = solveDeckLayout(space({
-			width: 4 * cardWidth + 3 * gap,
-			height: 5000,
-			mainboard: {
-				...grid(4, 4),
-				gap: null,
-			},
-		}))!;
+		const layout = solveDeckLayout(
+			space({
+				width: 4 * cardWidth + 3 * gap,
+				height: 5000,
+				mainboard: {
+					...grid(4, 4),
+					gap: null,
+				},
+			}),
+		)!;
 
 		expect(layout.cardWidth).toBeCloseTo(cardWidth);
 		expect(layout.mainboard!.gap).toBeCloseTo(gap);
 	});
 
 	// The strip is one mainboard column wide, so the mainboard's max card size holds it too.
-	it('holds a stacked sideboard to the mainboard\'s max card size', () => {
-		const layout = solveDeckLayout(space({
-			mainboard: {
-				...grid(23),
-				maxCardWidth: 100,
-			},
-			sideboard: stack(15),
-		}))!;
+	it("holds a stacked sideboard to the mainboard's max card size", () => {
+		const layout = solveDeckLayout(
+			space({
+				mainboard: {
+					...grid(23),
+					maxCardWidth: 100,
+				},
+				sideboard: stack(15),
+			}),
+		)!;
 
 		expect(layout.cardWidth).toBe(100);
 		expect(layout.sideboard!.width).toBe(100);
@@ -319,24 +393,30 @@ describe('solveDeckLayout', () => {
 
 	// Columns follow the card count, not a constant.
 	it('chooses more than twelve columns where the cards are largest there', () => {
-		expect(solveDeckLayout(space({
-			width: 3840,
-			height: 300,
-			mainboard: grid(16),
-		}))!.mainboard!.columns).toBe(16);
+		expect(
+			solveDeckLayout(
+				space({
+					width: 3840,
+					height: 300,
+					mainboard: grid(16),
+				}),
+			)!.mainboard!.columns,
+		).toBe(16);
 	});
 });
 
-describe('solveDeckLayout with a stacked sideboard\'s own max card size', () => {
+describe("solveDeckLayout with a stacked sideboard's own max card size", () => {
 	// Every board shares one card size, so the strip's max holds the mainboard too.
-	it('holds every board to the stacked sideboard\'s max card size', () => {
-		const layout = solveDeckLayout(space({
-			mainboard: grid(23),
-			sideboard: {
-				...stack(15),
-				maxCardWidth: 60,
-			},
-		}))!;
+	it("holds every board to the stacked sideboard's max card size", () => {
+		const layout = solveDeckLayout(
+			space({
+				mainboard: grid(23),
+				sideboard: {
+					...stack(15),
+					maxCardWidth: 60,
+				},
+			}),
+		)!;
 
 		expect(layout.cardWidth).toBe(60);
 		expect(layout.sideboard!.width).toBe(60);
@@ -344,13 +424,7 @@ describe('solveDeckLayout with a stacked sideboard\'s own max card size', () => 
 });
 
 describe('solveDeckGroups', () => {
-	const GROUPS = [
-		[1],
-		[12, 3, 1],
-		[30, 8],
-		[4, 4, 4, 4],
-		[0],
-	];
+	const GROUPS = [[1], [12, 3, 1], [30, 8], [4, 4, 4, 4], [0]];
 	const SPACES = [
 		{ width: 1300, height: 900 },
 		{ width: 600, height: 1700 },
@@ -359,24 +433,41 @@ describe('solveDeckGroups', () => {
 	const COLUMNS = [null, 1, 6, 20];
 	const MAX_CARD_WIDTHS = [null, 48, 144];
 	const GAPS = [null, 0, 8, 60];
-	const cases = GROUPS.flatMap(counts => SPACES.flatMap(area => COLUMNS.flatMap(columns => MAX_CARD_WIDTHS.flatMap(maxCardWidth => GAPS.map(gap => ({
-		counts,
-		...area,
-		columns,
-		maxCardWidth,
-		gap,
-		labelHeight: 36,
-		groupGap: 16,
-	}))))));
+	const cases = GROUPS.flatMap((counts) =>
+		SPACES.flatMap((area) =>
+			COLUMNS.flatMap((columns) =>
+				MAX_CARD_WIDTHS.flatMap((maxCardWidth) =>
+					GAPS.map((gap) => ({
+						counts,
+						...area,
+						columns,
+						maxCardWidth,
+						gap,
+						labelHeight: 36,
+						groupGap: 16,
+					})),
+				),
+			),
+		),
+	);
 
-	function heightOf(input: typeof cases[number]) {
+	function heightOf(input: (typeof cases)[number]) {
 		const groups = solveDeckGroups(input);
-		return groups.rows.reduce((sum, rows) => sum + input.labelHeight + rows * groups.cardWidth / CARD_ASPECT + (rows - 1) * groups.gap, 0)
-			+ (groups.rows.length - 1) * input.groupGap;
+		return (
+			groups.rows.reduce(
+				(sum, rows) =>
+					sum +
+					input.labelHeight +
+					(rows * groups.cardWidth) / CARD_ASPECT +
+					(rows - 1) * groups.gap,
+				0,
+			) +
+			(groups.rows.length - 1) * input.groupGap
+		);
 	}
 
 	/** The case a failure names, as its row title did. */
-	const named = ({ counts, width, height, columns, maxCardWidth, gap }: typeof cases[number]) =>
+	const named = ({ counts, width, height, columns, maxCardWidth, gap }: (typeof cases)[number]) =>
 		`groups of ${counts.join(',')} in ${width}×${height}, columns ${columns}, max ${maxCardWidth}, gap ${gap}`;
 
 	// The groups never leave their space, a max card size holds, and a set column count is kept.
@@ -387,13 +478,17 @@ describe('solveDeckGroups', () => {
 
 			expect(groups.cardWidth, which).toBeGreaterThan(0);
 			expect(groups.rows, which).toHaveLength(input.counts.length);
-			input.counts.forEach((count, index) => expect(groups.columns * groups.rows[index]!, which).toBeGreaterThanOrEqual(count));
-			expect(groups.columns * groups.cardWidth + (groups.columns - 1) * groups.gap, which).toBeLessThanOrEqual(input.width + 1e-6);
+			input.counts.forEach((count, index) =>
+				expect(groups.columns * groups.rows[index]!, which).toBeGreaterThanOrEqual(count),
+			);
+			expect(
+				groups.columns * groups.cardWidth + (groups.columns - 1) * groups.gap,
+				which,
+			).toBeLessThanOrEqual(input.width + 1e-6);
 			expect(heightOf(input), which).toBeLessThanOrEqual(input.height + 1e-6);
 			if (input.maxCardWidth !== null)
 				expect(groups.cardWidth, which).toBeLessThanOrEqual(input.maxCardWidth);
-			if (input.columns !== null)
-				expect(groups.columns, which).toBe(input.columns);
+			if (input.columns !== null) expect(groups.columns, which).toBe(input.columns);
 			if (input.gap !== null)
 				expect(groups.gap, which).toBeCloseTo(Math.min(input.gap, groups.cardWidth));
 		}
@@ -403,10 +498,14 @@ describe('solveDeckGroups', () => {
 	it('fills every space with the largest card that fits, short of a side only at the max card size', () => {
 		for (const input of cases) {
 			const groups = solveDeckGroups(input);
-			const widthLeft = input.width - (groups.columns * groups.cardWidth + (groups.columns - 1) * groups.gap);
+			const widthLeft =
+				input.width - (groups.columns * groups.cardWidth + (groups.columns - 1) * groups.gap);
 			const atMax = input.maxCardWidth !== null && groups.cardWidth === input.maxCardWidth;
 
-			expect(atMax || Math.min(widthLeft, input.height - heightOf(input)) < 1e-6, named(input)).toBe(true);
+			expect(
+				atMax || Math.min(widthLeft, input.height - heightOf(input)) < 1e-6,
+				named(input),
+			).toBe(true);
 		}
 	});
 

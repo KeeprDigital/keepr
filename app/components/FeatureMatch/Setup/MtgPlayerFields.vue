@@ -16,9 +16,7 @@ const deckColorsArray = computed({
 	set: (value: string[]) => {
 		modelValue.value = {
 			...modelValue.value,
-			deckColors: value.length > 0
-				? mtgColorsToString(value)
-				: null,
+			deckColors: value.length > 0 ? mtgColorsToString(value) : null,
 		};
 	},
 });
@@ -30,7 +28,7 @@ const deckColorsArray = computed({
 			<UInput
 				:model-value="modelValue.deckName ?? ''"
 				class="w-full"
-				@update:model-value="modelValue = { ...modelValue, deckName: ($event) || null }"
+				@update:model-value="modelValue = { ...modelValue, deckName: $event || null }"
 			/>
 		</UFormField>
 		<MtgManaColorPicker v-model="deckColorsArray" class="pb-1" />

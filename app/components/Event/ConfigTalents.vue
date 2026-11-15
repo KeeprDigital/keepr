@@ -49,12 +49,17 @@ const editingValue = ref<TalentEditorValue | null>(null);
 const editingErrors = ref<Partial<Record<'name' | SupportedSocialNetwork, string>>>({});
 const saving = ref(false);
 
-function editorValue(talent?: Pick<Talent, 'name' | 'role' | 'socialProfiles' | 'photo'>): TalentEditorValue {
+function editorValue(
+	talent?: Pick<Talent, 'name' | 'role' | 'socialProfiles' | 'photo'>,
+): TalentEditorValue {
 	return {
 		name: talent?.name ?? '',
 		role: talent?.role ?? '',
 		socialProfiles: Object.fromEntries(
-			SUPPORTED_SOCIAL_NETWORKS.map(network => [network.key, talent?.socialProfiles[network.key] ?? '']),
+			SUPPORTED_SOCIAL_NETWORKS.map((network) => [
+				network.key,
+				talent?.socialProfiles[network.key] ?? '',
+			]),
 		) as Record<SupportedSocialNetwork, string>,
 		photo: talent?.photo ?? null,
 	};
@@ -62,8 +67,7 @@ function editorValue(talent?: Pick<Talent, 'name' | 'role' | 'socialProfiles' | 
 
 /** The picker's choice, or its Clear. */
 function choosePhoto(photo: GraphicAssetReference | undefined) {
-	if (editingValue.value)
-		editingValue.value.photo = photo ?? null;
+	if (editingValue.value) editingValue.value.photo = photo ?? null;
 }
 
 function openEditor(talent?: Talent) {
@@ -83,8 +87,7 @@ function closeEditor() {
 }
 
 function cancelTalentEdit() {
-	if (!saving.value)
-		closeEditor();
+	if (!saving.value) closeEditor();
 }
 
 interface ParsedTalent {
@@ -98,27 +101,21 @@ function parseEditor(value: TalentEditorValue): ParsedTalent | null {
 	const name = value.name.trim();
 	const role = value.role.trim() || null;
 	const errors: typeof editingErrors.value = {};
-	if (!name)
-		errors.name = 'Enter a Talent name';
+	if (!name) errors.name = 'Enter a Talent name';
 
 	const socialProfiles: SocialProfiles = {};
 	for (const network of SUPPORTED_SOCIAL_NETWORKS) {
 		try {
 			const handle = normalizeSocialProfileInput(network.key, value.socialProfiles[network.key]);
-			if (handle !== undefined)
-				socialProfiles[network.key] = handle;
-		}
-		catch (error) {
-			errors[network.key] = error instanceof SocialProfileInputError
-				? error.message
-				: 'Invalid Social Profile';
+			if (handle !== undefined) socialProfiles[network.key] = handle;
+		} catch (error) {
+			errors[network.key] =
+				error instanceof SocialProfileInputError ? error.message : 'Invalid Social Profile';
 		}
 	}
 
 	editingErrors.value = errors;
-	return Object.keys(errors).length > 0
-		? null
-		: { name, role, socialProfiles };
+	return Object.keys(errors).length > 0 ? null : { name, role, socialProfiles };
 }
 
 /**
@@ -126,22 +123,30 @@ function parseEditor(value: TalentEditorValue): ParsedTalent | null {
  * the Talent's current value, which a colleague's change may have moved meanwhile
  * (#612).
  */
-function editedFields(current: Talent, opened: TalentEditorValue, value: TalentEditorValue, parsed: ParsedTalent): UpdateTalentInput {
+function editedFields(
+	current: Talent,
+	opened: TalentEditorValue,
+	value: TalentEditorValue,
+	parsed: ParsedTalent,
+): UpdateTalentInput {
 	const update: UpdateTalentInput = {};
-	if (value.name !== opened.name && parsed.name !== current.name)
-		update.name = parsed.name;
+	if (value.name !== opened.name && parsed.name !== current.name) update.name = parsed.name;
 	if (value.role !== opened.role && parsed.role !== (current.role ?? null))
 		update.role = parsed.role;
 
 	const socialProfiles: SocialProfiles = {};
 	for (const network of SUPPORTED_SOCIAL_NETWORKS) {
-		const handle = value.socialProfiles[network.key] === opened.socialProfiles[network.key]
-			? current.socialProfiles[network.key]
-			: parsed.socialProfiles[network.key];
-		if (handle !== undefined)
-			socialProfiles[network.key] = handle;
+		const handle =
+			value.socialProfiles[network.key] === opened.socialProfiles[network.key]
+				? current.socialProfiles[network.key]
+				: parsed.socialProfiles[network.key];
+		if (handle !== undefined) socialProfiles[network.key] = handle;
 	}
-	if (SUPPORTED_SOCIAL_NETWORK_KEYS.some(network => socialProfiles[network] !== current.socialProfiles[network]))
+	if (
+		SUPPORTED_SOCIAL_NETWORK_KEYS.some(
+			(network) => socialProfiles[network] !== current.socialProfiles[network],
+		)
+	)
 		update.socialProfiles = socialProfiles;
 
 	if (!samePhoto(value.photo, opened.photo) && !samePhoto(value.photo, current.photo))
@@ -151,31 +156,28 @@ function editedFields(current: Talent, opened: TalentEditorValue, value: TalentE
 }
 
 /** A new Talent's fields: a role or photo only when it has one. */
-function createdTalent({ role, ...parsed }: ParsedTalent, photo: GraphicAssetReference | null): CreateTalentInput {
+function createdTalent(
+	{ role, ...parsed }: ParsedTalent,
+	photo: GraphicAssetReference | null,
+): CreateTalentInput {
 	return {
 		name: parsed.name,
-		...(role
-			? { role }
-			: {}),
+		...(role ? { role } : {}),
 		socialProfiles: parsed.socialProfiles,
-		...(photo
-			? { photo }
-			: {}),
+		...(photo ? { photo } : {}),
 	};
 }
 
 async function saveTalentEdit() {
 	const opened = openedValue.value;
 	const value = editingValue.value;
-	if (saving.value || !opened || !value)
-		return;
+	if (saving.value || !opened || !value) return;
 
 	const parsed = parseEditor(value);
-	if (!parsed)
-		return;
+	if (!parsed) return;
 
 	// A Talent a colleague removed while the editor was open is created again.
-	const current = props.talents.find(talent => talent.id === editingTalentId.value);
+	const current = props.talents.find((talent) => talent.id === editingTalentId.value);
 	const update = current && editedFields(current, opened, value, parsed);
 	if (update && Object.keys(update).length === 0) {
 		closeEditor();
@@ -185,21 +187,20 @@ async function saveTalentEdit() {
 	saving.value = true;
 	try {
 		const saved = await runRequest(
-			() => current && update
-				? eventStore.updateTalent(current.id, update)
-				: eventStore.addTalent(createdTalent(parsed, value.photo)),
+			() =>
+				current && update
+					? eventStore.updateTalent(current.id, update)
+					: eventStore.addTalent(createdTalent(parsed, value.photo)),
 			{
-				error: failure => ({
+				error: (failure) => ({
 					title: 'Talent not saved',
 					description: eventStore.error ?? failure.message,
 					color: 'error',
 				}),
 			},
 		);
-		if (saved)
-			closeEditor();
-	}
-	finally {
+		if (saved) closeEditor();
+	} finally {
 		saving.value = false;
 	}
 }
@@ -209,11 +210,10 @@ async function confirmRemove(talent: Talent) {
 		title: 'Delete Talent',
 		itemName: talent.name,
 	}).result;
-	if (!confirmed)
-		return;
+	if (!confirmed) return;
 
 	await runRequest(() => eventStore.removeTalent(talent.id), {
-		error: failure => ({
+		error: (failure) => ({
 			title: 'Talent not deleted',
 			description: eventStore.error ?? failure.message,
 			color: 'error',
@@ -264,17 +264,24 @@ function getDropdownItems(talent: Talent): DropdownMenuItem[] {
 						:src="photoSource(talent.photo)"
 						:alt="`${talent.name} photo`"
 						class="size-full object-cover"
-					>
+					/>
 					<UIcon v-else name="i-lucide-user" class="text-muted" />
 				</div>
 				<div class="text-sm min-w-0 flex-1">
 					<p class="text-highlighted truncate font-medium">
 						{{ talent.name }}
-						<span v-if="talent.role" class="text-muted font-normal" data-talent-role>{{ talent.role }}</span>
+						<span v-if="talent.role" class="text-muted font-normal" data-talent-role>{{
+							talent.role
+						}}</span>
 					</p>
-					<div v-if="Object.keys(talent.socialProfiles).length" class="mt-1 flex items-center gap-1 text-muted">
+					<div
+						v-if="Object.keys(talent.socialProfiles).length"
+						class="mt-1 flex items-center gap-1 text-muted"
+					>
 						<UIcon
-							v-for="network in SUPPORTED_SOCIAL_NETWORKS.filter(item => talent.socialProfiles[item.key])"
+							v-for="network in SUPPORTED_SOCIAL_NETWORKS.filter(
+								(item) => talent.socialProfiles[item.key],
+							)"
 							:key="network.key"
 							:name="network.icon"
 							:aria-label="network.label"
@@ -325,7 +332,11 @@ function getDropdownItems(talent: Talent): DropdownMenuItem[] {
 					<UInput v-model="editingValue.name" autofocus class="w-full" />
 				</UFormField>
 
-				<UFormField label="Role" name="role" description="Shown on a Talent Screen, such as Host or Commentator.">
+				<UFormField
+					label="Role"
+					name="role"
+					description="Shown on a Talent Screen, such as Host or Commentator."
+				>
 					<UInput v-model="editingValue.role" placeholder="None" class="w-full" />
 				</UFormField>
 
@@ -336,7 +347,7 @@ function getDropdownItems(talent: Talent): DropdownMenuItem[] {
 							:src="photoSource(editingValue.photo)"
 							alt="Talent photo"
 							class="size-16 shrink-0 rounded-md object-cover bg-elevated"
-						>
+						/>
 						<GraphicsAssetFocusPicker
 							:model-value="editingValue.photo ?? undefined"
 							:event-id="eventId"

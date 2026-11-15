@@ -15,28 +15,29 @@ enableAutoUnmount(afterEach);
 beforeAll(stubPointerCapture);
 
 interface MountOptions {
-	props?: Partial<Record<'step' | 'max', number> & { disabled: boolean; modelValue: number | undefined }>;
+	props?: Partial<
+		Record<'step' | 'max', number> & { disabled: boolean; modelValue: number | undefined }
+	>;
 	disabledFieldset?: boolean;
 	gesture?: NumberScrubGesture;
 }
 
 function mountField({ props = {}, disabledFieldset = false, gesture }: MountOptions = {}) {
 	const Host = defineComponent({
-		setup: () => () => h('fieldset', { disabled: disabledFieldset }, [
-			h(NumberField, {
-				'label': 'Width',
-				'modelValue': 10,
-				'aria-label': 'Item width',
-				...props,
-			}),
-		]),
+		setup: () => () =>
+			h('fieldset', { disabled: disabledFieldset }, [
+				h(NumberField, {
+					label: 'Width',
+					modelValue: 10,
+					'aria-label': 'Item width',
+					...props,
+				}),
+			]),
 	});
 	return mount(Host, {
 		global: {
 			stubs: nuxtUiStubs,
-			provide: gesture
-				? { [NUMBER_SCRUB_GESTURE as symbol]: gesture }
-				: {},
+			provide: gesture ? { [NUMBER_SCRUB_GESTURE as symbol]: gesture } : {},
 		},
 	});
 }
@@ -48,7 +49,12 @@ function handle(wrapper: Wrapper) {
 }
 
 function emitted(wrapper: Wrapper) {
-	return wrapper.findComponent(NumberField).emitted('update:modelValue')?.map(([value]) => value) ?? [];
+	return (
+		wrapper
+			.findComponent(NumberField)
+			.emitted('update:modelValue')
+			?.map(([value]) => value) ?? []
+	);
 }
 
 async function drag(wrapper: Wrapper, moves: number[], keys: PointerEventInit = {}) {
@@ -97,14 +103,14 @@ describe('graphics number field', () => {
 			values: [10.1],
 		},
 		{
-			case: 'in the field\'s own step',
+			case: "in the field's own step",
 			moves: [2],
 			keys: {},
 			props: { step: 0.5 },
 			values: [10.5],
 		},
 		{
-			case: 'held at the field\'s maximum',
+			case: "held at the field's maximum",
 			moves: [2, 20],
 			keys: {},
 			props: { max: 11 },
@@ -148,7 +154,7 @@ describe('graphics number field', () => {
 		expect(handle(wrapper).attributes('data-scrubbing')).toBeUndefined();
 	});
 
-	it('opens its editor\'s gesture at the first change and closes it when the pointer lets go', async () => {
+	it("opens its editor's gesture at the first change and closes it when the pointer lets go", async () => {
 		const gesture = {
 			begin: vi.fn(),
 			end: vi.fn(),
@@ -177,7 +183,7 @@ describe('graphics number field', () => {
 		expect([afterDrag.defaultPrevented, plainClick.defaultPrevented]).toEqual([true, false]);
 	});
 
-	it('leaves the input as the keyboard\'s way in, and the label out of the tab order', () => {
+	it("leaves the input as the keyboard's way in, and the label out of the tab order", () => {
 		const wrapper = mountField();
 		expect(handle(wrapper).attributes('tabindex')).toBeUndefined();
 		expect(wrapper.find('input[aria-label="Item width"]').exists()).toBe(true);

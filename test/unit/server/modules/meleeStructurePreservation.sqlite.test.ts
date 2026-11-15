@@ -51,7 +51,8 @@ const meleeEventData = {
 afterAll(async () => await harness.close());
 
 async function createEvent() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({
 			name: 'Mixed Provenance Open',
 			game: 'mtg',
@@ -64,39 +65,51 @@ async function createEvent() {
 }
 
 async function insertPhase(eventId: number, name: string, externalId: string | null) {
-	const [phase] = await db.insert(schema.phases).values({
-		eventId,
-		name,
-		externalId,
-		externalSource: externalId ? 'melee' : 'manual',
-		formatExternalId: externalId ? 'modern' : null,
-	}).returning();
+	const [phase] = await db
+		.insert(schema.phases)
+		.values({
+			eventId,
+			name,
+			externalId,
+			externalSource: externalId ? 'melee' : 'manual',
+			formatExternalId: externalId ? 'modern' : null,
+		})
+		.returning();
 	return phase!;
 }
 
-async function insertRound(eventId: number, phaseId: number, name: string, externalId: string | null) {
-	const [round] = await db.insert(schema.rounds).values({
-		eventId,
-		phaseId,
-		name,
-		roundNumber: 1,
-		externalId,
-		externalSource: externalId ? 'melee' : 'manual',
-		lastSyncedAt: externalId
-			? new Date('2026-10-01T00:00:00.000Z')
-			: null,
-	}).returning();
+async function insertRound(
+	eventId: number,
+	phaseId: number,
+	name: string,
+	externalId: string | null,
+) {
+	const [round] = await db
+		.insert(schema.rounds)
+		.values({
+			eventId,
+			phaseId,
+			name,
+			roundNumber: 1,
+			externalId,
+			externalSource: externalId ? 'melee' : 'manual',
+			lastSyncedAt: externalId ? new Date('2026-10-01T00:00:00.000Z') : null,
+		})
+		.returning();
 	return round!;
 }
 
 async function insertMatch(eventId: number, roundId: number, externalId: string | null) {
-	const [match] = await db.insert(schema.matches).values({
-		eventId,
-		roundId,
-		externalId,
-		externalSource: externalId ? 'melee' : 'manual',
-		tableNumber: 1,
-	}).returning();
+	const [match] = await db
+		.insert(schema.matches)
+		.values({
+			eventId,
+			roundId,
+			externalId,
+			externalSource: externalId ? 'melee' : 'manual',
+			tableNumber: 1,
+		})
+		.returning();
 	return match!;
 }
 
@@ -111,9 +124,21 @@ function upstream(phases: MeleeEventParsed['Phases']): MeleeEventParsed {
 
 async function readStructure(eventId: number) {
 	return {
-		phases: await db.select().from(schema.phases).where(eq(schema.phases.eventId, eventId)).orderBy(schema.phases.id),
-		rounds: await db.select().from(schema.rounds).where(eq(schema.rounds.eventId, eventId)).orderBy(schema.rounds.id),
-		matches: await db.select().from(schema.matches).where(eq(schema.matches.eventId, eventId)).orderBy(schema.matches.id),
+		phases: await db
+			.select()
+			.from(schema.phases)
+			.where(eq(schema.phases.eventId, eventId))
+			.orderBy(schema.phases.id),
+		rounds: await db
+			.select()
+			.from(schema.rounds)
+			.where(eq(schema.rounds.eventId, eventId))
+			.orderBy(schema.rounds.id),
+		matches: await db
+			.select()
+			.from(schema.matches)
+			.where(eq(schema.matches.eventId, eventId))
+			.orderBy(schema.matches.id),
 	};
 }
 
@@ -131,36 +156,39 @@ describe('melee Sync structure reconciliation keeps manual descendants', () => {
 		const importedRound = await insertRound(eventId, stalePhase.id, 'Round 1', 'round-old');
 		await insertMatch(eventId, importedRound.id, 'match-old');
 
-		const result = await createMeleeSyncWorkflows().syncEventStructure(syncContext, eventId, meleeEventData, upstream([
-			{
-				ID: 200,
-				Name: 'Swiss',
-				FormatId: 'modern',
-				SortOrder: 0,
-				Rounds: [
-					{ ID: 2001, Name: 'Round 1', SortOrder: 0 },
-				],
-			},
-		] as MeleeEventParsed['Phases']));
+		const result = await createMeleeSyncWorkflows().syncEventStructure(
+			syncContext,
+			eventId,
+			meleeEventData,
+			upstream([
+				{
+					ID: 200,
+					Name: 'Swiss',
+					FormatId: 'modern',
+					SortOrder: 0,
+					Rounds: [{ ID: 2001, Name: 'Round 1', SortOrder: 0 }],
+				},
+			] as MeleeEventParsed['Phases']),
+		);
 
 		const after = await readStructure(eventId);
-		expect(after.phases.find(phase => phase.id === stalePhase.id)).toMatchObject({
+		expect(after.phases.find((phase) => phase.id === stalePhase.id)).toMatchObject({
 			name: 'Old Swiss',
 			externalId: null,
 			externalSource: 'manual',
 		});
-		expect(after.rounds.find(round => round.id === manualRound.id)).toMatchObject({
+		expect(after.rounds.find((round) => round.id === manualRound.id)).toMatchObject({
 			phaseId: stalePhase.id,
 			externalId: null,
 			externalSource: 'manual',
 		});
-		expect(after.matches.find(match => match.id === manualMatch.id)).toMatchObject({
+		expect(after.matches.find((match) => match.id === manualMatch.id)).toMatchObject({
 			roundId: manualRound.id,
 			externalSource: 'manual',
 		});
 		// The imported Round held nothing manual, so it went as before, with its Match.
-		expect(after.rounds.some(round => round.id === importedRound.id)).toBe(false);
-		expect(after.matches.some(match => match.externalId === 'match-old')).toBe(false);
+		expect(after.rounds.some((round) => round.id === importedRound.id)).toBe(false);
+		expect(after.matches.some((match) => match.externalId === 'match-old')).toBe(false);
 		expect(result.warnings).toEqual([
 			'Phase "Old Swiss" is no longer on Melee.gg and holds manual Rounds or Matches, so it was kept as a manual Phase',
 		]);
@@ -172,20 +200,27 @@ describe('melee Sync structure reconciliation keeps manual descendants', () => {
 		const staleRound = await insertRound(eventId, livePhase.id, 'Round 3', 'round-gone');
 		const importedMatch = await insertMatch(eventId, staleRound.id, 'match-gone');
 		const manualMatch = await insertMatch(eventId, staleRound.id, null);
-		const [player] = await db.insert(schema.players).values({
-			eventId,
-			name: 'Ada',
-			externalId: 'p-1',
-			externalSource: 'melee',
-		}).returning();
+		const [player] = await db
+			.insert(schema.players)
+			.values({
+				eventId,
+				name: 'Ada',
+				externalId: 'p-1',
+				externalSource: 'melee',
+			})
+			.returning();
 		await db.insert(schema.playerRoundStandings).values({
 			eventId,
 			playerId: player!.id,
 			roundId: staleRound.id,
 			wins: 2,
 		});
-		const [slot] = await db.insert(schema.featureMatches).values({ eventId, matchId: manualMatch.id }).returning();
-		const [assignment] = await db.insert(schema.featureMatchAssignments)
+		const [slot] = await db
+			.insert(schema.featureMatches)
+			.values({ eventId, matchId: manualMatch.id })
+			.returning();
+		const [assignment] = await db
+			.insert(schema.featureMatchAssignments)
 			.values({
 				eventId,
 				roundId: staleRound.id,
@@ -195,48 +230,64 @@ describe('melee Sync structure reconciliation keeps manual descendants', () => {
 			})
 			.returning();
 
-		const result = await createMeleeSyncWorkflows().syncEventStructure(syncContext, eventId, meleeEventData, upstream([
-			{
-				ID: 400,
-				Name: 'Swiss',
-				FormatId: 'modern',
-				SortOrder: 0,
-				Rounds: [],
-			},
-		] as MeleeEventParsed['Phases']));
+		const result = await createMeleeSyncWorkflows().syncEventStructure(
+			syncContext,
+			eventId,
+			meleeEventData,
+			upstream([
+				{
+					ID: 400,
+					Name: 'Swiss',
+					FormatId: 'modern',
+					SortOrder: 0,
+					Rounds: [],
+				},
+			] as MeleeEventParsed['Phases']),
+		);
 
 		const after = await readStructure(eventId);
-		expect(after.phases.find(phase => phase.id === livePhase.id)).toMatchObject({
+		expect(after.phases.find((phase) => phase.id === livePhase.id)).toMatchObject({
 			externalId: '400',
 			externalSource: 'melee',
 		});
-		expect(after.rounds.find(round => round.id === staleRound.id)).toMatchObject({
+		expect(after.rounds.find((round) => round.id === staleRound.id)).toMatchObject({
 			phaseId: livePhase.id,
 			name: 'Round 3',
 			externalId: null,
 			externalSource: 'manual',
 			lastSyncedAt: null,
 		});
-		expect(after.matches.map(match => match.id)).toEqual([manualMatch.id]);
-		expect(after.matches.some(match => match.id === importedMatch.id)).toBe(false);
-		expect(await db.select().from(schema.playerRoundStandings).where(eq(schema.playerRoundStandings.roundId, staleRound.id))).toEqual([]);
-		expect(await db.query.featureMatchAssignments.findFirst({
-			where: (table, { eq }) => eq(table.id, assignment!.id),
-		}))
-			.toMatchObject({ roundId: staleRound.id, matchId: manualMatch.id, note: 'Feature table' });
+		expect(after.matches.map((match) => match.id)).toEqual([manualMatch.id]);
+		expect(after.matches.some((match) => match.id === importedMatch.id)).toBe(false);
+		expect(
+			await db
+				.select()
+				.from(schema.playerRoundStandings)
+				.where(eq(schema.playerRoundStandings.roundId, staleRound.id)),
+		).toEqual([]);
+		expect(
+			await db.query.featureMatchAssignments.findFirst({
+				where: (table, { eq }) => eq(table.id, assignment!.id),
+			}),
+		).toMatchObject({ roundId: staleRound.id, matchId: manualMatch.id, note: 'Feature table' });
 		expect(result.warnings).toEqual([
 			'Round "Round 3" in "Swiss" is no longer on Melee.gg and holds manual Matches, so it was kept as a manual Round',
 		]);
-		expect(publishMessageStrict).toHaveBeenCalledWith(eventId, 'melee:structureSynced', expect.objectContaining({
-			changes: {
-				phases: { created: [], updated: [], deleted: [] },
-				rounds: {
-					created: [],
-					updated: [staleRound.id],
-					deleted: [],
+		expect(publishMessageStrict).toHaveBeenCalledWith(
+			eventId,
+			'melee:structureSynced',
+			expect.objectContaining({
+				changes: {
+					phases: { created: [], updated: [], deleted: [] },
+					rounds: {
+						created: [],
+						updated: [staleRound.id],
+						deleted: [],
+					},
 				},
-			},
-		}), 'origin-1');
+			}),
+			'origin-1',
+		);
 	});
 
 	it('removes imported-only stale structure, and a repeated sync changes nothing and warns nothing', async () => {
@@ -245,7 +296,12 @@ describe('melee Sync structure reconciliation keeps manual descendants', () => {
 		const manualRound = await insertRound(eventId, mixedPhase.id, 'Side Event', null);
 		const manualMatch = await insertMatch(eventId, manualRound.id, null);
 		const importedOnlyPhase = await insertPhase(eventId, 'Day 2', 'phase-day-2');
-		const importedOnlyRound = await insertRound(eventId, importedOnlyPhase.id, 'Round 9', 'round-9');
+		const importedOnlyRound = await insertRound(
+			eventId,
+			importedOnlyPhase.id,
+			'Round 9',
+			'round-9',
+		);
 		await insertMatch(eventId, importedOnlyRound.id, 'match-9');
 		const livePhases = [
 			{
@@ -253,33 +309,41 @@ describe('melee Sync structure reconciliation keeps manual descendants', () => {
 				Name: 'Top 8',
 				FormatId: 'modern',
 				SortOrder: 0,
-				Rounds: [
-					{ ID: 3001, Name: 'Quarterfinals', SortOrder: 0 },
-				],
+				Rounds: [{ ID: 3001, Name: 'Quarterfinals', SortOrder: 0 }],
 			},
 		] as MeleeEventParsed['Phases'];
 		const workflows = createMeleeSyncWorkflows();
 
-		const first = await workflows.syncEventStructure(syncContext, eventId, meleeEventData, upstream(livePhases));
+		const first = await workflows.syncEventStructure(
+			syncContext,
+			eventId,
+			meleeEventData,
+			upstream(livePhases),
+		);
 		const afterFirst = await readStructure(eventId);
 		expect(first.warnings).toHaveLength(1);
-		expect(afterFirst.phases.map(phase => [
-			phase.id === mixedPhase.id
-				? 'kept'
-				: phase.name,
-			phase.externalSource,
-		])).toEqual([
+		expect(
+			afterFirst.phases.map((phase) => [
+				phase.id === mixedPhase.id ? 'kept' : phase.name,
+				phase.externalSource,
+			]),
+		).toEqual([
 			['kept', 'manual'],
 			['Top 8', 'melee'],
 		]);
-		expect(afterFirst.rounds.map(round => [round.name, round.externalSource])).toEqual([
+		expect(afterFirst.rounds.map((round) => [round.name, round.externalSource])).toEqual([
 			['Side Event', 'manual'],
 			['Quarterfinals', 'melee'],
 		]);
-		expect(afterFirst.matches.map(match => match.id)).toEqual([manualMatch.id]);
+		expect(afterFirst.matches.map((match) => match.id)).toEqual([manualMatch.id]);
 
 		publishMessageStrict.mockClear();
-		const second = await workflows.syncEventStructure(syncContext, eventId, meleeEventData, upstream(livePhases));
+		const second = await workflows.syncEventStructure(
+			syncContext,
+			eventId,
+			meleeEventData,
+			upstream(livePhases),
+		);
 		expect(second.warnings).toBeUndefined();
 		expect(await readStructure(eventId)).toEqual(afterFirst);
 		expect(publishMessageStrict).not.toHaveBeenCalled();
@@ -309,37 +373,29 @@ describe('the Melee data reset keeps manual descendants', () => {
 		});
 
 		const after = await readStructure(eventId);
-		expect(after.phases.map(phase => [phase.id, phase.externalSource, phase.externalId])).toEqual([
-			[manualPhase.id, 'manual', null],
-			[importedPhase.id, 'manual', null],
-		]);
-		expect(after.rounds.map(round => [
-			round.id,
-			round.phaseId,
-			round.externalSource,
-			round.externalId,
-		])).toEqual([
+		expect(after.phases.map((phase) => [phase.id, phase.externalSource, phase.externalId])).toEqual(
 			[
-				manualRound.id,
-				importedPhase.id,
-				'manual',
-				null,
+				[manualPhase.id, 'manual', null],
+				[importedPhase.id, 'manual', null],
 			],
-			[
-				importedRound.id,
-				importedPhase.id,
-				'manual',
-				null,
-			],
+		);
+		expect(
+			after.rounds.map((round) => [
+				round.id,
+				round.phaseId,
+				round.externalSource,
+				round.externalId,
+			]),
+		).toEqual([
+			[manualRound.id, importedPhase.id, 'manual', null],
+			[importedRound.id, importedPhase.id, 'manual', null],
 		]);
-		expect(after.matches.map(match => [match.id, match.roundId, match.externalSource])).toEqual([
+		expect(after.matches.map((match) => [match.id, match.roundId, match.externalSource])).toEqual([
 			[manualMatchInManualRound.id, manualRound.id, 'manual'],
 			[manualMatchInImportedRound.id, importedRound.id, 'manual'],
 		]);
 		expect(reset?.keptStructure).toEqual({
-			keptPhases: [
-				{ id: importedPhase.id, name: 'Swiss' },
-			],
+			keptPhases: [{ id: importedPhase.id, name: 'Swiss' }],
 			keptRounds: [
 				{
 					id: importedRound.id,

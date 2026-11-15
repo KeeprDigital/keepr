@@ -4,16 +4,9 @@ import { LazyMtgCardPrinting } from '#components';
 
 const cardStore = useCardStore();
 
-const {
-	selectMeldCardPart,
-} = cardStore;
+const { selectMeldCardPart } = cardStore;
 
-const {
-	previewCard,
-	previewCardPrintings,
-	activeCard,
-	cardsMatch,
-} = storeToRefs(cardStore);
+const { previewCard, previewCardPrintings, activeCard, cardsMatch } = storeToRefs(cardStore);
 
 const modal = useOverlay().create(LazyMtgCardPrinting);
 
@@ -21,11 +14,12 @@ function openPrintList() {
 	void modal.open({});
 }
 
-const hasOrientationControls = computed(() =>
-	previewCard.value?.orientationData.turnable
-	|| previewCard.value?.orientationData.rotateable
-	|| previewCard.value?.orientationData.counterRotateable
-	|| previewCard.value?.orientationData.flipable,
+const hasOrientationControls = computed(
+	() =>
+		previewCard.value?.orientationData.turnable ||
+		previewCard.value?.orientationData.rotateable ||
+		previewCard.value?.orientationData.counterRotateable ||
+		previewCard.value?.orientationData.flipable,
 );
 
 function cardAction(action: MtgPreviewCardAction) {
@@ -36,11 +30,7 @@ function cardAction(action: MtgPreviewCardAction) {
 <template>
 	<div v-if="previewCard" class="flex flex-col gap-2">
 		<!-- Primary CTA: Show / Replace -->
-		<CardShowControl
-			:replacing="!!activeCard"
-			:matches="cardsMatch"
-			@show="cardAction('show')"
-		/>
+		<CardShowControl :replacing="!!activeCard" :matches="cardsMatch" @show="cardAction('show')" />
 
 		<!-- Meld controls -->
 		<USeparator v-if="previewCard.meldData" />

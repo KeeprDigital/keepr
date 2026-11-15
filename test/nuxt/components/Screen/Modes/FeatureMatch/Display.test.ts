@@ -121,6 +121,8 @@ describe('screenFeatureMatchDisplay', () => {
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.get('[data-testid="mode-base"]').attributes('data-error')).toBe('Match not found');
+		expect(wrapper.get('[data-testid="mode-base"]').attributes('data-error')).toBe(
+			'Match not found',
+		);
 	});
 });

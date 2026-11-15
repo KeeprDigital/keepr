@@ -13,8 +13,7 @@ interface ThemeTokens {
 function resolveToken(tokenName: string, fallback: string): string {
 	if (import.meta.client) {
 		const value = getComputedStyle(document.documentElement).getPropertyValue(tokenName).trim();
-		if (value)
-			return value;
+		if (value) return value;
 	}
 
 	return fallback;
@@ -25,7 +24,10 @@ function resolveThemeTokens(isDark: boolean): ThemeTokens {
 		background: resolveToken('--ui-bg', isDark ? '#111827' : '#ffffff'),
 		backgroundElevated: resolveToken('--ui-bg-elevated', isDark ? '#1f2937' : '#f9fafb'),
 		border: resolveToken('--ui-border', isDark ? '#374151' : '#e5e7eb'),
-		borderMuted: resolveToken('--ui-border-muted', isDark ? 'rgba(107, 114, 128, 0.45)' : 'rgba(156, 163, 175, 0.35)'),
+		borderMuted: resolveToken(
+			'--ui-border-muted',
+			isDark ? 'rgba(107, 114, 128, 0.45)' : 'rgba(156, 163, 175, 0.35)',
+		),
 		text: resolveToken('--ui-text', isDark ? '#f3f4f6' : '#111827'),
 		textMuted: resolveToken('--ui-text-muted', isDark ? '#9ca3af' : '#6b7280'),
 		palette: [

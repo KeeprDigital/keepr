@@ -22,16 +22,17 @@ import { installServerConnectionDiagnostics } from '~~/test/integration/serverCo
 const cleanups: Array<() => unknown> = [];
 
 afterEach(async () => {
-	for (const cleanup of cleanups.splice(0).reverse())
-		await cleanup();
+	for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
 /** Every line written, the stall monitor's included. */
 function everyLine() {
 	const lines: string[] = [];
-	cleanups.push(installServerConnectionDiagnostics({
-		write: line => lines.push(line),
-	}));
+	cleanups.push(
+		installServerConnectionDiagnostics({
+			write: (line) => lines.push(line),
+		}),
+	);
 	return lines;
 }
 
@@ -41,23 +42,24 @@ function everyLine() {
  */
 function diagnostics() {
 	const lines: string[] = [];
-	cleanups.push(installServerConnectionDiagnostics({
-		write: (line) => {
-			if (!line.includes('event loop stalled'))
-				lines.push(line);
-		},
-	}));
+	cleanups.push(
+		installServerConnectionDiagnostics({
+			write: (line) => {
+				if (!line.includes('event loop stalled')) lines.push(line);
+			},
+		}),
+	);
 	return lines;
 }
 
 async function serve(handler: RequestListener) {
 	const responses: Array<Promise<void>> = [];
 	const server = createServer((request, response) => {
-		responses.push(new Promise<void>(resolve => response.once('close', () => resolve())));
+		responses.push(new Promise<void>((resolve) => response.once('close', () => resolve())));
 		handler(request, response);
 	});
-	await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-	cleanups.push(() => new Promise(resolve => server.close(resolve)));
+	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+	cleanups.push(() => new Promise((resolve) => server.close(resolve)));
 	return {
 		server,
 		origin: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
@@ -76,30 +78,32 @@ function outgoing(origin: string, path: string, method = 'POST') {
 			let body = '';
 			let failure: Error | undefined;
 			response.setEncoding('utf8');
-			response.on('data', (chunk: string) => body += chunk);
-			response.on('error', error => failure ??= error);
-			response.on('aborted', () => failure ??= new Error('aborted'));
-			response.on('close', () => failure
-				? reject(failure)
-				: resolve(body));
+			response.on('data', (chunk: string) => (body += chunk));
+			response.on('error', (error) => (failure ??= error));
+			response.on('aborted', () => (failure ??= new Error('aborted')));
+			response.on('close', () => (failure ? reject(failure) : resolve(body)));
 		});
 		request.on('error', reject);
 		request.end();
 	});
 }
 
-describe('the integration server\'s connection diagnostics', () => {
+describe("the integration server's connection diagnostics", () => {
 	it('names a request whose connection closed before its response finished, without its query', async () => {
 		const lines = diagnostics();
 		const { origin, closed } = await serve((request) => {
 			setTimeout(() => request.socket.destroy(), 20);
 		});
 
-		await expect(fetch(`${origin}/api/upload/complete?token=secret-value`, { method: 'POST' })).rejects.toThrow();
+		await expect(
+			fetch(`${origin}/api/upload/complete?token=secret-value`, { method: 'POST' }),
+		).rejects.toThrow();
 		await closed();
 
 		expect(lines).toHaveLength(1);
-		expect(lines[0]).toMatch(/^\[integration-server\] .*POST \/api\/upload\/complete: connection closed after \d+ms before the response finished/);
+		expect(lines[0]).toMatch(
+			/^\[integration-server\] .*POST \/api\/upload\/complete: connection closed after \d+ms before the response finished/,
+		);
 		expect(lines.join('\n')).not.toContain('secret-value');
 	});
 
@@ -129,12 +133,16 @@ describe('the integration server\'s connection diagnostics', () => {
 		await closed();
 
 		expect(lines).toEqual([
-			expect.stringMatching(/POST \/api\/stalled: socket timed out after \d+ms with the request in flight/),
-			expect.stringMatching(/POST \/api\/stalled: connection closed after \d+ms before the response finished/),
+			expect.stringMatching(
+				/POST \/api\/stalled: socket timed out after \d+ms with the request in flight/,
+			),
+			expect.stringMatching(
+				/POST \/api\/stalled: connection closed after \d+ms before the response finished/,
+			),
 		]);
 	});
 
-	it('says when the public listener\'s keep-alive timeout closed a connection, which the test client never leaves idle that long', async () => {
+	it("says when the public listener's keep-alive timeout closed a connection, which the test client never leaves idle that long", async () => {
 		const lines = diagnostics();
 		const { origin, server } = await serve((_request, response) => {
 			response.end('ok');
@@ -145,10 +153,12 @@ describe('the integration server\'s connection diagnostics', () => {
 		const socket = connect(Number(new URL(origin).port), '127.0.0.1').resume();
 		socket.write('GET /api/kept-alive?capability=secret-value HTTP/1.1\r\nHost: localhost\r\n\r\n');
 		// The server writes its line from the timeout that then closes this end.
-		await new Promise(resolve => socket.once('close', resolve));
+		await new Promise((resolve) => socket.once('close', resolve));
 
 		expect(lines).toEqual([
-			expect.stringMatching(/main thread: keep-alive connection closed by its timeout \d+ms after its last response \(GET \/api\/kept-alive\)$/),
+			expect.stringMatching(
+				/main thread: keep-alive connection closed by its timeout \d+ms after its last response \(GET \/api\/kept-alive\)$/,
+			),
 		]);
 	});
 
@@ -163,7 +173,9 @@ describe('the integration server\'s connection diagnostics', () => {
 		await closed();
 
 		expect(lines).toContainEqual(
-			expect.stringMatching(/outgoing POST 127\.0\.0\.1:\d+\/api\/proxied: failed after \d+ms \(ECONNRESET: socket hang up\)/),
+			expect.stringMatching(
+				/outgoing POST 127\.0\.0\.1:\d+\/api\/proxied: failed after \d+ms \(ECONNRESET: socket hang up\)/,
+			),
 		);
 		expect(lines.join('\n')).not.toContain('secret-value');
 	});
@@ -178,31 +190,42 @@ describe('the integration server\'s connection diagnostics', () => {
 		await expect(outgoing(origin, '/api/proxied', 'GET')).rejects.toThrow();
 
 		expect(lines).toContainEqual(
-			expect.stringMatching(/outgoing GET 127\.0\.0\.1:\d+\/api\/proxied: response 200 ended after \d+ms before it completed/),
+			expect.stringMatching(
+				/outgoing GET 127\.0\.0\.1:\d+\/api\/proxied: response 200 ended after \d+ms before it completed/,
+			),
 		);
 	});
 
-	it('reaches into a worker thread, where Nitro\'s dev worker serves the app, and says when one exits', async () => {
+	it("reaches into a worker thread, where Nitro's dev worker serves the app, and says when one exits", async () => {
 		const lines = diagnostics();
-		const worker = new Worker(`
+		const worker = new Worker(
+			`
 			const { createServer } = require('node:http');
 			const { parentPort } = require('node:worker_threads');
 			const server = createServer(request => request.socket.destroy());
 			server.listen(0, '127.0.0.1', () => parentPort.postMessage(server.address().port));
-		`, { eval: true, stderr: true });
+		`,
+			{ eval: true, stderr: true },
+		);
 		cleanups.push(() => worker.terminate());
 		let workerOutput = '';
 		worker.stderr.setEncoding('utf8');
-		worker.stderr.on('data', (chunk: string) => workerOutput += chunk);
+		worker.stderr.on('data', (chunk: string) => (workerOutput += chunk));
 		const id = worker.threadId;
-		const port = await new Promise<number>(resolve => worker.once('message', resolve));
+		const port = await new Promise<number>((resolve) => worker.once('message', resolve));
 
-		await expect(fetch(`http://127.0.0.1:${port}/api/in-worker`, { method: 'PUT' })).rejects.toThrow();
+		await expect(
+			fetch(`http://127.0.0.1:${port}/api/in-worker`, { method: 'PUT' }),
+		).rejects.toThrow();
 		// The worker writes on its own thread, some time after this one saw the failure.
-		await vi.waitFor(() => expect(workerOutput).toMatch(new RegExp(
-			`^\\[integration-server\\] \\S+ worker thread ${id}: PUT /api/in-worker: connection closed after \\d+ms before the response finished`,
-			'm',
-		)));
+		await vi.waitFor(() =>
+			expect(workerOutput).toMatch(
+				new RegExp(
+					`^\\[integration-server\\] \\S+ worker thread ${id}: PUT /api/in-worker: connection closed after \\d+ms before the response finished`,
+					'm',
+				),
+			),
+		);
 		await worker.terminate();
 
 		expect(lines).toEqual([
@@ -227,22 +250,32 @@ describe('the integration server\'s connection diagnostics', () => {
 			turnsAfter: [250, 1_500, 250, 250],
 			stalled: ['1500ms'],
 		},
-	])('says how long the thread\'s event loop stalled, only when it went a second or more without turning: turns $turnsAfter ms apart', ({ turnsAfter, stalled }) => {
-		let now = Date.now();
-		const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
-		vi.useFakeTimers({
-			toFake: ['setInterval', 'clearInterval'],
-		});
-		cleanups.push(() => clock.mockRestore(), () => vi.useRealTimers());
-		const lines = everyLine();
+	])(
+		"says how long the thread's event loop stalled, only when it went a second or more without turning: turns $turnsAfter ms apart",
+		({ turnsAfter, stalled }) => {
+			let now = Date.now();
+			const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+			vi.useFakeTimers({
+				toFake: ['setInterval', 'clearInterval'],
+			});
+			cleanups.push(
+				() => clock.mockRestore(),
+				() => vi.useRealTimers(),
+			);
+			const lines = everyLine();
 
-		for (const milliseconds of turnsAfter) {
-			now += milliseconds;
-			vi.advanceTimersToNextTimer();
-		}
+			for (const milliseconds of turnsAfter) {
+				now += milliseconds;
+				vi.advanceTimersToNextTimer();
+			}
 
-		expect(lines).toEqual(stalled.map(length => expect.stringMatching(new RegExp(`main thread: event loop stalled for ${length}$`))));
-	});
+			expect(lines).toEqual(
+				stalled.map((length) =>
+					expect.stringMatching(new RegExp(`main thread: event loop stalled for ${length}$`)),
+				),
+			);
+		},
+	);
 
 	it('writes nothing when only the rest of a body fails after its whole answer arrived', async () => {
 		const lines = diagnostics();
@@ -259,24 +292,28 @@ describe('the integration server\'s connection diagnostics', () => {
 		// still to send when the answer is in and the connection goes.
 		const failedAfterAnswer = await new Promise<boolean>((resolve) => {
 			let answered = false;
-			const request = httpRequest(`${origin}/api/parts/1`, {
-				method: 'PUT',
-				headers: {
-					'content-length': String(64 * 1024 * 1024),
+			const request = httpRequest(
+				`${origin}/api/parts/1`,
+				{
+					method: 'PUT',
+					headers: {
+						'content-length': String(64 * 1024 * 1024),
+					},
 				},
-			}, (response) => {
-				response.resume();
-				response.on('end', () => {
-					answered = true;
-					dropConnection();
-				});
-			});
+				(response) => {
+					response.resume();
+					response.on('end', () => {
+						answered = true;
+						dropConnection();
+					});
+				},
+			);
 			request.on('error', () => resolve(answered));
 			request.end(Buffer.alloc(64 * 1024 * 1024));
 		});
 		expect(failedAfterAnswer).toBe(true);
 
-		expect(lines.filter(line => line.includes('outgoing'))).toEqual([]);
+		expect(lines.filter((line) => line.includes('outgoing'))).toEqual([]);
 	});
 
 	it('writes nothing for an outgoing exchange answered in full', async () => {

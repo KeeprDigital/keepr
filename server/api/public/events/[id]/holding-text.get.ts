@@ -18,7 +18,5 @@ export default defineEventHandler(async (event) => {
 
 	setResponseHeader(event, 'access-control-allow-origin', '*');
 	setResponseHeader(event, 'cache-control', 'no-store');
-	return [
-		{ holdingText: found.holdingText ?? '' },
-	];
+	return [{ holdingText: found.holdingText ?? '' }];
 });

@@ -11,7 +11,10 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { ref } from 'vue';
 import * as schema from '~~/server/db/schema';
 import { broadcastGraphicInputsState } from '~~/shared/modules/broadcast-graphics-live-session';
-import { createCommandIdSequence, seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
+import {
+	createCommandIdSequence,
+	seedBroadcastGraphicsScreen,
+} from '~~/test/helpers/broadcastGraphicsScreen';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 import { useRealtimeMessageGate } from '~/composables/core/useRealtimeMessageGate';
 import { createBroadcastGraphicsRealtimeHandlers } from '~/modules/realtime-event-session/broadcastGraphicsHandlers';
@@ -147,9 +150,8 @@ vi.stubGlobal(
 	'getValidatedRouterParams',
 	async (event: FakeEvent, parse: (input: unknown) => unknown) => parse(event.context.params),
 );
-vi.stubGlobal(
-	'readValidatedBody',
-	async (event: FakeEvent, parse: (input: unknown) => unknown) => parse(event.context.body),
+vi.stubGlobal('readValidatedBody', async (event: FakeEvent, parse: (input: unknown) => unknown) =>
+	parse(event.context.body),
 );
 vi.stubGlobal(
 	'getHeader',
@@ -164,10 +166,11 @@ interface FakeEvent {
 	};
 }
 
-const commandRoute = (await import(
-	'~~/server/api/events/[id]/screens/[screenId]/broadcast-graphics/live-sessions/[sessionId]/commands.post',
-)).default as unknown as (event: H3Event) => Promise<unknown>;
-const { broadcastGraphicsLiveSessionModule } = await import('~~/server/modules/broadcast-graphics-live-session');
+const commandRoute = (
+	await import('~~/server/api/events/[id]/screens/[screenId]/broadcast-graphics/live-sessions/[sessionId]/commands.post')
+).default as unknown as (event: H3Event) => Promise<unknown>;
+const { broadcastGraphicsLiveSessionModule } =
+	await import('~~/server/modules/broadcast-graphics-live-session');
 
 // ──────────────── the show ────────────────
 
@@ -246,12 +249,12 @@ async function deliver(
 			undefined,
 		);
 		await vi.waitFor(() => {
-			expect(useBroadcastGraphicsLiveSessionStore().sessions.get(notification.screenId)?.sequence)
-				.toBe(notification.sequence);
+			expect(
+				useBroadcastGraphicsLiveSessionStore().sessions.get(notification.screenId)?.sequence,
+			).toBe(notification.sequence);
 		});
 		expect(warn).not.toHaveBeenCalled();
-	}
-	finally {
+	} finally {
 		warn.mockRestore();
 	}
 }
@@ -293,7 +296,9 @@ async function issue(
 	expect(published).toHaveLength(1);
 	expect(published[0]!.name).toBe('broadcastGraphicsLiveSession:commandApplied');
 
-	return JSON.parse(JSON.stringify(published[0]!.data)) as MessageData<'broadcastGraphicsLiveSession:commandApplied'>;
+	return JSON.parse(
+		JSON.stringify(published[0]!.data),
+	) as MessageData<'broadcastGraphicsLiveSession:commandApplied'>;
 }
 
 beforeAll(async () => {
@@ -328,7 +333,10 @@ describe('what a Broadcast Graphics Live Session publishes and what its store me
 		expect(repository.getSession).toHaveBeenCalledTimes(1);
 
 		/** One command, applied from the wire, checked against the authority. */
-		const step = async (type: BroadcastGraphicsCommand['type'], payload: Record<string, unknown>) => {
+		const step = async (
+			type: BroadcastGraphicsCommand['type'],
+			payload: Record<string, unknown>,
+		) => {
 			const notification = await issue(type, payload);
 			await deliver(notification);
 
@@ -353,7 +361,10 @@ describe('what a Broadcast Graphics Live Session publishes and what its store me
 			(await snapshot()).currentState,
 			GRAPHIC_ID,
 		).acceptedRevision;
-		await step('Update Graphic', { graphicId: GRAPHIC_ID, basedOnAcceptedRevision: acceptedRevision });
+		await step('Update Graphic', {
+			graphicId: GRAPHIC_ID,
+			basedOnAcceptedRevision: acceptedRevision,
+		});
 
 		await step('Out', { graphicId: GRAPHIC_ID, cut: true });
 

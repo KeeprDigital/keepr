@@ -73,7 +73,9 @@ function mountFields(props: Record<string, unknown> = {}) {
 type Wrapper = ReturnType<typeof mountFields>;
 
 function numberField(wrapper: Wrapper, testId: string) {
-	return wrapper.findAllComponents(UInputNumberStub).find(input => input.attributes('data-testid') === testId);
+	return wrapper
+		.findAllComponents(UInputNumberStub)
+		.find((input) => input.attributes('data-testid') === testId);
 }
 
 async function enter(wrapper: Wrapper, testId: string, value: number | null) {

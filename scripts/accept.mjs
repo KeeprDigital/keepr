@@ -16,7 +16,10 @@
 
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { loadCommittedInstallation, resolveDeployedTarget } from './graphics-acceptance/deployed-target.mjs';
+import {
+	loadCommittedInstallation,
+	resolveDeployedTarget,
+} from './graphics-acceptance/deployed-target.mjs';
 import { AcceptanceFailure, createAcceptanceEvidence } from './graphics-acceptance/evidence.mjs';
 import { reportFailures } from './graphics-acceptance/harness.mjs';
 import { runHoldingSlots } from './slots.mjs';
@@ -39,7 +42,7 @@ export const HARNESSES = {
 		proves: 'MP4 and WebM play and seek; VP9 alpha keeps transparency on Chromium',
 		needs: 'Chrome/Chromium',
 	},
-	'fonts': {
+	fonts: {
 		script: ['run-font-browser-acceptance.mjs'],
 		proves: 'Font faces load and render their glyphs; defective faces are refused',
 		needs: 'Chrome/Chromium; --library also needs `pnpm preview`',
@@ -47,7 +50,8 @@ export const HARNESSES = {
 	},
 	'animation-effects': {
 		script: ['run-animation-effect-rendering-acceptance.mjs'],
-		proves: 'Every Animation Effect shader compiles, lights a frame, and moves; halo\'s trails fade out',
+		proves:
+			"Every Animation Effect shader compiles, lights a frame, and moves; halo's trails fade out",
 		needs: 'Chrome/Chromium',
 		deployed: false,
 	},
@@ -66,7 +70,7 @@ export const HARNESSES = {
 		script: ['run-silent-video-validator-acceptance.mjs'],
 		proves: 'The validator Workflow and Container accept MP4, WebM, and VP9-alpha WebM',
 		needs: 'Docker',
-		flags: '--cleanup (with --deployed: retry a failed run\'s deletes)',
+		flags: "--cleanup (with --deployed: retry a failed run's deletes)",
 	},
 	'graphics-delivery': {
 		script: ['run-graphics-delivery-acceptance.mjs'],
@@ -103,20 +107,19 @@ function run(name, flags) {
 }
 
 function list() {
-	const width = Math.max(...Object.keys(HARNESSES).map(name => name.length));
+	const width = Math.max(...Object.keys(HARNESSES).map((name) => name.length));
 	const lines = Object.entries(HARNESSES).map(([name, harness]) => {
-		const flags = [
-			harness.deployed === false
-				? undefined
-				: '--deployed',
-			harness.flags,
-		].filter(Boolean).join(', ');
-		return `  ${name.padEnd(width)}  ${harness.proves}\n  ${''.padEnd(width)}  needs: ${harness.needs}${flags
-			? `; flags: ${flags}`
-			: ''}`;
+		const flags = [harness.deployed === false ? undefined : '--deployed', harness.flags]
+			.filter(Boolean)
+			.join(', ');
+		return `  ${name.padEnd(width)}  ${harness.proves}\n  ${''.padEnd(width)}  needs: ${harness.needs}${
+			flags ? `; flags: ${flags}` : ''
+		}`;
 	});
-	process.stdout.write(`Usage: pnpm accept <name> [flags…] | pnpm accept deployed\n\n${lines.join('\n')}\n\n`
-		+ `deployed  runs ${DEPLOY_DAY.join(', ')} with --deployed, stopping at the first failure\n`);
+	process.stdout.write(
+		`Usage: pnpm accept <name> [flags…] | pnpm accept deployed\n\n${lines.join('\n')}\n\n` +
+			`deployed  runs ${DEPLOY_DAY.join(', ')} with --deployed, stopping at the first failure\n`,
+	);
 }
 
 /**
@@ -131,13 +134,15 @@ async function preflightDeployDay(env) {
 	try {
 		resolveDeployedTarget({ env, installation: await loadCommittedInstallation() });
 		return true;
-	}
-	catch (error) {
-		const failure = error instanceof AcceptanceFailure
-			? error
-			: new AcceptanceFailure('harness-precondition-unmet', { reason: 'target-unreadable' });
+	} catch (error) {
+		const failure =
+			error instanceof AcceptanceFailure
+				? error
+				: new AcceptanceFailure('harness-precondition-unmet', { reason: 'target-unreadable' });
 		const line = reportFailures(evidence, 'accept-deployed', [failure]);
-		process.stderr.write(`${line}\n\n✗ the deployed target is incomplete; no deploy-day harness ran\n`);
+		process.stderr.write(
+			`${line}\n\n✗ the deployed target is incomplete; no deploy-day harness ran\n`,
+		);
 		return false;
 	}
 }
@@ -159,7 +164,10 @@ async function refuseToSpawn(name) {
  * @param {string[]} [argv]
  * @param {{ env?: Record<string, string | undefined>, runHarness?: typeof run }} [options]
  */
-export async function main(argv = process.argv, { env = process.env, runHarness = refuseToSpawn } = {}) {
+export async function main(
+	argv = process.argv,
+	{ env = process.env, runHarness = refuseToSpawn } = {},
+) {
 	const [name, ...flags] = argv.slice(2);
 
 	if (!name || name === '--list' || name === '--help') {
@@ -168,7 +176,7 @@ export async function main(argv = process.argv, { env = process.env, runHarness 
 	}
 
 	if (name === 'deployed') {
-		if (!await preflightDeployDay(env)) {
+		if (!(await preflightDeployDay(env))) {
 			process.exitCode = 1;
 			return;
 		}
@@ -199,5 +207,4 @@ export async function main(argv = process.argv, { env = process.env, runHarness 
 	process.exitCode = await runHarness(name, flags);
 }
 
-if (import.meta.main)
-	await main(process.argv, { runHarness: run });
+if (import.meta.main) await main(process.argv, { runHarness: run });

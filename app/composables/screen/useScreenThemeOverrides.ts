@@ -2,7 +2,11 @@ import type { InjectionKey, MaybeRefOrGetter } from 'vue';
 import type { StoredThemeTokens, ThemeTokenValue } from '~~/shared/modules/theme';
 import type { ThemeTokenDefinitionOf } from '~~/shared/themeTokens';
 import type { Screen } from '~/types';
-import { DEFAULT_THEME_TOKENS, FOUNDATION_TOKENS, resolveFoundationToken } from '~~/shared/modules/theme';
+import {
+	DEFAULT_THEME_TOKENS,
+	FOUNDATION_TOKENS,
+	resolveFoundationToken,
+} from '~~/shared/modules/theme';
 import { resolveScreenThemeTokens } from '~~/shared/screenModeDefinitions';
 import { themeTokenDefinition } from '~~/shared/themeTokens';
 import { screenBackgroundLayers } from '~/modules/screen-mode/modeTokens';
@@ -33,16 +37,21 @@ export interface ScreenThemeTokenEntry {
  * `screen` is absent while the page loads it: nothing is overridden, and
  * nothing is written, until it arrives.
  */
-function createScreenThemeOverrides(screen: MaybeRefOrGetter<Screen | null | undefined>, eventId: MaybeRefOrGetter<number>) {
+function createScreenThemeOverrides(
+	screen: MaybeRefOrGetter<Screen | null | undefined>,
+	eventId: MaybeRefOrGetter<number>,
+) {
 	const eventStore = useEventStore();
 	const screenStore = useScreenStore();
 	const themes = useThemeRepository();
 	const { runRequest } = useRequestFeedback();
 
 	const themeId = computed(() => eventStore.event?.themeId ?? null);
-	const theme = computed<StoredThemeTokens>(() => themeId.value && eventStore.eventTheme?.id === themeId.value
-		? eventStore.eventTheme.tokens
-		: DEFAULT_THEME_TOKENS);
+	const theme = computed<StoredThemeTokens>(() =>
+		themeId.value && eventStore.eventTheme?.id === themeId.value
+			? eventStore.eventTheme.tokens
+			: DEFAULT_THEME_TOKENS,
+	);
 	const themeName = ref<string | null>(null);
 	const themeError = ref<string | null>(null);
 	const latestKey = Symbol('screen-theme');
@@ -50,21 +59,24 @@ function createScreenThemeOverrides(screen: MaybeRefOrGetter<Screen | null | und
 	async function loadTheme(id: string | null) {
 		themeName.value = null;
 		themeError.value = null;
-		if (!id)
-			return;
+		if (!id) return;
 		await runRequest(() => themes.get(id), {
 			latestKey,
 			errorRef: themeError,
 			success: false,
 			error: false,
 			onSuccess: (loaded) => {
-				eventStore.holdEventTheme({ id: loaded.id, revision: loaded.revision, tokens: loaded.tokens });
+				eventStore.holdEventTheme({
+					id: loaded.id,
+					revision: loaded.revision,
+					tokens: loaded.tokens,
+				});
 				themeName.value = loaded.name;
 			},
 		});
 	}
 
-	watch(themeId, id => void loadTheme(id), { immediate: true });
+	watch(themeId, (id) => void loadTheme(id), { immediate: true });
 
 	const overrides = computed<StoredThemeTokens>(() => toValue(screen)?.themeOverrides ?? {});
 	function resolveWith(stored: StoredThemeTokens) {
@@ -75,11 +87,20 @@ function createScreenThemeOverrides(screen: MaybeRefOrGetter<Screen | null | und
 	/** The Screen's tokens as they resolve with no override: what its Theme alone gives it. */
 	const themed = computed(() => resolveWith({}));
 
-	function resolvedIn(values: Readonly<Record<string, ThemeTokenValue>>, name: string, stored: StoredThemeTokens): ThemeTokenValue {
+	function resolvedIn(
+		values: Readonly<Record<string, ThemeTokenValue>>,
+		name: string,
+		stored: StoredThemeTokens,
+	): ThemeTokenValue {
 		// A Mode Token may resolve to null, as an unset `asset` does, so ask whether it resolved at all.
-		return (Object.hasOwn(values, name)
-			? values[name]
-			: resolveFoundationToken({ vocabulary: FOUNDATION_TOKENS, theme: theme.value, overrides: stored }, name)) as ThemeTokenValue;
+		return (
+			Object.hasOwn(values, name)
+				? values[name]
+				: resolveFoundationToken(
+						{ vocabulary: FOUNDATION_TOKENS, theme: theme.value, overrides: stored },
+						name,
+					)
+		) as ThemeTokenValue;
 	}
 
 	/**
@@ -111,22 +132,23 @@ function createScreenThemeOverrides(screen: MaybeRefOrGetter<Screen | null | und
 	async function write(tokens: Readonly<Record<string, unknown>>) {
 		const edited = toValue(screen);
 		const names = Object.keys(tokens);
-		if (!edited || names.length === 0)
-			return;
-		writing.value = new Set([
-			...writing.value,
-			...names,
-		]);
+		if (!edited || names.length === 0) return;
+		writing.value = new Set([...writing.value, ...names]);
 		try {
-			await runRequest(() => screenStore.updateThemeOverrides(toValue(eventId), edited.id, { ...tokens }), {
-				success: false,
-				error: failure => ({ title: 'Could not save the override', description: failure.message, color: 'error' }),
-			});
-		}
-		finally {
+			await runRequest(
+				() => screenStore.updateThemeOverrides(toValue(eventId), edited.id, { ...tokens }),
+				{
+					success: false,
+					error: (failure) => ({
+						title: 'Could not save the override',
+						description: failure.message,
+						color: 'error',
+					}),
+				},
+			);
+		} finally {
 			const remaining = new Set(writing.value);
-			for (const name of names)
-				remaining.delete(name);
+			for (const name of names) remaining.delete(name);
 			writing.value = remaining;
 		}
 	}
@@ -145,22 +167,29 @@ function createScreenThemeOverrides(screen: MaybeRefOrGetter<Screen | null | und
 		/** Clear the override, returning the Screen to what the token inherits. */
 		clear: (name: string) => write({ [name]: null }),
 		/** Clear every one of `names` the Screen overrides, in one write: a Look's clear action. */
-		clearAll: (names: readonly string[]) => write(Object.fromEntries(names
-			.filter(name => overrides.value[name] !== undefined)
-			.map(name => [name, null]))),
+		clearAll: (names: readonly string[]) =>
+			write(
+				Object.fromEntries(
+					names.filter((name) => overrides.value[name] !== undefined).map((name) => [name, null]),
+				),
+			),
 	};
 }
 
 /** A Screen's Screen Theme Overrides, as every card of its settings page reads and writes them. */
 export type ScreenThemeOverrides = ReturnType<typeof createScreenThemeOverrides>;
 
-const SCREEN_THEME_OVERRIDES_KEY: InjectionKey<ScreenThemeOverrides> = Symbol('screen-theme-overrides');
+const SCREEN_THEME_OVERRIDES_KEY: InjectionKey<ScreenThemeOverrides> =
+	Symbol('screen-theme-overrides');
 
 /**
  * Hold the Screen's Screen Theme Overrides and its one read of the Event's
  * Theme, for every card below. Called once, by the Screen's settings page.
  */
-export function provideScreenThemeOverrides(screen: MaybeRefOrGetter<Screen | null | undefined>, eventId: MaybeRefOrGetter<number>): ScreenThemeOverrides {
+export function provideScreenThemeOverrides(
+	screen: MaybeRefOrGetter<Screen | null | undefined>,
+	eventId: MaybeRefOrGetter<number>,
+): ScreenThemeOverrides {
 	const overrides = createScreenThemeOverrides(screen, eventId);
 	provide(SCREEN_THEME_OVERRIDES_KEY, overrides);
 	return overrides;
@@ -171,8 +200,8 @@ export function useScreenThemeOverrides(): ScreenThemeOverrides {
 	const overrides = inject(SCREEN_THEME_OVERRIDES_KEY);
 	if (!overrides) {
 		throw new Error(
-			'useScreenThemeOverrides() was called outside a Screen settings page. '
-			+ 'Ensure provideScreenThemeOverrides() is called by an ancestor component.',
+			'useScreenThemeOverrides() was called outside a Screen settings page. ' +
+				'Ensure provideScreenThemeOverrides() is called by an ancestor component.',
 		);
 	}
 	return overrides;

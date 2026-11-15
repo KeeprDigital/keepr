@@ -20,20 +20,21 @@ function magicBoardCards(
 	entries: readonly { name: string; compartment: string }[],
 	companion: string | null,
 ): DeckBoardCards {
-	const sideboard = entries.filter(entry => entry.compartment === 'sideboard');
+	const sideboard = entries.filter((entry) => entry.compartment === 'sideboard');
 	return {
-		mainboard: entries.filter(entry => entry.compartment === 'mainboard').length,
-		sideboard: companion === null
-			? sideboard.length
-			: 1 + sideboard.filter(entry => entry.name !== companion).length,
+		mainboard: entries.filter((entry) => entry.compartment === 'mainboard').length,
+		sideboard:
+			companion === null
+				? sideboard.length
+				: 1 + sideboard.filter((entry) => entry.name !== companion).length,
 	};
 }
 
 /** A One Piece Card Game Deck List, held by reference: its Mainboard's copies, and no sideboard. */
-function onePieceBoardCards(reference: { mainboardCount: number } | null | undefined): DeckBoardCards | undefined {
-	return reference
-		? { mainboard: reference.mainboardCount, sideboard: 0 }
-		: undefined;
+function onePieceBoardCards(
+	reference: { mainboardCount: number } | null | undefined,
+): DeckBoardCards | undefined {
+	return reference ? { mainboard: reference.mainboardCount, sideboard: 0 } : undefined;
 }
 
 /**
@@ -73,7 +74,7 @@ export function useDeckBoardCards(
 	const player = computed(() => {
 		const source = deckSource.value;
 		return source?.type === 'player' && source.playerId !== null
-			? playerStore.players.find(candidate => candidate.id === source.playerId)
+			? playerStore.players.find((candidate) => candidate.id === source.playerId)
 			: undefined;
 	});
 
@@ -82,59 +83,67 @@ export function useDeckBoardCards(
 	/** The Deck List last read, and whose: another Player's counts nothing, and a re-read keeps it until answered. */
 	const playerDeck = shallowRef<{ playerId: number; deck: PlayerDeckResponse } | null>(null);
 	const playerDeckReads = createGuardedSequence();
-	const playerRead = computed(() => game.value === 'mtg' && player.value
-		? { playerId: player.value.id, updatedAt: player.value.updatedAt }
-		: null);
+	const playerRead = computed(() =>
+		game.value === 'mtg' && player.value
+			? { playerId: player.value.id, updatedAt: player.value.updatedAt }
+			: null,
+	);
 
-	watch(() => playerRead.value && `${playerRead.value.playerId}:${new Date(playerRead.value.updatedAt).getTime()}`, async () => {
-		const flight = playerDeckReads.begin();
-		const read = playerRead.value;
-		if (!read)
-			return;
-		let deck: PlayerDeckResponse | null = null;
-		try {
-			deck = await deckCache.fetchDeck(read.playerId, toValue(eventId), read.updatedAt);
-		}
-		catch {
-			// A failed read counts nothing, which leaves the contract's bound.
-		}
-		if (flight.current) {
-			playerDeck.value = deck && { playerId: read.playerId, deck };
-		}
-	}, { immediate: true });
+	watch(
+		() =>
+			playerRead.value &&
+			`${playerRead.value.playerId}:${new Date(playerRead.value.updatedAt).getTime()}`,
+		async () => {
+			const flight = playerDeckReads.begin();
+			const read = playerRead.value;
+			if (!read) return;
+			let deck: PlayerDeckResponse | null = null;
+			try {
+				deck = await deckCache.fetchDeck(read.playerId, toValue(eventId), read.updatedAt);
+			} catch {
+				// A failed read counts nothing, which leaves the contract's bound.
+			}
+			if (flight.current) {
+				playerDeck.value = deck && { playerId: read.playerId, deck };
+			}
+		},
+		{ immediate: true },
+	);
 
 	function playerBoardCards(): DeckBoardCards | undefined {
-		if (!player.value)
-			return undefined;
+		if (!player.value) return undefined;
 		if (game.value === 'op')
 			return onePieceBoardCards(getOpGameData(player.value.gameData).deckList);
 		const held = playerDeck.value;
 		// A Player whose Deck List holds no cards has none to show.
 		if (game.value !== 'mtg' || held?.playerId !== player.value.id || held.deck.cards.length === 0)
 			return undefined;
-		return magicBoardCards(held.deck.cards, showsCompanion.value
-			? held.deck.companion?.name ?? null
-			: null);
+		return magicBoardCards(
+			held.deck.cards,
+			showsCompanion.value ? (held.deck.companion?.name ?? null) : null,
+		);
 	}
 
 	function broadcastBoardCards(listId: number): DeckBoardCards | undefined {
-		const summary = broadcastDeckListStore.summaries.find(list => list.id === listId);
+		const summary = broadcastDeckListStore.summaries.find((list) => list.id === listId);
 		const detail = broadcastDeckListStore.details.get(listId);
 		if (detail && detail.revision >= (summary?.revision ?? 0)) {
-			const companion = detail.entries.find(entry => entry.compartment === 'companion');
+			const companion = detail.entries.find((entry) => entry.compartment === 'companion');
 			return magicBoardCards(
-				detail.entries.map(entry => ({ name: entry.canonicalName, compartment: entry.compartment })),
-				showsCompanion.value
-					? companion?.canonicalName ?? null
-					: null,
+				detail.entries.map((entry) => ({
+					name: entry.canonicalName,
+					compartment: entry.compartment,
+				})),
+				showsCompanion.value ? (companion?.canonicalName ?? null) : null,
 			);
 		}
-		return summary && {
-			mainboard: summary.mainboardQuantity,
-			sideboard: summary.sideboardQuantity + (summary.hasCompanion && showsCompanion.value
-				? 1
-				: 0),
-		};
+		return (
+			summary && {
+				mainboard: summary.mainboardQuantity,
+				sideboard:
+					summary.sideboardQuantity + (summary.hasCompanion && showsCompanion.value ? 1 : 0),
+			}
+		);
 	}
 
 	/**
@@ -144,21 +153,25 @@ export function useDeckBoardCards(
 	 * (ADR-0087).
 	 */
 	function slotSideBoardCards(slotId: number | null, side: Seat): DeckBoardCards | undefined {
-		const slot = featureMatchStore.featureMatches.find(candidate => candidate.id === slotId);
-		if (!slot)
-			return undefined;
-		const { playerId, data } = featureMatchSidePlayer(withFollowedFeatureMatchSession(slot, featureMatchStateStore), side);
+		const slot = featureMatchStore.featureMatches.find((candidate) => candidate.id === slotId);
+		if (!slot) return undefined;
+		const { playerId, data } = featureMatchSidePlayer(
+			withFollowedFeatureMatchSession(slot, featureMatchStateStore),
+			side,
+		);
 		if (eventStore.event && eventKind(eventStore.event) === 'mtg-commander') {
 			const { commanders, featureMatchDeckList } = getMtgGameData(data?.gameData);
 			return commanders?.length || featureMatchDeckList
-				? { mainboard: featureMatchDeckList?.mainboardCount ?? 0, sideboard: commanders?.length ?? 0 }
+				? {
+						mainboard: featureMatchDeckList?.mainboardCount ?? 0,
+						sideboard: commanders?.length ?? 0,
+					}
 				: undefined;
 		}
 		const gameData = getOpGameData(data?.gameData);
-		return onePieceBoardCards(gameData.featureMatchDeckList
-			?? (playerId !== null
-				? gameData.deckList
-				: null));
+		return onePieceBoardCards(
+			gameData.featureMatchDeckList ?? (playerId !== null ? gameData.deckList : null),
+		);
 	}
 
 	return computed(() => {

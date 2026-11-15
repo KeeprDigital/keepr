@@ -5,10 +5,18 @@ import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
 import { cardGameHasVariant, holdsBroadcastDeckLists } from '~~/shared/config/games';
 import { conversionTargetShape, isConversionTargetInBounds } from '~~/shared/conversionTarget';
 import { EVENT_CANVAS_SIDE_BOUNDS } from '~~/shared/eventCanvas';
-import { FEATURE_MATCH_ORIENTATION_VALUES, GAME_VALUES, VARIANT_VALUES } from '~~/shared/types/enums';
+import {
+	FEATURE_MATCH_ORIENTATION_VALUES,
+	GAME_VALUES,
+	VARIANT_VALUES,
+} from '~~/shared/types/enums';
 import { COUNT_UP_LIMIT_MINUTES_MAX, COUNT_UP_LIMIT_MINUTES_MIN } from '~~/shared/utils/clock';
 
-const eventCanvasSideSchema = z.number().int().min(EVENT_CANVAS_SIDE_BOUNDS.min).max(EVENT_CANVAS_SIDE_BOUNDS.max);
+const eventCanvasSideSchema = z
+	.number()
+	.int()
+	.min(EVENT_CANVAS_SIDE_BOUNDS.min)
+	.max(EVENT_CANVAS_SIDE_BOUNDS.max);
 
 // Shared field constraints applied to both create and update schemas.
 // Centralised here so bounds stay in sync between the two schemas.
@@ -23,7 +31,13 @@ const eventFieldConstraints = {
 	featureMatchDefaultBestOf: z.number().int().min(1).max(9).optional(),
 	featureMatchDefaultStartingLife: z.number().int().nonnegative().max(99999).optional(),
 	featureMatchDefaultClockDuration: z.number().int().nonnegative().max(999).optional(),
-	featureMatchDefaultCountUpLimit: z.number().int().min(COUNT_UP_LIMIT_MINUTES_MIN).max(COUNT_UP_LIMIT_MINUTES_MAX).nullable().optional(),
+	featureMatchDefaultCountUpLimit: z
+		.number()
+		.int()
+		.min(COUNT_UP_LIMIT_MINUTES_MIN)
+		.max(COUNT_UP_LIMIT_MINUTES_MAX)
+		.nullable()
+		.optional(),
 	featureMatchDefaultExtraTurns: z.number().int().nonnegative().max(20).optional(),
 	canvasWidth: eventCanvasSideSchema.optional(),
 	canvasHeight: eventCanvasSideSchema.optional(),
@@ -54,7 +68,8 @@ const SERVER_MANAGED_OMIT = {
 	meleeLiveResultsStopReason: true,
 } as const;
 
-export const BROADCAST_DECK_LISTS_REFUSAL = 'Broadcast Deck Lists can only be enabled for Two-Player Magic: The Gathering Events';
+export const BROADCAST_DECK_LISTS_REFUSAL =
+	'Broadcast Deck Lists can only be enabled for Two-Player Magic: The Gathering Events';
 
 // CREATE
 export const createEventSchema = createInsertSchema(events)
@@ -77,27 +92,19 @@ export const createEventSchema = createInsertSchema(events)
 		featureMatchOrientation: z.enum(FEATURE_MATCH_ORIENTATION_VALUES).optional(),
 	})
 	.strict()
-	.refine(
-		input => cardGameHasVariant(input.game) || input.variant === undefined,
-		{
-			message: 'Only a Magic: The Gathering Event has a Variant',
-			path: ['variant'],
-		},
-	)
-	.refine(
-		input => input.broadcastDeckListsEnabled !== true || holdsBroadcastDeckLists(input),
-		{
-			message: BROADCAST_DECK_LISTS_REFUSAL,
-			path: ['broadcastDeckListsEnabled'],
-		},
-	)
+	.refine((input) => cardGameHasVariant(input.game) || input.variant === undefined, {
+		message: 'Only a Magic: The Gathering Event has a Variant',
+		path: ['variant'],
+	})
+	.refine((input) => input.broadcastDeckListsEnabled !== true || holdsBroadcastDeckLists(input), {
+		message: BROADCAST_DECK_LISTS_REFUSAL,
+		path: ['broadcastDeckListsEnabled'],
+	})
 	// A Magic: The Gathering Event is Two-Player unless it says Commander, and no
 	// other Card Game's Event has a Variant, so what is stored is never ambiguous (ADR-0087).
-	.transform(input => ({
+	.transform((input) => ({
 		...input,
-		variant: cardGameHasVariant(input.game)
-			? input.variant ?? 'two-player'
-			: null,
+		variant: cardGameHasVariant(input.game) ? (input.variant ?? 'two-player') : null,
 	}));
 
 // UPDATE — all fields optional for partial updates
@@ -122,10 +129,14 @@ export const updateEventSchema = createUpdateSchema(events)
 	.strict()
 	// The Conversion Target is written whole, so its threshold is bounded by its own metric (ADR-0061).
 	.refine(
-		({ conversionMetric, conversionThreshold }) => (conversionMetric == null && conversionThreshold == null)
-			|| (conversionMetric != null && conversionThreshold != null && isConversionTargetInBounds({ conversionMetric, conversionThreshold })),
+		({ conversionMetric, conversionThreshold }) =>
+			(conversionMetric == null && conversionThreshold == null) ||
+			(conversionMetric != null &&
+				conversionThreshold != null &&
+				isConversionTargetInBounds({ conversionMetric, conversionThreshold })),
 		{
-			message: 'conversionMetric and conversionThreshold are written together, the threshold within its metric\'s bounds',
+			message:
+				"conversionMetric and conversionThreshold are written together, the threshold within its metric's bounds",
 			path: ['conversionThreshold'],
 		},
 	);

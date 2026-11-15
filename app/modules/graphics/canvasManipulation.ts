@@ -88,7 +88,7 @@ export function isTurned(rotation: number | undefined): boolean {
 }
 
 function rotate(vector: { x: number; y: number }, degrees: number) {
-	const radians = degrees * Math.PI / 180;
+	const radians = (degrees * Math.PI) / 180;
 	const cos = Math.cos(radians);
 	const sin = Math.sin(radians);
 	return {
@@ -117,10 +117,13 @@ export function drawnPoint(
 	anchor?: GraphicAnchorPoint,
 ): { x: number; y: number } {
 	const pivot = anchorPosition(rect, anchor);
-	const turned = rotate({
-		x: rect.x + rect.width * fraction.x - pivot.x,
-		y: rect.y + rect.height * fraction.y - pivot.y,
-	}, rotation);
+	const turned = rotate(
+		{
+			x: rect.x + rect.width * fraction.x - pivot.x,
+			y: rect.y + rect.height * fraction.y - pivot.y,
+		},
+		rotation,
+	);
 	return {
 		x: pivot.x + turned.x,
 		y: pivot.y + turned.y,
@@ -131,7 +134,11 @@ export function drawnPoint(
  * The axis-aligned box a rectangle covers once rotated about its Graphic Anchor
  * Point, to two decimal places so a quarter turn lands on whole pixels.
  */
-export function rotatedBounds(rect: GraphicRect, rotation = 0, anchor?: GraphicAnchorPoint): GraphicRect {
+export function rotatedBounds(
+	rect: GraphicRect,
+	rotation = 0,
+	anchor?: GraphicAnchorPoint,
+): GraphicRect {
 	if (!isTurned(rotation)) {
 		return {
 			x: rect.x,
@@ -145,9 +152,9 @@ export function rotatedBounds(rect: GraphicRect, rotation = 0, anchor?: GraphicA
 		{ x: 1, y: 0 },
 		{ x: 0, y: 1 },
 		{ x: 1, y: 1 },
-	].map(corner => drawnPoint(rect, corner, rotation, anchor));
-	const xs = corners.map(corner => corner.x);
-	const ys = corners.map(corner => corner.y);
+	].map((corner) => drawnPoint(rect, corner, rotation, anchor));
+	const xs = corners.map((corner) => corner.x);
+	const ys = corners.map((corner) => corner.y);
 	const left = roundBound(Math.min(...xs));
 	const top = roundBound(Math.min(...ys));
 	return {
@@ -179,30 +186,24 @@ export function canvasSnapLines(
 	layers: readonly SnapLayer[] = [],
 	movingIds?: string | readonly string[],
 ): SnapLines {
-	const moving = new Set(typeof movingIds === 'string'
-		? [movingIds]
-		: movingIds ?? []);
+	const moving = new Set(typeof movingIds === 'string' ? [movingIds] : (movingIds ?? []));
 	// Several layers move as one on the canvas, so only one moving alone is in its group's space.
-	const group = moving.size === 1
-		? layers.find(layer => layer.children?.some(child => moving.has(child.id)))
-		: undefined;
+	const group =
+		moving.size === 1
+			? layers.find((layer) => layer.children?.some((child) => moving.has(child.id)))
+			: undefined;
 	const padding = groupPadding(group);
-	const origin = group
-		? { x: group.x + padding, y: group.y + padding }
-		: { x: 0, y: 0 };
+	const origin = group ? { x: group.x + padding, y: group.y + padding } : { x: 0, y: 0 };
 	const siblings = group
 		? group.visible
-			? group.children ?? []
+			? (group.children ?? [])
 			: []
-		: layers.flatMap(layer => moving.has(layer.id) && moving.size > 1
-				? []
-				: [
-						layer,
-						...placedChildren(layer),
-					]);
+		: layers.flatMap((layer) =>
+				moving.has(layer.id) && moving.size > 1 ? [] : [layer, ...placedChildren(layer)],
+			);
 
-	const x = [0, canvas.width / 2, canvas.width].map(line => line - origin.x);
-	const y = [0, canvas.height / 2, canvas.height].map(line => line - origin.y);
+	const x = [0, canvas.width / 2, canvas.width].map((line) => line - origin.x);
+	const y = [0, canvas.height / 2, canvas.height].map((line) => line - origin.y);
 	const add = (rect: GraphicRect) => {
 		x.push(rect.x, rect.x + rect.width / 2, rect.x + rect.width);
 		y.push(rect.y, rect.y + rect.height / 2, rect.y + rect.height);
@@ -222,8 +223,8 @@ export function canvasSnapLines(
 		});
 	}
 	const neighbours = siblings
-		.filter(layer => !moving.has(layer.id) && layer.visible)
-		.map(layer => rotatedBounds(layer, layer.rotation, layer.anchor));
+		.filter((layer) => !moving.has(layer.id) && layer.visible)
+		.map((layer) => rotatedBounds(layer, layer.rotation, layer.anchor));
 	neighbours.forEach(add);
 	return {
 		x: uniqueSorted(x),
@@ -238,10 +239,9 @@ function groupPadding(group: SnapLayer | undefined): number {
 
 /** A group's children where they sit on the canvas, when their stored rectangles say so. */
 function placedChildren(group: SnapLayer): SnapLayer[] {
-	if (!group.visible || group.arrangement !== 'canvas' || isTurned(group.rotation))
-		return [];
+	if (!group.visible || group.arrangement !== 'canvas' || isTurned(group.rotation)) return [];
 	const padding = groupPadding(group);
-	return (group.children ?? []).map(child => ({
+	return (group.children ?? []).map((child) => ({
 		...child,
 		x: child.x + group.x + padding,
 		y: child.y + group.y + padding,
@@ -252,26 +252,23 @@ function placedChildren(group: SnapLayer): SnapLayer[] {
  * The gap to the nearest neighbour on each axis: one level with it on the other
  * axis, and clear of it. Display only; nothing snaps to equal spacing.
  */
-export function neighbourGaps(rect: GraphicRect, neighbours: readonly GraphicRect[]): { x?: NeighbourGap; y?: NeighbourGap } {
+export function neighbourGaps(
+	rect: GraphicRect,
+	neighbours: readonly GraphicRect[],
+): { x?: NeighbourGap; y?: NeighbourGap } {
 	const gaps: { x?: NeighbourGap; y?: NeighbourGap } = {};
 	for (const axis of ['x', 'y'] as const) {
-		const size = axis === 'x'
-			? 'width'
-			: 'height';
-		const cross = axis === 'x'
-			? 'y'
-			: 'x';
-		const crossSize = axis === 'x'
-			? 'height'
-			: 'width';
+		const size = axis === 'x' ? 'width' : 'height';
+		const cross = axis === 'x' ? 'y' : 'x';
+		const crossSize = axis === 'x' ? 'height' : 'width';
 		for (const other of neighbours) {
 			const sharedStart = Math.max(rect[cross], other[cross]);
 			const sharedEnd = Math.min(rect[cross] + rect[crossSize], other[cross] + other[crossSize]);
-			if (sharedEnd <= sharedStart)
-				continue;
-			const gap = other[axis] >= rect[axis] + rect[size]
-				? { from: rect[axis] + rect[size], to: other[axis] }
-				: { from: other[axis] + other[size], to: rect[axis] };
+			if (sharedEnd <= sharedStart) continue;
+			const gap =
+				other[axis] >= rect[axis] + rect[size]
+					? { from: rect[axis] + rect[size], to: other[axis] }
+					: { from: other[axis] + other[size], to: rect[axis] };
 			const nearest = gaps[axis];
 			if (gap.to > gap.from && (!nearest || gap.to - gap.from < nearest.to - nearest.from))
 				gaps[axis] = { ...gap, at: (sharedStart + sharedEnd) / 2 };
@@ -281,9 +278,7 @@ export function neighbourGaps(rect: GraphicRect, neighbours: readonly GraphicRec
 }
 
 function uniqueSorted(values: readonly number[]): number[] {
-	return [
-		...new Set(values.map(roundBound)),
-	].sort((a, b) => a - b);
+	return [...new Set(values.map(roundBound))].sort((a, b) => a - b);
 }
 
 function nearest(candidates: readonly number[], lines: readonly number[], threshold: number) {
@@ -307,15 +302,27 @@ function round(rect: GraphicRect): GraphicRect {
 	};
 }
 
-function moveRect(start: GraphicRect, delta: { x: number; y: number }, options: ManipulationOptions): ManipulationResult {
+function moveRect(
+	start: GraphicRect,
+	delta: { x: number; y: number },
+	options: ManipulationOptions,
+): ManipulationResult {
 	let x = start.x + delta.x;
 	let y = start.y + delta.y;
 	const snapped: ManipulationResult['snapped'] = {};
 	if (options.snap) {
 		const { lines, threshold } = options.snap;
 		const covered = rotatedBounds({ ...start, x, y }, options.rotation, options.anchor);
-		const snapX = nearest([covered.x, covered.x + covered.width / 2, covered.x + covered.width], lines.x, threshold);
-		const snapY = nearest([covered.y, covered.y + covered.height / 2, covered.y + covered.height], lines.y, threshold);
+		const snapX = nearest(
+			[covered.x, covered.x + covered.width / 2, covered.x + covered.width],
+			lines.x,
+			threshold,
+		);
+		const snapY = nearest(
+			[covered.y, covered.y + covered.height / 2, covered.y + covered.height],
+			lines.y,
+			threshold,
+		);
 		if (snapX) {
 			x += snapX.offset;
 			snapped.x = snapX.line;
@@ -336,16 +343,8 @@ type ResizeHandle = Exclude<ManipulationHandle, 'move'>;
 /** The handle opposite the dragged one, as fractions of the rectangle's size. */
 function oppositeFraction(handle: ResizeHandle) {
 	return {
-		x: handle.includes('w')
-			? 1
-			: handle.includes('e')
-				? 0
-				: 0.5,
-		y: handle.includes('n')
-			? 1
-			: handle.includes('s')
-				? 0
-				: 0.5,
+		x: handle.includes('w') ? 1 : handle.includes('e') ? 0 : 0.5,
+		y: handle.includes('n') ? 1 : handle.includes('s') ? 0 : 0.5,
 	};
 }
 
@@ -361,7 +360,9 @@ function resizeRotatedRect(
 	options: ManipulationOptions & { rotation: number },
 ): ManipulationResult {
 	const { rotation, anchor } = options;
-	const upright = resizeRect(start, handle, rotate(delta, -rotation), { keepRatio: options.keepRatio });
+	const upright = resizeRect(start, handle, rotate(delta, -rotation), {
+		keepRatio: options.keepRatio,
+	});
 	const fixed = oppositeFraction(handle);
 	const target = drawnPoint(start, fixed, rotation, anchor);
 	const sized = { ...upright.rect, x: 0, y: 0 };
@@ -391,51 +392,27 @@ function resizeRect(
 	const snapped: ManipulationResult['snapped'] = {};
 	const snap = options.snap;
 
-	if (handle.includes('w'))
-		left = Math.min(left + delta.x, right - MIN_SIZE);
-	if (handle.includes('e'))
-		right = Math.max(right + delta.x, left + MIN_SIZE);
-	if (handle.includes('n'))
-		top = Math.min(top + delta.y, bottom - MIN_SIZE);
-	if (handle.includes('s'))
-		bottom = Math.max(bottom + delta.y, top + MIN_SIZE);
+	if (handle.includes('w')) left = Math.min(left + delta.x, right - MIN_SIZE);
+	if (handle.includes('e')) right = Math.max(right + delta.x, left + MIN_SIZE);
+	if (handle.includes('n')) top = Math.min(top + delta.y, bottom - MIN_SIZE);
+	if (handle.includes('s')) bottom = Math.max(bottom + delta.y, top + MIN_SIZE);
 
 	if (snap) {
-		const horizontal = handle.includes('w')
-			? 'left'
-			: handle.includes('e')
-				? 'right'
-				: undefined;
-		const vertical = handle.includes('n')
-			? 'top'
-			: handle.includes('s')
-				? 'bottom'
-				: undefined;
+		const horizontal = handle.includes('w') ? 'left' : handle.includes('e') ? 'right' : undefined;
+		const vertical = handle.includes('n') ? 'top' : handle.includes('s') ? 'bottom' : undefined;
 		if (horizontal) {
-			const edge = nearest([
-				horizontal === 'left'
-					? left
-					: right,
-			], snap.lines.x, snap.threshold);
+			const edge = nearest([horizontal === 'left' ? left : right], snap.lines.x, snap.threshold);
 			if (edge) {
-				if (horizontal === 'left')
-					left = Math.min(left + edge.offset, right - MIN_SIZE);
-				else
-					right = Math.max(right + edge.offset, left + MIN_SIZE);
+				if (horizontal === 'left') left = Math.min(left + edge.offset, right - MIN_SIZE);
+				else right = Math.max(right + edge.offset, left + MIN_SIZE);
 				snapped.x = edge.line;
 			}
 		}
 		if (vertical) {
-			const edge = nearest([
-				vertical === 'top'
-					? top
-					: bottom,
-			], snap.lines.y, snap.threshold);
+			const edge = nearest([vertical === 'top' ? top : bottom], snap.lines.y, snap.threshold);
 			if (edge) {
-				if (vertical === 'top')
-					top = Math.min(top + edge.offset, bottom - MIN_SIZE);
-				else
-					bottom = Math.max(bottom + edge.offset, top + MIN_SIZE);
+				if (vertical === 'top') top = Math.min(top + edge.offset, bottom - MIN_SIZE);
+				else bottom = Math.max(bottom + edge.offset, top + MIN_SIZE);
 				snapped.y = edge.line;
 			}
 		}
@@ -454,14 +431,11 @@ function resizeRect(
 		const ratio = start.width / start.height;
 		const corner = handle.length === 2;
 		const widthLeads = corner
-			? Math.abs(rect.width - start.width) / start.width >= Math.abs(rect.height - start.height) / start.height
+			? Math.abs(rect.width - start.width) / start.width >=
+				Math.abs(rect.height - start.height) / start.height
 			: handle === 'e' || handle === 'w';
-		const width = widthLeads
-			? rect.width
-			: rect.height * ratio;
-		const height = widthLeads
-			? rect.width / ratio
-			: rect.height;
+		const width = widthLeads ? rect.width : rect.height * ratio;
+		const height = widthLeads ? rect.width / ratio : rect.height;
 		const x = handle.includes('w')
 			? right - width
 			: corner || handle === 'e'
@@ -518,17 +492,15 @@ export function dragRotation(
 	options: { step?: number } = {},
 ): number {
 	const pivot = anchorPosition(frame.rect, frame.anchor);
-	const angle = (point: { x: number; y: number }) => Math.atan2(point.y - pivot.y, point.x - pivot.x) * 180 / Math.PI;
+	const angle = (point: { x: number; y: number }) =>
+		(Math.atan2(point.y - pivot.y, point.x - pivot.x) * 180) / Math.PI;
 	// Atan2 jumps a whole turn behind the pivot; the shorter way round is the same drawing.
-	const sweep = ((angle(to) - angle(from)) % 360 + 540) % 360 - 180;
-	const turned = options.step && options.step > 0
-		? Math.round((frame.rotation + sweep) / options.step) * options.step
-		: frame.rotation + Math.round(sweep);
-	const wrapped = turned > 360
-		? turned - 360
-		: turned < -360
-			? turned + 360
-			: turned;
+	const sweep = ((((angle(to) - angle(from)) % 360) + 540) % 360) - 180;
+	const turned =
+		options.step && options.step > 0
+			? Math.round((frame.rotation + sweep) / options.step) * options.step
+			: frame.rotation + Math.round(sweep);
+	const wrapped = turned > 360 ? turned - 360 : turned < -360 ? turned + 360 : turned;
 	return wrapped + 0;
 }
 

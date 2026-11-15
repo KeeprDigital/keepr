@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { colourAtOpacity, glowDropShadow, glowFlood, paintColour } from '~~/app/modules/screen/outputPaint';
+import {
+	colourAtOpacity,
+	glowDropShadow,
+	glowFlood,
+	paintColour,
+} from '~~/app/modules/screen/outputPaint';
 
 /**
  * The Fill-versus-Key paint rules both graphics render models share. A Fill or
@@ -20,10 +25,12 @@ describe('screen output paint', () => {
 		});
 
 		it('keeps the opacity of a colour that is not hex', () => {
-			expect(colourAtOpacity('fill', 'rebeccapurple', 0.5))
-				.toBe('color-mix(in srgb, rebeccapurple 50%, transparent)');
-			expect(colourAtOpacity('overlay', 'rgb(10, 20, 30)', 0.25))
-				.toBe('color-mix(in srgb, rgb(10, 20, 30) 25%, transparent)');
+			expect(colourAtOpacity('fill', 'rebeccapurple', 0.5)).toBe(
+				'color-mix(in srgb, rebeccapurple 50%, transparent)',
+			);
+			expect(colourAtOpacity('overlay', 'rgb(10, 20, 30)', 0.25)).toBe(
+				'color-mix(in srgb, rgb(10, 20, 30) 25%, transparent)',
+			);
 		});
 
 		it('paints white at the same opacity in the Key Output, whatever the colour', () => {
@@ -70,16 +77,20 @@ describe('screen output paint', () => {
 		});
 
 		it('paints an SVG drop-shadow flood the same way, its blur half the CSS radius', () => {
-			expect(glowFlood('overlay', glow)).toEqual({ stdDeviation: 10, floodColor: '#ff51c7', floodOpacity: 0.5 });
-			expect(glowFlood('key', glow)).toEqual({ stdDeviation: 10, floodColor: '#ffffff', floodOpacity: 0.5 });
+			expect(glowFlood('overlay', glow)).toEqual({
+				stdDeviation: 10,
+				floodColor: '#ff51c7',
+				floodOpacity: 0.5,
+			});
+			expect(glowFlood('key', glow)).toEqual({
+				stdDeviation: 10,
+				floodColor: '#ffffff',
+				floodOpacity: 0.5,
+			});
 		});
 
 		it('paints nothing for a glow without size or opacity', () => {
-			for (const off of [
-				undefined,
-				{ ...glow, size: 0 },
-				{ ...glow, opacity: 0 },
-			]) {
+			for (const off of [undefined, { ...glow, size: 0 }, { ...glow, opacity: 0 }]) {
 				expect(glowDropShadow('key', off)).toBeUndefined();
 				expect(glowFlood('key', off)).toBeUndefined();
 			}

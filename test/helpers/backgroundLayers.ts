@@ -2,7 +2,10 @@ import type { GraphicAssetId, GraphicAssetRevisionId } from '~~/shared/types/gra
 import type { BackgroundLayer } from '~~/shared/types/screenConfig';
 
 /** An image layer pinning `asset-1`/`revision-1` from the library. */
-export function assetImageLayer(id: string, overrides: Partial<Extract<BackgroundLayer, { type: 'image' }>> = {}): BackgroundLayer {
+export function assetImageLayer(
+	id: string,
+	overrides: Partial<Extract<BackgroundLayer, { type: 'image' }>> = {},
+): BackgroundLayer {
 	return {
 		id,
 		type: 'image',

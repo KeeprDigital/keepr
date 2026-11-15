@@ -29,10 +29,15 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, required: false },
 	},
 	setup(props, { attrs, slots }) {
-		return () => h('button', {
-			disabled: props.disabled,
-			onClick: attrs.onClick as ((event: MouseEvent) => void) | undefined,
-		}, slots.default?.());
+		return () =>
+			h(
+				'button',
+				{
+					disabled: props.disabled,
+					onClick: attrs.onClick as ((event: MouseEvent) => void) | undefined,
+				},
+				slots.default?.(),
+			);
 	},
 });
 
@@ -82,9 +87,7 @@ describe('feature match melee populate modal', () => {
 		await wrapper.get('select').setValue('10');
 		fireEnter();
 
-		expect(wrapper.emitted('populate')).toEqual([
-			[mockMatchStore.matches[0]],
-		]);
+		expect(wrapper.emitted('populate')).toEqual([[mockMatchStore.matches[0]]]);
 		wrapper.unmount();
 	});
 });

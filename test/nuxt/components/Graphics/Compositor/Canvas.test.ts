@@ -6,7 +6,9 @@ import { resolveGraphicsCompositionRenderModel } from '~/modules/graphics/render
 
 enableAutoUnmount(afterEach);
 
-function renderModel(overrides: Partial<Parameters<typeof resolveGraphicsCompositionRenderModel>[0]> = {}): GraphicsCompositionRenderModel {
+function renderModel(
+	overrides: Partial<Parameters<typeof resolveGraphicsCompositionRenderModel>[0]> = {},
+): GraphicsCompositionRenderModel {
 	return resolveGraphicsCompositionRenderModel({
 		output: 'overlay',
 		canvasWidth: 1920,
@@ -63,9 +65,12 @@ describe('graphics compositor canvas backdrop', () => {
 		const backdrop = wrapper.get('[data-testid="host-backdrop"]').element;
 		const graphic = wrapper.get('[data-broadcast-graphic="lower-third"]').element;
 
-		expect(backdrop.compareDocumentPosition(graphic) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-		expect(wrapper.get('.graphics-compositor-canvas').element.firstElementChild)
-			.toBe(backdrop.parentElement);
+		expect(
+			backdrop.compareDocumentPosition(graphic) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(wrapper.get('.graphics-compositor-canvas').element.firstElementChild).toBe(
+			backdrop.parentElement,
+		);
 	});
 
 	it('draws nothing of its own when no host paints a backdrop', async () => {

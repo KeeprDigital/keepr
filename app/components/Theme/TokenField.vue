@@ -5,7 +5,11 @@ import type { ThemeTokenDefinitionOf } from '~~/shared/themeTokens';
 import { FOUNDATION_TOKENS } from '~~/shared/modules/theme';
 import { themeTokenDefinition } from '~~/shared/themeTokens';
 import { useThemeTokenDraft } from '~/modules/theme-editor/draft';
-import { THEME_TOKEN_COMMITS_IN_STEPS, THEME_TOKEN_INPUTS, themeTokenValueText } from '~/modules/theme-editor/tokenInputs';
+import {
+	THEME_TOKEN_COMMITS_IN_STEPS,
+	THEME_TOKEN_INPUTS,
+	themeTokenValueText,
+} from '~/modules/theme-editor/tokenInputs';
 
 // One Theme Token in the Theme editor, or in a Screen's token section: its
 // control, what it inherits when left unset, and a reset that clears it. Its
@@ -50,12 +54,9 @@ const isSet = computed(() => props.stored !== undefined);
 const input = computed<Component>(() => THEME_TOKEN_INPUTS[definition.value.type]);
 
 function referenceOf(value: unknown): FoundationTokenName | undefined {
-	if (typeof value !== 'object' || value === null || !('token' in value))
-		return undefined;
+	if (typeof value !== 'object' || value === null || !('token' in value)) return undefined;
 	const named = themeTokenDefinition(String(value.token));
-	return named?.tier === 'foundation'
-		? value.token as FoundationTokenName
-		: undefined;
+	return named?.tier === 'foundation' ? (value.token as FoundationTokenName) : undefined;
 }
 
 function valueText(value: unknown): string {
@@ -91,22 +92,19 @@ const text = computed(() => {
 const inheritedValue = computed(() => props.inherited ?? definition.value.default);
 const inheritedText = computed(() => `${text.value.inherited}: ${valueText(inheritedValue.value)}`);
 const badge = computed(() => {
-	if (!props.compact)
-		return isSet.value ? text.value.set : 'Inherited';
+	if (!props.compact) return isSet.value ? text.value.set : 'Inherited';
 	return isSet.value ? text.value.compactSet : text.value.inherited;
 });
 
 const { draft, edit, commitNow, cancel } = useThemeTokenDraft(
 	() => props.resolved,
-	value => emit('set', value),
+	(value) => emit('set', value),
 	() => props.writing === true,
 );
 
 function take(value: ThemeTokenValue) {
-	if (THEME_TOKEN_COMMITS_IN_STEPS[definition.value.type])
-		edit(value);
-	else
-		commitNow(value);
+	if (THEME_TOKEN_COMMITS_IN_STEPS[definition.value.type]) edit(value);
+	else commitNow(value);
 }
 
 /** A Reset replaces an edit still waiting to be written. */

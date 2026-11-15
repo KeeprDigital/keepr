@@ -42,10 +42,15 @@ vi.mock('~~/server/modules/screen-output-assets/capability', () => ({
 	screenOutputAssetCapabilityDigest: async (capability: string) => `digest-of-${capability}`,
 }));
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getValidatedQuery', mockGetValidatedQuery);
 vi.stubGlobal('getRequestHeader', mockGetRequestHeader);
-vi.stubGlobal('createError', (input: { statusCode: number; message: string }) => Object.assign(new Error(input.message), input));
+vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
+	Object.assign(new Error(input.message), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -127,7 +132,9 @@ describe('/api/realtime/token', () => {
 
 			await expect(handler(stubH3Event())).resolves.toEqual({ token: 'test-token-request' });
 
-			expect(mockScreenForCapability).toHaveBeenCalledWith({ capabilityDigest: `digest-of-${CAPABILITY}` });
+			expect(mockScreenForCapability).toHaveBeenCalledWith({
+				capabilityDigest: `digest-of-${CAPABILITY}`,
+			});
 			expect(mockCreateTokenRequest).toHaveBeenCalledWith({
 				clientId: 'screen-output:7',
 				capability: {
@@ -171,12 +178,14 @@ describe('/api/realtime/token', () => {
 
 		// A page may hold both. Each arm authorizes independently, so a stale capability
 		// beside a live session is admitted by the session rather than refused.
-		it('falls through to the session arm when its capability is not this Screen\'s', async () => {
+		it("falls through to the session arm when its capability is not this Screen's", async () => {
 			mockScreenForCapability.mockResolvedValue(null);
 			signedIn('user-42');
 
 			await expect(handler(stubH3Event())).resolves.toEqual({ token: 'test-token-request' });
-			expect(mockCreateTokenRequest).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'user-42' }));
+			expect(mockCreateTokenRequest).toHaveBeenCalledWith(
+				expect.objectContaining({ clientId: 'user-42' }),
+			);
 		});
 	});
 

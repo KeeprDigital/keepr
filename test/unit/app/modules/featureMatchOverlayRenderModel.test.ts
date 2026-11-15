@@ -1,4 +1,7 @@
-import type { FeatureMatchOverlaySurface, FeatureMatchOverlayThemeSurfaces } from '~~/app/modules/feature-match-overlay/renderModel';
+import type {
+	FeatureMatchOverlaySurface,
+	FeatureMatchOverlayThemeSurfaces,
+} from '~~/app/modules/feature-match-overlay/renderModel';
 import type {
 	FeatureMatchOverlayFrameConfig,
 	FeatureMatchOverlayModeConfig,
@@ -35,7 +38,9 @@ const OUTLINED = surface({
 	outline: { color: '#0077a3', width: 4 },
 });
 
-function surfaces(overrides: Partial<FeatureMatchOverlayThemeSurfaces> = {}): FeatureMatchOverlayThemeSurfaces {
+function surfaces(
+	overrides: Partial<FeatureMatchOverlayThemeSurfaces> = {},
+): FeatureMatchOverlayThemeSurfaces {
 	return {
 		frameSurface: surface(),
 		sourceSurface: OUTLINED,
@@ -66,7 +71,10 @@ function sourceModel(
 function frameModel(
 	output: FeatureMatchOverlayOutput,
 	frameSurface: FeatureMatchOverlaySurface,
-	{ frame = {}, paintsMedia = false }: { frame?: Partial<FeatureMatchOverlayFrameConfig>; paintsMedia?: boolean } = {},
+	{
+		frame = {},
+		paintsMedia = false,
+	}: { frame?: Partial<FeatureMatchOverlayFrameConfig>; paintsMedia?: boolean } = {},
 ) {
 	const base = structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG);
 	return resolveFeatureMatchOverlayRenderModel({
@@ -85,7 +93,9 @@ function frameModel(
 	}).frame;
 }
 
-function source(overrides: Partial<FeatureMatchSourceItemConfig> = {}): FeatureMatchSourceItemConfig {
+function source(
+	overrides: Partial<FeatureMatchSourceItemConfig> = {},
+): FeatureMatchSourceItemConfig {
 	return {
 		id: 's1',
 		label: 'Main',
@@ -134,10 +144,14 @@ describe('feature match overlay host render model', () => {
 			emptySeats: ['player3', 'player4'],
 		});
 
-		expect(model.sourceItems.map(item => item.item.id)).toEqual(['main', 'seat-2', 'unassigned']);
-		expect(model.sourceCutouts.map(cutout => cutout.id)).toEqual(['main', 'seat-2', 'unassigned']);
+		expect(model.sourceItems.map((item) => item.item.id)).toEqual(['main', 'seat-2', 'unassigned']);
+		expect(model.sourceCutouts.map((cutout) => cutout.id)).toEqual([
+			'main',
+			'seat-2',
+			'unassigned',
+		]);
 		// An editor still outlines it, so its author can select it.
-		expect(model.sourceGuides.map(item => item.id)).toEqual([
+		expect(model.sourceGuides.map((item) => item.id)).toEqual([
 			'main',
 			'seat-2',
 			'seat-3',
@@ -169,13 +183,19 @@ describe('feature match overlay host render model', () => {
 		it.each([
 			{ output: 'fill', border: '4px solid #0077a3' },
 			{ output: 'key', border: '4px solid #ffffff' },
-		] as const)('borders its enabled sides with its surface\'s outline in the $output Output', ({ output, border }) => {
-			const style = sourceModel(output, source({
-				framingStyle: { borderLeftVisible: false },
-			})).sourceItems[0]!.style;
+		] as const)(
+			"borders its enabled sides with its surface's outline in the $output Output",
+			({ output, border }) => {
+				const style = sourceModel(
+					output,
+					source({
+						framingStyle: { borderLeftVisible: false },
+					}),
+				).sourceItems[0]!.style;
 
-			expect(style).toMatchObject({ borderTop: border, borderRight: border, borderLeft: 'none' });
-		});
+				expect(style).toMatchObject({ borderTop: border, borderRight: border, borderLeft: 'none' });
+			},
+		);
 
 		it('paints no border when its surface has no outline', () => {
 			expect(sourceModel('fill', source(), surface()).sourceItems[0]!.style.borderTop).toBe('none');
@@ -233,13 +253,20 @@ describe('feature match overlay host render model', () => {
 				fillOpacity: 1,
 				background: 'linear-gradient(90deg, #ffffffff 0%, #ffffff80 100%)',
 			},
-		] as const)('fills with its surface: $background in the $output Output', ({ output, fill, fillOpacity, background }) => {
-			const style = sourceModel(output, source(), surface({ fill: fill as unknown as FeatureMatchOverlaySurface['fill'], fillOpacity })).sourceItems[0]!.style;
+		] as const)(
+			'fills with its surface: $background in the $output Output',
+			({ output, fill, fillOpacity, background }) => {
+				const style = sourceModel(
+					output,
+					source(),
+					surface({ fill: fill as unknown as FeatureMatchOverlaySurface['fill'], fillOpacity }),
+				).sourceItems[0]!.style;
 
-			expect(style.background).toBe(background);
-		});
+				expect(style.background).toBe(background);
+			},
+		);
 
-		it('glows its rounded border with its surface\'s glow, white at the glow\'s opacity in the Key Output', () => {
+		it("glows its rounded border with its surface's glow, white at the glow's opacity in the Key Output", () => {
 			const glowing = {
 				...OUTLINED,
 				glow: { color: '#ffffff', size: 10, opacity: 0.5 },
@@ -290,11 +317,18 @@ describe('feature match overlay host render model', () => {
 				outline: { color: '#ffffff', width: 2 },
 				glow: { color: '#ffffff', size: 10, opacity: 1 },
 			};
-			const maskFor = (glowPosition: 'inside' | 'outside') => decodeURIComponent(String(
-				sourceModel('overlay', source({
-					framingStyle: { borderRadius: 8, glowPosition },
-				}), glowing).sourceItems[0]!.glowContainerStyle!.maskImage,
-			));
+			const maskFor = (glowPosition: 'inside' | 'outside') =>
+				decodeURIComponent(
+					String(
+						sourceModel(
+							'overlay',
+							source({
+								framingStyle: { borderRadius: 8, glowPosition },
+							}),
+							glowing,
+						).sourceItems[0]!.glowContainerStyle!.maskImage,
+					),
+				);
 
 			expect(maskFor('inside')).toContain('<path d="M 38 30');
 			expect(maskFor('inside')).not.toContain('M 0 0 H 460 V 260');
@@ -308,7 +342,7 @@ describe('feature match overlay host render model', () => {
 			outline: { color: '#0077a3', width: 4 },
 		});
 
-		it('borders its enabled canvas edges with its surface\'s outline, white in the Key Output', () => {
+		it("borders its enabled canvas edges with its surface's outline, white in the Key Output", () => {
 			const frame = { borderLeftVisible: false };
 
 			expect(frameModel('fill', outlined, { frame }).border).toEqual({
@@ -317,32 +351,43 @@ describe('feature match overlay host render model', () => {
 				sides: ['Top', 'Right', 'Bottom'],
 				glow: undefined,
 			});
-			expect(frameModel('key', outlined, { frame }).border).toMatchObject({ stroke: '#ffffff', strokeWidth: 4 });
+			expect(frameModel('key', outlined, { frame }).border).toMatchObject({
+				stroke: '#ffffff',
+				strokeWidth: 4,
+			});
 		});
 
 		it.each(OUTPUTS)('paints no border without an outline, in the %s Output', (output) => {
 			expect(frameModel(output, surface()).border).toBeUndefined();
-			expect(frameModel(output, surface({
-				outline: { color: '#0077a3', width: 0 },
-			})).border).toBeUndefined();
+			expect(
+				frameModel(
+					output,
+					surface({
+						outline: { color: '#0077a3', width: 0 },
+					}),
+				).border,
+			).toBeUndefined();
 		});
 
 		it.each([
 			{ output: 'fill', floodColor: '#ff51c7' },
 			{ output: 'key', floodColor: '#ffffff' },
-		] as const)('glows its border with its surface\'s glow in the $output Output', ({ output, floodColor }) => {
-			const glowing = {
-				...outlined,
-				glow: { color: '#ff51c7', size: 12, opacity: 0.5 },
-			};
+		] as const)(
+			"glows its border with its surface's glow in the $output Output",
+			({ output, floodColor }) => {
+				const glowing = {
+					...outlined,
+					glow: { color: '#ff51c7', size: 12, opacity: 0.5 },
+				};
 
-			expect(frameModel(output, glowing).border?.glow).toEqual({
-				filterId: 'frame-glow',
-				stdDeviation: 6,
-				floodColor,
-				floodOpacity: 0.5,
-			});
-		});
+				expect(frameModel(output, glowing).border?.glow).toEqual({
+					filterId: 'frame-glow',
+					stdDeviation: 6,
+					floodColor,
+					floodOpacity: 0.5,
+				});
+			},
+		);
 
 		it.each([
 			{
@@ -353,20 +398,33 @@ describe('feature match overlay host render model', () => {
 				output: 'key',
 				fill: { color: '#ffffff', opacity: 0.8 },
 			},
-		] as const)('fills with its surface at its fill opacity in the $output Output, under the Frame\'s own opacity', ({ output, fill }) => {
-			const model = frameModel(output, surface({ fillOpacity: 0.8 }));
+		] as const)(
+			"fills with its surface at its fill opacity in the $output Output, under the Frame's own opacity",
+			({ output, fill }) => {
+				const model = frameModel(output, surface({ fillOpacity: 0.8 }));
 
-			expect(model.fill).toEqual(fill);
-			expect(model.opacity).toBe(0.9);
-		});
+				expect(model.fill).toEqual(fill);
+				expect(model.opacity).toBe(0.9);
+			},
+		);
 
 		it('keys a translucent fill at its own alpha, and a clear one not at all', () => {
-			expect(frameModel('key', surface({
-				fill: { type: 'solid', color: 'rgba(16, 24, 32, 0.5)' },
-			})).fill.color).toBe('#ffffff80');
-			expect(frameModel('key', surface({
-				fill: { type: 'solid', color: 'rgba(0, 0, 0, 0)' },
-			})).fill.color).toBe('#ffffff00');
+			expect(
+				frameModel(
+					'key',
+					surface({
+						fill: { type: 'solid', color: 'rgba(16, 24, 32, 0.5)' },
+					}),
+				).fill.color,
+			).toBe('#ffffff80');
+			expect(
+				frameModel(
+					'key',
+					surface({
+						fill: { type: 'solid', color: 'rgba(0, 0, 0, 0)' },
+					}),
+				).fill.color,
+			).toBe('#ffffff00');
 		});
 
 		it('keys the Frame through an opaque white fill while it paints media the Key Output has no colour of', () => {
@@ -374,11 +432,14 @@ describe('feature match overlay host render model', () => {
 				fill: { type: 'solid', color: 'rgba(0, 0, 0, 0)' },
 			});
 
-			expect(frameModel('key', clear, { paintsMedia: true }).fill).toEqual({ color: '#ffffff', opacity: 1 });
+			expect(frameModel('key', clear, { paintsMedia: true }).fill).toEqual({
+				color: '#ffffff',
+				opacity: 1,
+			});
 			expect(frameModel('fill', clear, { paintsMedia: true }).fill.color).toBe('rgba(0, 0, 0, 0)');
 		});
 
-		it('fills with a gradient its SVG defines, white at each stop\'s opacity in the Key Output', () => {
+		it("fills with a gradient its SVG defines, white at each stop's opacity in the Key Output", () => {
 			const gradient = surface({
 				fill: {
 					type: 'linear-gradient',
@@ -399,7 +460,9 @@ describe('feature match overlay host render model', () => {
 					],
 				},
 			});
-			expect(frameModel('key', gradient).fill.gradient?.stops.map(stop => [stop.color, stop.opacity])).toEqual([
+			expect(
+				frameModel('key', gradient).fill.gradient?.stops.map((stop) => [stop.color, stop.opacity]),
+			).toEqual([
 				['#ffffff', 1],
 				['#ffffff', 0.5],
 			]);

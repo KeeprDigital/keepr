@@ -1,11 +1,19 @@
 import type { Ref } from 'vue';
-import type { ScreenModeConfigField, ScreenSettingsCard, ScreenSettingsContext, ScreenSettingsGroupDeclaration } from '~~/shared/screenModeConfigs/fields';
+import type {
+	ScreenModeConfigField,
+	ScreenSettingsCard,
+	ScreenSettingsContext,
+	ScreenSettingsGroupDeclaration,
+} from '~~/shared/screenModeConfigs/fields';
 import type { PageRotationMode } from '~~/shared/screenModes';
 import type { ScreenMode } from '~~/shared/types/enums';
 import type { PagedModeData } from './pagedModeData';
 import type { RotationConfigWrites } from './rotationWrites';
 import { computed } from 'vue';
-import { SCREEN_SETTINGS_CARD_TITLES, SCREEN_SETTINGS_CARDS } from '~~/shared/screenModeConfigs/fields';
+import {
+	SCREEN_SETTINGS_CARD_TITLES,
+	SCREEN_SETTINGS_CARDS,
+} from '~~/shared/screenModeConfigs/fields';
 import { SCREEN_MODES, screenModeConfigContract } from '~~/shared/screenModes';
 import { placeScreenThemeTokens } from '~~/shared/screenThemeOverrides';
 import { isPlainRecord } from '~~/shared/utils/plainObject';
@@ -26,9 +34,9 @@ export interface SettingsPageField {
 }
 
 /** A row of a card: one field's control, or one named slot holding the bespoke widget of every field naming it. */
-export type SettingsPageRow
-	= | { kind: 'field'; key: string; entry: SettingsPageField }
-		| { kind: 'slot'; key: string; slot: string; fields: SettingsPageField[] };
+export type SettingsPageRow =
+	| { kind: 'field'; key: string; entry: SettingsPageField }
+	| { kind: 'slot'; key: string; slot: string; fields: SettingsPageField[] };
 
 /** A run of a card's rows: its ungrouped fields, or one Screen Settings Group's. */
 export interface SettingsPageSection {
@@ -96,26 +104,26 @@ function shownFields(
 	path: readonly string[] = [],
 ): SettingsPageField[] {
 	return Object.values(fields).flatMap((field) => {
-		if (field.showWhen && !field.showWhen(context))
-			return [];
+		if (field.showWhen && !field.showWhen(context)) return [];
 		const fieldPath = [...path, field.key];
 		if (field.control === 'block' && field.fields) {
 			const stored = context.config[field.key];
 			const block = isPlainRecord(stored)
 				? stored
 				: isPlainRecord(defaults[field.key])
-					? defaults[field.key] as Record<string, any>
+					? (defaults[field.key] as Record<string, any>)
 					: {};
 			return shownFields(field.fields, { ...context, block }, {}, fieldPath);
 		}
-		return [
-			{ path: fieldPath, field, context },
-		];
+		return [{ path: fieldPath, field, context }];
 	});
 }
 
 /** The page `mode`'s contract describes, as the Screen and its Event read now. */
-export function settingsPageCards(mode: ScreenMode, context: ScreenSettingsContext): SettingsPageCard[] {
+export function settingsPageCards(
+	mode: ScreenMode,
+	context: ScreenSettingsContext,
+): SettingsPageCard[] {
 	const contract = screenModeConfigContract(mode);
 	const groups = contract.groups as Readonly<Record<string, ScreenSettingsGroupDeclaration>>;
 	const shownGroup = (id: string) => {
@@ -126,19 +134,18 @@ export function settingsPageCards(mode: ScreenMode, context: ScreenSettingsConte
 		contract.fields as Readonly<Record<string, ScreenModeConfigField>>,
 		context,
 		contract.defaults as Readonly<Record<string, unknown>>,
-	).filter(entry => entry.field.group === undefined || shownGroup(entry.field.group));
+	).filter((entry) => entry.field.group === undefined || shownGroup(entry.field.group));
 	const tokens = placeScreenThemeTokens(mode).groups;
 
 	return SCREEN_SETTINGS_CARDS.flatMap((card): SettingsPageCard[] => {
 		const sectionIds = [
 			undefined,
-			...Object.keys(groups).filter(id => groups[id]!.card === card),
+			...Object.keys(groups).filter((id) => groups[id]!.card === card),
 		];
 		const sections = sectionIds.flatMap((group): SettingsPageSection[] => {
 			const rows: SettingsPageRow[] = [];
 			for (const entry of fields) {
-				if (entry.field.card !== card || entry.field.group !== group)
-					continue;
+				if (entry.field.card !== card || entry.field.group !== group) continue;
 				const slot = entry.field.slot;
 				if (slot === undefined) {
 					rows.push({
@@ -148,11 +155,10 @@ export function settingsPageCards(mode: ScreenMode, context: ScreenSettingsConte
 					});
 					continue;
 				}
-				const held = rows.find(row => row.kind === 'slot' && row.slot === slot);
+				const held = rows.find((row) => row.kind === 'slot' && row.slot === slot);
 				if (held?.kind === 'slot') {
 					held.fields.push(entry);
-				}
-				else {
+				} else {
 					rows.push({
 						kind: 'slot',
 						key: `slot:${slot}`,
@@ -161,22 +167,21 @@ export function settingsPageCards(mode: ScreenMode, context: ScreenSettingsConte
 					});
 				}
 			}
-			if (rows.length === 0)
-				return [];
+			if (rows.length === 0) return [];
 			return [
 				{
-					group: group === undefined
-						? undefined
-						: { id: group, title: groups[group]!.title, layout: groups[group]!.layout },
+					group:
+						group === undefined
+							? undefined
+							: { id: group, title: groups[group]!.title, layout: groups[group]!.layout },
 					rows,
 				},
 			];
 		});
 		const looks = Object.keys(groups)
-			.filter(id => groups[id]!.card === card && shownGroup(id) && (tokens[id]?.length ?? 0) > 0)
-			.map(id => ({ group: id, title: groups[id]!.title, tokens: tokens[id]! }));
-		if (sections.length === 0 && looks.length === 0)
-			return [];
+			.filter((id) => groups[id]!.card === card && shownGroup(id) && (tokens[id]?.length ?? 0) > 0)
+			.map((id) => ({ group: id, title: groups[id]!.title, tokens: tokens[id]! }));
+		if (sections.length === 0 && looks.length === 0) return [];
 		return [
 			{
 				card,
@@ -191,9 +196,7 @@ export function settingsPageCards(mode: ScreenMode, context: ScreenSettingsConte
 /** What a field's description reads for the Screen it describes. */
 export function fieldDescription(entry: SettingsPageField): string | undefined {
 	const { description } = entry.field;
-	return typeof description === 'function'
-		? description(entry.context)
-		: description;
+	return typeof description === 'function' ? description(entry.context) : description;
 }
 
 /** What a field is labelled on this Screen. */
@@ -202,30 +205,23 @@ export function fieldLabel(entry: SettingsPageField): string {
 }
 
 /** A select's labelled options, in the order its values run, or none where the field labels none. */
-export function fieldOptions(entry: SettingsPageField): { label: string; value: string }[] | undefined {
+export function fieldOptions(
+	entry: SettingsPageField,
+): { label: string; value: string }[] | undefined {
 	const { options, values } = entry.field;
-	if (!options)
-		return undefined;
-	const labels = typeof options === 'function'
-		? options(entry.context)
-		: options;
+	if (!options) return undefined;
+	const labels = typeof options === 'function' ? options(entry.context) : options;
 	const ordered = values ?? Object.keys(labels);
 	return ordered.flatMap((value) => {
 		const label = (labels as Partial<Record<string, string>>)[value];
-		return label === undefined
-			? []
-			: [
-					{ label, value },
-				];
+		return label === undefined ? [] : [{ label, value }];
 	});
 }
 
 /** The value a field holds: a nested block's field read from its block. */
 export function fieldValue(entry: SettingsPageField): unknown {
 	const [key, inner] = entry.path;
-	return inner === undefined
-		? entry.context.config[key!]
-		: entry.context.block?.[inner];
+	return inner === undefined ? entry.context.config[key!] : entry.context.block?.[inner];
 }
 
 /**
@@ -241,8 +237,9 @@ export function fieldPatch(entry: SettingsPageField, value: unknown): Record<str
 			[key!]: value,
 		};
 	}
-	const block = Object.entries({ ...entry.context.block, [inner]: value })
-		.filter(([, held]) => held !== null && held !== undefined);
+	const block = Object.entries({ ...entry.context.block, [inner]: value }).filter(
+		([, held]) => held !== null && held !== undefined,
+	);
 	return {
 		[key!]: Object.fromEntries(block),
 	};
@@ -256,31 +253,27 @@ function shownLabel(label: string): string {
 
 /** A card's plain fields as one line: the toggles that are on, each select's choice, each number set. */
 export function cardFieldsSummary(card: SettingsPageCard): string[] {
-	return card.sections.flatMap(section => section.rows).flatMap((row) => {
-		if (row.kind !== 'field')
-			return [];
-		const { entry } = row;
-		const value = fieldValue(entry);
-		switch (entry.field.control) {
-			case 'toggle':
-				return value === true
-					? [
-							shownLabel(fieldLabel(entry)),
-						]
-					: [];
-			case 'select': {
-				if (value === undefined || value === null)
+	return card.sections
+		.flatMap((section) => section.rows)
+		.flatMap((row) => {
+			if (row.kind !== 'field') return [];
+			const { entry } = row;
+			const value = fieldValue(entry);
+			switch (entry.field.control) {
+				case 'toggle':
+					return value === true ? [shownLabel(fieldLabel(entry))] : [];
+				case 'select': {
+					if (value === undefined || value === null) return [];
+					const label = fieldOptions(entry)?.find((option) => option.value === value)?.label;
+					// oxlint-disable-next-line typescript/no-base-to-string -- a value no option lists is shown as written
+					return [label ?? String(value)];
+				}
+				case 'number':
+					return typeof value === 'number'
+						? [`${fieldLabel(entry)}: ${value / entry.field.displayScale}`]
+						: [];
+				default:
 					return [];
-				const label = fieldOptions(entry)?.find(option => option.value === value)?.label;
-				// oxlint-disable-next-line typescript/no-base-to-string -- a value no option lists is shown as written
-				return [label ?? String(value)];
 			}
-			case 'number':
-				return typeof value === 'number'
-					? [`${fieldLabel(entry)}: ${value / entry.field.displayScale}`]
-					: [];
-			default:
-				return [];
-		}
-	});
+		});
 }

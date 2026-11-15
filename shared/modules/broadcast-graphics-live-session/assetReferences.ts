@@ -24,20 +24,19 @@ function appendGraphicInputMediaReferences(
 	values: GraphicInputValues | undefined,
 	slotSuffix = '',
 ) {
-	if (!values)
-		return;
+	if (!values) return;
 
 	for (const declaration of graphic.inputs ?? []) {
-		if (declaration.type !== 'media')
-			continue;
+		if (declaration.type !== 'media') continue;
 		const value = values[declaration.key];
-		if (!isMediaGraphicInputValue(value))
-			continue;
-		references.push(mediaScreenGraphicAssetReference(
-			value,
-			declaration.mediaKind,
-			`${BROADCAST_GRAPHICS_LIVE_SESSION_SLOT_PREFIX}${graphic.id}.inputs.${declaration.key}${slotSuffix}`,
-		));
+		if (!isMediaGraphicInputValue(value)) continue;
+		references.push(
+			mediaScreenGraphicAssetReference(
+				value,
+				declaration.mediaKind,
+				`${BROADCAST_GRAPHICS_LIVE_SESSION_SLOT_PREFIX}${graphic.id}.inputs.${declaration.key}${slotSuffix}`,
+			),
+		);
 	}
 }
 
@@ -123,7 +122,12 @@ export function broadcastGraphicsRenderedInputGraphicAssetReferences(
 
 	for (const graphic of graphics) {
 		appendGraphicInputMediaReferences(references, graphic, rendered.current[graphic.id]);
-		appendGraphicInputMediaReferences(references, graphic, rendered.outgoing?.[graphic.id], '.outgoing');
+		appendGraphicInputMediaReferences(
+			references,
+			graphic,
+			rendered.outgoing?.[graphic.id],
+			'.outgoing',
+		);
 	}
 
 	return references;

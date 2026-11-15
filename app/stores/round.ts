@@ -1,8 +1,4 @@
-import type {
-	CreateRoundInput,
-	Round,
-	UpdateRoundInput,
-} from '~/types';
+import type { CreateRoundInput, Round, UpdateRoundInput } from '~/types';
 import type { MessageData } from '~/types/realtime';
 import { useEventDataFetch, useEventDataResource } from '~/modules/event-data/client';
 import { useEventDataLifecycle } from '~/modules/event-data/lifecycle';
@@ -46,8 +42,7 @@ export const useRoundStore = defineStore('round', () => {
 			},
 			{ method: 'POST' },
 		);
-		if (flight.current)
-			lifecycle.applyRemoteUpdated(started);
+		if (flight.current) lifecycle.applyRemoteUpdated(started);
 		return started;
 	}
 

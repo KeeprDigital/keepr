@@ -33,9 +33,7 @@ mockNuxtImport('useFeatureMatchLayoutTemplateRepository', () => () => ({
 }));
 
 const mockGetScreenById = vi.fn();
-const mockScreens = ref<Array<{ id: number; stateVersion: number }>>([
-	{ id: 3, stateVersion: 12 },
-]);
+const mockScreens = ref<Array<{ id: number; stateVersion: number }>>([{ id: 3, stateVersion: 12 }]);
 
 const { mockEventKind } = vi.hoisted(() => ({
 	mockEventKind: { value: 'mtg-two-player' as string },
@@ -68,7 +66,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, default: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 const UInputStub = defineComponent({
 	name: 'UInput',
@@ -76,10 +75,13 @@ const UInputStub = defineComponent({
 		modelValue: { type: String, default: '' },
 	},
 	emits: ['update:modelValue', 'change', 'blur'],
-	template: '<input :value="modelValue" @change="$emit(\'change\', $event)" @blur="$emit(\'blur\', $event)" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+	template:
+		'<input :value="modelValue" @change="$emit(\'change\', $event)" @blur="$emit(\'blur\', $event)" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 });
 
-function summary(overrides: Partial<FeatureMatchLayoutTemplateSummary> = {}): FeatureMatchLayoutTemplateSummary {
+function summary(
+	overrides: Partial<FeatureMatchLayoutTemplateSummary> = {},
+): FeatureMatchLayoutTemplateSummary {
 	return {
 		id: 'template-1',
 		name: 'Neon Feature Match',
@@ -109,9 +111,7 @@ function receivedPackage(
 // Choosing a `.sklayout` the way an author does.
 async function chooseImportFile(wrapper: { get: (selector: string) => any }) {
 	const input = wrapper.get('[data-testid="layout-template-import-input"]');
-	const file = new File([
-		new Uint8Array([1, 2, 3]),
-	], 'neon-feature-match.sklayout');
+	const file = new File([new Uint8Array([1, 2, 3])], 'neon-feature-match.sklayout');
 	Object.defineProperty(input.element, 'files', {
 		value: [file],
 		configurable: true,
@@ -147,9 +147,7 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockEventKind.value = 'mtg-two-player';
-		mockList.mockResolvedValue([
-			summary(),
-		]);
+		mockList.mockResolvedValue([summary()]);
 		mockSave.mockResolvedValue({
 			...summary(),
 		});
@@ -162,9 +160,7 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 			layout: {},
 		});
 		mockRemove.mockResolvedValue(undefined);
-		mockScreens.value = [
-			{ id: 3, stateVersion: 12 },
-		];
+		mockScreens.value = [{ id: 3, stateVersion: 12 }];
 	});
 
 	it('browses the installation library', async () => {
@@ -172,8 +168,9 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 
 		expect(mockList).toHaveBeenCalled();
 		const entry = wrapper.get('[data-template-id="template-1"]');
-		expect(entry.get<HTMLInputElement>('[data-testid="layout-template-name"]').element.value)
-			.toBe('Neon Feature Match');
+		expect(entry.get<HTMLInputElement>('[data-testid="layout-template-name"]').element.value).toBe(
+			'Neon Feature Match',
+		);
 		// Source Items are counted apart from Graphic Items, because they are
 		// host-owned and budgeted apart.
 		expect(entry.text()).toContain('6 items');
@@ -199,10 +196,12 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 
 		const wrapper = await mountLibrary();
 
-		expect(wrapper.findAll('[data-template-id]').map(entry => entry.attributes('data-template-id'))).toEqual(listed);
+		expect(
+			wrapper.findAll('[data-template-id]').map((entry) => entry.attributes('data-template-id')),
+		).toEqual(listed);
 	});
 
-	it('saves this Screen\'s layout as a template', async () => {
+	it("saves this Screen's layout as a template", async () => {
 		const wrapper = await mountLibrary();
 
 		await wrapper.get('[data-testid="layout-template-save"]').trigger('click');
@@ -219,29 +218,30 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 		{ kind: 'mtg-two-player', fourSeat: true, notice: 'only a Commander Event' },
 		{ kind: 'mtg-commander', fourSeat: false, notice: 'not a Commander Event' },
 		{ kind: 'mtg-commander', fourSeat: true, notice: null },
-	])('on a $kind Event, says where a saved layout naming four Seats ($fourSeat) is offered', async ({ kind, fourSeat, notice }) => {
-		mockEventKind.value = kind;
-		mockSave.mockResolvedValue(summary({
-			id: 'saved',
-			...(fourSeat
-				? { fourSeat: true as const }
-				: {}),
-		}));
-		const wrapper = await mountLibrary();
+	])(
+		'on a $kind Event, says where a saved layout naming four Seats ($fourSeat) is offered',
+		async ({ kind, fourSeat, notice }) => {
+			mockEventKind.value = kind;
+			mockSave.mockResolvedValue(
+				summary({
+					id: 'saved',
+					...(fourSeat ? { fourSeat: true as const } : {}),
+				}),
+			);
+			const wrapper = await mountLibrary();
 
-		await wrapper.get('[data-testid="layout-template-save"]').trigger('click');
-		await flushPromises();
+			await wrapper.get('[data-testid="layout-template-save"]').trigger('click');
+			await flushPromises();
 
-		const shown = wrapper.find('[data-testid="layout-template-saved-not-offered"]');
-		if (notice)
-			expect(shown.text()).toContain(notice);
-		else
-			expect(shown.exists()).toBe(false);
-	});
+			const shown = wrapper.find('[data-testid="layout-template-saved-not-offered"]');
+			if (notice) expect(shown.text()).toContain(notice);
+			else expect(shown.exists()).toBe(false);
+		},
+	);
 
 	// Placing replaces the Screen's whole layout and cannot be undone, so it asks first — and the
 	// prompt says what is replaced and what survives, which is the thing an author most needs…
-	it('asks before replacing the Screen\'s layout, and says what survives', async () => {
+	it("asks before replacing the Screen's layout, and says what survives", async () => {
 		const wrapper = await mountLibrary();
 
 		await wrapper.get('[data-testid="layout-template-place"]').trigger('click');
@@ -285,10 +285,7 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 		const saved = summary({ id: 'template-2', name: 'Saved here' });
 
 		async function mountWith(props: Record<string, unknown> = {}) {
-			mockList.mockResolvedValue([
-				builtIn,
-				saved,
-			]);
+			mockList.mockResolvedValue([builtIn, saved]);
 			const wrapper = await mountLibrary(props);
 			const entry = (templateId: string) => wrapper.get(`[data-template-id="${templateId}"]`);
 			return { wrapper, entry };
@@ -297,38 +294,27 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 		it('is marked built-in, and offers placing alone', async () => {
 			const { entry } = await mountWith();
 
-			expect(entry(builtIn.id).find('[data-testid="layout-template-built-in"]').exists()).toBe(true);
+			expect(entry(builtIn.id).find('[data-testid="layout-template-built-in"]').exists()).toBe(
+				true,
+			);
 			expect(entry(saved.id).find('[data-testid="layout-template-built-in"]').exists()).toBe(false);
 			expect(entry(builtIn.id).find('[data-testid="layout-template-place"]').exists()).toBe(true);
-			for (const action of [
-				'name',
-				'description',
-				'export',
-				'delete',
-			]) {
-				expect(entry(builtIn.id).find(`[data-testid="layout-template-${action}"]`).exists(), action).toBe(false);
-				expect(entry(saved.id).find(`[data-testid="layout-template-${action}"]`).exists(), action).toBe(true);
+			for (const action of ['name', 'description', 'export', 'delete']) {
+				expect(
+					entry(builtIn.id).find(`[data-testid="layout-template-${action}"]`).exists(),
+					action,
+				).toBe(false);
+				expect(
+					entry(saved.id).find(`[data-testid="layout-template-${action}"]`).exists(),
+					action,
+				).toBe(true);
 			}
 		});
 
 		// The built-ins were drawn for 16:9. A saved layout states no shape, so it never warns.
 		it.each([
-			[
-				'warns',
-				'the built-in',
-				'of another shape',
-				builtIn.id,
-				4 / 3,
-				true,
-			],
-			[
-				'does not warn',
-				'the built-in',
-				'of its own shape',
-				builtIn.id,
-				1920 / 1080,
-				false,
-			],
+			['warns', 'the built-in', 'of another shape', builtIn.id, 4 / 3, true],
+			['does not warn', 'the built-in', 'of its own shape', builtIn.id, 1920 / 1080, false],
 			[
 				'does not warn',
 				'the built-in',
@@ -345,44 +331,40 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 				16 / 9 + 0.06,
 				true,
 			],
-			[
-				'does not warn',
-				'a saved layout',
-				'of another shape',
-				saved.id,
-				4 / 3,
-				false,
-			],
-		])('%s when asked to place %s on an Event Canvas %s', async (_outcome, _which, _shape, templateId, canvasAspectRatio, warns) => {
-			const { wrapper, entry } = await mountWith({ canvasAspectRatio });
-			expect(wrapper.find('[data-testid="layout-template-place-aspect-warning"]').exists()).toBe(false);
+			['does not warn', 'a saved layout', 'of another shape', saved.id, 4 / 3, false],
+		])(
+			'%s when asked to place %s on an Event Canvas %s',
+			async (_outcome, _which, _shape, templateId, canvasAspectRatio, warns) => {
+				const { wrapper, entry } = await mountWith({ canvasAspectRatio });
+				expect(wrapper.find('[data-testid="layout-template-place-aspect-warning"]').exists()).toBe(
+					false,
+				);
 
-			await entry(templateId).get('[data-testid="layout-template-place"]').trigger('click');
+				await entry(templateId).get('[data-testid="layout-template-place"]').trigger('click');
 
-			expect(entry(templateId).find('[data-testid="layout-template-place-confirm"]').exists()).toBe(true);
-			expect(entry(templateId).find('[data-testid="layout-template-place-aspect-warning"]').exists()).toBe(warns);
-		});
+				expect(
+					entry(templateId).find('[data-testid="layout-template-place-confirm"]').exists(),
+				).toBe(true);
+				expect(
+					entry(templateId).find('[data-testid="layout-template-place-aspect-warning"]').exists(),
+				).toBe(warns);
+			},
+		);
 	});
 
 	// A placement rewrites the stored layout and a save reads it, so an edit still
 	// unsaved would overwrite the placed layout, or be missing from the template.
 	describe('with unsaved edits in the editor', () => {
 		const WRITES = [
-			[
-				'places',
-				['layout-template-place', 'layout-template-place-confirmed'],
-				mockPlace,
-			],
-			[
-				'saves',
-				['layout-template-save'],
-				mockSave,
-			],
+			['places', ['layout-template-place', 'layout-template-place-confirmed'], mockPlace],
+			['saves', ['layout-template-save'], mockSave],
 		] as const;
 
-		async function click(wrapper: Awaited<ReturnType<typeof mountLibrary>>, buttons: readonly string[]) {
-			for (const button of buttons)
-				await wrapper.get(`[data-testid="${button}"]`).trigger('click');
+		async function click(
+			wrapper: Awaited<ReturnType<typeof mountLibrary>>,
+			buttons: readonly string[],
+		) {
+			for (const button of buttons) await wrapper.get(`[data-testid="${button}"]`).trigger('click');
 			await flushPromises();
 		}
 
@@ -401,24 +383,27 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 			expect(write).toHaveBeenCalledOnce();
 		});
 
-		it.each(WRITES)('%s nothing when one of them was refused, and says so', async (_case, buttons, write) => {
-			const wrapper = await mountLibrary({
-				flushEdits: () => Promise.resolve(false),
-			});
+		it.each(WRITES)(
+			'%s nothing when one of them was refused, and says so',
+			async (_case, buttons, write) => {
+				const wrapper = await mountLibrary({
+					flushEdits: () => Promise.resolve(false),
+				});
 
-			await click(wrapper, buttons);
+				await click(wrapper, buttons);
 
-			expect(write).not.toHaveBeenCalled();
-			expect(wrapper.emitted('placing')).toBeUndefined();
-			expect(wrapper.get('[data-testid="layout-template-error"]').text()).toContain('could not be saved');
-		});
+				expect(write).not.toHaveBeenCalled();
+				expect(wrapper.emitted('placing')).toBeUndefined();
+				expect(wrapper.get('[data-testid="layout-template-error"]').text()).toContain(
+					'could not be saved',
+				);
+			},
+		);
 
 		it('places at the version the landed edits left the Screen at', async () => {
 			const wrapper = await mountLibrary({
 				flushEdits: async () => {
-					mockScreens.value = [
-						{ id: 3, stateVersion: 13 },
-					];
+					mockScreens.value = [{ id: 3, stateVersion: 13 }];
 					return true;
 				},
 			});
@@ -438,23 +423,16 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 		await wrapper.get('[data-testid="layout-template-place"]').trigger('click');
 		await wrapper.get('[data-testid="layout-template-place-confirmed"]').trigger('click');
 		await flushPromises();
-		expect(wrapper.emitted('update:placing')).toEqual([
-			[true],
-		]);
+		expect(wrapper.emitted('update:placing')).toEqual([[true]]);
 
 		reloading.reject(new Error('Failed to fetch'));
 		await flushPromises();
-		expect(wrapper.emitted('update:placing')).toEqual([
-			[true],
-			[false],
-		]);
+		expect(wrapper.emitted('update:placing')).toEqual([[true], [false]]);
 	});
 
 	// An imported layout is the Graphics Asset Library's own record: never renamed here, but removable (ADR-0068).
 	it('offers no rename on a layout a Template Package installed, but removes it', async () => {
-		mockList.mockResolvedValue([
-			summary({ authored: false }),
-		]);
+		mockList.mockResolvedValue([summary({ authored: false })]);
 
 		const wrapper = await mountLibrary();
 
@@ -467,7 +445,9 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 
 		await entry.get('[data-testid="layout-template-delete"]').trigger('click');
 		await flushPromises();
-		expect(wrapper.get('[data-testid="layout-template-delete-confirm"]').text()).toContain('Template Package again');
+		expect(wrapper.get('[data-testid="layout-template-delete-confirm"]').text()).toContain(
+			'Template Package again',
+		);
 		await wrapper.get('[data-testid="layout-template-delete-confirmed"]').trigger('click');
 		await flushPromises();
 
@@ -486,12 +466,18 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 	});
 
 	it('pauses on a package that needs confirming, and installs only when confirmed', async () => {
-		mockReceivePackage.mockResolvedValue(receivedPackage('awaiting-confirmation', {
-			outcome: 'requires-confirmation',
-			issues: [
-				{ code: 'graphic-asset-name-differs', message: 'A name differs', remediation: 'Review it' },
-			],
-		}));
+		mockReceivePackage.mockResolvedValue(
+			receivedPackage('awaiting-confirmation', {
+				outcome: 'requires-confirmation',
+				issues: [
+					{
+						code: 'graphic-asset-name-differs',
+						message: 'A name differs',
+						remediation: 'Review it',
+					},
+				],
+			}),
+		);
 		mockConfirmPackage.mockResolvedValue(receivedPackage('awaiting-installation'));
 		mockInstallPackage.mockResolvedValue({ id: 'operation-1', stage: 'completed' });
 
@@ -499,7 +485,9 @@ describe('graphicsFeatureMatchLayoutTemplateLibrary', () => {
 		await chooseImportFile(wrapper);
 
 		expect(mockInstallPackage).not.toHaveBeenCalled();
-		expect(wrapper.get('[data-testid="layout-template-import-report"]').text()).toContain('A name differs');
+		expect(wrapper.get('[data-testid="layout-template-import-report"]').text()).toContain(
+			'A name differs',
+		);
 
 		await wrapper.get('[data-testid="layout-template-import-confirm"]').trigger('click');
 		await flushPromises();

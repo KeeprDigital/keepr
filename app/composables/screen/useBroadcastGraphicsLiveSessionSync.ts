@@ -33,8 +33,7 @@ export function useBroadcastGraphicsLiveSessionSync(
 	function read(how: 'loadSession' | 'reloadSession') {
 		const event = toValue(eventId);
 		const screen = toValue(screenId);
-		if (!event || !screen)
-			return;
+		if (!event || !screen) return;
 
 		void sessionStore[how](event, screen);
 	}
@@ -48,27 +47,23 @@ export function useBroadcastGraphicsLiveSessionSync(
 	}
 
 	watch(
-		() => [
-			toValue(eventId),
-			toValue(screenId),
-		] as const,
+		() => [toValue(eventId), toValue(screenId)] as const,
 		() => read('loadSession'),
 		{ immediate: true },
 	);
 
 	const listenedOn = () => {
-		if (channel !== undefined)
-			return toValue(channel);
+		if (channel !== undefined) return toValue(channel);
 		const event = toValue(eventId);
-		return event
-			? authoringEventChannel(event)
-			: null;
+		return event ? authoringEventChannel(event) : null;
 	};
 
 	// A rendering's first load is read before its channel attaches. A command
 	// applied in between is heard by nothing, and no sequence gap reveals it until
 	// the next command, so the first attach reloads too (#733).
-	const { disconnected } = useReconnectResync(reload, listenedOn, undefined, { onFirstAttach: reload });
+	const { disconnected } = useReconnectResync(reload, listenedOn, undefined, {
+		onFirstAttach: reload,
+	});
 
 	return { disconnected, reload };
 }

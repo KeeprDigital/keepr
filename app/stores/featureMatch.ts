@@ -1,9 +1,5 @@
 import type { EventDataLoadOptions } from '~/modules/event-data/lifecycle';
-import type {
-	CreateFeatureMatchInput,
-	FeatureMatch,
-	UpdateFeatureMatchInput,
-} from '~/types';
+import type { CreateFeatureMatchInput, FeatureMatch, UpdateFeatureMatchInput } from '~/types';
 import type { MessageData } from '~/types/realtime';
 import { useEventDataLifecycle } from '~/modules/event-data/lifecycle';
 
@@ -12,13 +8,16 @@ export const useFeatureMatchStore = defineStore('featureMatch', () => {
 	const { executeReporting } = useReportingAction();
 
 	const itemLoading = ref(false);
-	const lifecycle = useEventDataLifecycle<FeatureMatch, CreateFeatureMatchInput, UpdateFeatureMatchInput>({
+	const lifecycle = useEventDataLifecycle<
+		FeatureMatch,
+		CreateFeatureMatchInput,
+		UpdateFeatureMatchInput
+	>({
 		repository: {
 			...matchRepo,
 			remove: async (eventId, matchId) => {
 				const result = await matchRepo.remove(eventId, matchId);
-				if (!result.success)
-					throw new Error('Failed to delete feature match');
+				if (!result.success) throw new Error('Failed to delete feature match');
 				return result;
 			},
 		},
@@ -26,7 +25,7 @@ export const useFeatureMatchStore = defineStore('featureMatch', () => {
 		// A Slot's Session orders it (ADR-0026): one carrying a Session from an epoch
 		// this client has seen end is left behind whole (#635), and so is one with no
 		// Session while this client holds one for it (#658).
-		admit: slot => useFeatureMatchStateStore().offerSlotSession(slot),
+		admit: (slot) => useFeatureMatchStateStore().offerSlotSession(slot),
 		onReset: () => {
 			itemLoading.value = false;
 		},
@@ -48,25 +47,25 @@ export const useFeatureMatchStore = defineStore('featureMatch', () => {
 	 * the Slot was held.
 	 */
 	function holdFeatureMatch(slot: FeatureMatch): boolean {
-		if (!useFeatureMatchStateStore().offerSlotSession(slot))
-			return false;
-		const index = featureMatches.value.findIndex(held => held.id === slot.id);
-		if (index === -1)
-			featureMatches.value.push(slot);
-		else
-			featureMatches.value[index] = slot;
+		if (!useFeatureMatchStateStore().offerSlotSession(slot)) return false;
+		const index = featureMatches.value.findIndex((held) => held.id === slot.id);
+		if (index === -1) featureMatches.value.push(slot);
+		else featureMatches.value[index] = slot;
 		return true;
 	}
 
 	async function createFeatureMatch(eventId: number, input: CreateFeatureMatchInput) {
 		const flight = lifecycle.currentLifetime();
 		const createdMatch = await lifecycle.create(eventId, input);
-		if (createdMatch && flight.current)
-			useFeatureMatchStateStore().offerSlotSession(createdMatch);
+		if (createdMatch && flight.current) useFeatureMatchStateStore().offerSlotSession(createdMatch);
 		return createdMatch;
 	}
 
-	async function updateFeatureMatch(eventId: number, matchId: number, updates: UpdateFeatureMatchInput) {
+	async function updateFeatureMatch(
+		eventId: number,
+		matchId: number,
+		updates: UpdateFeatureMatchInput,
+	) {
 		return lifecycle.update(eventId, matchId, updates);
 	}
 
@@ -75,18 +74,13 @@ export const useFeatureMatchStore = defineStore('featureMatch', () => {
 	}
 
 	async function reorderFeatureMatch(slotId: number, direction: 'up' | 'down') {
-		if (!currentEventId.value)
-			return;
+		if (!currentEventId.value) return;
 
-		const index = featureMatches.value.findIndex(m => m.id === slotId);
-		if (index === -1)
-			return;
+		const index = featureMatches.value.findIndex((m) => m.id === slotId);
+		if (index === -1) return;
 
-		const swapIndex = direction === 'up'
-			? index - 1
-			: index + 1;
-		if (swapIndex < 0 || swapIndex >= featureMatches.value.length)
-			return;
+		const swapIndex = direction === 'up' ? index - 1 : index + 1;
+		if (swapIndex < 0 || swapIndex >= featureMatches.value.length) return;
 
 		// Optimistic swap
 		const snapshot = [...featureMatches.value];
@@ -102,7 +96,9 @@ export const useFeatureMatchStore = defineStore('featureMatch', () => {
 				// where it learns the orders a later message sorts the Slots by.
 				const { slots } = await matchRepo.reorder(eventId, slotId, direction);
 				if (flight.current)
-					applySortOrders(slots.map(slot => ({ featureMatchId: slot.matchId, sortOrder: slot.sortOrder })));
+					applySortOrders(
+						slots.map((slot) => ({ featureMatchId: slot.matchId, sortOrder: slot.sortOrder })),
+					);
 			},
 			{
 				errorRef: error,
@@ -137,8 +133,7 @@ export const useFeatureMatchStore = defineStore('featureMatch', () => {
 	 * clearing is left behind whole, as an announcement would be.
 	 */
 	function applySavedSlot(slot: FeatureMatch): boolean {
-		if (!useFeatureMatchStateStore().settleSlotCommandResult(slot))
-			return false;
+		if (!useFeatureMatchStateStore().settleSlotCommandResult(slot)) return false;
 		lifecycle.applyRemoteUpdated(slot);
 		return true;
 	}
@@ -154,9 +149,8 @@ export const useFeatureMatchStore = defineStore('featureMatch', () => {
 	/** Hold each named Slot's new order, and put the Slots in that order. */
 	function applySortOrders(orders: MessageData<'featureMatch:reordered'>['featureMatches']) {
 		for (const { featureMatchId, sortOrder } of orders) {
-			const match = featureMatches.value.find(m => m.id === featureMatchId);
-			if (match)
-				match.sortOrder = sortOrder;
+			const match = featureMatches.value.find((m) => m.id === featureMatchId);
+			if (match) match.sortOrder = sortOrder;
 		}
 		featureMatches.value.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 	}

@@ -1,7 +1,10 @@
 import type { PlayerSlotData } from '../api';
 import type { EventKind } from '../config/games';
 import type { PlayerSide, Seat } from '../types/enums';
-import type { FeatureMatchSnapshotPlayer, FeatureMatchSnapshotPlayerData } from '../types/featureMatchSession';
+import type {
+	FeatureMatchSnapshotPlayer,
+	FeatureMatchSnapshotPlayerData,
+} from '../types/featureMatchSession';
 import { SEAT_VALUES } from '../types/enums';
 
 /** The parts of a Feature Match Slot, and its active Session, that seat its players. */
@@ -14,8 +17,8 @@ export interface FeatureMatchSlotSides {
 	player3Data?: PlayerSlotData | null;
 	player4Data?: PlayerSlotData | null;
 	activeSession?: {
-		sourceSnapshot: Record<PlayerSide, FeatureMatchSnapshotPlayer | null | undefined>
-			& Partial<Record<Exclude<Seat, PlayerSide>, FeatureMatchSnapshotPlayer | null>>;
+		sourceSnapshot: Record<PlayerSide, FeatureMatchSnapshotPlayer | null | undefined> &
+			Partial<Record<Exclude<Seat, PlayerSide>, FeatureMatchSnapshotPlayer | null>>;
 	} | null;
 }
 
@@ -26,13 +29,14 @@ export function seatNumber(seat: Seat): number {
 
 /** A Seat as a layout's author names it: a Commander Slot's are Seats, a pair's its two Players. */
 export function seatLabel(kind: EventKind, seat: Seat): string {
-	return `${kind === 'mtg-commander'
-		? 'Seat'
-		: 'Player'} ${seatNumber(seat)}`;
+	return `${kind === 'mtg-commander' ? 'Seat' : 'Player'} ${seatNumber(seat)}`;
 }
 
 /** The Slot field holding each side's data, in the Slot's own order. */
-export const SLOT_SIDE_DATA_KEY = { player1: 'player1Data', player2: 'player2Data' } as const satisfies Record<PlayerSide, keyof FeatureMatchSlotSides>;
+export const SLOT_SIDE_DATA_KEY = {
+	player1: 'player1Data',
+	player2: 'player2Data',
+} as const satisfies Record<PlayerSide, keyof FeatureMatchSlotSides>;
 /** The Slot field holding each Seat's data: the pair every Slot has, then a Commander Slot's Seats 3 and 4 (ADR-0087). */
 export const SLOT_SEAT_DATA_KEY = {
 	...SLOT_SIDE_DATA_KEY,
@@ -40,9 +44,15 @@ export const SLOT_SEAT_DATA_KEY = {
 	player4: 'player4Data',
 } as const satisfies Record<Seat, string>;
 /** The Slot fields of Seats 3 and 4, which only a Commander Event's Slot holds (ADR-0087). */
-export const COMMANDER_SEAT_DATA_KEYS = [SLOT_SEAT_DATA_KEY.player3, SLOT_SEAT_DATA_KEY.player4] as const;
+export const COMMANDER_SEAT_DATA_KEYS = [
+	SLOT_SEAT_DATA_KEY.player3,
+	SLOT_SEAT_DATA_KEY.player4,
+] as const;
 /** The Slot field seating each side's Player, in the Slot's own order. */
-export const SLOT_SIDE_PLAYER_KEY = { player1: 'player1Id', player2: 'player2Id' } as const satisfies Record<PlayerSide, keyof FeatureMatchSlotSides>;
+export const SLOT_SIDE_PLAYER_KEY = {
+	player1: 'player1Id',
+	player2: 'player2Id',
+} as const satisfies Record<PlayerSide, keyof FeatureMatchSlotSides>;
 
 export interface FeatureMatchSidePlayer {
 	playerId: number | null;
@@ -58,17 +68,17 @@ export interface FeatureMatchSidePlayer {
  * while a Session is active, and the Slot's own side otherwise. Seats 3 and 4
  * are a Commander Slot's, typed and linking no Player (ADR-0087).
  */
-export function featureMatchSidePlayer(slot: FeatureMatchSlotSides | null | undefined, side: Seat): FeatureMatchSidePlayer {
-	if (!slot)
-		return { playerId: null, data: null };
+export function featureMatchSidePlayer(
+	slot: FeatureMatchSlotSides | null | undefined,
+	side: Seat,
+): FeatureMatchSidePlayer {
+	if (!slot) return { playerId: null, data: null };
 	const snapshot = slot.activeSession?.sourceSnapshot;
 	if (snapshot) {
 		const seated = snapshot[side];
 		return { playerId: seated?.playerId ?? null, data: seated?.data ?? null };
 	}
-	if (side === 'player1')
-		return { playerId: slot.player1Id, data: slot.player1Data };
-	if (side === 'player2')
-		return { playerId: slot.player2Id, data: slot.player2Data };
+	if (side === 'player1') return { playerId: slot.player1Id, data: slot.player1Data };
+	if (side === 'player2') return { playerId: slot.player2Id, data: slot.player2Data };
 	return { playerId: null, data: slot[SLOT_SEAT_DATA_KEY[side]] ?? null };
 }

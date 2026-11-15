@@ -18,7 +18,16 @@ const mockEventStore = reactive({
 });
 
 const mockRoundStore = reactive({
-	rounds: [] as Array<{ id: number; phaseId: number; name: string; status: string; lastSyncedAt: Date | null; externalId?: string | null; externalSource?: string | null; controlMode?: string | null }>,
+	rounds: [] as Array<{
+		id: number;
+		phaseId: number;
+		name: string;
+		status: string;
+		lastSyncedAt: Date | null;
+		externalId?: string | null;
+		externalSource?: string | null;
+		controlMode?: string | null;
+	}>,
 	isLoaded: true,
 	loadRoundsByEventId: vi.fn(),
 	getRoundById: vi.fn((id: number) => mockRoundStore.rounds.find((round: any) => round.id === id)),
@@ -28,9 +37,7 @@ const mockRoundStore = reactive({
 const mockPhaseStore = reactive({
 	isLoaded: true,
 	loadPhasesByEventId: vi.fn(),
-	getPhaseById: vi.fn((id: number) => (id === 1
-		? { id: 1, name: 'Swiss' }
-		: undefined)),
+	getPhaseById: vi.fn((id: number) => (id === 1 ? { id: 1, name: 'Swiss' } : undefined)),
 	$reset: vi.fn(),
 });
 
@@ -50,7 +57,12 @@ const mockMeleeStore = reactive({
 	setupStep: null as string | null,
 	syncStep: null as string | null,
 	error: null as string | null,
-	lastOperation: null as { title: string; description: string; status: 'success' | 'warning' | 'error'; details?: string[] } | null,
+	lastOperation: null as {
+		title: string;
+		description: string;
+		status: 'success' | 'warning' | 'error';
+		details?: string[];
+	} | null,
 	availableRounds: [] as typeof mockRoundStore.rounds,
 	nextUnsyncedRound: null as { id: number } | null,
 	nextRoundLabel: null as string | null,
@@ -145,7 +157,8 @@ const UAlertStub = defineComponent({
 		title: { type: String, required: false },
 		description: { type: String, required: false },
 	},
-	template: '<div><div>{{ title }}</div><div>{{ description }}</div><slot name="description" /></div>',
+	template:
+		'<div><div>{{ title }}</div><div>{{ description }}</div><slot name="description" /></div>',
 });
 
 const UButtonStub = defineComponent({
@@ -165,7 +178,8 @@ const USelectMenuStub = defineComponent({
 			default: () => [],
 		},
 	},
-	template: '<select :disabled="disabled"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
+	template:
+		'<select :disabled="disabled"><option v-for="item in items" :key="item.value" :value="item.value">{{ item.label }}</option></select>',
 });
 
 const UIEmptyStateStub = defineComponent({
@@ -183,7 +197,8 @@ const UCheckboxStub = defineComponent({
 		disabled: { type: Boolean, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<label><input type="checkbox" :checked="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.checked)">{{ label }}</label>',
+	template:
+		'<label><input type="checkbox" :checked="modelValue" :disabled="disabled" @change="$emit(\'update:modelValue\', $event.target.checked)">{{ label }}</label>',
 });
 
 const UDashboardToolbarStub = defineComponent({
@@ -324,7 +339,9 @@ describe('melee Sync page', () => {
 		const wrapper = await mountPage();
 		await Promise.resolve();
 
-		const updateButton = wrapper.findAll('button').find((button: any) => button.text().trim() === 'Update from Melee');
+		const updateButton = wrapper
+			.findAll('button')
+			.find((button: any) => button.text().trim() === 'Update from Melee');
 		await updateButton?.trigger('click');
 
 		expect(mockMeleeStore.updateFromMelee).toHaveBeenCalledWith({ includeDeckLists: false });
@@ -342,11 +359,17 @@ describe('melee Sync page', () => {
 		await Promise.resolve();
 
 		expect(wrapper.text()).toContain('Initial Setup In Progress');
-		expect(wrapper.text()).toContain('Importing event structure, players, standings, and deck lists from Melee.gg.');
+		expect(wrapper.text()).toContain(
+			'Importing event structure, players, standings, and deck lists from Melee.gg.',
+		);
 
 		const buttons = wrapper.findAll('button');
-		const runInitialSetupButton = buttons.find((button: any) => button.text().includes('Run Initial Setup'));
-		const manageIntegrationButtons = buttons.filter((button: any) => button.text().includes('Manage Integration'));
+		const runInitialSetupButton = buttons.find((button: any) =>
+			button.text().includes('Run Initial Setup'),
+		);
+		const manageIntegrationButtons = buttons.filter((button: any) =>
+			button.text().includes('Manage Integration'),
+		);
 
 		expect(runInitialSetupButton?.attributes()['data-loading']).toBe('true');
 		expect(runInitialSetupButton?.attributes().disabled).toBeDefined();
@@ -362,10 +385,18 @@ describe('melee Sync page', () => {
 		expect(wrapper.text()).toContain('Player Sync In Progress');
 
 		const buttons = wrapper.findAll('button');
-		const refreshPlayersButton = buttons.find((button: any) => button.text().includes('Refresh Players'));
-		const refreshDeckListsButton = buttons.find((button: any) => button.text().includes('Refresh Deck Lists'));
-		const refreshRoundButton = buttons.find((button: any) => button.text().includes('Refresh Round'));
-		const resetStructureButton = buttons.find((button: any) => button.text().includes('Reset Structure'));
+		const refreshPlayersButton = buttons.find((button: any) =>
+			button.text().includes('Refresh Players'),
+		);
+		const refreshDeckListsButton = buttons.find((button: any) =>
+			button.text().includes('Refresh Deck Lists'),
+		);
+		const refreshRoundButton = buttons.find((button: any) =>
+			button.text().includes('Refresh Round'),
+		);
+		const resetStructureButton = buttons.find((button: any) =>
+			button.text().includes('Reset Structure'),
+		);
 		const roundPicker = wrapper.find('select');
 
 		expect(refreshPlayersButton?.attributes()['data-loading']).toBe('true');
@@ -400,7 +431,9 @@ describe('melee Sync page', () => {
 			externalSource: null,
 			controlMode: 'manual',
 		});
-		mockMeleeStore.availableRounds = mockRoundStore.rounds.filter(round => round.externalSource === 'melee' && !!round.externalId);
+		mockMeleeStore.availableRounds = mockRoundStore.rounds.filter(
+			(round) => round.externalSource === 'melee' && !!round.externalId,
+		);
 
 		const wrapper = await mountPage();
 		await Promise.resolve();
@@ -412,7 +445,9 @@ describe('melee Sync page', () => {
 	});
 
 	it('shows unresolved-card load failures instead of claiming all cards are resolved', async () => {
-		mockEventRepo.listUnresolvedDeckCards.mockRejectedValueOnce(new Error('Unresolved endpoint unavailable'));
+		mockEventRepo.listUnresolvedDeckCards.mockRejectedValueOnce(
+			new Error('Unresolved endpoint unavailable'),
+		);
 
 		const wrapper = await mountPage();
 		await Promise.resolve();

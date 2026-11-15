@@ -21,7 +21,7 @@ import type {
 
 export const TEMPLATE_PACKAGE_KINDS = ['skgraphic', 'sklayout'] as const;
 
-export type TemplatePackageKind = typeof TEMPLATE_PACKAGE_KINDS[number];
+export type TemplatePackageKind = (typeof TEMPLATE_PACKAGE_KINDS)[number];
 
 /** Receivers reject a schema version they do not recognise rather than guessing. */
 export const TEMPLATE_PACKAGE_SCHEMA_VERSION = 1;
@@ -41,14 +41,17 @@ export const TEMPLATE_PACKAGE_ARTIFACTS = {
 		templateKind: 'feature-match-layout-template',
 		mediaType: 'application/vnd.streamkeepr.feature-match-layout-template+zip',
 	},
-} as const satisfies Record<TemplatePackageKind, {
-	extension: string;
-	templateKind: string;
-	mediaType: string;
-}>;
+} as const satisfies Record<
+	TemplatePackageKind,
+	{
+		extension: string;
+		templateKind: string;
+		mediaType: string;
+	}
+>;
 
-export type TemplatePackageTemplateKind
-	= typeof TEMPLATE_PACKAGE_ARTIFACTS[TemplatePackageKind]['templateKind'];
+export type TemplatePackageTemplateKind =
+	(typeof TEMPLATE_PACKAGE_ARTIFACTS)[TemplatePackageKind]['templateKind'];
 
 /**
  * The settled transfer envelope both package kinds are held to. Export enforces
@@ -80,7 +83,7 @@ export const TEMPLATE_PACKAGE_CAPABILITY_KINDS = [
 	'host-vocabulary',
 ] as const;
 
-export type TemplatePackageCapabilityKind = typeof TEMPLATE_PACKAGE_CAPABILITY_KINDS[number];
+export type TemplatePackageCapabilityKind = (typeof TEMPLATE_PACKAGE_CAPABILITY_KINDS)[number];
 
 /** One Template slot requiring one exact Graphic Asset Revision. */
 export interface TemplatePackageAssetRequirement {
@@ -209,7 +212,7 @@ export const TEMPLATE_PACKAGE_EXPORT_ISSUE_CODES = [
 	'package-archive-limit-exceeded',
 ] as const;
 
-export type TemplatePackageExportIssueCode = typeof TEMPLATE_PACKAGE_EXPORT_ISSUE_CODES[number];
+export type TemplatePackageExportIssueCode = (typeof TEMPLATE_PACKAGE_EXPORT_ISSUE_CODES)[number];
 
 export interface TemplatePackageExportIssue {
 	code: TemplatePackageExportIssueCode;
@@ -298,14 +301,15 @@ export const TEMPLATE_PACKAGE_PREFLIGHT_WARNING_CODES = [
 	'graphic-asset-created-from-shared-content',
 ] as const;
 
-export type TemplatePackagePreflightErrorCode
-	= typeof TEMPLATE_PACKAGE_PREFLIGHT_ERROR_CODES[number];
+export type TemplatePackagePreflightErrorCode =
+	(typeof TEMPLATE_PACKAGE_PREFLIGHT_ERROR_CODES)[number];
 
-export type TemplatePackagePreflightWarningCode
-	= typeof TEMPLATE_PACKAGE_PREFLIGHT_WARNING_CODES[number];
+export type TemplatePackagePreflightWarningCode =
+	(typeof TEMPLATE_PACKAGE_PREFLIGHT_WARNING_CODES)[number];
 
-export type TemplatePackagePreflightIssueCode
-	= TemplatePackagePreflightErrorCode | TemplatePackagePreflightWarningCode;
+export type TemplatePackagePreflightIssueCode =
+	| TemplatePackagePreflightErrorCode
+	| TemplatePackagePreflightWarningCode;
 
 export interface TemplatePackagePreflightIssue {
 	code: TemplatePackagePreflightIssueCode;
@@ -327,14 +331,14 @@ export interface TemplatePackagePreflightIssue {
  * proposals: preflight decides them, records them in an immutable report, and
  * installation applies exactly the set the author confirmed.
  */
-export type TemplatePackageMappingBasis
+export type TemplatePackageMappingBasis =
 	/** The exact source identity, source revision, and digest already exist locally. */
-	= | 'exact-origin'
+	| 'exact-origin'
 	/** The same source identity at a different source revision exists locally. */
-		| 'related-origin-revision'
+	| 'related-origin-revision'
 	/** Only the content digest matches something local; provenance does not. */
-		| 'shared-content-digest'
-		| 'new-content';
+	| 'shared-content-digest'
+	| 'new-content';
 
 export interface TemplatePackagePreflightMapping {
 	packagedId: string;
@@ -455,20 +459,20 @@ export interface TemplatePackagePayloadIssue {
 	message: string;
 }
 
-export type ReadInstallableTemplateDocumentOutcome
-	= | {
-		outcome: 'read';
-		/**
-		 * The application-owned capabilities this document actually requires,
-		 * derived by the same walk the exporting workflow declares them with.
-		 *
-		 * Preflight holds the manifest to them. A package requiring a Graphic Item
-		 * Definition it never declares is one no exporter here could have produced,
-		 * and accepting it would install a Graphic Item whose configuration version
-		 * was never checked against anything.
-		 */
-		capabilities: readonly TemplatePackageCapabilityRequirement[];
-	}
+export type ReadInstallableTemplateDocumentOutcome =
+	| {
+			outcome: 'read';
+			/**
+			 * The application-owned capabilities this document actually requires,
+			 * derived by the same walk the exporting workflow declares them with.
+			 *
+			 * Preflight holds the manifest to them. A package requiring a Graphic Item
+			 * Definition it never declares is one no exporter here could have produced,
+			 * and accepting it would install a Graphic Item whose configuration version
+			 * was never checked against anything.
+			 */
+			capabilities: readonly TemplatePackageCapabilityRequirement[];
+	  }
 	| { outcome: 'rejected'; issues: readonly TemplatePackagePayloadIssue[] };
 
 export interface TemplatePackagePayload {

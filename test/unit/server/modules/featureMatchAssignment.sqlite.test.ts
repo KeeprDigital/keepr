@@ -12,7 +12,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -39,12 +40,17 @@ type MatchKey = 'matchM' | 'matchN';
 type Placement = readonly [slot: SlotKey, match: MatchKey];
 
 async function stageRound() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Assignment Open', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning();
 	const eventId = event!.id;
-	const [phase] = await db.insert(schema.phases).values({ eventId, name: 'Swiss', sortOrder: 0 }).returning();
-	const [round] = await db.insert(schema.rounds)
+	const [phase] = await db
+		.insert(schema.phases)
+		.values({ eventId, name: 'Swiss', sortOrder: 0 })
+		.returning();
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: phase!.id,
@@ -52,20 +58,23 @@ async function stageRound() {
 			roundNumber: 1,
 		})
 		.returning();
-	const [matchM, matchN] = await db.insert(schema.matches).values([
-		{
-			eventId,
-			roundId: round!.id,
-			tableNumber: 1,
-			sortOrder: 0,
-		},
-		{
-			eventId,
-			roundId: round!.id,
-			tableNumber: 2,
-			sortOrder: 1,
-		},
-	]).returning();
+	const [matchM, matchN] = await db
+		.insert(schema.matches)
+		.values([
+			{
+				eventId,
+				roundId: round!.id,
+				tableNumber: 1,
+				sortOrder: 0,
+			},
+			{
+				eventId,
+				roundId: round!.id,
+				tableNumber: 2,
+				sortOrder: 1,
+			},
+		])
+		.returning();
 	const slots = featureMatchService();
 	const slot1 = await slots.create(eventId, {});
 	const slot2 = await slots.create(eventId, {});
@@ -92,13 +101,16 @@ async function stageRound() {
 async function stageRoundHolding(held: readonly Placement[]) {
 	const stage = await stageRound();
 	const assignments: FeatureMatchAssignmentResponse[] = [];
-	for (const placement of held)
-		assignments.push(await stage.save(placement));
+	for (const placement of held) assignments.push(await stage.save(placement));
 	publishMessage.mockClear();
 	return { stage, held: assignments };
 }
 
-function announced(eventId: number, type: 'created' | 'updated', assignment: FeatureMatchAssignmentResponse) {
+function announced(
+	eventId: number,
+	type: 'created' | 'updated',
+	assignment: FeatureMatchAssignmentResponse,
+) {
 	return [
 		eventId,
 		`featureMatchAssignment:${type}`,
@@ -127,18 +139,14 @@ describe('a Feature Match Assignment', () => {
 		},
 		{
 			saving: 'the Match its Slot already holds',
-			held: [
-				['slot1', 'matchM'],
-			],
+			held: [['slot1', 'matchM']],
 			placement: ['slot1', 'matchM'],
 			announces: 'updated',
 			displaces: null,
 		},
 		{
 			saving: 'a Match new to the Round over the one its Slot holds',
-			held: [
-				['slot1', 'matchM'],
-			],
+			held: [['slot1', 'matchM']],
 			placement: ['slot1', 'matchN'],
 			announces: 'created',
 			displaces: 0,
@@ -153,64 +161,60 @@ describe('a Feature Match Assignment', () => {
 			announces: 'updated',
 			displaces: 1,
 		},
-	] as const)('saving $saving announces it $announces', async ({ held: placements, placement, announces, displaces }) => {
-		const { stage, held } = await stageRoundHolding(placements);
+	] as const)(
+		'saving $saving announces it $announces',
+		async ({ held: placements, placement, announces, displaces }) => {
+			const { stage, held } = await stageRoundHolding(placements);
 
-		const saved = await stage.save(placement);
+			const saved = await stage.save(placement);
 
-		expect(saved).toMatchObject({ slotId: stage[placement[0]], matchId: stage[placement[1]] });
-		expect(publishMessage.mock.calls).toEqual([
-			announced(stage.eventId, announces, saved),
-			...(displaces === null
-				? []
-				: [
-						announcedDeleted(stage.eventId, held[displaces]!.id),
-					]),
-		]);
-	});
+			expect(saved).toMatchObject({ slotId: stage[placement[0]], matchId: stage[placement[1]] });
+			expect(publishMessage.mock.calls).toEqual([
+				announced(stage.eventId, announces, saved),
+				...(displaces === null ? [] : [announcedDeleted(stage.eventId, held[displaces]!.id)]),
+			]);
+		},
+	);
 
 	it('announces an edited Note as the stored Assignment', async () => {
-		const { stage, held } = await stageRoundHolding([
-			['slot1', 'matchM'],
-		]);
+		const { stage, held } = await stageRoundHolding([['slot1', 'matchM']]);
 
-		const updated = await featureMatchAssignmentModule().update(stage.eventId, held[0]!.id, { note: 'Camera two' }, ORIGIN);
+		const updated = await featureMatchAssignmentModule().update(
+			stage.eventId,
+			held[0]!.id,
+			{ note: 'Camera two' },
+			ORIGIN,
+		);
 
 		expect(updated).toMatchObject({ id: held[0]!.id, note: 'Camera two' });
-		expect(publishMessage.mock.calls).toEqual([
-			announced(stage.eventId, 'updated', updated),
-		]);
+		expect(publishMessage.mock.calls).toEqual([announced(stage.eventId, 'updated', updated)]);
 	});
 
 	it('announces a removed Assignment by id', async () => {
-		const { stage, held } = await stageRoundHolding([
-			['slot1', 'matchM'],
-		]);
+		const { stage, held } = await stageRoundHolding([['slot1', 'matchM']]);
 
 		await featureMatchAssignmentModule().remove(stage.eventId, held[0]!.id, ORIGIN);
 
-		expect(publishMessage.mock.calls).toEqual([
-			announcedDeleted(stage.eventId, held[0]!.id),
-		]);
+		expect(publishMessage.mock.calls).toEqual([announcedDeleted(stage.eventId, held[0]!.id)]);
 	});
 
 	// Deleting a Match drops its Assignment and unlinks the Slot showing it:
 	// every client is told of both, the deleting one included.
 	it('announces the Assignment and the Slot a deleted Match takes with it', async () => {
-		const { stage, held } = await stageRoundHolding([
-			['slot1', 'matchM'],
-		]);
-		await db.update(schema.featureMatches).set({ matchId: stage.matchM }).where(eq(schema.featureMatches.id, stage.slot1));
+		const { stage, held } = await stageRoundHolding([['slot1', 'matchM']]);
+		await db
+			.update(schema.featureMatches)
+			.set({ matchId: stage.matchM })
+			.where(eq(schema.featureMatches.id, stage.slot1));
 
-		await matchWriteModule().remove({ eventId: stage.eventId, matchId: stage.matchM, originConnectionId: ORIGIN });
+		await matchWriteModule().remove({
+			eventId: stage.eventId,
+			matchId: stage.matchM,
+			originConnectionId: ORIGIN,
+		});
 
 		expect(publishMessage.mock.calls).toEqual([
-			[
-				stage.eventId,
-				'match:deleted',
-				{ matchId: stage.matchM },
-				ORIGIN,
-			],
+			[stage.eventId, 'match:deleted', { matchId: stage.matchM }, ORIGIN],
 			[
 				stage.eventId,
 				'featureMatch:updated',
@@ -231,11 +235,13 @@ describe('a Feature Match Assignment', () => {
 	it.each([
 		[
 			'an edit',
-			async (eventId: number) => await featureMatchAssignmentModule().update(eventId, 999_999, { note: 'Ghost' }, ORIGIN),
+			async (eventId: number) =>
+				await featureMatchAssignmentModule().update(eventId, 999_999, { note: 'Ghost' }, ORIGIN),
 		],
 		[
 			'a removal',
-			async (eventId: number) => await featureMatchAssignmentModule().remove(eventId, 999_999, ORIGIN),
+			async (eventId: number) =>
+				await featureMatchAssignmentModule().remove(eventId, 999_999, ORIGIN),
 		],
 	])('announces nothing for %s of an Assignment the Event does not hold', async (_case, act) => {
 		const { stage } = await stageRoundHolding([]);
@@ -249,10 +255,13 @@ describe('a Feature Match Assignment', () => {
 // lost only to an operator who confirmed that very version.
 describe('saving over an Assignment carrying a Note', () => {
 	async function stageNotedSlot() {
-		const { stage, held } = await stageRoundHolding([
-			['slot1', 'matchM'],
-		]);
-		const noted = await featureMatchAssignmentModule().update(stage.eventId, held[0]!.id, { note: 'Protect direct saves too' }, ORIGIN);
+		const { stage, held } = await stageRoundHolding([['slot1', 'matchM']]);
+		const noted = await featureMatchAssignmentModule().update(
+			stage.eventId,
+			held[0]!.id,
+			{ note: 'Protect direct saves too' },
+			ORIGIN,
+		);
 		publishMessage.mockClear();
 		return {
 			stage,
@@ -268,7 +277,9 @@ describe('saving over an Assignment carrying a Note', () => {
 	it('is refused, naming the Note and its Match, and stores and announces nothing', async () => {
 		const { stage, noted, replacement } = await stageNotedSlot();
 
-		await expect(featureMatchAssignmentModule().save(stage.eventId, replacement, ORIGIN)).rejects.toMatchObject({
+		await expect(
+			featureMatchAssignmentModule().save(stage.eventId, replacement, ORIGIN),
+		).rejects.toMatchObject({
 			statusCode: 409,
 			data: {
 				code: 'feature-match-note-discard-required',
@@ -281,7 +292,9 @@ describe('saving over an Assignment carrying a Note', () => {
 			},
 		});
 
-		expect(await featureMatchAssignmentModule().listByRound(stage.eventId, stage.roundId)).toMatchObject({
+		expect(
+			await featureMatchAssignmentModule().listByRound(stage.eventId, stage.roundId),
+		).toMatchObject({
 			featureMatchAssignments: [
 				{ id: noted.id, matchId: stage.matchM, note: 'Protect direct saves too' },
 			],
@@ -292,10 +305,14 @@ describe('saving over an Assignment carrying a Note', () => {
 	it('replaces it with an Assignment holding no Note, once exactly the version reviewed is confirmed', async () => {
 		const { stage, noted, replacement, reviewed } = await stageNotedSlot();
 
-		const saved = await featureMatchAssignmentModule().save(stage.eventId, {
-			...replacement,
-			confirmedNoteDiscards: [reviewed],
-		}, ORIGIN);
+		const saved = await featureMatchAssignmentModule().save(
+			stage.eventId,
+			{
+				...replacement,
+				confirmedNoteDiscards: [reviewed],
+			},
+			ORIGIN,
+		);
 
 		expect(saved).toMatchObject({ slotId: stage.slot1, matchId: stage.matchN, note: null });
 		expect(publishMessage.mock.calls).toEqual([
@@ -306,17 +323,24 @@ describe('saving over an Assignment carrying a Note', () => {
 
 	it('answers a confirmation of an earlier version with the Note as it now stands, announcing nothing', async () => {
 		const { stage, noted, replacement, reviewed } = await stageNotedSlot();
-		await db.update(schema.featureMatchAssignments)
+		await db
+			.update(schema.featureMatchAssignments)
 			.set({
 				note: 'Edited since',
 				updatedAt: new Date(reviewed.updatedAt.getTime() + 1000),
 			})
 			.where(eq(schema.featureMatchAssignments.id, noted.id));
 
-		await expect(featureMatchAssignmentModule().save(stage.eventId, {
-			...replacement,
-			confirmedNoteDiscards: [reviewed],
-		}, ORIGIN)).rejects.toMatchObject({
+		await expect(
+			featureMatchAssignmentModule().save(
+				stage.eventId,
+				{
+					...replacement,
+					confirmedNoteDiscards: [reviewed],
+				},
+				ORIGIN,
+			),
+		).rejects.toMatchObject({
 			statusCode: 409,
 			data: {
 				code: 'feature-match-note-discard-required',

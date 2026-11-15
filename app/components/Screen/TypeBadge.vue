@@ -7,11 +7,7 @@ defineProps<{
 </script>
 
 <template>
-	<UBadge
-		size="xs"
-		:color="displayType === 'control' ? 'info' : 'neutral'"
-		variant="subtle"
-	>
+	<UBadge size="xs" :color="displayType === 'control' ? 'info' : 'neutral'" variant="subtle">
 		<UIcon
 			:name="displayType === 'control' ? 'i-lucide-sliders-horizontal' : 'i-lucide-monitor'"
 			class="size-3 mr-1"

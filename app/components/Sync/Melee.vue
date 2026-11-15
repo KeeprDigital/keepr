@@ -12,7 +12,8 @@ const phaseStore = usePhaseStore();
 const overlay = useOverlay();
 const { reportMeleeOperation } = useMeleeOperationFeedback();
 
-const { event, eventId, hasLastError, isSetupComplete, isAnySyncRunning, statusDescription } = useMeleeSyncOverview();
+const { event, eventId, hasLastError, isSetupComplete, isAnySyncRunning, statusDescription } =
+	useMeleeSyncOverview();
 
 const selectedSpecificRoundId = ref<number | undefined>();
 const {
@@ -48,13 +49,13 @@ const { initialLoading, initialError, retry } = useEventPageLoading([
 		consumes: 'phases',
 		isLoaded: () => phaseStore.isLoaded,
 		isLoading: () => phaseStore.loading,
-		load: id => phaseStore.loadPhasesByEventId(id, { failure: 'raise' }),
+		load: (id) => phaseStore.loadPhasesByEventId(id, { failure: 'raise' }),
 	},
 	{
 		consumes: 'rounds',
 		isLoaded: () => roundStore.isLoaded,
 		isLoading: () => roundStore.loading,
-		load: id => roundStore.loadRoundsByEventId(id, { failure: 'raise' }),
+		load: (id) => roundStore.loadRoundsByEventId(id, { failure: 'raise' }),
 	},
 ]);
 
@@ -140,7 +141,9 @@ const activeOperation = computed<null | { title: string; description: string }>(
 });
 
 const includeDeckListsInUpdate = ref(false);
-const refreshRoundDisabled = computed(() => !selectedSpecificRoundId.value || isAnySyncRunning.value);
+const refreshRoundDisabled = computed(
+	() => !selectedSpecificRoundId.value || isAnySyncRunning.value,
+);
 
 const freshnessItems = computed(() => {
 	if (!event.value) {
@@ -204,51 +207,49 @@ const roundColumns: TableColumn<RoundRow>[] = [
 ];
 
 const specificRoundOptions = computed(() =>
-	roundRows.value.map(row => ({
+	roundRows.value.map((row) => ({
 		label: row.name,
 		value: row.id,
 	})),
 );
 
-watch(specificRoundOptions, (options) => {
-	const hasSelection = options.some(option => option.value === selectedSpecificRoundId.value);
-	if (hasSelection)
-		return;
+watch(
+	specificRoundOptions,
+	(options) => {
+		const hasSelection = options.some((option) => option.value === selectedSpecificRoundId.value);
+		if (hasSelection) return;
 
-	selectedSpecificRoundId.value = options[0]?.value;
-}, { immediate: true });
+		selectedSpecificRoundId.value = options[0]?.value;
+	},
+	{ immediate: true },
+);
 
-const selectedRoundLabel = computed(() =>
-	specificRoundOptions.value.find(option => option.value === selectedSpecificRoundId.value)?.label ?? 'round',
+const selectedRoundLabel = computed(
+	() =>
+		specificRoundOptions.value.find((option) => option.value === selectedSpecificRoundId.value)
+			?.label ?? 'round',
 );
 
 function operationAlertColor(status: 'success' | 'warning' | 'error') {
-	return status === 'success'
-		? 'success'
-		: status === 'warning'
-			? 'warning'
-			: 'error';
+	return status === 'success' ? 'success' : status === 'warning' ? 'warning' : 'error';
 }
 
 function operationAlertIcon(status: 'success' | 'warning' | 'error') {
-	if (status === 'success')
-		return 'i-lucide-check-circle-2';
-	if (status === 'warning')
-		return 'i-lucide-refresh-cw-off';
+	if (status === 'success') return 'i-lucide-check-circle-2';
+	if (status === 'warning') return 'i-lucide-refresh-cw-off';
 	return 'i-lucide-circle-alert';
 }
 
 useEnterToSubmit(resolveFirstSearchResult, {
 	disabled: () =>
-		!resolveModalOpen.value
-		|| resolveSearchLoading.value
-		|| resolvingScryfallId.value !== null
-		|| !firstResolveSearchResult.value,
+		!resolveModalOpen.value ||
+		resolveSearchLoading.value ||
+		resolvingScryfallId.value !== null ||
+		!firstResolveSearchResult.value,
 });
 
 async function runStoreAction(action: () => Promise<unknown>) {
-	if (isAnySyncRunning.value)
-		return;
+	if (isAnySyncRunning.value) return;
 
 	await reportMeleeOperation(action, {
 		onSuccess: async () => {
@@ -277,8 +278,7 @@ async function confirmAndRun(
 		iconColor: options.destructive ? 'text-error' : 'text-primary',
 	}).result;
 
-	if (!confirmed)
-		return;
+	if (!confirmed) return;
 
 	await runStoreAction(action);
 }
@@ -302,8 +302,7 @@ async function handleRefreshDecklists() {
 }
 
 async function handleRefreshRound() {
-	if (!selectedSpecificRoundId.value)
-		return;
+	if (!selectedSpecificRoundId.value) return;
 
 	const roundLabel = selectedRoundLabel.value;
 	await confirmAndRun(
@@ -329,18 +328,16 @@ async function handleInitialSetup() {
 }
 
 async function handleUpdateFromMelee() {
-	await runStoreAction(() => meleeStore.updateFromMelee({ includeDeckLists: includeDeckListsInUpdate.value }));
+	await runStoreAction(() =>
+		meleeStore.updateFromMelee({ includeDeckLists: includeDeckListsInUpdate.value }),
+	);
 }
 </script>
 
 <template>
 	<NuxtLayout name="default">
 		<template #actions>
-			<UButton
-				color="neutral"
-				variant="ghost"
-				:to="`/event/${eventId}/config/integrations`"
-			>
+			<UButton color="neutral" variant="ghost" :to="`/event/${eventId}/config/integrations`">
 				Manage Integration
 			</UButton>
 		</template>
@@ -349,11 +346,7 @@ async function handleUpdateFromMelee() {
 			<UDashboardToolbar>
 				<template #left>
 					<div class="flex items-center gap-3">
-						<UBadge
-							:color="connectionBadge.color"
-							variant="subtle"
-							size="sm"
-						>
+						<UBadge :color="connectionBadge.color" variant="subtle" size="sm">
 							{{ connectionBadge.label }}
 						</UBadge>
 						<span class="text-sm text-muted">
@@ -465,7 +458,8 @@ async function handleUpdateFromMelee() {
 					<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 						<div class="flex flex-col gap-2">
 							<p class="text-sm text-muted">
-								Refresh players, current standings, round results, and import the next unsynced round when available.
+								Refresh players, current standings, round results, and import the next unsynced
+								round when available.
 							</p>
 							<UCheckbox
 								v-model="includeDeckListsInUpdate"
@@ -495,21 +489,24 @@ async function handleUpdateFromMelee() {
 					</template>
 					<UTable :data="roundRows" :columns="roundColumns">
 						<template #syncState-cell="{ row }">
-							<UBadge variant="subtle" :color="row.original.lastSyncedAt ? 'success' : 'neutral'" size="sm">
+							<UBadge
+								variant="subtle"
+								:color="row.original.lastSyncedAt ? 'success' : 'neutral'"
+								size="sm"
+							>
 								{{ row.original.syncState }}
 							</UBadge>
 						</template>
 						<template #lastSyncedAt-cell="{ row }">
 							<div class="flex items-center gap-2">
 								<span class="text-sm" :class="{ 'text-muted': !row.original.lastSyncedAt }">
-									{{ row.original.lastSyncedAt ? formatSyncTimestamp(row.original.lastSyncedAt) : 'Pending sync' }}
+									{{
+										row.original.lastSyncedAt
+											? formatSyncTimestamp(row.original.lastSyncedAt)
+											: 'Pending sync'
+									}}
 								</span>
-								<UBadge
-									v-if="row.original.isNext"
-									variant="soft"
-									color="primary"
-									size="sm"
-								>
+								<UBadge v-if="row.original.isNext" variant="soft" color="primary" size="sm">
 									Next
 								</UBadge>
 							</div>
@@ -549,11 +546,10 @@ async function handleUpdateFromMelee() {
 					<div class="divide-y divide-default">
 						<div class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
 							<div>
-								<h3 class="font-medium text-sm">
-									Refresh Players
-								</h3>
+								<h3 class="font-medium text-sm">Refresh Players</h3>
 								<p class="text-sm text-muted">
-									Re-fetch player records and standings from Melee.gg without changing deck lists or matches.
+									Re-fetch player records and standings from Melee.gg without changing deck lists or
+									matches.
 								</p>
 							</div>
 							<UButton
@@ -569,9 +565,7 @@ async function handleUpdateFromMelee() {
 
 						<div class="flex items-start justify-between gap-4 py-3 first:pt-0 last:pb-0">
 							<div>
-								<h3 class="font-medium text-sm">
-									Refresh Deck Lists
-								</h3>
+								<h3 class="font-medium text-sm">Refresh Deck Lists</h3>
 								<p class="text-sm text-muted">
 									Re-fetch deck lists and card data for players already imported into the event.
 								</p>
@@ -587,13 +581,14 @@ async function handleUpdateFromMelee() {
 							</UButton>
 						</div>
 
-						<div class="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
+						<div
+							class="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between"
+						>
 							<div>
-								<h3 class="font-medium text-sm">
-									Refresh Round Matches
-								</h3>
+								<h3 class="font-medium text-sm">Refresh Round Matches</h3>
 								<p class="text-sm text-muted">
-									Re-sync matches for the selected round. Use this when a round falls out of step with Melee.gg.
+									Re-sync matches for the selected round. Use this when a round falls out of step
+									with Melee.gg.
 								</p>
 							</div>
 							<div class="flex items-center gap-2 shrink-0">
@@ -638,10 +633,14 @@ async function handleUpdateFromMelee() {
 
 					<div class="flex flex-col gap-4">
 						<p class="text-sm text-muted">
-							Fix any deck entries that could not be matched during sync. Saved resolutions apply only to this event and will be reused on the next deck refresh.
+							Fix any deck entries that could not be matched during sync. Saved resolutions apply
+							only to this event and will be reused on the next deck refresh.
 						</p>
 
-						<div v-if="unresolvedDeckCardsLoading" class="min-h-24 flex items-center justify-center">
+						<div
+							v-if="unresolvedDeckCardsLoading"
+							class="min-h-24 flex items-center justify-center"
+						>
 							<UILoadingSpinner size="sm" label="Loading unresolved deck cards..." />
 						</div>
 
@@ -653,9 +652,7 @@ async function handleUpdateFromMelee() {
 								title="Unresolved cards could not be loaded"
 								:description="unresolvedDeckCardsError"
 							/>
-							<UButton variant="outline" @click="loadUnresolvedDeckCards">
-								Retry
-							</UButton>
+							<UButton variant="outline" @click="loadUnresolvedDeckCards"> Retry </UButton>
 						</div>
 
 						<UIEmptyState
@@ -678,29 +675,33 @@ async function handleUpdateFromMelee() {
 											{{ group.originalName }}
 										</h3>
 										<UBadge variant="soft" color="neutral" size="sm">
-											{{ group.entryType === 'companion' ? 'Companion' : `${group.entryCount} matching entries` }}
+											{{
+												group.entryType === 'companion'
+													? 'Companion'
+													: `${group.entryCount} matching entries`
+											}}
 										</UBadge>
-										<UBadge
-											v-if="group.setCode"
-											variant="outline"
-											color="neutral"
-											size="sm"
-										>
+										<UBadge v-if="group.setCode" variant="outline" color="neutral" size="sm">
 											{{ group.setCode.toUpperCase() }}
 										</UBadge>
 									</div>
 									<p class="text-sm text-muted">
-										{{ group.affectedPlayerCount }} player{{ group.affectedPlayerCount === 1 ? '' : 's' }} · {{ group.affectedDeckCount }} deck{{ group.affectedDeckCount === 1 ? '' : 's' }} affected
+										{{ group.affectedPlayerCount }} player{{
+											group.affectedPlayerCount === 1 ? '' : 's'
+										}}
+										· {{ group.affectedDeckCount }} deck{{
+											group.affectedDeckCount === 1 ? '' : 's'
+										}}
+										affected
 									</p>
 									<p class="text-xs text-muted truncate">
-										{{ group.entries[0]?.playerName }} · {{ group.entries[0]?.deckName }}<span v-if="group.entries[0]?.phaseName"> · {{ group.entries[0]?.phaseName }}</span>
+										{{ group.entries[0]?.playerName }} · {{ group.entries[0]?.deckName
+										}}<span v-if="group.entries[0]?.phaseName">
+											· {{ group.entries[0]?.phaseName }}</span
+										>
 									</p>
 								</div>
-								<UButton
-									variant="outline"
-									class="shrink-0"
-									@click="openResolveModal(group.key)"
-								>
+								<UButton variant="outline" class="shrink-0" @click="openResolveModal(group.key)">
 									Review Group
 								</UButton>
 							</div>
@@ -718,11 +719,10 @@ async function handleUpdateFromMelee() {
 
 					<div class="flex items-start justify-between gap-4">
 						<div>
-							<h3 class="font-medium text-sm">
-								Reset Event Structure
-							</h3>
+							<h3 class="font-medium text-sm">Reset Event Structure</h3>
 							<p class="text-sm text-muted">
-								Re-fetches the event structure from Melee.gg and replaces the local phase and round layout. Any local edits to rounds will be lost.
+								Re-fetches the event structure from Melee.gg and replaces the local phase and round
+								layout. Any local edits to rounds will be lost.
 							</p>
 						</div>
 						<UButton
@@ -744,21 +744,26 @@ async function handleUpdateFromMelee() {
 			:close="{ onClick: closeResolveModal }"
 			:ui="{ content: 'sm:max-w-6xl' }"
 		>
-			<template #title>
-				Resolve Deck Cards
-			</template>
+			<template #title> Resolve Deck Cards </template>
 			<template #description>
-				Review unresolved imports as a queue. Resolving one group will fix every matching unresolved entry for this event and save the correction for the next deck sync.
+				Review unresolved imports as a queue. Resolving one group will fix every matching unresolved
+				entry for this event and save the correction for the next deck sync.
 			</template>
 			<template #body>
-				<div v-if="unresolvedDeckCardGroups.length > 0" class="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+				<div
+					v-if="unresolvedDeckCardGroups.length > 0"
+					class="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]"
+				>
 					<div class="flex flex-col gap-3">
 						<div class="rounded-lg border border-default p-3">
 							<p class="text-sm font-medium">
 								{{ activeUnresolvedGroupIndex + 1 }} / {{ unresolvedDeckCardGroups.length }} groups
 							</p>
 							<p class="text-xs text-muted mt-1">
-								{{ unresolvedDeckCards.length }} unresolved entr{{ unresolvedDeckCards.length === 1 ? 'y' : 'ies' }} remaining
+								{{ unresolvedDeckCards.length }} unresolved entr{{
+									unresolvedDeckCards.length === 1 ? 'y' : 'ies'
+								}}
+								remaining
 							</p>
 						</div>
 
@@ -768,7 +773,9 @@ async function handleUpdateFromMelee() {
 								:key="group.key"
 								type="button"
 								class="w-full p-3 text-left transition-colors"
-								:class="group.key === activeUnresolvedGroup?.key ? 'bg-primary/8' : 'hover:bg-elevated/50'"
+								:class="
+									group.key === activeUnresolvedGroup?.key ? 'bg-primary/8' : 'hover:bg-elevated/50'
+								"
 								:disabled="resolvingScryfallId !== null"
 								@click="selectedUnresolvedGroupKey = group.key"
 							>
@@ -778,7 +785,10 @@ async function handleUpdateFromMelee() {
 											{{ group.originalName }}
 										</p>
 										<p class="text-xs text-muted truncate mt-1">
-											{{ group.affectedDeckCount }} deck{{ group.affectedDeckCount === 1 ? '' : 's' }} · {{ group.entryCount }} entr{{ group.entryCount === 1 ? 'y' : 'ies' }}
+											{{ group.affectedDeckCount }} deck{{
+												group.affectedDeckCount === 1 ? '' : 's'
+											}}
+											· {{ group.entryCount }} entr{{ group.entryCount === 1 ? 'y' : 'ies' }}
 										</p>
 									</div>
 									<UBadge variant="soft" color="neutral" size="sm">
@@ -796,7 +806,11 @@ async function handleUpdateFromMelee() {
 									{{ activeUnresolvedGroup.originalName }}
 								</p>
 								<UBadge variant="soft" color="neutral" size="sm">
-									{{ activeUnresolvedGroup.entryType === 'companion' ? 'Companion' : `${activeUnresolvedGroup.entryCount} matching entries` }}
+									{{
+										activeUnresolvedGroup.entryType === 'companion'
+											? 'Companion'
+											: `${activeUnresolvedGroup.entryCount} matching entries`
+									}}
 								</UBadge>
 								<UBadge
 									v-if="activeUnresolvedGroup.setCode"
@@ -808,15 +822,19 @@ async function handleUpdateFromMelee() {
 								</UBadge>
 							</div>
 							<p class="text-sm text-muted mt-2">
-								Resolving this group will fix {{ activeUnresolvedGroup.entryCount }} matching entr{{ activeUnresolvedGroup.entryCount === 1 ? 'y' : 'ies' }} across {{ activeUnresolvedGroup.affectedPlayerCount }} player{{ activeUnresolvedGroup.affectedPlayerCount === 1 ? '' : 's' }} and save an event-specific override.
+								Resolving this group will fix {{ activeUnresolvedGroup.entryCount }} matching entr{{
+									activeUnresolvedGroup.entryCount === 1 ? 'y' : 'ies'
+								}}
+								across {{ activeUnresolvedGroup.affectedPlayerCount }} player{{
+									activeUnresolvedGroup.affectedPlayerCount === 1 ? '' : 's'
+								}}
+								and save an event-specific override.
 							</p>
 						</div>
 
 						<div class="rounded-lg border border-default">
 							<div class="border-b border-default px-4 py-3">
-								<p class="text-sm font-medium">
-									Affected Decks
-								</p>
+								<p class="text-sm font-medium">Affected Decks</p>
 							</div>
 							<div class="max-h-52 divide-y divide-default overflow-y-auto">
 								<div
@@ -853,7 +871,10 @@ async function handleUpdateFromMelee() {
 							:description="resolveSearchError"
 						/>
 
-						<div v-else-if="resolveSearchResults.length > 0" class="divide-y divide-default rounded-lg border border-default">
+						<div
+							v-else-if="resolveSearchResults.length > 0"
+							class="divide-y divide-default rounded-lg border border-default"
+						>
 							<button
 								v-for="card in resolveSearchResults"
 								:key="card.id"
@@ -867,13 +888,14 @@ async function handleUpdateFromMelee() {
 									:src="getResolveSearchImageUrl(card)!"
 									:alt="card.name"
 									class="mtg-card w-9 shrink-0 object-cover border border-default"
-								>
+								/>
 								<div class="min-w-0 flex-1">
 									<p class="font-medium text-sm truncate">
 										{{ card.name }}
 									</p>
 									<p class="text-xs text-muted">
-										{{ card.set.toUpperCase() }}<span v-if="card.set_name"> · {{ card.set_name }}</span>
+										{{ card.set.toUpperCase()
+										}}<span v-if="card.set_name"> · {{ card.set_name }}</span>
 									</p>
 								</div>
 								<UIcon
@@ -925,15 +947,17 @@ async function handleUpdateFromMelee() {
 						<UButton
 							color="neutral"
 							variant="ghost"
-							:disabled="activeUnresolvedGroupIndex < 0 || activeUnresolvedGroupIndex >= unresolvedDeckCardGroups.length - 1 || resolvingScryfallId !== null"
+							:disabled="
+								activeUnresolvedGroupIndex < 0 ||
+								activeUnresolvedGroupIndex >= unresolvedDeckCardGroups.length - 1 ||
+								resolvingScryfallId !== null
+							"
 							@click="goToNextUnresolvedGroup"
 						>
 							Skip
 						</UButton>
 					</div>
-					<UButton color="neutral" variant="ghost" @click="closeResolveModal">
-						Close
-					</UButton>
+					<UButton color="neutral" variant="ghost" @click="closeResolveModal"> Close </UButton>
 				</div>
 			</template>
 		</UModal>

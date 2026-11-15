@@ -16,8 +16,7 @@ describe('misc API endpoints', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	// ── /api/events/[id]/standings ──

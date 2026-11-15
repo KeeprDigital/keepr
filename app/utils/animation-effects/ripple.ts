@@ -60,21 +60,24 @@ export default function createRippleEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'ripple'>,
 ): AnimationEffectInstance<AnimationEffectParams<'ripple'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: RIPPLE_FRAGMENT_SHADER,
-		uniforms: current => ({
-			highlightColor: current.highlightColor,
-			lowlightColor: current.lowlightColor,
-			backgroundColor: current.backgroundColor,
-			size: current.size,
-			swingSpeed: current.swingSpeed,
-			drift: current.drift,
-			centerX: current.centerX,
-			centerY: current.centerY,
-			frequency: current.frequency,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: RIPPLE_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				highlightColor: current.highlightColor,
+				lowlightColor: current.lowlightColor,
+				backgroundColor: current.backgroundColor,
+				size: current.size,
+				swingSpeed: current.swingSpeed,
+				drift: current.drift,
+				centerX: current.centerX,
+				centerY: current.centerY,
+				frequency: current.frequency,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

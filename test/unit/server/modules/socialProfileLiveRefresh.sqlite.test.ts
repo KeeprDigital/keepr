@@ -9,7 +9,10 @@ import { MAX_SOCIAL_PROFILE_HANDLE_LENGTH } from '~~/shared/socialProfiles';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
 import { profileDeclaration } from '~~/test/helpers/broadcastGraphicsLiveState';
-import { createCommandIdSequence, seedBroadcastGraphicsScreen } from '~~/test/helpers/broadcastGraphicsScreen';
+import {
+	createCommandIdSequence,
+	seedBroadcastGraphicsScreen,
+} from '~~/test/helpers/broadcastGraphicsScreen';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // A Talent or Event write reaching the Broadcast Graphics Live Session: the refresh
@@ -24,7 +27,8 @@ vi.useFakeTimers({
 });
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; data?: unknown }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -34,10 +38,8 @@ const ably = createAblyRestFake();
 vi.doMock('ably', () => ably.module);
 vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
 
-const {
-	broadcastGraphicsLiveSessionModule,
-	refreshBroadcastGraphicsBindings,
-} = await import('~~/server/modules/broadcast-graphics-live-session');
+const { broadcastGraphicsLiveSessionModule, refreshBroadcastGraphicsBindings } =
+	await import('~~/server/modules/broadcast-graphics-live-session');
 const { talentService } = await import('~~/server/services/talent');
 const { eventService } = await import('~~/server/services/event');
 
@@ -53,13 +55,20 @@ function noLibrary(): never {
 type Policy = 'live' | 'staged';
 
 /** A Broadcast Graphic projecting one Talent's Social Profiles, picked or derived from the Event. */
-function profileGraphic(id: string, policy?: Policy, relation?: 'commentator1' | 'commentator2'): BroadcastGraphicConfig {
-	const { graphic } = addGraphicItem({ id, name: id, items: [] }, {
-		kind: 'group',
-		id: profileDeclaration.presentationGroupId,
-		canvasWidth: 1920,
-		canvasHeight: 1080,
-	});
+function profileGraphic(
+	id: string,
+	policy?: Policy,
+	relation?: 'commentator1' | 'commentator2',
+): BroadcastGraphicConfig {
+	const { graphic } = addGraphicItem(
+		{ id, name: id, items: [] },
+		{
+			kind: 'group',
+			id: profileDeclaration.presentationGroupId,
+			canvasWidth: 1920,
+			canvasHeight: 1080,
+		},
+	);
 	return {
 		...graphic,
 		sources: relation
@@ -72,15 +81,11 @@ function profileGraphic(id: string, policy?: Policy, relation?: 'commentator1' |
 						from: { sourceKey: 'event', relation },
 					},
 				]
-			: [
-					{ key: 'talent', label: 'Talent', kind: 'talent' },
-				],
+			: [{ key: 'talent', label: 'Talent', kind: 'talent' }],
 		socialProfileProjections: [
 			{
 				...profileDeclaration,
-				...(policy
-					? { updatePolicy: policy }
-					: {}),
+				...(policy ? { updatePolicy: policy } : {}),
 			},
 		],
 	};
@@ -88,7 +93,11 @@ function profileGraphic(id: string, policy?: Policy, relation?: 'commentator1' |
 
 const LOWER = 'lower';
 
-interface Stage { eventId: number; screenId: number; sessionId: number }
+interface Stage {
+	eventId: number;
+	screenId: number;
+	sessionId: number;
+}
 
 async function stage(graphics: BroadcastGraphicConfig[]): Promise<Stage> {
 	const seeded = await seedBroadcastGraphicsScreen(db, {
@@ -98,7 +107,11 @@ async function stage(graphics: BroadcastGraphicConfig[]): Promise<Stage> {
 	return { eventId: seeded.eventId, screenId: seeded.screenId, sessionId: session.id };
 }
 
-async function send(on: Stage, type: BroadcastGraphicsCommand['type'], payload: Record<string, unknown> = {}) {
+async function send(
+	on: Stage,
+	type: BroadcastGraphicsCommand['type'],
+	payload: Record<string, unknown> = {},
+) {
 	return await liveSession.applyCommand({
 		...on,
 		command: {
@@ -123,9 +136,10 @@ async function storedProjection(on: Stage, graphicId = LOWER) {
 
 /** The commands the Event's channel was told were applied. */
 function applied({ eventId }: Stage) {
-	return ably.on(eventRealtimeChannel(eventId))
-		.filter(message => message.type === 'broadcastGraphicsLiveSession:commandApplied')
-		.map(message => message.payload);
+	return ably
+		.on(eventRealtimeChannel(eventId))
+		.filter((message) => message.type === 'broadcastGraphicsLiveSession:commandApplied')
+		.map((message) => message.payload);
 }
 
 function advance(milliseconds: number) {
@@ -134,9 +148,7 @@ function advance(milliseconds: number) {
 
 /** A Talent of the Event, on air on `LOWER` through the operator's own selection. */
 async function onAirWithTalent(policy: Policy | undefined, socialProfiles: Record<string, string>) {
-	const on = await stage([
-		profileGraphic(LOWER, policy),
-	]);
+	const on = await stage([profileGraphic(LOWER, policy)]);
 	const talent = await talentService().create(on.eventId, { name: 'Avery Quinn', socialProfiles });
 	await send(on, 'Select Source', { sourceKey: 'talent', selectionId: talent.id });
 	await send(on, 'Take');
@@ -159,14 +171,18 @@ afterAll(async () => {
 });
 
 describe('a Talent write under a live Social Profile Projection on air', () => {
-	it('stores what program now shows from the Talent\'s row, and announces it with no origin', async () => {
+	it("stores what program now shows from the Talent's row, and announces it with no origin", async () => {
 		const { on, talent } = await onAirWithTalent('live', { twitch: 'BeforeLive', x: 'OnAirX' });
 		await send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'x' });
 		const before = await stored(on);
 		ably.reset();
 		advance(1_000);
 
-		await writeProfiles(on, talent.id, { twitch: 'BeforeLive', youtube: 'NewlyAdded', x: 'CorrectedX' });
+		await writeProfiles(on, talent.id, {
+			twitch: 'BeforeLive',
+			youtube: 'NewlyAdded',
+			x: 'CorrectedX',
+		});
 
 		const after = await stored(on);
 		const projection = after.currentState.socialProfileProjections![LOWER]!.profile!;
@@ -232,9 +248,7 @@ describe('a Talent write under a live Social Profile Projection on air', () => {
 		expect(session.sequence).toBeGreaterThan(taken.sequence);
 		expect(session.recoveryFault).toBeNull();
 		expect(projection).toMatchObject({
-			acceptedProfiles: [
-				{ network: 'youtube', handle: 'RaceWinner' },
-			],
+			acceptedProfiles: [{ network: 'youtube', handle: 'RaceWinner' }],
 			currentNetwork: 'youtube',
 		});
 		expect(projection.manualNetwork).toBeUndefined();
@@ -242,7 +256,11 @@ describe('a Talent write under a live Social Profile Projection on air', () => {
 });
 
 describe('a change of Talent the Live Session does not apply by itself', () => {
-	it.each<{ change: string; announces: string[]; run: (on: Stage, talentId: number) => Promise<unknown> }>([
+	it.each<{
+		change: string;
+		announces: string[];
+		run: (on: Stage, talentId: number) => Promise<unknown>;
+	}>([
 		{
 			change: 'a write to its Talent',
 			announces: [],
@@ -259,40 +277,47 @@ describe('a change of Talent the Live Session does not apply by itself', () => {
 				await send(on, 'Select Source', { sourceKey: 'talent', selectionId: other.id });
 			},
 		},
-	])('keeps a staged projection as accepted, out of the picker, through $change until Update Graphic', async ({ announces, run }) => {
-		const { on, talent } = await onAirWithTalent('staged', { twitch: 'AcceptedLive', x: 'AcceptedX' });
-		await send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'x' });
-		const before = await storedProjection(on);
-		ably.reset();
+	])(
+		'keeps a staged projection as accepted, out of the picker, through $change until Update Graphic',
+		async ({ announces, run }) => {
+			const { on, talent } = await onAirWithTalent('staged', {
+				twitch: 'AcceptedLive',
+				x: 'AcceptedX',
+			});
+			await send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'x' });
+			const before = await storedProjection(on);
+			ably.reset();
 
-		await run(on, talent.id);
+			await run(on, talent.id);
 
-		expect(await storedProjection(on)).toEqual(before);
-		expect(applied(on).map(message => message.commandType)).toEqual(announces);
-		await expect(send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'youtube' }))
-			.rejects
-			.toMatchObject({
+			expect(await storedProjection(on)).toEqual(before);
+			expect(applied(on).map((message) => message.commandType)).toEqual(announces);
+			await expect(
+				send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'youtube' }),
+			).rejects.toMatchObject({
 				statusCode: 409,
 				data: { code: 'social-profile-unavailable' },
 			});
 
-		await send(on, 'Update Graphic', {
-			basedOnAcceptedRevision: (await stored(on)).currentState.inputs[LOWER]!.acceptedRevision,
-		});
+			await send(on, 'Update Graphic', {
+				basedOnAcceptedRevision: (await stored(on)).currentState.inputs[LOWER]!.acceptedRevision,
+			});
 
-		const accepted = (await storedProjection(on))!;
-		expect(accepted).toMatchObject({
-			acceptedProfiles: [
-				{ network: 'youtube', handle: 'PendingOnly' },
-			],
-			currentNetwork: 'youtube',
-		});
-		expect(accepted.manualNetwork).toBeUndefined();
-		expect(accepted.transitionAnchor).toBeUndefined();
-	});
+			const accepted = (await storedProjection(on))!;
+			expect(accepted).toMatchObject({
+				acceptedProfiles: [{ network: 'youtube', handle: 'PendingOnly' }],
+				currentNetwork: 'youtube',
+			});
+			expect(accepted.manualNetwork).toBeUndefined();
+			expect(accepted.transitionAnchor).toBeUndefined();
+		},
+	);
 
-	it('leaves a graphic that is off air as it was, and its next Take accepts the Talent\'s row', async () => {
-		const { on, talent } = await onAirWithTalent('live', { twitch: 'BeforeTake', x: 'BeforeManual' });
+	it("leaves a graphic that is off air as it was, and its next Take accepts the Talent's row", async () => {
+		const { on, talent } = await onAirWithTalent('live', {
+			twitch: 'BeforeTake',
+			x: 'BeforeManual',
+		});
 		await send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'x' });
 		await send(on, 'Out', { cut: true });
 		const before = await stored(on);
@@ -308,9 +333,7 @@ describe('a change of Talent the Live Session does not apply by itself', () => {
 		const retaken = (await storedProjection(on))!;
 		expect(retaken).toMatchObject({
 			talent: { id: talent.id },
-			acceptedProfiles: [
-				{ network: 'youtube', handle: 'LatestTake' },
-			],
+			acceptedProfiles: [{ network: 'youtube', handle: 'LatestTake' }],
 			currentNetwork: 'youtube',
 		});
 		expect(retaken.manualNetwork).toBeUndefined();
@@ -332,8 +355,14 @@ describe('an Event write naming its Talents', () => {
 			name: 'Replacement Caster',
 			socialProfiles: { youtube: 'ReplacementLive' },
 		});
-		const silent = await talentService().create(on.eventId, { name: 'Casey Park', socialProfiles: {} });
-		await eventService().update(on.eventId, { commentator1TalentId: first.id, commentator2TalentId: silent.id });
+		const silent = await talentService().create(on.eventId, {
+			name: 'Casey Park',
+			socialProfiles: {},
+		});
+		await eventService().update(on.eventId, {
+			commentator1TalentId: first.id,
+			commentator2TalentId: silent.id,
+		});
 		await send(on, 'Take');
 		await send(on, 'Take', { graphicId: SECOND });
 		await send(on, 'Select Social Profile', { projectionKey: 'profile', network: 'x' });
@@ -352,19 +381,17 @@ describe('an Event write naming its Talents', () => {
 		const projection = (await storedProjection(on))!;
 		expect(projection).toMatchObject({
 			talent: { id: replacement.id, name: 'Replacement Caster' },
-			acceptedProfiles: [
-				{ network: 'youtube', handle: 'ReplacementLive' },
-			],
+			acceptedProfiles: [{ network: 'youtube', handle: 'ReplacementLive' }],
 			currentNetwork: 'youtube',
 			transitionAnchor: { startedAt: NOW + 1_000 },
 			rotationAnchor: { network: 'youtube', anchoredAt: NOW + 1_000 + TRANSITION_MS },
 		});
 		expect(projection.manualNetwork).toBeUndefined();
-		expect(applied(on).map(message => message.commandType)).toEqual(['Resolve Bindings']);
+		expect(applied(on).map((message) => message.commandType)).toEqual(['Resolve Bindings']);
 	});
 });
 
-describe('a Social Profile command against the Talent\'s stored row', () => {
+describe("a Social Profile command against the Talent's stored row", () => {
 	it.each([
 		{
 			refused: 'a network the Talent has no profile on',
@@ -380,30 +407,32 @@ describe('a Social Profile command against the Talent\'s stored row', () => {
 			statusCode: 404,
 			code: 'unknown-social-profile-projection',
 		},
-	] as const)('refuses $refused as $code, changing and announcing nothing', async ({ type, payload, statusCode, code }) => {
-		const { on } = await onAirWithTalent(undefined, { twitch: 'DrewLive' });
-		const before = await stored(on);
-		ably.reset();
+	] as const)(
+		'refuses $refused as $code, changing and announcing nothing',
+		async ({ type, payload, statusCode, code }) => {
+			const { on } = await onAirWithTalent(undefined, { twitch: 'DrewLive' });
+			const before = await stored(on);
+			ably.reset();
 
-		await expect(send(on, type, payload)).rejects.toMatchObject({
-			statusCode,
-			data: { code },
-		});
+			await expect(send(on, type, payload)).rejects.toMatchObject({
+				statusCode,
+				data: { code },
+			});
 
-		expect(await stored(on)).toEqual(before);
-		expect(applied(on)).toEqual([]);
-	});
+			expect(await stored(on)).toEqual(before);
+			expect(applied(on)).toEqual([]);
+		},
+	);
 
 	// A row written before the handle bound existed; no write could store it now.
 	it('accepts no profile from a stored handle over the bound, leaving the session readable', async () => {
-		const on = await stage([
-			profileGraphic(LOWER),
-		]);
+		const on = await stage([profileGraphic(LOWER)]);
 		const talent = await talentService().create(on.eventId, {
 			name: 'Legacy Long Handle',
 			socialProfiles: { twitch: 'before-migration' },
 		});
-		await db.update(schema.eventTalents)
+		await db
+			.update(schema.eventTalents)
 			.set({
 				twitchHandle: 'a'.repeat(MAX_SOCIAL_PROFILE_HANDLE_LENGTH + 1),
 			})

@@ -49,7 +49,7 @@ export function useGraphicBindingData() {
 	const featureMatchStateStore = useFeatureMatchStateStore();
 
 	function byId<T extends { id: number }>(rows: readonly T[]): Record<number, T> {
-		return Object.fromEntries(rows.map(row => [row.id, row]));
+		return Object.fromEntries(rows.map((row) => [row.id, row]));
 	}
 
 	/**
@@ -66,10 +66,12 @@ export function useGraphicBindingData() {
 	function withLiveSession(
 		slot: FeatureMatchSlotResponse,
 	): GraphicBindingFeatureMatchSlot & { id: number } {
-		const sessionId = featureMatchStateStore.sessionIdBySlotId?.get(slot.id) ?? slot.activeSessionId ?? null;
-		const liveSession = sessionId === null
-			? null
-			: featureMatchStateStore.featureMatchSessions?.get(sessionId) ?? null;
+		const sessionId =
+			featureMatchStateStore.sessionIdBySlotId?.get(slot.id) ?? slot.activeSessionId ?? null;
+		const liveSession =
+			sessionId === null
+				? null
+				: (featureMatchStateStore.featureMatchSessions?.get(sessionId) ?? null);
 		const liveState = featureMatchStateStore.featureMatchStates?.get(slot.id) ?? null;
 		const loaded = slot.activeSession ?? null;
 		const session = liveSession ?? loaded;
@@ -116,15 +118,20 @@ export function useGraphicBindingData() {
 	 * What one picker offers, in the order an operator reads it. A search finds
 	 * a Player by name, Nickname or Bandai member number (ADR-0074).
 	 */
-	function selectionOptions(kind: GraphicSourceSelectionKind, search = ''): { label: string; value: number }[] {
+	function selectionOptions(
+		kind: GraphicSourceSelectionKind,
+		search = '',
+	): { label: string; value: number }[] {
 		const data = dataSet.value;
 
 		switch (kind) {
 			case 'player':
-				return Object.entries(data.players).filter(([, player]) => playerMatchesSearch(player, search)).map(([id, player]) => ({
-					label: playerLabel(player) || `Player ${id}`,
-					value: Number(id),
-				}));
+				return Object.entries(data.players)
+					.filter(([, player]) => playerMatchesSearch(player, search))
+					.map(([id, player]) => ({
+						label: playerLabel(player) || `Player ${id}`,
+						value: Number(id),
+					}));
 			case 'talent':
 				return Object.entries(data.talents).map(([id, talent]) => ({
 					label: talent.name,
@@ -142,18 +149,15 @@ export function useGraphicBindingData() {
 				}));
 			case 'match':
 				return Object.entries(data.matches).map(([id, match]) => ({
-					label: [
-						playerDisplayName(match.player1Data),
-						playerDisplayName(match.player2Data),
-					].filter(Boolean).join(' vs ')
-					|| `Match ${id}`,
+					label:
+						[playerDisplayName(match.player1Data), playerDisplayName(match.player2Data)]
+							.filter(Boolean)
+							.join(' vs ') || `Match ${id}`,
 					value: Number(id),
 				}));
 			case 'feature-match-slot':
 				return Object.entries(data.featureMatchSlots).map(([id, slot]) => ({
-					label: slot.roundName
-						? `Slot ${id} — ${slot.roundName}`
-						: `Slot ${id}`,
+					label: slot.roundName ? `Slot ${id} — ${slot.roundName}` : `Slot ${id}`,
 					value: Number(id),
 				}));
 			case 'archetype':

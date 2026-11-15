@@ -4,9 +4,9 @@ import {
 	graphicAssetRefusalOutcome,
 } from '~~/app/utils/broadcastGraphicsCommandRefusal';
 
-const MISSING_MESSAGE
-	= 'Graphic Asset Reference at graphics.promo.items.sting.asset is missing, '
-		+ 'so this Broadcast Graphic cannot be taken on air';
+const MISSING_MESSAGE =
+	'Graphic Asset Reference at graphics.promo.items.sting.asset is missing, ' +
+	'so this Broadcast Graphic cannot be taken on air';
 
 /**
  * One failed command: the parsed body is on `data`, the transport's line on `message`.
@@ -40,11 +40,15 @@ describe('the domain refusal a failed Broadcast Graphics command carries', () =>
 	});
 
 	it('tells the two Graphic Asset failures apart, because their next moves are opposite', () => {
-		const unavailable = broadcastGraphicsCommandRefusal(failedCommand(refusalBody(
-			'unavailable-asset-content',
-			'Graphic Asset Content at graphics.promo.items.sting.asset is temporarily unavailable, '
-			+ 'so this Broadcast Graphic cannot be taken on air',
-		)));
+		const unavailable = broadcastGraphicsCommandRefusal(
+			failedCommand(
+				refusalBody(
+					'unavailable-asset-content',
+					'Graphic Asset Content at graphics.promo.items.sting.asset is temporarily unavailable, ' +
+						'so this Broadcast Graphic cannot be taken on air',
+				),
+			),
+		);
 
 		expect(unavailable?.code).toBe('unavailable-asset-content');
 	});
@@ -58,9 +62,11 @@ describe('the domain refusal a failed Broadcast Graphics command carries', () =>
 	});
 
 	it('is nothing at all for a code outside the refusal vocabulary', () => {
-		expect(broadcastGraphicsCommandRefusal(
-			failedCommand(refusalBody('not-a-refusal-code', 'Something the client does not know')),
-		)).toBeUndefined();
+		expect(
+			broadcastGraphicsCommandRefusal(
+				failedCommand(refusalBody('not-a-refusal-code', 'Something the client does not know')),
+			),
+		).toBeUndefined();
 	});
 
 	it('classifies the two Graphic Asset refusals once, for every surface that reports one', () => {

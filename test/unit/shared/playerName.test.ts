@@ -1,33 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { playerDisplayName, playerLabel, playerMatchesSearch, playerShownName, unshownPlayerReason } from '~~/shared/utils/playerName';
+import {
+	playerDisplayName,
+	playerLabel,
+	playerMatchesSearch,
+	playerShownName,
+	unshownPlayerReason,
+} from '~~/shared/utils/playerName';
 
-describe('the name that fills a Player\'s name fields', () => {
+describe("the name that fills a Player's name fields", () => {
 	// The operator's name wins; the TCG+ Nickname stands in only while there is none (ADR-0077).
 	it.each([
-		[
-			{ name: 'Big Mom', nickname: 'linlin_88' },
-			'Big Mom',
-		],
-		[
-			{ name: '', nickname: 'linlin_88' },
-			'linlin_88',
-		],
-		[
-			{ name: '   ', nickname: 'linlin_88' },
-			'linlin_88',
-		],
-		[
-			{ name: null, nickname: 'linlin_88' },
-			'linlin_88',
-		],
-		[
-			{ name: 'Ava Reed' },
-			'Ava Reed',
-		],
-		[
-			{ name: '', nickname: null },
-			'',
-		],
+		[{ name: 'Big Mom', nickname: 'linlin_88' }, 'Big Mom'],
+		[{ name: '', nickname: 'linlin_88' }, 'linlin_88'],
+		[{ name: '   ', nickname: 'linlin_88' }, 'linlin_88'],
+		[{ name: null, nickname: 'linlin_88' }, 'linlin_88'],
+		[{ name: 'Ava Reed' }, 'Ava Reed'],
+		[{ name: '', nickname: null }, ''],
 		[null, ''],
 	])('shows %j as %j', (player, shown) => {
 		expect(playerDisplayName(player)).toBe(shown);
@@ -37,18 +25,9 @@ describe('the name that fills a Player\'s name fields', () => {
 describe('how an operator screen labels a Player', () => {
 	// Giving a name never hides the Nickname; a Player without one shows by name (ADR-0077).
 	it.each([
-		[
-			{ name: 'Big Mom', nickname: 'linlin_88' },
-			'linlin_88',
-		],
-		[
-			{ name: 'Big Mom', nickname: '  ' },
-			'Big Mom',
-		],
-		[
-			{ name: 'Ava Reed' },
-			'Ava Reed',
-		],
+		[{ name: 'Big Mom', nickname: 'linlin_88' }, 'linlin_88'],
+		[{ name: 'Big Mom', nickname: '  ' }, 'Big Mom'],
+		[{ name: 'Ava Reed' }, 'Ava Reed'],
 		[null, ''],
 	])('labels %j as %j', (player, shown) => {
 		expect(playerLabel(player)).toBe(shown);
@@ -58,26 +37,10 @@ describe('how an operator screen labels a Player', () => {
 describe('a Player shown by the name a Screen picks', () => {
 	// The one picked shows, and the other stands in when it is blank (ADR-0077).
 	it.each([
-		[
-			'name',
-			{ name: 'Big Mom', nickname: 'linlin_88' },
-			'Big Mom',
-		],
-		[
-			'name',
-			{ name: '', nickname: 'linlin_88' },
-			'linlin_88',
-		],
-		[
-			'nickname',
-			{ name: 'Big Mom', nickname: 'linlin_88' },
-			'linlin_88',
-		],
-		[
-			'nickname',
-			{ name: 'Big Mom', nickname: null },
-			'Big Mom',
-		],
+		['name', { name: 'Big Mom', nickname: 'linlin_88' }, 'Big Mom'],
+		['name', { name: '', nickname: 'linlin_88' }, 'linlin_88'],
+		['nickname', { name: 'Big Mom', nickname: 'linlin_88' }, 'linlin_88'],
+		['nickname', { name: 'Big Mom', nickname: null }, 'Big Mom'],
 	] as const)('by %s, shows %j as %j', (shown, player, name) => {
 		expect(playerShownName(player, shown)).toBe(name);
 	});
@@ -115,26 +78,10 @@ describe('finding a Player in a picker', () => {
 describe('whether a written Player can be shown', () => {
 	// A Player always shows by something: an OP Player by name or Nickname, an MTG one by name (ADR-0074).
 	it.each([
-		[
-			'op',
-			{ name: '', nickname: 'linlin_88' },
-			null,
-		],
-		[
-			'op',
-			{ name: ' ', nickname: ' ' },
-			'A Player needs a name or a Nickname',
-		],
-		[
-			'mtg',
-			{ name: 'Ava Reed', nickname: null },
-			null,
-		],
-		[
-			'mtg',
-			{ name: '', nickname: null },
-			'A Player needs a name',
-		],
+		['op', { name: '', nickname: 'linlin_88' }, null],
+		['op', { name: ' ', nickname: ' ' }, 'A Player needs a name or a Nickname'],
+		['mtg', { name: 'Ava Reed', nickname: null }, null],
+		['mtg', { name: '', nickname: null }, 'A Player needs a name'],
 		[
 			'mtg',
 			{ name: 'Ava Reed', nickname: 'ava' },

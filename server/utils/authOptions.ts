@@ -52,8 +52,8 @@ const adminPlugin = admin();
 
 /** The path of every route the installed admin plugin would mount under `/api/auth`. */
 const ADMIN_PLUGIN_HTTP_PATHS: string[] = Object.values(adminPlugin.endpoints)
-	.map(endpoint => endpoint.path)
-	.filter(path => typeof path === 'string');
+	.map((endpoint) => endpoint.path)
+	.filter((path) => typeof path === 'string');
 
 /**
  * The static half of this installation's Better Auth configuration: everything
@@ -103,9 +103,7 @@ export const authStaticOptions = {
 		expiresIn: AUTH_SESSION_EXPIRES_IN_SECONDS,
 		updateAge: AUTH_SESSION_UPDATE_AGE_SECONDS,
 	},
-	plugins: [
-		adminPlugin,
-	],
+	plugins: [adminPlugin],
 	/**
 	 * Every admin-plugin route answers 404 over HTTP. The plugin admits any
 	 * `admin`-role Session to them, the bootstrap account's included, which

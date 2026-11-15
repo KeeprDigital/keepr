@@ -26,13 +26,16 @@ interface DeleteEventParams {
 
 /** Whether the write names a Feature Match default other than best of, which reaches the Slots on its own. */
 function namesFeatureMatchDefaultBesidesBestOf(input: UpdateEventInput): boolean {
-	return Object.keys(FEATURE_MATCH_DEFAULT_COLUMN_SELECTION).some(column =>
-		column !== 'featureMatchDefaultBestOf' && input[column as keyof UpdateEventInput] !== undefined);
+	return Object.keys(FEATURE_MATCH_DEFAULT_COLUMN_SELECTION).some(
+		(column) =>
+			column !== 'featureMatchDefaultBestOf' &&
+			input[column as keyof UpdateEventInput] !== undefined,
+	);
 }
 
 /** A Theme an Event Presentation Settings write picks must exist; none picks the Default Theme. */
 async function requireTheme(themeId: string | null | undefined): Promise<void> {
-	if (themeId && !await themeService().findById(themeId)) {
+	if (themeId && !(await themeService().findById(themeId))) {
 		throw createError({
 			statusCode: 400,
 			message: 'Theme not found',
@@ -44,7 +47,11 @@ export function eventWriteModule() {
 	const publication = eventDataPublicationModule();
 	const events = eventService();
 
-	async function updateEvent({ eventId, input, originConnectionId }: UpdateEventParams): Promise<EventResponse> {
+	async function updateEvent({
+		eventId,
+		input,
+		originConnectionId,
+	}: UpdateEventParams): Promise<EventResponse> {
 		if (input.broadcastDeckListsEnabled === true) {
 			const current = await events.findById(eventId);
 			if (!current) {
@@ -70,18 +77,16 @@ export function eventWriteModule() {
 		let updatedEvent;
 		try {
 			updatedEvent = await events.update(eventId, input);
-		}
-		catch (error) {
+		} catch (error) {
 			// The Theme checked above was deleted before the write: its foreign key refused it.
-			if (input.themeId)
-				await requireTheme(input.themeId);
+			if (input.themeId) await requireTheme(input.themeId);
 			if (error instanceof BroadcastDeckListsInUseError) {
-				const names = error.screens.map(screen => screen.name).join(', ');
+				const names = error.screens.map((screen) => screen.name).join(', ');
 				throw createError({
 					statusCode: 409,
-					message: `Broadcast Deck Lists cannot be disabled while selected by ${error.screens.length === 1
-						? 'Screen'
-						: 'Screens'}: ${names}`,
+					message: `Broadcast Deck Lists cannot be disabled while selected by ${
+						error.screens.length === 1 ? 'Screen' : 'Screens'
+					}: ${names}`,
 					data: { code: BROADCAST_DECK_LISTS_IN_USE, screens: error.screens },
 				});
 			}
@@ -98,21 +103,28 @@ export function eventWriteModule() {
 		if (input.numFeatureMatches !== undefined) {
 			const slotService = featureMatchService();
 			try {
-				const { clearedScreens } = await slotService.syncFeatureMatches(eventId, updatedEvent.numFeatureMatches);
+				const { clearedScreens } = await slotService.syncFeatureMatches(
+					eventId,
+					updatedEvent.numFeatureMatches,
+				);
 				// Each Screen a deleted Slot released, with no origin (ADR-0032, ADR-0060).
 				for (const screen of clearedScreens)
 					await publication.screenUpdated({ eventId, entity: screen });
-			}
-			catch (error) {
+			} catch (error) {
 				// The count was written first. A Slot change that failed leaves the
 				// Slots it started with (#702), so set the count back to describe them.
-				await runCompensation(error, () => slotService.reconcileEventSlotCount(eventId, updatedEvent.numFeatureMatches));
+				await runCompensation(error, () =>
+					slotService.reconcileEventSlotCount(eventId, updatedEvent.numFeatureMatches),
+				);
 				throw error;
 			}
 		}
 
 		if (input.featureMatchDefaultBestOf !== undefined) {
-			const slotIds = await featureMatchService().applyEventBestOf(eventId, updatedEvent.featureMatchDefaultBestOf);
+			const slotIds = await featureMatchService().applyEventBestOf(
+				eventId,
+				updatedEvent.featureMatchDefaultBestOf,
+			);
 			// With no origin: the saving client's response carries the Event, not its Slots.
 			await publication.featureMatchSlotsUpdated({ eventId, slotIds });
 		}
@@ -130,7 +142,10 @@ export function eventWriteModule() {
 		});
 	}
 
-	async function deleteEvent({ eventId, originConnectionId }: DeleteEventParams): Promise<{ success: boolean }> {
+	async function deleteEvent({
+		eventId,
+		originConnectionId,
+	}: DeleteEventParams): Promise<{ success: boolean }> {
 		// Capture derived-artifact identities before the relational cascade.
 		const screens = await screenService().findIdsByEventId(eventId);
 
@@ -146,8 +161,7 @@ export function eventWriteModule() {
 		const cardSvc = cardService();
 		// Keep external cleanup bounded. An Event may contain many Screens and an
 		// unbounded Promise.all would fan out two remote operations per Screen.
-		for (const screen of screens)
-			await cardSvc.cleanupDeletedScreenCard(eventId, screen.id);
+		for (const screen of screens) await cardSvc.cleanupDeletedScreenCard(eventId, screen.id);
 
 		await publication.eventDeleted({
 			eventId,

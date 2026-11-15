@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { isPublicRemoteAddress } from '~~/server/modules/graphics-asset-library/remote-source';
 import { createDnsOverHttpsRemoteHostResolver } from '~~/server/modules/graphics-asset-library/remote-source-resolver';
 
-function dnsJson(
-	body: unknown,
-	init: ResponseInit = {},
-): Response {
+function dnsJson(body: unknown, init: ResponseInit = {}): Response {
 	return new Response(JSON.stringify(body), {
 		status: 200,
 		headers: { 'content-type': 'application/dns-json' },
@@ -13,9 +10,7 @@ function dnsJson(
 	});
 }
 
-function createResolver(
-	answer: (name: string, type: string) => Response | Promise<Response>,
-) {
+function createResolver(answer: (name: string, type: string) => Response | Promise<Response>) {
 	const queries: { name: string; type: string }[] = [];
 	const resolver = createDnsOverHttpsRemoteHostResolver({
 		async fetch(request) {
@@ -94,18 +89,19 @@ describe('resolved remote destination addresses', () => {
 
 describe('the DNS-over-HTTPS remote host resolver', () => {
 	it('returns every A and AAAA answer for one hostname', async () => {
-		const { resolver, queries } = createResolver((name, type) => dnsJson({
-			Status: 0,
-			Answer: type === '1'
-				? [
-						{ name, type: 5, data: 'cdn.example.test.cdn.net' },
-						{ name, type: 1, data: '93.184.216.34' },
-						{ name, type: 1, data: '93.184.216.35' },
-					]
-				: [
-						{ name, type: 28, data: '2606:4700:10::ac42:93f3' },
-					],
-		}));
+		const { resolver, queries } = createResolver((name, type) =>
+			dnsJson({
+				Status: 0,
+				Answer:
+					type === '1'
+						? [
+								{ name, type: 5, data: 'cdn.example.test.cdn.net' },
+								{ name, type: 1, data: '93.184.216.34' },
+								{ name, type: 1, data: '93.184.216.35' },
+							]
+						: [{ name, type: 28, data: '2606:4700:10::ac42:93f3' }],
+			}),
+		);
 
 		await expect(resolver.resolve('cdn.example.test')).resolves.toEqual({
 			outcome: 'resolved',
@@ -155,14 +151,14 @@ describe('the DNS-over-HTTPS remote host resolver', () => {
 	});
 
 	it('never reports a partially resolved hostname as public', async () => {
-		const { resolver } = createResolver((name, type) => type === '1'
-			? dnsJson({
-					Status: 0,
-					Answer: [
-						{ name, type: 1, data: '93.184.216.34' },
-					],
-				})
-			: dnsJson({ Status: 2 }));
+		const { resolver } = createResolver((name, type) =>
+			type === '1'
+				? dnsJson({
+						Status: 0,
+						Answer: [{ name, type: 1, data: '93.184.216.34' }],
+					})
+				: dnsJson({ Status: 2 }),
+		);
 
 		await expect(resolver.resolve('cdn.example.test')).resolves.toEqual({ outcome: 'unavailable' });
 	});

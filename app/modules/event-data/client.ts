@@ -27,26 +27,21 @@ export interface EventDataPathOptions {
 export function buildEventDataPath(options: EventDataPathOptions): string {
 	const eventScoped = options.eventScoped ?? true;
 	const segments: Array<string | number> = eventScoped
-		? [
-				'api',
-				'events',
-				options.eventId ?? '',
-				options.resourcePath,
-			]
+		? ['api', 'events', options.eventId ?? '', options.resourcePath]
 		: ['api', options.resourcePath];
 
-	if (options.resourceId !== undefined)
-		segments.push(options.resourceId);
-	if (options.suffix)
-		segments.push(...options.suffix.split('/').filter(Boolean));
+	if (options.resourceId !== undefined) segments.push(options.resourceId);
+	if (options.suffix) segments.push(...options.suffix.split('/').filter(Boolean));
 
-	return `/${segments.map(segment => encodeURIComponent(String(segment))).join('/')}`;
+	return `/${segments.map((segment) => encodeURIComponent(String(segment))).join('/')}`;
 }
 
 export function useEventDataFetch() {
 	const headers = useApiHeaders();
 
-	function withOriginHeaders<const T extends Record<string, unknown>>(options: T = {} as T): T & { headers: HeadersInit } {
+	function withOriginHeaders<const T extends Record<string, unknown>>(
+		options: T = {} as T,
+	): T & { headers: HeadersInit } {
 		return {
 			...options,
 			headers: {
@@ -68,19 +63,13 @@ export function useEventDataFetch() {
 	): Promise<TResponse> {
 		const fetchOptions = {
 			method: options.method,
-			...(options.body !== undefined
-				? { body: options.body }
-				: {}),
-			...(options.query !== undefined
-				? { query: options.query }
-				: {}),
+			...(options.body !== undefined ? { body: options.body } : {}),
+			...(options.query !== undefined ? { query: options.query } : {}),
 		};
-		return await $fetch<TResponse>(
+		return (await $fetch<TResponse>(
 			buildEventDataPath(pathOptions),
-			options.includeHeaders === false
-				? fetchOptions
-				: withOriginHeaders(fetchOptions),
-		) as TResponse;
+			options.includeHeaders === false ? fetchOptions : withOriginHeaders(fetchOptions),
+		)) as TResponse;
 	}
 
 	return {
@@ -102,8 +91,7 @@ export function normalizeEventDataListResponse<T>(
 	response: T[] | ListResponse<T> | Record<string, unknown> | null | undefined,
 	options: Pick<BaseRepositoryOptions, 'resourcePath' | 'responseKey'>,
 ): T[] {
-	if (Array.isArray(response))
-		return response;
+	if (Array.isArray(response)) return response;
 
 	if (response && typeof response === 'object') {
 		const possibleKeys = options.responseKey
@@ -112,8 +100,7 @@ export function normalizeEventDataListResponse<T>(
 
 		for (const key of possibleKeys) {
 			const value = (response as Record<string, unknown>)[key];
-			if (Array.isArray(value))
-				return value as T[];
+			if (Array.isArray(value)) return value as T[];
 		}
 	}
 
@@ -155,36 +142,36 @@ export function useEventDataResource<
 
 	const getById = async (eventId: number | null, resourceId: number): Promise<T | null> => {
 		try {
-			return await $fetch<T>(path(eventId, resourceId)) as T;
-		}
-		catch (err: unknown) {
-			if (isEventDataNotFoundError(err))
-				return null;
+			return (await $fetch<T>(path(eventId, resourceId))) as T;
+		} catch (err: unknown) {
+			if (isEventDataNotFoundError(err)) return null;
 			throw err;
 		}
 	};
 
-	const writeOptions = <TBody extends object>(method: 'POST' | 'PATCH' | 'DELETE', body?: TBody) => {
+	const writeOptions = <TBody extends object>(
+		method: 'POST' | 'PATCH' | 'DELETE',
+		body?: TBody,
+	) => {
 		const options = {
 			method,
-			...(body !== undefined
-				? { body }
-				: {}),
+			...(body !== undefined ? { body } : {}),
 		};
-		return includeHeaders
-			? eventData.withOriginHeaders(options)
-			: options;
+		return includeHeaders ? eventData.withOriginHeaders(options) : options;
 	};
 
 	const create = async (eventId: number | null, data: TCreate): Promise<T> => {
-		return await $fetch<T>(path(eventId), writeOptions('POST', data)) as T;
+		return (await $fetch<T>(path(eventId), writeOptions('POST', data))) as T;
 	};
 
 	const update = async (eventId: number | null, resourceId: number, data: TUpdate): Promise<T> => {
-		return await $fetch<T>(path(eventId, resourceId), writeOptions('PATCH', data)) as T;
+		return (await $fetch<T>(path(eventId, resourceId), writeOptions('PATCH', data))) as T;
 	};
 
-	const remove = async (eventId: number | null, resourceId: number): Promise<{ success: boolean }> => {
+	const remove = async (
+		eventId: number | null,
+		resourceId: number,
+	): Promise<{ success: boolean }> => {
 		return await $fetch<{ success: boolean }>(path(eventId, resourceId), writeOptions('DELETE'));
 	};
 

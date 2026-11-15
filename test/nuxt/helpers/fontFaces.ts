@@ -26,12 +26,10 @@ export function stubDocumentFonts(load: (font: string) => Promise<unknown> = asy
 
 /** Undoes every `stubDocumentFonts` since the last restore, so a load left pending leaks into no later test. */
 export function restoreDocumentFonts() {
-	if (!environmentFonts)
-		return;
+	if (!environmentFonts) return;
 	if (environmentFonts.descriptor)
 		Object.defineProperty(document, 'fonts', environmentFonts.descriptor);
-	else
-		Reflect.deleteProperty(document, 'fonts');
+	else Reflect.deleteProperty(document, 'fonts');
 	environmentFonts = undefined;
 }
 
@@ -45,24 +43,36 @@ export function stubFontFaces(
 	load: (family: string) => Promise<unknown> = async () => {},
 ) {
 	const constructed: Array<{ family: string; source: string }> = [];
-	vi.stubGlobal('FontFace', class {
-		constructor(public family: string, public source: string) {
-			constructed.push({ family, source });
-		}
+	vi.stubGlobal(
+		'FontFace',
+		class {
+			constructor(
+				public family: string,
+				public source: string,
+			) {
+				constructed.push({ family, source });
+			}
 
-		async load() {
-			await load(this.family);
-			return this;
-		}
-	});
+			async load() {
+				await load(this.family);
+				return this;
+			}
+		},
+	);
 	stubDocumentFonts();
 	return { constructed };
 }
 
 /** A Screen Output Asset Capability session that the server opens for any capability. */
 export function stubCapabilitySession() {
-	vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', {
-		status: 200,
-		headers: { 'content-type': 'application/json' },
-	})));
+	vi.stubGlobal(
+		'fetch',
+		vi.fn(
+			async () =>
+				new Response('{}', {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				}),
+		),
+	);
 }

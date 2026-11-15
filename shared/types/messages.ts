@@ -96,9 +96,9 @@ export function realtimeMessageBytes<T extends MessageType>(
 	payload?: MessagePayload<T>,
 	originConnectionId?: string,
 ): number {
-	return new TextEncoder()
-		.encode(JSON.stringify(createMessage(eventId, messageType, payload, originConnectionId)))
-		.byteLength;
+	return new TextEncoder().encode(
+		JSON.stringify(createMessage(eventId, messageType, payload, originConnectionId)),
+	).byteLength;
 }
 
 export interface MessageDefinitions {
@@ -456,7 +456,6 @@ export interface MessageDefinitions {
 		screenId: number;
 		causes: OutputChangeKind[];
 	};
-
 }
 
 // Extract message types from the definitions
@@ -483,7 +482,8 @@ export const directChannelMessageTypes = new Set<MessageType>([
 export type MessagePayload<T extends MessageType> = MessageDefinitions[T];
 
 // Complete message type (base + payload)
-export type CompleteMessage<T extends MessageType> = BaseMessage & (MessagePayload<T> extends undefined ? Record<string, never> : MessagePayload<T>);
+export type CompleteMessage<T extends MessageType> = BaseMessage &
+	(MessagePayload<T> extends undefined ? Record<string, never> : MessagePayload<T>);
 
 // Helper to create a typed message
 export function createMessage<T extends MessageType>(

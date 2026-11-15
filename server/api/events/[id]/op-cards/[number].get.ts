@@ -13,7 +13,6 @@ export default defineEventHandler(async (event): Promise<OpCardLookupAnswer> => 
 	await requireOpEvent(id);
 
 	const config = bandaiKeeprConfig();
-	if (!config)
-		return { available: false };
+	if (!config) return { available: false };
 	return { available: true, card: await lookupOpCard(config, number) };
 });

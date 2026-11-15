@@ -11,4 +11,5 @@ export interface NumberScrubGesture {
 	end: () => void;
 }
 
-export const NUMBER_SCRUB_GESTURE: InjectionKey<NumberScrubGesture> = Symbol('number-scrub-gesture');
+export const NUMBER_SCRUB_GESTURE: InjectionKey<NumberScrubGesture> =
+	Symbol('number-scrub-gesture');

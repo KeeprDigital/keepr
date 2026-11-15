@@ -68,16 +68,12 @@ mockNuxtImport('useStandingsModeData', () => () => ({
 			case 'deck':
 				return player.gameData?.deckName ?? '-';
 			case 'positionChange':
-				return player.id === 1
-					? '▲2'
-					: 'new';
+				return player.id === 1 ? '▲2' : 'new';
 			default:
 				return '-';
 		}
 	},
-	positionChangeOf: (player: any) => player.id === 1
-		? { kind: 'up', by: 2 }
-		: { kind: 'new' },
+	positionChangeOf: (player: any) => (player.id === 1 ? { kind: 'up', by: 2 } : { kind: 'new' }),
 }));
 
 const ScreenModeBaseStub = defineComponent({
@@ -144,7 +140,9 @@ describe('screenStandingsDisplay', () => {
 		config.value = { ...config.value, maxWidth };
 		const wrapper = await mountComponent();
 
-		expect((wrapper.get('[data-testid="standings-content"]').element as HTMLElement).style.maxWidth).toBe(painted);
+		expect(
+			(wrapper.get('[data-testid="standings-content"]').element as HTMLElement).style.maxWidth,
+		).toBe(painted);
 	});
 
 	it('renders deck text without archetype colors when toggled off', async () => {
@@ -175,7 +173,9 @@ describe('screenStandingsDisplay', () => {
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.get('.standings-rows').attributes('style')).toContain('--standings-row-height: 100px;');
+		expect(wrapper.get('.standings-rows').attributes('style')).toContain(
+			'--standings-row-height: 100px;',
+		);
 	});
 
 	it('keeps reveal mode row sizing based on the full reveal count', async () => {
@@ -189,10 +189,12 @@ describe('screenStandingsDisplay', () => {
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.get('.standings-rows').attributes('style')).toContain('--standings-row-height: 200px;');
+		expect(wrapper.get('.standings-rows').attributes('style')).toContain(
+			'--standings-row-height: 200px;',
+		);
 	});
 
-	it('shows each row\'s Position Change, marked with its direction', async () => {
+	it("shows each row's Position Change, marked with its direction", async () => {
 		config.value = {
 			...config.value,
 			columns: [
@@ -213,7 +215,7 @@ describe('screenStandingsDisplay', () => {
 		const wrapper = await mountComponent();
 		const cells = wrapper.findAll('.cell-positionChange');
 
-		expect(cells.map(cell => cell.text())).toEqual(['▲2', 'new']);
-		expect(cells.map(cell => cell.attributes('data-position-change'))).toEqual(['up', 'new']);
+		expect(cells.map((cell) => cell.text())).toEqual(['▲2', 'new']);
+		expect(cells.map((cell) => cell.attributes('data-position-change'))).toEqual(['up', 'new']);
 	});
 });

@@ -112,7 +112,7 @@ export interface GraphicsAuthoringLeaseResolution {
 /** The deadline a declared heartbeat cadence earns, bounded at both ends. */
 export function graphicsAuthoringLeaseTtlMs(heartbeatIntervalMs?: number): number {
 	const cadence = Number.isFinite(heartbeatIntervalMs)
-		? heartbeatIntervalMs as number
+		? (heartbeatIntervalMs as number)
 		: GRAPHICS_AUTHORING_LEASE_DEFAULT_HEARTBEAT_MS;
 	return Math.min(
 		MAX_LEASE_TTL_MS,
@@ -154,7 +154,8 @@ export function resolveGraphicsAuthoringLease(
 	now: number,
 ): GraphicsAuthoringLeaseResolution {
 	const live = isGraphicsAuthoringLeaseLive(record, now);
-	const ownedByAsker = live && request.sessionId !== undefined && record.holderSessionId === request.sessionId;
+	const ownedByAsker =
+		live && request.sessionId !== undefined && record.holderSessionId === request.sessionId;
 
 	if (!live) {
 		return {

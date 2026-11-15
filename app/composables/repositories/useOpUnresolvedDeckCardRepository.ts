@@ -1,4 +1,7 @@
-import type { OpUnresolvedDeckCard, OpUnresolvedDeckCardAnswer } from '~~/shared/types/opUnresolvedDeckCard';
+import type {
+	OpUnresolvedDeckCard,
+	OpUnresolvedDeckCardAnswer,
+} from '~~/shared/types/opUnresolvedDeckCard';
 import { useEventDataFetch } from '~/modules/event-data/client';
 
 /** A One Piece Card Game Event's Unresolved Deck Cards (ADR-0074): listed, retried and resolved by card number. */
@@ -12,10 +15,15 @@ export function useOpUnresolvedDeckCardRepository() {
 	});
 
 	const list = async (eventId: number) =>
-		await eventData.command<OpUnresolvedDeckCard[]>(path(eventId), { method: 'GET', includeHeaders: false });
+		await eventData.command<OpUnresolvedDeckCard[]>(path(eventId), {
+			method: 'GET',
+			includeHeaders: false,
+		});
 
 	const retry = async (eventId: number, number: string) =>
-		await eventData.command<OpUnresolvedDeckCardAnswer>(path(eventId, number, 'retry'), { method: 'POST' });
+		await eventData.command<OpUnresolvedDeckCardAnswer>(path(eventId, number, 'retry'), {
+			method: 'POST',
+		});
 
 	/** Resolves the number to the card picked from a bandai-keepr search. */
 	const resolve = async (eventId: number, number: string, cardNumber: string) =>

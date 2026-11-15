@@ -23,8 +23,7 @@ export default defineEventHandler(async (event) => {
 			search,
 			lifecycleStates,
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

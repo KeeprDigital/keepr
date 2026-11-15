@@ -10,8 +10,12 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // Deck List write; bandai-keepr is faked at its bulk lookup port.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
-vi.stubGlobal('useRuntimeConfig', () => ({ bandaiKeeprApiKey: 'test-key', bandaiKeeprApiUrl: 'https://op-api.test' }));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
+vi.stubGlobal('useRuntimeConfig', () => ({
+	bandaiKeeprApiKey: 'test-key',
+	bandaiKeeprApiUrl: 'https://op-api.test',
+}));
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -91,7 +95,8 @@ let zoroArchetypeId: number;
 const cardIds = new Map<string, number>();
 
 beforeAll(async () => {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		// A points system is an MTG rule; an OP Event holding one reads no points.
 		.values({
 			name: 'One Piece Regional',
@@ -102,14 +107,18 @@ beforeAll(async () => {
 		.returning({ id: schema.events.id });
 	eventId = event!.id;
 
-	const [ana, bo, cy] = await db.insert(schema.players)
+	const [ana, bo, cy] = await db
+		.insert(schema.players)
 		.values([
 			{ eventId, name: '', nickname: 'ana' },
 			{ eventId, name: 'Bo', nickname: 'bo-tcg' },
 			{ eventId, name: 'Cy' },
 		])
 		.returning();
-	const write = (playerId: number, input: Parameters<ReturnType<typeof opDeckListWriteModule>['write']>[0]['input']) =>
+	const write = (
+		playerId: number,
+		input: Parameters<ReturnType<typeof opDeckListWriteModule>['write']>[0]['input'],
+	) =>
 		opDeckListWriteModule().write({
 			eventId,
 			owner: { kind: 'player', playerId },
@@ -121,7 +130,8 @@ beforeAll(async () => {
 	await write(cy!.id, CY_DECK);
 
 	// Standings an OP Event has no source for: the Metagame reads none of them.
-	await db.update(schema.players)
+	await db
+		.update(schema.players)
 		.set({
 			position: 1,
 			wins: 5,
@@ -131,7 +141,8 @@ beforeAll(async () => {
 		})
 		.where(eq(schema.players.id, ana!.id));
 
-	const [slot] = await db.insert(schema.featureMatches)
+	const [slot] = await db
+		.insert(schema.featureMatches)
 		.values({
 			eventId,
 			player1Data: { name: 'Guest' },
@@ -145,14 +156,14 @@ beforeAll(async () => {
 		source: 'hand',
 	});
 
-	const [list] = await db.insert(schema.playerLists)
+	const [list] = await db
+		.insert(schema.playerLists)
 		.values({ eventId, name: 'Ana only' })
 		.returning({ id: schema.playerLists.id });
 	playerListId = list!.id;
 	await db.insert(schema.playerListMembers).values({ listId: playerListId, playerId: ana!.id });
 
-	for (const card of await db.select().from(schema.cards))
-		cardIds.set(card.cardNumber!, card.id);
+	for (const card of await db.select().from(schema.cards)) cardIds.set(card.cardNumber!, card.id);
 	zoroArchetypeId = (await db.query.archetypes.findFirst({
 		where: eq(schema.archetypes.leaderCardNumber, 'OP01-001'),
 	}))!.id;
@@ -160,7 +171,8 @@ beforeAll(async () => {
 
 afterAll(async () => await harness.close());
 
-const numbers = (entries: { cardNumber: string | null }[]) => entries.map(entry => entry.cardNumber).toSorted();
+const numbers = (entries: { cardNumber: string | null }[]) =>
+	entries.map((entry) => entry.cardNumber).toSorted();
 
 describe('the OP card breakdown', () => {
 	it('counts only Player Deck Lists, by OP card rules: no Leader, no unknown card, no Feature Match Deck List, no points', async () => {
@@ -187,29 +199,14 @@ describe('the OP card breakdown', () => {
 			expect.objectContaining({ cardNumber: 'OP01-029', cardType: 'Event', deckCount: 1 }),
 			expect.objectContaining({ cardNumber: 'OP01-119', cardType: 'Stage', deckCount: 1 }),
 		]);
-		for (const entry of result.entries)
-			expect(entry).not.toHaveProperty('highlanderPoints');
+		for (const entry of result.entries) expect(entry).not.toHaveProperty('highlanderPoints');
 	});
 
 	it.each([
-		[
-			['Event'],
-			['OP01-025', 'OP01-040', 'OP01-119'],
-		],
-		[
-			['Character', 'Stage'],
-			['OP01-029'],
-		],
+		[['Event'], ['OP01-025', 'OP01-040', 'OP01-119']],
+		[['Character', 'Stage'], ['OP01-029']],
 		// An MTG type names no OP card.
-		[
-			['Land'],
-			[
-				'OP01-025',
-				'OP01-029',
-				'OP01-040',
-				'OP01-119',
-			],
-		],
+		[['Land'], ['OP01-025', 'OP01-029', 'OP01-040', 'OP01-119']],
 	] as const)('leaves out the OP types %j', async (excludeTypes, expected) => {
 		const result = await metagameReadModel().getCardBreakdown(eventId, {
 			scope: 'all',
@@ -223,32 +220,14 @@ describe('the OP card breakdown', () => {
 describe('the OP Metagame Scope', () => {
 	// OP scopes are every Player and a Player List: one needing standings reads every Player.
 	it.each([
-		[
-			{ scope: 'all' },
-			'all',
-			3,
-		],
-		[
-			{ scope: 'topN', topN: 1 },
-			'all',
-			3,
-		],
-		[
-			{ scope: 'minPoints', minPoints: 10 },
-			'all',
-			3,
-		],
-		[
-			{ scope: 'playerList', playerListId: -1 },
-			'playerList',
-			1,
-		],
+		[{ scope: 'all' }, 'all', 3],
+		[{ scope: 'topN', topN: 1 }, 'all', 3],
+		[{ scope: 'minPoints', minPoints: 10 }, 'all', 3],
+		[{ scope: 'playerList', playerListId: -1 }, 'playerList', 1],
 	] as const)('reads %j as %s, over %i Deck Lists', async (query, scope, totalDecks) => {
 		const resolved = {
 			...query,
-			...(query.scope === 'playerList'
-				? { playerListId }
-				: {}),
+			...(query.scope === 'playerList' ? { playerListId } : {}),
 		};
 
 		const result = await metagameReadModel().getCardBreakdown(eventId, resolved);
@@ -258,7 +237,7 @@ describe('the OP Metagame Scope', () => {
 });
 
 describe('the OP archetype breakdown', () => {
-	it('counts each Leader\'s share, leaves an unknown Leader unclassified, and reads no standings even when asked', async () => {
+	it("counts each Leader's share, leaves an unknown Leader unclassified, and reads no standings even when asked", async () => {
 		const result = await metagameReadModel().getArchetypeBreakdown(eventId, {
 			scope: 'all',
 			sortBy: 'winRate',
@@ -267,30 +246,20 @@ describe('the OP archetype breakdown', () => {
 		});
 
 		expect(result).toMatchObject({ totalPlayers: 3, classifiedPlayers: 2 });
-		expect(result.entries.map(entry => [
-			entry.name,
-			entry.count,
-			entry.metaShare,
-			entry.winRate,
-			entry.avgPosition,
-			entry.conversionRate,
-		]).toSorted()).toEqual([
-			[
-				'Monkey.D.Luffy',
-				1,
-				50,
-				null,
-				null,
-				null,
-			],
-			[
-				'Roronoa Zoro',
-				1,
-				50,
-				null,
-				null,
-				null,
-			],
+		expect(
+			result.entries
+				.map((entry) => [
+					entry.name,
+					entry.count,
+					entry.metaShare,
+					entry.winRate,
+					entry.avgPosition,
+					entry.conversionRate,
+				])
+				.toSorted(),
+		).toEqual([
+			['Monkey.D.Luffy', 1, 50, null, null, null],
+			['Roronoa Zoro', 1, 50, null, null, null],
 		]);
 	});
 });
@@ -334,7 +303,9 @@ describe('the OP card detail', () => {
 			scope: 'all',
 		});
 
-		expect(detail!.players.map(player => [player.name, player.position, player.wins]).toSorted()).toEqual([
+		expect(
+			detail!.players.map((player) => [player.name, player.position, player.wins]).toSorted(),
+		).toEqual([
 			['Bo', null, null],
 			['ana', null, null],
 		]);
@@ -359,6 +330,6 @@ describe('the OP summary', () => {
 			totalDecks: 3,
 			totalArchetypes: 2,
 		});
-		expect(summary.facts.find(fact => fact.key === 'bestMajorWinRate')).toBeUndefined();
+		expect(summary.facts.find((fact) => fact.key === 'bestMajorWinRate')).toBeUndefined();
 	});
 });

@@ -14,9 +14,7 @@ const { mockApiFetch } = vi.hoisted(() => ({
 
 mockNuxtImport('$fetch', () => mockApiFetch);
 
-function entry(
-	overrides: Partial<GraphicsAssetEvidenceEntry> = {},
-): GraphicsAssetEvidenceEntry {
+function entry(overrides: Partial<GraphicsAssetEvidenceEntry> = {}): GraphicsAssetEvidenceEntry {
 	return {
 		id: 'entry-1',
 		recordedAt: '2026-07-30T09:00:00.000Z',
@@ -36,7 +34,9 @@ function entry(
 	};
 }
 
-function ledger(overrides: Partial<GraphicsAssetEvidenceReading> = {}): GraphicsAssetEvidenceReading {
+function ledger(
+	overrides: Partial<GraphicsAssetEvidenceReading> = {},
+): GraphicsAssetEvidenceReading {
 	return {
 		entries: [
 			entry(),
@@ -59,7 +59,7 @@ function ledger(overrides: Partial<GraphicsAssetEvidenceReading> = {}): Graphics
 		// a person by name, a sweep by its own spelling, an identity from before
 		// the cutover as the era it belongs to.
 		actorNames: {
-			'librarian': 'Marcus Angel',
+			librarian: 'Marcus Angel',
 			'graphics-retention-policy': 'graphics-retention-policy',
 		},
 		...overrides,
@@ -67,7 +67,8 @@ function ledger(overrides: Partial<GraphicsAssetEvidenceReading> = {}): Graphics
 }
 
 const passthroughStub = defineComponent({
-	template: '<div><slot name="actions" /><slot name="header" /><slot /><slot name="footer" /></div>',
+	template:
+		'<div><slot name="actions" /><slot name="header" /><slot /><slot name="footer" /></div>',
 });
 const alertStub = defineComponent({
 	props: ['title', 'description'],
@@ -109,7 +110,8 @@ const selectStub = defineComponent({
 });
 
 async function mountPage() {
-	const { default: EvidencePage } = await import('../../../../../app/pages/admin/graphics-assets/evidence.vue');
+	const { default: EvidencePage } =
+		await import('../../../../../app/pages/admin/graphics-assets/evidence.vue');
 	return mount(EvidencePage, {
 		global: {
 			stubs: {
@@ -130,12 +132,12 @@ async function mountPage() {
 /** Lets the page's own fetches resolve before anything is asserted about it. */
 async function settle() {
 	await nextTick();
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 	await nextTick();
 }
 
 function buttonNamed(wrapper: Awaited<ReturnType<typeof mountPage>>, label: string) {
-	return wrapper.findAll('button').find(button => button.text() === label);
+	return wrapper.findAll('button').find((button) => button.text() === label);
 }
 
 /** Enters the administrator token and takes the first reading, as an administrator does. */
@@ -148,12 +150,10 @@ async function openLedger() {
 }
 
 /** Types into the correlation field without applying it. */
-async function typeCorrelation(
-	wrapper: Awaited<ReturnType<typeof mountPage>>,
-	value: string,
-) {
-	await wrapper.findAll('input')
-		.find(input => input.attributes('placeholder') === 'Opaque identity')!
+async function typeCorrelation(wrapper: Awaited<ReturnType<typeof mountPage>>, value: string) {
+	await wrapper
+		.findAll('input')
+		.find((input) => input.attributes('placeholder') === 'Opaque identity')!
 		.setValue(value);
 }
 
@@ -244,12 +244,12 @@ describe('the Graphics Asset Library Evidence ledger page', () => {
 
 	it('shows an identity from before the cutover as the era it belongs to', async () => {
 		const anonymous = '3f2504e0-4f89-11d3-9a0c-0305e82c3301';
-		mockApiFetch.mockResolvedValue(ledger({
-			entries: [
-				entry({ actor: anonymous }),
-			],
-			actorNames: { [anonymous]: 'anonymous era' },
-		}));
+		mockApiFetch.mockResolvedValue(
+			ledger({
+				entries: [entry({ actor: anonymous })],
+				actorNames: { [anonymous]: 'anonymous era' },
+			}),
+		);
 
 		const wrapper = await openLedger();
 
@@ -327,21 +327,30 @@ describe('the Graphics Asset Library Evidence ledger page', () => {
 	it('follows one entry to everything about its subject, operation, or actor', async () => {
 		const wrapper = await openLedger();
 
-		await wrapper.findAll('button').find(button => button.text() === 'This subject')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'This subject')!
+			.trigger('click');
 		await settle();
 		expect(lastQuery()).toMatchObject({
 			subjectKind: 'graphic-asset',
 			subjectId: 'asset-1',
 		});
 
-		await wrapper.findAll('button').find(button => button.text() === 'Same operation')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Same operation')!
+			.trigger('click');
 		await settle();
 		// Following a thread replaces the question rather than narrowing it, so
 		// the subject filter does not survive into the correlation one.
 		expect(lastQuery()).toMatchObject({ correlationId: 'correlation-1' });
 		expect(lastQuery()).not.toHaveProperty('subjectId');
 
-		await wrapper.findAll('button').find(button => button.text() === 'Same actor')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Same actor')!
+			.trigger('click');
 		await settle();
 		expect(lastQuery()).toMatchObject({ actor: 'librarian' });
 		expect(lastQuery()).not.toHaveProperty('correlationId');
@@ -350,27 +359,31 @@ describe('the Graphics Asset Library Evidence ledger page', () => {
 	it('offers the queue inspector only where the subject still exists', async () => {
 		const wrapper = await openLedger();
 
-		const links = wrapper.findAll('button')
-			.filter(button => button.text() === 'Inspect in queues');
+		const links = wrapper
+			.findAll('button')
+			.filter((button) => button.text() === 'Inspect in queues');
 		// The Trash entry has a subject still sitting in a queue; the deleted
 		// content does not, and a link to it would only ever answer 404.
 		expect(links).toHaveLength(1);
-		expect(links[0]!.attributes('data-to'))
-			.toBe('/admin/graphics-assets/queues?queue=trashed-asset&item=asset-1');
+		expect(links[0]!.attributes('data-to')).toBe(
+			'/admin/graphics-assets/queues?queue=trashed-asset&item=asset-1',
+		);
 	});
 
 	it('explains a purged identity with its tombstone', async () => {
-		mockApiFetch.mockResolvedValue(ledger({
-			entries: [],
-			older: null,
-			tombstone: {
-				assetId: 'asset-1' as never,
-				purgedAt: '2026-07-30T09:00:00.000Z',
-				reason: 'early-purge',
-				revisionCount: 3,
-				referenceCount: 0,
-			},
-		}));
+		mockApiFetch.mockResolvedValue(
+			ledger({
+				entries: [],
+				older: null,
+				tombstone: {
+					assetId: 'asset-1' as never,
+					purgedAt: '2026-07-30T09:00:00.000Z',
+					reason: 'early-purge',
+					revisionCount: 3,
+					referenceCount: 0,
+				},
+			}),
+		);
 		const wrapper = await openLedger();
 
 		const text = wrapper.text();

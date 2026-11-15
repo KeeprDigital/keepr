@@ -69,10 +69,12 @@ describe('approved remote HTTPS copy through the Graphics Asset Library public m
 			result: { outcome: 'published' },
 		});
 		await expect(library.listGraphicAssets({})).resolves.toHaveLength(1);
-		await expect(library.resolveGraphicAssetRevision({
-			assetId: completed.result!.assetId,
-			revisionId: completed.result!.revisionId,
-		})).resolves.toMatchObject({
+		await expect(
+			library.resolveGraphicAssetRevision({
+				assetId: completed.result!.assetId,
+				revisionId: completed.result!.revisionId,
+			}),
+		).resolves.toMatchObject({
 			outcome: 'available',
 			contentType: 'image/png',
 			byteLength: transparentPixelPng.byteLength,

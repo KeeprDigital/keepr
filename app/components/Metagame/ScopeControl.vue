@@ -28,15 +28,11 @@ const scopeItems = computed(() => {
 		{ label: 'All Players', value: 'all' },
 		...(offers('topN')
 			? [
-					...TOP_N_PRESETS.map(n => ({ label: `Top ${n}`, value: `topN:${n}` })),
+					...TOP_N_PRESETS.map((n) => ({ label: `Top ${n}`, value: `topN:${n}` })),
 					{ label: 'Top N…', value: 'topN' },
 				]
 			: []),
-		...(offers('minPoints')
-			? [
-					{ label: 'Minimum Points…', value: 'minPoints' },
-				]
-			: []),
+		...(offers('minPoints') ? [{ label: 'Minimum Points…', value: 'minPoints' }] : []),
 	];
 
 	if (offers('playerList') && props.playerLists.length > 0) {
@@ -59,17 +55,12 @@ const customTopN = ref(false);
 // Derive current combined value
 const currentValue = computed(() => {
 	// A scope the Card Game does not offer reads every Player, as the server does.
-	if (!offers(props.scope))
-		return 'all';
+	if (!offers(props.scope)) return 'all';
 	if (props.scope === 'topN') {
-		return !customTopN.value && TOP_N_PRESETS.includes(props.topN)
-			? `topN:${props.topN}`
-			: 'topN';
+		return !customTopN.value && TOP_N_PRESETS.includes(props.topN) ? `topN:${props.topN}` : 'topN';
 	}
-	if (props.scope === 'minPoints')
-		return 'minPoints';
-	if (props.scope === 'playerList' && props.playerListId)
-		return `playerList:${props.playerListId}`;
+	if (props.scope === 'minPoints') return 'minPoints';
+	if (props.scope === 'playerList' && props.playerListId) return `playerList:${props.playerListId}`;
 	return 'all';
 });
 
@@ -81,19 +72,15 @@ function onScopeChange(value: string) {
 
 	if (value === 'all') {
 		emit('update:scope', 'all');
-	}
-	else if (value === 'topN') {
+	} else if (value === 'topN') {
 		emit('update:scope', 'topN');
-	}
-	else if (value === 'minPoints') {
+	} else if (value === 'minPoints') {
 		emit('update:scope', 'minPoints');
-	}
-	else if (value.startsWith('topN:')) {
+	} else if (value.startsWith('topN:')) {
 		const n = Number.parseInt(value.split(':')[1]!);
 		emit('update:scope', 'topN');
 		emit('update:topN', n);
-	}
-	else if (value.startsWith('playerList:')) {
+	} else if (value.startsWith('playerList:')) {
 		const id = Number.parseInt(value.split(':')[1]!);
 		emit('update:scope', 'playerList');
 		emit('update:playerListId', id);

@@ -67,8 +67,7 @@ const displayStyle = {
 // The archetype page's stat strip, for the numbers a spotlight shows.
 const stats = computed(() => {
 	const data = spotlight.value;
-	if (!data)
-		return [];
+	if (!data) return [];
 	return [
 		{
 			label: 'Pilots',
@@ -80,9 +79,10 @@ const stats = computed(() => {
 			? [
 					{
 						label: `Conversion (${conversionLabel.value})`,
-						value: data.conversionRate != null && data.convertedCount != null
-							? `${data.conversionRate}% (${data.convertedCount}/${data.playerCount})`
-							: '-',
+						value:
+							data.conversionRate != null && data.convertedCount != null
+								? `${data.conversionRate}% (${data.convertedCount}/${data.playerCount})`
+								: '-',
 					},
 				]
 			: []),
@@ -103,13 +103,16 @@ const cardStyle = {
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="error"
-		:ready="ready"
-		:empty="isEmpty"
-	>
-		<div class="archetype-spotlight-display broadcast-table-display flex flex-col gap-4 h-full w-full" :style="displayStyle">
-			<div v-if="config.showHeader" class="spotlight-header broadcast-table-title" :style="titleDividerStyle">
+	<ScreenModeBase :error="error" :ready="ready" :empty="isEmpty">
+		<div
+			class="archetype-spotlight-display broadcast-table-display flex flex-col gap-4 h-full w-full"
+			:style="displayStyle"
+		>
+			<div
+				v-if="config.showHeader"
+				class="spotlight-header broadcast-table-title"
+				:style="titleDividerStyle"
+			>
 				<h2 :style="titleStyle">
 					{{ headerText }}
 				</h2>
@@ -117,7 +120,9 @@ const cardStyle = {
 
 			<div v-if="spotlight" class="spotlight-summary flex items-center justify-between gap-6 px-4">
 				<div class="flex items-center gap-3 min-w-0">
-					<span class="spotlight-name truncate" :style="headlineStyle">{{ spotlight.archetype.name }}</span>
+					<span class="spotlight-name truncate" :style="headlineStyle">{{
+						spotlight.archetype.name
+					}}</span>
 					<MetagameArchetypeColors
 						v-if="spotlight.archetype.colors"
 						:colors="spotlight.archetype.colors"
@@ -126,7 +131,11 @@ const cardStyle = {
 					/>
 				</div>
 				<div class="flex gap-8">
-					<div v-for="stat in stats" :key="stat.label" class="spotlight-stat flex flex-col items-end">
+					<div
+						v-for="stat in stats"
+						:key="stat.label"
+						class="spotlight-stat flex flex-col items-end"
+					>
 						<span class="stat-label" :style="labelStyle">{{ stat.label }}</span>
 						<span class="stat-value" :style="headlineStyle">{{ stat.value }}</span>
 					</div>
@@ -135,7 +144,11 @@ const cardStyle = {
 
 			<div class="spotlight-body flex gap-6 flex-1 min-h-0 px-4">
 				<div class="spotlight-pilots broadcast-table-surface" :style="surfaceStyle">
-					<div class="pilot-grid broadcast-table-header-row" :class="{ 'is-names-only': !readsStandings }" :style="columnHeaderStyle">
+					<div
+						class="pilot-grid broadcast-table-header-row"
+						:class="{ 'is-names-only': !readsStandings }"
+						:style="columnHeaderStyle"
+					>
 						<span v-if="readsStandings">#</span>
 						<span>Pilot</span>
 						<span v-if="readsStandings" class="text-right">Record</span>
@@ -147,9 +160,13 @@ const cardStyle = {
 						:class="{ 'is-names-only': !readsStandings }"
 						:style="rowStyle"
 					>
-						<span v-if="readsStandings" class="pilot-position" :style="secondaryTextStyle">{{ pilot.position ?? '-' }}</span>
+						<span v-if="readsStandings" class="pilot-position" :style="secondaryTextStyle">{{
+							pilot.position ?? '-'
+						}}</span>
 						<span class="pilot-name truncate" :style="primaryTextStyle">{{ pilot.name }}</span>
-						<span v-if="readsStandings" class="pilot-record text-right" :style="primaryTextStyle">{{ formatRecord(pilot) }}</span>
+						<span v-if="readsStandings" class="pilot-record text-right" :style="primaryTextStyle">{{
+							formatRecord(pilot)
+						}}</span>
 					</div>
 					<div
 						v-if="totalPages > 1"

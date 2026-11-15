@@ -29,9 +29,7 @@ export const MAX_PUBLISH_FAILURE_REASON_CHARS = 200;
 // would render that as null anyway. It is here so the declared `number | null`
 // is true of the value and not merely of how this one caller serialises it.
 function finiteNumberOrNull(value: unknown): number | null {
-	return typeof value === 'number' && Number.isFinite(value)
-		? value
-		: null;
+	return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 /**
@@ -61,19 +59,20 @@ function finiteNumberOrNull(value: unknown): number | null {
  */
 export function publishFailureFields(error: unknown) {
 	try {
-		const info = error as { statusCode?: unknown; code?: unknown; message?: unknown } | null | undefined;
+		const info = error as
+			| { statusCode?: unknown; code?: unknown; message?: unknown }
+			| null
+			| undefined;
 		return {
 			statusCode: finiteNumberOrNull(info?.statusCode),
 			errorCode: finiteNumberOrNull(info?.code),
-			errorName: error instanceof Error
-				? error.name
-				: null,
-			reason: typeof info?.message === 'string'
-				? info.message.slice(0, MAX_PUBLISH_FAILURE_REASON_CHARS)
-				: null,
+			errorName: error instanceof Error ? error.name : null,
+			reason:
+				typeof info?.message === 'string'
+					? info.message.slice(0, MAX_PUBLISH_FAILURE_REASON_CHARS)
+					: null,
 		};
-	}
-	catch {
+	} catch {
 		return {
 			statusCode: null,
 			errorCode: null,

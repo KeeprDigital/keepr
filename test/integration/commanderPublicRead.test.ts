@@ -1,12 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ATRAXA, KRAUM, TYMNA, typedSeat } from '../helpers/commanders';
 import { $fetch, anonymousFetch } from './client';
-import { commandId, getFeatureMatchSlot, requireActiveSession, sendFeatureMatchCommand } from './featureMatchSessionHelpers';
+import {
+	commandId,
+	getFeatureMatchSlot,
+	requireActiveSession,
+	sendFeatureMatchCommand,
+} from './featureMatchSessionHelpers';
 
 // What a vMix JSON Data Source reads of a Commander Slot: an anonymous GET of
 // one row, live state as of the read (ADR-0056, ADR-0087). The row's rules are
 // `featureMatchPublicRow`'s.
-describe('a Commander Slot\'s public Feature Match read', () => {
+describe("a Commander Slot's public Feature Match read", () => {
 	let eventId: number;
 	let slotId: number;
 
@@ -21,7 +26,10 @@ describe('a Commander Slot\'s public Feature Match read', () => {
 			},
 		});
 		eventId = event.id;
-		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots`, { method: 'POST', body: {} });
+		const slot = await $fetch(`/api/events/${eventId}/feature-match-slots`, {
+			method: 'POST',
+			body: {},
+		});
 		slotId = slot.id;
 		await $fetch(`/api/events/${eventId}/feature-match-slots/${slotId}/setup`, {
 			method: 'PATCH',
@@ -36,16 +44,17 @@ describe('a Commander Slot\'s public Feature Match read', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	async function publicRow() {
-		const response = await anonymousFetch(`/api/public/events/${eventId}/feature-match-slots/${slotId}`);
+		const response = await anonymousFetch(
+			`/api/public/events/${eventId}/feature-match-slots/${slotId}`,
+		);
 		return {
 			status: response.status,
 			cors: response.headers.get('access-control-allow-origin'),
-			rows: await response.json() as Array<Record<string, string>>,
+			rows: (await response.json()) as Array<Record<string, string>>,
 		};
 	}
 
@@ -56,7 +65,7 @@ describe('a Commander Slot\'s public Feature Match read', () => {
 		expect(opened.rows).toEqual([
 			expect.objectContaining({
 				player1Name: 'Ana',
-				player2Deck: 'Tymna the Weaver / Kraum, Ludevic\'s Opus',
+				player2Deck: "Tymna the Weaver / Kraum, Ludevic's Opus",
 				player3Life: '40',
 				player3Eliminated: '#00000000',
 				player4Name: '',

@@ -2,17 +2,20 @@
 import type { CounterTypeConfig } from '~~/shared/config/games';
 import type { CounterState } from '~~/shared/types/featureMatchState';
 
-const props = withDefaults(defineProps<{
-	counter: CounterState;
-	config?: CounterTypeConfig;
-	/** Scales up buttons and text for touch-screen use */
-	touch?: boolean;
-	/** Keeps counter values visible but removes interaction affordances */
-	readonly?: boolean;
-}>(), {
-	touch: false,
-	readonly: false,
-});
+const props = withDefaults(
+	defineProps<{
+		counter: CounterState;
+		config?: CounterTypeConfig;
+		/** Scales up buttons and text for touch-screen use */
+		touch?: boolean;
+		/** Keeps counter values visible but removes interaction affordances */
+		readonly?: boolean;
+	}>(),
+	{
+		touch: false,
+		readonly: false,
+	},
+);
 
 const emit = defineEmits<{
 	change: [delta: number];
@@ -23,8 +26,7 @@ const emit = defineEmits<{
 const showActions = ref(false);
 
 const label = computed(() => {
-	if (!props.config)
-		return props.counter.type;
+	if (!props.config) return props.counter.type;
 	return props.config.shortLabel ?? props.config.label;
 });
 
@@ -42,8 +44,8 @@ function handleRemove() {
 	emit('remove');
 }
 
-const labelBtnSize = computed(() => props.touch ? 'md' as const : 'sm' as const);
-const popoverBtnSize = computed(() => props.touch ? 'md' as const : 'xs' as const);
+const labelBtnSize = computed(() => (props.touch ? ('md' as const) : ('sm' as const)));
+const popoverBtnSize = computed(() => (props.touch ? ('md' as const) : ('xs' as const)));
 </script>
 
 <template>

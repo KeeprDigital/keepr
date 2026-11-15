@@ -4,7 +4,10 @@ import type {
 	BroadcastGraphicTemplateResponse,
 } from '~~/shared/types/broadcastGraphicTemplate';
 import type { BroadcastGraphicConfig } from '~~/shared/types/graphics';
-import type { GraphicAssetReference, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
+import type {
+	GraphicAssetReference,
+	GraphicsIngestionOperation,
+} from '~~/shared/types/graphicsAsset';
 import { Buffer } from 'node:buffer';
 import { createHash, randomUUID } from 'node:crypto';
 import { crc32 } from 'node:zlib';
@@ -12,9 +15,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GRAPHIC_ITEM_KINDS } from '../../shared/modules/graphics/itemDefinitions';
 import { maximalBroadcastGraphicDocument } from '../helpers/broadcastGraphicDocument';
 import { collectStream } from '../helpers/storedZipArchive';
-import {
-	readTemplatePackageParts,
-} from '../helpers/templatePackageArchive';
+import { readTemplatePackageParts } from '../helpers/templatePackageArchive';
 import { $fetch, fetch, operatorSessionCookie } from './client';
 import { graphicsIngestionRequest } from './graphicsIngestionRequest';
 import { expectOperationResult, expectResponseStatus } from './responseStatus';
@@ -35,28 +36,29 @@ import { expectOperationResult, expectResponseStatus } from './responseStatus';
  * compared to the exported one *whole*, with nothing legitimately different in it.
  */
 
-const basePixelPng = Uint8Array.from(Buffer.from(
-	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-	'base64',
-));
+const basePixelPng = Uint8Array.from(
+	Buffer.from(
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+		'base64',
+	),
+);
 
 /** Appends a valid ancillary text chunk so this suite owns a distinct digest. */
 function pngWithTextChunk(source: Uint8Array, keyword: string): Uint8Array<ArrayBuffer> {
-	const payload = Buffer.concat([
-		Buffer.from('tEXt'),
-		Buffer.from(`${keyword}\0`),
-	]);
+	const payload = Buffer.concat([Buffer.from('tEXt'), Buffer.from(`${keyword}\0`)]);
 	const length = Buffer.alloc(4);
 	length.writeUInt32BE(payload.byteLength - 4, 0);
 	const checksum = Buffer.alloc(4);
 	checksum.writeUInt32BE(crc32(payload), 0);
-	return Uint8Array.from(Buffer.concat([
-		Buffer.from(source.slice(0, -12)),
-		length,
-		payload,
-		checksum,
-		Buffer.from(source.slice(-12)),
-	]));
+	return Uint8Array.from(
+		Buffer.concat([
+			Buffer.from(source.slice(0, -12)),
+			length,
+			payload,
+			checksum,
+			Buffer.from(source.slice(-12)),
+		]),
+	);
 }
 
 const pixelPng = pngWithTextChunk(basePixelPng, 'sk-broadcast-graphic-template-packages');
@@ -70,24 +72,18 @@ async function request(
 	options: { method?: string; body?: unknown; cookie?: string } = {},
 ): Promise<{ status: number; data: any }> {
 	const headers: Record<string, string> = {};
-	if (options.cookie)
-		headers.cookie = options.cookie;
-	if (options.body !== undefined)
-		headers['content-type'] = 'application/json';
+	if (options.cookie) headers.cookie = options.cookie;
+	if (options.body !== undefined) headers['content-type'] = 'application/json';
 
 	const response = await fetch(path, {
 		method: options.method ?? 'GET',
 		headers,
-		body: options.body === undefined
-			? undefined
-			: JSON.stringify(options.body),
+		body: options.body === undefined ? undefined : JSON.stringify(options.body),
 	});
 	const text = await response.text();
 	return {
 		status: response.status,
-		data: text
-			? JSON.parse(text)
-			: null,
+		data: text ? JSON.parse(text) : null,
 	};
 }
 
@@ -114,7 +110,7 @@ async function receivePackage(archive: Uint8Array<ArrayBuffer>) {
 		},
 	);
 	await expectResponseStatus(response, 200);
-	return await response.json() as GraphicsIngestionOperation;
+	return (await response.json()) as GraphicsIngestionOperation;
 }
 
 async function installPackage(operationId: string) {
@@ -196,9 +192,7 @@ describe('broadcast Graphic Template Packages', () => {
 			{
 				method: 'PATCH',
 				body: {
-					graphics: [
-						maximalBroadcastGraphicDocument({ id: 'packaged-lower-third', asset }),
-					],
+					graphics: [maximalBroadcastGraphicDocument({ id: 'packaged-lower-third', asset })],
 				},
 			},
 		);
@@ -225,17 +219,14 @@ describe('broadcast Graphic Template Packages', () => {
 
 	afterAll(async () => {
 		for (const id of [sourceTemplate?.id, ...installedTemplateIds]) {
-			if (!id)
-				continue;
+			if (!id) continue;
 			try {
 				await request(`${TEMPLATES_PATH}/${id}`, { method: 'DELETE', cookie: authorCookie });
-			}
-			catch {}
+			} catch {}
 		}
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	it('exports the library entry as a self-contained package naming its identity and revision', async () => {
@@ -256,13 +247,9 @@ describe('broadcast Graphic Template Packages', () => {
 		// every Graphic Item Definition the design uses, plus the application fonts it
 		// names (a new text item's, from the Default Theme's body). Compared against
 		// the shared vocabulary so this also pins that the design still exercises every kind.
-		expect(parts.manifest.applicationCapabilities.map(entry => entry.identity).sort())
-			.toEqual([
-				...GRAPHIC_ITEM_KINDS,
-				'inter',
-				'saira-condensed',
-				'social-profile-projection',
-			].sort());
+		expect(parts.manifest.applicationCapabilities.map((entry) => entry.identity).sort()).toEqual(
+			[...GRAPHIC_ITEM_KINDS, 'inter', 'saira-condensed', 'social-profile-projection'].sort(),
+		);
 	});
 
 	/**
@@ -313,8 +300,9 @@ describe('broadcast Graphic Template Packages', () => {
 		});
 
 		// The source is untouched by the import, and nothing about the copy reaches it.
-		const source = (await request(`${TEMPLATES_PATH}/${sourceTemplate.id}`, { cookie: authorCookie }))
-			.data as BroadcastGraphicTemplateResponse;
+		const source = (
+			await request(`${TEMPLATES_PATH}/${sourceTemplate.id}`, { cookie: authorCookie })
+		).data as BroadcastGraphicTemplateResponse;
 		expect(source.revision).toBe(sourceTemplate.revision);
 		expect(source.name).toBe(sourceTemplate.name);
 		expect(source.provenance).toBeUndefined();
@@ -324,10 +312,10 @@ describe('broadcast Graphic Template Packages', () => {
 		// entry, not a reason for an author to look somewhere else for it.
 		const listed = (await request(TEMPLATES_PATH, { cookie: authorCookie }))
 			.data as BroadcastGraphicTemplateListResponse;
-		const entry = listed.templates.find(template => template.id === templateId);
+		const entry = listed.templates.find((template) => template.id === templateId);
 		expect(entry).toMatchObject({ authored: false, name: sourceTemplate.name });
 		expect(entry!.itemCount).toBe(
-			listed.templates.find(template => template.id === sourceTemplate.id)!.itemCount,
+			listed.templates.find((template) => template.id === sourceTemplate.id)!.itemCount,
 		);
 	});
 
@@ -367,34 +355,53 @@ describe('broadcast Graphic Template Packages', () => {
 		const templateId = completed.templatePackageInstallation!.templateId;
 		installedTemplateIds.push(templateId);
 		const screen = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${screenId}`);
-		const placed = await request(`/api/events/${eventId}/screens/${screenId}/broadcast-graphics/placements`, {
-			method: 'POST',
-			cookie: authorCookie,
-			body: { templateId, stateVersion: screen.stateVersion },
-		});
+		const placed = await request(
+			`/api/events/${eventId}/screens/${screenId}/broadcast-graphics/placements`,
+			{
+				method: 'POST',
+				cookie: authorCookie,
+				body: { templateId, stateVersion: screen.stateVersion },
+			},
+		);
 		expect(placed.status).toBe(201);
 		const placedId = (placed.data.graphic as BroadcastGraphicConfig).id;
-		const usage = async () => (await request(`/api/graphics-assets/${asset.assetId}/usage`, { cookie: authorCookie }))
-			.data as { owner: { kind: string; id: string; slot: string } }[];
-		expect(await usage()).toContainEqual(expect.objectContaining({
-			owner: expect.objectContaining({ id: templateId }),
-		}));
+		const usage = async () =>
+			(await request(`/api/graphics-assets/${asset.assetId}/usage`, { cookie: authorCookie }))
+				.data as { owner: { kind: string; id: string; slot: string } }[];
+		expect(await usage()).toContainEqual(
+			expect.objectContaining({
+				owner: expect.objectContaining({ id: templateId }),
+			}),
+		);
 
-		const deleted = await request(`${TEMPLATES_PATH}/${templateId}`, { method: 'DELETE', cookie: authorCookie });
+		const deleted = await request(`${TEMPLATES_PATH}/${templateId}`, {
+			method: 'DELETE',
+			cookie: authorCookie,
+		});
 
 		expect(deleted.status).toBe(204);
-		expect((await request(`${TEMPLATES_PATH}/${templateId}`, { cookie: authorCookie })).status).toBe(404);
-		expect((await usage()).map(item => item.owner.id)).not.toContain(templateId);
+		expect(
+			(await request(`${TEMPLATES_PATH}/${templateId}`, { cookie: authorCookie })).status,
+		).toBe(404);
+		expect((await usage()).map((item) => item.owner.id)).not.toContain(templateId);
 		// The copy placed from it keeps its own references.
-		expect((await usage()).some(item => item.owner.kind === 'screen' && item.owner.slot.includes(placedId))).toBe(true);
+		expect(
+			(await usage()).some(
+				(item) => item.owner.kind === 'screen' && item.owner.slot.includes(placedId),
+			),
+		).toBe(true);
 
 		const retried = await installPackage(received.id);
 
 		expect(retried.templatePackageInstallation).toEqual(completed.templatePackageInstallation);
-		expect((await request(`${TEMPLATES_PATH}/${templateId}`, { cookie: authorCookie })).status).toBe(200);
-		expect(await usage()).toContainEqual(expect.objectContaining({
-			owner: expect.objectContaining({ id: templateId }),
-		}));
+		expect(
+			(await request(`${TEMPLATES_PATH}/${templateId}`, { cookie: authorCookie })).status,
+		).toBe(200);
+		expect(await usage()).toContainEqual(
+			expect.objectContaining({
+				owner: expect.objectContaining({ id: templateId }),
+			}),
+		);
 	});
 
 	it('exports an imported design again, so it is not stranded where it landed', async () => {

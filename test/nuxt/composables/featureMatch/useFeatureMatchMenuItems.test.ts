@@ -1,7 +1,11 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LAW, ZORO } from '~~/test/helpers/opCards';
-import { createFollowedFeatureMatchSessions, followNoSession, followSwappedSession } from '~~/test/nuxt/helpers/followedFeatureMatchSession';
+import {
+	createFollowedFeatureMatchSessions,
+	followNoSession,
+	followSwappedSession,
+} from '~~/test/nuxt/helpers/followedFeatureMatchSession';
 
 const alice = {
 	name: 'Alice',
@@ -123,24 +127,34 @@ describe('useFeatureMatchMenuItems', () => {
 			label: 'Match 3 — Ben vs Ana',
 			firstDeck: { deckName: null, leader: LAW },
 		},
-	])('names a $game Slot\'s players in the order $session Session seats them', ({ game: _game, slot, session, label, firstDeck }) => {
-		if (session === 'a swapped')
-			followSwappedSession(followed, mockMatches.find(match => match.id === slot)!);
+	])(
+		"names a $game Slot's players in the order $session Session seats them",
+		({ game: _game, slot, session, label, firstDeck }) => {
+			if (session === 'a swapped')
+				followSwappedSession(
+					followed,
+					mockMatches.find((match) => match.id === slot)!,
+				);
 
-		const item = useFeatureMatchMenuItems().value.find(item => item.value === slot)!;
-		expect(item.label).toBe(label);
-		expect(item.decks[0]).toMatchObject(firstDeck);
-	});
+			const item = useFeatureMatchMenuItems().value.find((item) => item.value === slot)!;
+			expect(item.label).toBe(label);
+			expect(item.decks[0]).toMatchObject(firstDeck);
+		},
+	);
 
 	it('lists no deck for a Seat that holds none', () => {
-		expect(useFeatureMatchMenuItems().value[1]).toMatchObject({ value: 2, label: 'Match 2 — Charlie vs TBD', decks: [] });
+		expect(useFeatureMatchMenuItems().value[1]).toMatchObject({
+			value: 2,
+			label: 'Match 2 — Charlie vs TBD',
+			decks: [],
+		});
 	});
 
 	// Every Seat of a Commander Slot that holds a deck is listed, in Seat order.
-	it('lists a Commander Slot\'s third and fourth Seat decks', () => {
+	it("lists a Commander Slot's third and fourth Seat decks", () => {
 		mockEventKind.value = 'mtg-commander';
 
-		expect(useFeatureMatchMenuItems().value.find(item => item.value === 4)!.decks).toEqual([
+		expect(useFeatureMatchMenuItems().value.find((item) => item.value === 4)!.decks).toEqual([
 			{ deckName: 'Atraxa', colors: 'WUBG', leader: null },
 			{ deckName: 'Krenko', colors: 'R', leader: null },
 		]);
@@ -153,6 +167,6 @@ describe('useFeatureMatchMenuItems', () => {
 	])('labels a Commander Slot $label', ({ slot, label }) => {
 		mockEventKind.value = 'mtg-commander';
 
-		expect(useFeatureMatchMenuItems().value.find(item => item.value === slot)!.label).toBe(label);
+		expect(useFeatureMatchMenuItems().value.find((item) => item.value === slot)!.label).toBe(label);
 	});
 });

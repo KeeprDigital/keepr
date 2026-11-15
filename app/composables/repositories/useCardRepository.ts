@@ -19,12 +19,14 @@ export function useCardRepository() {
 
 	/** The Screen's Card with the Card revision it was read at (#734). */
 	const getScreenCard = async (eventId: number, screenId: number): Promise<ScreenCardState> => {
-		return await $fetch<ScreenCardState>(eventData.path({
-			eventId,
-			resourcePath: 'screens',
-			resourceId: screenId,
-			suffix: 'card',
-		}));
+		return await $fetch<ScreenCardState>(
+			eventData.path({
+				eventId,
+				resourcePath: 'screens',
+				resourceId: screenId,
+				suffix: 'card',
+			}),
+		);
 	};
 
 	/** The operator's Clear; the answer carries the Card revision it committed (#734). */

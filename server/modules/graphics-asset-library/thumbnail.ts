@@ -21,16 +21,12 @@ export function createThumbnailProjection(
 	);
 	const width = Math.max(1, Math.floor(sourceWidth * scale));
 	const height = Math.max(1, Math.floor(sourceHeight * scale));
-	const sourceXByTargetX = Array.from(
-		{ length: width },
-		(_, targetX) => Math.min(sourceWidth - 1, Math.floor(targetX / scale)),
+	const sourceXByTargetX = Array.from({ length: width }, (_, targetX) =>
+		Math.min(sourceWidth - 1, Math.floor(targetX / scale)),
 	);
 	const targetYBySource = new Map<number, number>();
 	for (let targetY = 0; targetY < height; targetY++) {
-		targetYBySource.set(
-			Math.min(sourceHeight - 1, Math.floor(targetY / scale)),
-			targetY,
-		);
+		targetYBySource.set(Math.min(sourceHeight - 1, Math.floor(targetY / scale)), targetY);
 	}
 	return {
 		width,

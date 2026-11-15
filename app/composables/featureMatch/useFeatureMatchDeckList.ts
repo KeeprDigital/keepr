@@ -20,7 +20,7 @@ export function useFeatureMatchDeckList(
 		if (!playerId) {
 			return { name: defaultName, colors: defaultColors };
 		}
-		const player = playerStore.players.find(p => p.id === playerId);
+		const player = playerStore.players.find((p) => p.id === playerId);
 		if (!player) {
 			return { name: defaultName, colors: defaultColors };
 		}
@@ -32,18 +32,21 @@ export function useFeatureMatchDeckList(
 	}
 
 	function findPlayerByName(name: string | null): Player | null {
-		if (!name)
-			return null;
+		if (!name) return null;
 		const normalizedName = name.toLowerCase().trim();
-		return playerStore.players.find(p => p.name.toLowerCase().trim() === normalizedName) ?? null;
+		return playerStore.players.find((p) => p.name.toLowerCase().trim() === normalizedName) ?? null;
 	}
 
 	const player1ForDeckList = computed(() => findPlayerByName(player1Data.value?.name ?? null));
 	const player2ForDeckList = computed(() => findPlayerByName(player2Data.value?.name ?? null));
 
 	// A player "has" a deck if their gameData has a deckName set (proxy for having deck cards)
-	const player1HasDeckList = computed(() => !!getMtgGameData(player1ForDeckList.value?.gameData).deckName);
-	const player2HasDeckList = computed(() => !!getMtgGameData(player2ForDeckList.value?.gameData).deckName);
+	const player1HasDeckList = computed(
+		() => !!getMtgGameData(player1ForDeckList.value?.gameData).deckName,
+	);
+	const player2HasDeckList = computed(
+		() => !!getMtgGameData(player2ForDeckList.value?.gameData).deckName,
+	);
 
 	async function openDeckListModal(player: Player) {
 		await openPlayerDeckList(player);

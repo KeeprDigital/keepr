@@ -75,14 +75,9 @@ export interface BroadcastGraphicsLiveStateChange {
 }
 
 /** The maps a change describes. Everything else in live state is passed through. */
-const CHANGED_MAPS = [
-	'playout',
-	'inputs',
-	'sources',
-	'socialProfileProjections',
-] as const;
+const CHANGED_MAPS = ['playout', 'inputs', 'sources', 'socialProfileProjections'] as const;
 
-type LiveStateMap = typeof CHANGED_MAPS[number];
+type LiveStateMap = (typeof CHANGED_MAPS)[number];
 
 function mapOf(state: BroadcastGraphicsLiveState, map: LiveStateMap): Record<string, unknown> {
 	return state[map] ?? {};
@@ -133,8 +128,7 @@ export function broadcastGraphicsLiveStateChange(
 	before: BroadcastGraphicsLiveState,
 	after: BroadcastGraphicsLiveState,
 ): BroadcastGraphicsLiveStateChange | null {
-	if (!same(passedThrough(before), passedThrough(after)))
-		return null;
+	if (!same(passedThrough(before), passedThrough(after))) return null;
 
 	const change: BroadcastGraphicsLiveStateChange = {};
 
@@ -143,27 +137,19 @@ export function broadcastGraphicsLiveStateChange(
 		const to = mapOf(after, map);
 		const entries: BroadcastGraphicsLiveStateEntries<unknown> = {};
 
-		for (const graphicId of new Set([
-			...Object.keys(from),
-			...Object.keys(to),
-		])) {
+		for (const graphicId of new Set([...Object.keys(from), ...Object.keys(to)])) {
 			// The no-null rule this description depends on is enforced by recovery, one
 			// module away, and it was once enforced for two of these three maps — which
 			// made a null Graphic Source Selection record indistinguishable from an
 			// absent one and left a peer permanently behind with nothing to notice it
 			// by. Refusing to describe a state that breaks the promise costs a reload;
 			// reading the null as a removal costs a divergence nothing heals.
-			if (to[graphicId] === null)
-				return null;
-			if (same(from[graphicId], to[graphicId]))
-				continue;
-			entries[graphicId] = to[graphicId] === undefined
-				? null
-				: to[graphicId];
+			if (to[graphicId] === null) return null;
+			if (same(from[graphicId], to[graphicId])) continue;
+			entries[graphicId] = to[graphicId] === undefined ? null : to[graphicId];
 		}
 
-		if (Object.keys(entries).length > 0)
-			(change as Record<string, unknown>)[map] = entries;
+		if (Object.keys(entries).length > 0) (change as Record<string, unknown>)[map] = entries;
 	}
 
 	return change;
@@ -191,14 +177,11 @@ export function changedBroadcastGraphicsLiveState(
 
 	for (const map of CHANGED_MAPS) {
 		const entries = change[map];
-		if (!entries)
-			continue;
+		if (!entries) continue;
 
 		for (const [graphicId, entry] of Object.entries(entries)) {
-			if (entry === null)
-				delete (next[map] as Record<string, unknown>)[graphicId];
-			else
-				(next[map] as Record<string, unknown>)[graphicId] = entry;
+			if (entry === null) delete (next[map] as Record<string, unknown>)[graphicId];
+			else (next[map] as Record<string, unknown>)[graphicId] = entry;
 		}
 	}
 

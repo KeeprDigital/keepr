@@ -15,8 +15,7 @@ export default defineEventHandler(async (event) => {
 		return await graphicsAssetLibraryForEvent(event).inspectInstalledGraphicsTemplate({
 			templateId: installedGraphicsTemplateId(getRouterParam(event, 'templateId') ?? ''),
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

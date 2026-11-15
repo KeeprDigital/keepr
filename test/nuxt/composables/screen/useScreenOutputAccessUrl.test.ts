@@ -67,7 +67,10 @@ describe('useScreenOutputAccessUrl', () => {
 			location: { href: '' },
 			close: vi.fn(),
 		};
-		vi.stubGlobal('open', vi.fn(() => outputWindow));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => outputWindow),
+		);
 		const { openScreenOutput } = useScreenOutputAccessUrl();
 
 		expect(await openScreenOutput(screen)).toBe('opened');
@@ -88,7 +91,10 @@ describe('useScreenOutputAccessUrl', () => {
 	 * something that would be blocked again (#237, #250).
 	 */
 	it('tells a blocked window apart from a refused capability', async () => {
-		vi.stubGlobal('open', vi.fn(() => null));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => null),
+		);
 		const { openScreenOutput } = useScreenOutputAccessUrl();
 
 		expect(await openScreenOutput(screen)).toBe('window-blocked');
@@ -98,7 +104,10 @@ describe('useScreenOutputAccessUrl', () => {
 			location: { href: '' },
 			close: vi.fn(),
 		};
-		vi.stubGlobal('open', vi.fn(() => outputWindow));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => outputWindow),
+		);
 		mockApiFetch.mockRejectedValue(new Error('unavailable'));
 
 		expect(await openScreenOutput(screen)).toBe('access-refused');
@@ -111,7 +120,10 @@ describe('useScreenOutputAccessUrl', () => {
 	 * thing that later reads as a leak.
 	 */
 	it('asks for no capability at all when the browser blocked the window', async () => {
-		vi.stubGlobal('open', vi.fn(() => null));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => null),
+		);
 		const { openScreenOutput } = useScreenOutputAccessUrl();
 
 		await openScreenOutput(screen);
@@ -130,7 +142,10 @@ describe('useScreenOutputAccessUrl', () => {
 			location: { href: '' },
 			close: vi.fn(),
 		};
-		vi.stubGlobal('open', vi.fn(() => outputWindow));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => outputWindow),
+		);
 		const { screenOutputAccessUrl, openScreenOutput } = useScreenOutputAccessUrl();
 
 		expect(await screenOutputAccessUrl({ ...screen, output: 'fill', download: true })).toBe(
@@ -150,7 +165,10 @@ describe('useScreenOutputAccessUrl', () => {
 			location: { href: '' },
 			close: vi.fn(),
 		};
-		vi.stubGlobal('open', vi.fn(() => outputWindow));
+		vi.stubGlobal(
+			'open',
+			vi.fn(() => outputWindow),
+		);
 		const { openScreenOutput } = useScreenOutputAccessUrl();
 
 		await openScreenOutput(screen);

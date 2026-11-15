@@ -54,9 +54,7 @@ export function splitDeckGroupsIntoColumns<T>(
 
 	function evaluate(splitPoints: number[]) {
 		const columnHeights = splitPoints.map((end, index) => {
-			const start = index === 0
-				? 0
-				: (splitPoints[index - 1] ?? 0);
+			const start = index === 0 ? 0 : (splitPoints[index - 1] ?? 0);
 			return getColumnHeight(prefixSums, start, end);
 		});
 
@@ -66,10 +64,10 @@ export function splitDeckGroupsIntoColumns<T>(
 		const score: [number, number, number] = [maxHeight, maxHeight - minHeight, imbalance];
 
 		if (
-			bestScore == null
-			|| score[0] < bestScore[0]
-			|| (score[0] === bestScore[0] && score[1] < bestScore[1])
-			|| (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] < bestScore[2])
+			bestScore == null ||
+			score[0] < bestScore[0] ||
+			(score[0] === bestScore[0] && score[1] < bestScore[1]) ||
+			(score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] < bestScore[2])
 		) {
 			bestScore = score;
 			bestSplitPoints = [...splitPoints];

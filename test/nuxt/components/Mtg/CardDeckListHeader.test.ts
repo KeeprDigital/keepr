@@ -16,38 +16,16 @@ mockNuxtImport('useCardStore', () => () => cardStore);
 mockNuxtImport('useFeatureMatchMenuItems', () => () => ref([]));
 
 const FeatureMatchNoteStub = defineComponent({
-	props: [
-		'note',
-		'noteKey',
-		'remoteChanged',
-		'save',
-	],
-	template: '<div data-testid="cards-production-note" :data-note="note" :data-remote-changed="String(remoteChanged)"><button data-testid="cards-note-save" @click="save(\'Edited from Cards\')">Save</button></div>',
+	props: ['note', 'noteKey', 'remoteChanged', 'save'],
+	template:
+		'<div data-testid="cards-production-note" :data-note="note" :data-remote-changed="String(remoteChanged)"><button data-testid="cards-note-save" @click="save(\'Edited from Cards\')">Save</button></div>',
 });
 
 describe('mtgCardDeckListHeader', () => {
 	it.each([
-		[
-			'loads the decks of a Match selected before mount',
-			'match',
-			false,
-			1,
-			0,
-		],
-		[
-			'loads the decks of a Slot selected before mount',
-			'slot',
-			false,
-			0,
-			1,
-		],
-		[
-			'keeps the decks the store already holds',
-			'match',
-			true,
-			0,
-			0,
-		],
+		['loads the decks of a Match selected before mount', 'match', false, 1, 0],
+		['loads the decks of a Slot selected before mount', 'slot', false, 0, 1],
+		['keeps the decks the store already holds', 'match', true, 0, 0],
 	] as const)('%s', (_, kind, deckListHasData, matchLoads, slotLoads) => {
 		cardStore.deckListHasData = deckListHasData;
 		cardStore.loadMatchupDeckLists.mockClear();

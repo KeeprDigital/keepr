@@ -35,7 +35,9 @@ mockNuxtImport('useServerTime', () => () => ({
 const EVENT_ID = 12;
 const SCREEN_ID = 3;
 
-function session(overrides: Partial<BroadcastGraphicsLiveSessionResponse> = {}): BroadcastGraphicsLiveSessionResponse {
+function session(
+	overrides: Partial<BroadcastGraphicsLiveSessionResponse> = {},
+): BroadcastGraphicsLiveSessionResponse {
 	return {
 		id: 55,
 		eventId: EVENT_ID,
@@ -52,7 +54,10 @@ function session(overrides: Partial<BroadcastGraphicsLiveSessionResponse> = {}):
 }
 
 /** A placed Broadcast Graphic with no authored animation: every phase immediate. */
-function graphic(id: string, animation?: BroadcastGraphicConfig['animation']): BroadcastGraphicConfig {
+function graphic(
+	id: string,
+	animation?: BroadcastGraphicConfig['animation'],
+): BroadcastGraphicConfig {
 	return { id, name: id, items: [], animation };
 }
 
@@ -126,8 +131,7 @@ function refusedCommandFailure(code: string, message: string, inputKeys: string[
 // `clearMocks` forgets calls, not answers: without this a refusal one test arms
 // on `sendCommand` would answer the next test's command too.
 beforeEach(() => {
-	for (const call of Object.values(mockRepository))
-		call.mockReset();
+	for (const call of Object.values(mockRepository)) call.mockReset();
 	mockRepository.getSession.mockResolvedValue(session());
 	// This browser's clock holds still, so every phase window is measured from one
 	// instant however long a test takes; only `mockServerTimeOffset` moves time.
@@ -154,31 +158,28 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 	});
 
 	it('derives Graphic Playout State and the on-air stack from the loaded snapshot', async () => {
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: true, effectiveStartedAt: 0, cut: false },
-					bug: { onAir: false, effectiveStartedAt: 0, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+						bug: { onAir: false, effectiveStartedAt: 0, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
+			}),
+		);
 
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 
 		expect(store.playoutState(SCREEN_ID, 'slate')).toBe('on-air');
 		expect(store.playoutState(SCREEN_ID, 'bug')).toBe('off');
-		expect(store.onAirGraphicIds(SCREEN_ID, [
-			graphic('bug'),
-			graphic('slate'),
-		])).toEqual(['slate']);
+		expect(store.onAirGraphicIds(SCREEN_ID, [graphic('bug'), graphic('slate')])).toEqual(['slate']);
 	});
 
 	it('reports every Broadcast Graphic off before any snapshot has loaded', () => {
 		expect(store.playoutState(SCREEN_ID, 'slate')).toBe('off');
-		expect(store.onAirGraphicIds(SCREEN_ID, [
-			graphic('slate'),
-		])).toEqual([]);
+		expect(store.onAirGraphicIds(SCREEN_ID, [graphic('slate')])).toEqual([]);
 	});
 
 	it('reads current Social Profile tuples and sends direct, Previous, and Next commands', async () => {
@@ -208,25 +209,27 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			},
 		};
 		mockRepository.getSession.mockResolvedValue(session({ currentState }));
-		mockRepository.sendCommand.mockImplementation(async (
-			_eventId: number,
-			_screenId: number,
-			_sessionId: number,
-			command: { type: string },
-		) => ({
-			screenId: SCREEN_ID,
-			sessionId: 55,
-			sequence: 2,
-			commandType: command.type,
-			currentState,
-			session: session({ sequence: 2, currentState }),
-		}));
+		mockRepository.sendCommand.mockImplementation(
+			async (
+				_eventId: number,
+				_screenId: number,
+				_sessionId: number,
+				command: { type: string },
+			) => ({
+				screenId: SCREEN_ID,
+				sessionId: 55,
+				sequence: 2,
+				commandType: command.type,
+				currentState,
+				session: session({ sequence: 2, currentState }),
+			}),
+		);
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 
-		expect(store.socialProfileProjectionState(SCREEN_ID, 'slate', 'profile')?.currentNetwork).toBe('twitch');
-		expect(store.socialProfileValues(SCREEN_ID, [
-			socialGraphic('slate'),
-		])).toEqual({
+		expect(store.socialProfileProjectionState(SCREEN_ID, 'slate', 'profile')?.currentNetwork).toBe(
+			'twitch',
+		);
+		expect(store.socialProfileValues(SCREEN_ID, [socialGraphic('slate')])).toEqual({
 			slate: { profile: currentState.socialProfileProjections.slate.profile.acceptedProfiles[0] },
 		});
 
@@ -234,21 +237,25 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		await store.previousSocialProfile(EVENT_ID, SCREEN_ID, 'slate', 'profile');
 		await store.nextSocialProfile(EVENT_ID, SCREEN_ID, 'slate', 'profile');
 
-		expect(mockRepository.sendCommand.mock.calls.map(call => ({ type: call[3].type, payload: call[3].payload })))
-			.toEqual([
-				{
-					type: 'Select Social Profile',
-					payload: { graphicId: 'slate', projectionKey: 'profile', network: 'x' },
-				},
-				{
-					type: 'Previous Social Profile',
-					payload: { graphicId: 'slate', projectionKey: 'profile' },
-				},
-				{
-					type: 'Next Social Profile',
-					payload: { graphicId: 'slate', projectionKey: 'profile' },
-				},
-			]);
+		expect(
+			mockRepository.sendCommand.mock.calls.map((call) => ({
+				type: call[3].type,
+				payload: call[3].payload,
+			})),
+		).toEqual([
+			{
+				type: 'Select Social Profile',
+				payload: { graphicId: 'slate', projectionKey: 'profile', network: 'x' },
+			},
+			{
+				type: 'Previous Social Profile',
+				payload: { graphicId: 'slate', projectionKey: 'profile' },
+			},
+			{
+				type: 'Next Social Profile',
+				payload: { graphicId: 'slate', projectionKey: 'profile' },
+			},
+		]);
 	});
 
 	it('projects automatic Social Profile values from the shared server clock and sends the Automatic command', async () => {
@@ -293,82 +300,81 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		});
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 
-		expect(store.socialProfileValues(SCREEN_ID, [
-			socialGraphic('slate'),
-		], 1_008_100)).toEqual({
+		expect(store.socialProfileValues(SCREEN_ID, [socialGraphic('slate')], 1_008_100)).toEqual({
 			slate: { profile: acceptedProfiles[1] },
 		});
-		expect(store.projectedSocialProfileProjectionState(
-			SCREEN_ID,
-			'slate',
-			'profile',
-			socialGraphic('slate').socialProfileProjections![0]!,
-			1_008_100,
-		)?.currentNetwork).toBe('x');
-		expect(store.hasActiveSocialProfileRotation(SCREEN_ID, [
-			socialGraphic('slate'),
-		])).toBe(true);
+		expect(
+			store.projectedSocialProfileProjectionState(
+				SCREEN_ID,
+				'slate',
+				'profile',
+				socialGraphic('slate').socialProfileProjections![0]!,
+				1_008_100,
+			)?.currentNetwork,
+		).toBe('x');
+		expect(store.hasActiveSocialProfileRotation(SCREEN_ID, [socialGraphic('slate')])).toBe(true);
 
 		await store.setSocialProfileAutomatic(EVENT_ID, SCREEN_ID, 'slate', 'profile', false);
-		expect(mockRepository.sendCommand).toHaveBeenLastCalledWith(EVENT_ID, SCREEN_ID, 55, expect.objectContaining({
-			type: 'Set Social Profile Automatic',
-			payload: { graphicId: 'slate', projectionKey: 'profile', automatic: false },
-		}));
+		expect(mockRepository.sendCommand).toHaveBeenLastCalledWith(
+			EVENT_ID,
+			SCREEN_ID,
+			55,
+			expect.objectContaining({
+				type: 'Set Social Profile Automatic',
+				payload: { graphicId: 'slate', projectionKey: 'profile', automatic: false },
+			}),
+		);
 
 		mockClockSynced.value = false;
-		expect(store.socialProfileValues(SCREEN_ID, [
-			socialGraphic('slate'),
-		], 1_008_100)).toEqual({
+		expect(store.socialProfileValues(SCREEN_ID, [socialGraphic('slate')], 1_008_100)).toEqual({
 			slate: { profile: acceptedProfiles[0] },
 		});
-		expect(store.projectedSocialProfileProjectionState(
-			SCREEN_ID,
-			'slate',
-			'profile',
-			socialGraphic('slate').socialProfileProjections![0]!,
-			1_008_100,
-		)?.currentNetwork).toBe('twitch');
-		expect(store.hasActiveSocialProfileRotation(SCREEN_ID, [
-			socialGraphic('slate'),
-		])).toBe(false);
+		expect(
+			store.projectedSocialProfileProjectionState(
+				SCREEN_ID,
+				'slate',
+				'profile',
+				socialGraphic('slate').socialProfileProjections![0]!,
+				1_008_100,
+			)?.currentNetwork,
+		).toBe('twitch');
+		expect(store.hasActiveSocialProfileRotation(SCREEN_ID, [socialGraphic('slate')])).toBe(false);
 	});
 
 	it('advances a one-profile transition only until its transparent boundary settles', async () => {
 		const startedAt = Date.now();
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: true, effectiveStartedAt: startedAt, cut: false },
-				},
-				inputs: {},
-				socialProfileProjections: {
-					slate: {
-						profile: {
-							acceptedProfiles: [
-								{
-									network: 'twitch' as const,
-									networkLabel: 'Twitch',
-									handle: 'AvaLive',
-									profileUrl: 'https://www.twitch.tv/AvaLive',
-								},
-							],
-							currentNetwork: 'twitch' as const,
-							rotationAnchor: { network: 'twitch' as const, anchoredAt: startedAt + 250 },
-							transitionAnchor: { startedAt, from: [] },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: true, effectiveStartedAt: startedAt, cut: false },
+					},
+					inputs: {},
+					socialProfileProjections: {
+						slate: {
+							profile: {
+								acceptedProfiles: [
+									{
+										network: 'twitch' as const,
+										networkLabel: 'Twitch',
+										handle: 'AvaLive',
+										profileUrl: 'https://www.twitch.tv/AvaLive',
+									},
+								],
+								currentNetwork: 'twitch' as const,
+								rotationAnchor: { network: 'twitch' as const, anchoredAt: startedAt + 250 },
+								transitionAnchor: { startedAt, from: [] },
+							},
 						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 
-		expect(store.hasActiveSocialProfileRotation(SCREEN_ID, [
-			socialGraphic('slate'),
-		])).toBe(true);
+		expect(store.hasActiveSocialProfileRotation(SCREEN_ID, [socialGraphic('slate')])).toBe(true);
 		mockServerTimeOffset.value = 250;
-		expect(store.hasActiveSocialProfileRotation(SCREEN_ID, [
-			socialGraphic('slate'),
-		])).toBe(false);
+		expect(store.hasActiveSocialProfileRotation(SCREEN_ID, [socialGraphic('slate')])).toBe(false);
 	});
 
 	it('sends a Take naming the loaded epoch, and keeps the returned snapshot', async () => {
@@ -397,10 +403,15 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 		await store.take(EVENT_ID, SCREEN_ID, 'slate');
 
-		expect(mockRepository.sendCommand).toHaveBeenCalledWith(EVENT_ID, SCREEN_ID, 55, expect.objectContaining({
-			type: 'Take',
-			payload: { graphicId: 'slate', cut: false },
-		}));
+		expect(mockRepository.sendCommand).toHaveBeenCalledWith(
+			EVENT_ID,
+			SCREEN_ID,
+			55,
+			expect.objectContaining({
+				type: 'Take',
+				payload: { graphicId: 'slate', cut: false },
+			}),
+		);
 		expect(store.playoutState(SCREEN_ID, 'slate')).toBe('on-air');
 	});
 
@@ -417,10 +428,15 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 		await store.out(EVENT_ID, SCREEN_ID, 'slate', true);
 
-		expect(mockRepository.sendCommand).toHaveBeenCalledWith(EVENT_ID, SCREEN_ID, 55, expect.objectContaining({
-			type: 'Out',
-			payload: { graphicId: 'slate', cut: true },
-		}));
+		expect(mockRepository.sendCommand).toHaveBeenCalledWith(
+			EVENT_ID,
+			SCREEN_ID,
+			55,
+			expect.objectContaining({
+				type: 'Out',
+				payload: { graphicId: 'slate', cut: true },
+			}),
+		);
 	});
 
 	it('names two separate operator intents distinctly, so neither suppresses the other', async () => {
@@ -447,7 +463,7 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		// Two, asserted rather than assumed: destructuring a shorter list would leave
 		// `second` undefined and pass this assertion while the second press was never
 		// sent at all (#330).
-		const [first, second] = callsTo(mockRepository.sendCommand, 2).map(call => call[3].commandId);
+		const [first, second] = callsTo(mockRepository.sendCommand, 2).map((call) => call[3].commandId);
 		expect(first).not.toBe(second);
 	});
 
@@ -479,7 +495,9 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		// all, the retry would be accepted a second time rather than answered with
 		// the outcome it already had. Two deliveries, asserted rather than assumed: on a
 		// run that sent nothing this compared `undefined` to `undefined` and passed (#330).
-		const [first, retried] = callsTo(mockRepository.sendCommand, 2).map(call => call[3].commandId);
+		const [first, retried] = callsTo(mockRepository.sendCommand, 2).map(
+			(call) => call[3].commandId,
+		);
 		expect(retried).toBe(first);
 	});
 
@@ -518,7 +536,7 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		await store.take(EVENT_ID, SCREEN_ID, 'slate');
 
 		expect(mockRepository.getSession).toHaveBeenCalledOnce();
-		expect(mockRepository.sendCommand.mock.calls.map(call => call[2])).toEqual([55, 56]);
+		expect(mockRepository.sendCommand.mock.calls.map((call) => call[2])).toEqual([55, 56]);
 		expect(store.playoutState(SCREEN_ID, 'slate')).toBe('on-air');
 		expect(store.error).toBeNull();
 	});
@@ -526,7 +544,9 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 	it('surfaces the failure when the retry against the current epoch also fails', async () => {
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		vi.clearAllMocks();
-		mockRepository.sendCommand.mockRejectedValue(bareConflict('Screen is not in Broadcast Graphics mode'));
+		mockRepository.sendCommand.mockRejectedValue(
+			bareConflict('Screen is not in Broadcast Graphics mode'),
+		);
 		mockRepository.getSession.mockResolvedValue(session({ id: 56 }));
 
 		await store.take(EVENT_ID, SCREEN_ID, 'slate');
@@ -565,9 +585,12 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 	it('reports a Broadcast Graphic as pending only while its own action is in flight', async () => {
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		let release: (value: unknown) => void = () => {};
-		mockRepository.sendCommand.mockImplementation(() => new Promise((resolve) => {
-			release = resolve;
-		}));
+		mockRepository.sendCommand.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
 
 		const inFlight = store.take(EVENT_ID, SCREEN_ID, 'slate');
 		await Promise.resolve();
@@ -604,9 +627,12 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 	it('keeps the newest of two rapid profile command responses when they arrive in reverse order', async () => {
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		const releases: Array<(value: unknown) => void> = [];
-		mockRepository.sendCommand.mockImplementation(() => new Promise((resolve) => {
-			releases.push(resolve);
-		}));
+		mockRepository.sendCommand.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					releases.push(resolve);
+				}),
+		);
 		const profileState = (network: 'x' | 'bluesky') => ({
 			playout: {},
 			inputs: {},
@@ -659,16 +685,21 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 		expect(firstAnswer?.sequence).toBe(3);
 		expect(store.sessions.get(SCREEN_ID)?.sequence).toBe(3);
-		expect(store.socialProfileProjectionState(SCREEN_ID, 'slate', 'profile')?.currentNetwork).toBe('bluesky');
+		expect(store.socialProfileProjectionState(SCREEN_ID, 'slate', 'profile')?.currentNetwork).toBe(
+			'bluesky',
+		);
 		expect(store.isPending(SCREEN_ID, 'slate')).toBe(false);
 	});
 
 	it('does not let a late command response overwrite a newer realtime-authoritative reload', async () => {
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		let release: (value: unknown) => void = () => {};
-		mockRepository.sendCommand.mockImplementation(() => new Promise((resolve) => {
-			release = resolve;
-		}));
+		mockRepository.sendCommand.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
 		const old = session({ sequence: 2 });
 		const newest = session({
 			sequence: 3,
@@ -709,15 +740,20 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		await inFlight;
 
 		expect(store.sessions.get(SCREEN_ID)?.sequence).toBe(3);
-		expect(store.socialProfileProjectionState(SCREEN_ID, 'slate', 'profile')?.currentNetwork).toBe('x');
+		expect(store.socialProfileProjectionState(SCREEN_ID, 'slate', 'profile')?.currentNetwork).toBe(
+			'x',
+		);
 	});
 
 	it('does not let a late old-epoch command response restore the epoch reset replaced', async () => {
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		let release: (value: unknown) => void = () => {};
-		mockRepository.sendCommand.mockImplementation(() => new Promise((resolve) => {
-			release = resolve;
-		}));
+		mockRepository.sendCommand.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					release = resolve;
+				}),
+		);
 		const inFlight = store.nextSocialProfile(EVENT_ID, SCREEN_ID, 'slate', 'profile');
 		await Promise.resolve();
 		mockRepository.resetSession.mockResolvedValue(session({ id: 56, sequence: 0 }));
@@ -738,7 +774,9 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 	it('clears the pending marker even when the action fails', async () => {
 		await store.loadSession(EVENT_ID, SCREEN_ID);
-		mockRepository.sendCommand.mockRejectedValue(transportFailure({ status: 500, request: COMMANDS_REQUEST }));
+		mockRepository.sendCommand.mockRejectedValue(
+			transportFailure({ status: 500, request: COMMANDS_REQUEST }),
+		);
 
 		await store.take(EVENT_ID, SCREEN_ID, 'slate');
 
@@ -760,14 +798,16 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		await store.applyRemoteCommand(notification());
 		vi.clearAllMocks();
 
-		await store.applyRemoteCommand(notification({
-			sequence: 2,
-			change: {
-				playout: {
-					slate: { onAir: false, effectiveStartedAt: 0, cut: false },
+		await store.applyRemoteCommand(
+			notification({
+				sequence: 2,
+				change: {
+					playout: {
+						slate: { onAir: false, effectiveStartedAt: 0, cut: false },
+					},
 				},
-			},
-		}));
+			}),
+		);
 
 		expect(store.playoutState(SCREEN_ID, 'slate')).toBe('on-air');
 	});
@@ -775,15 +815,17 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 	it('reloads the authoritative snapshot when it has fallen behind the sequence', async () => {
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		vi.clearAllMocks();
-		mockRepository.getSession.mockResolvedValue(session({
-			sequence: 9,
-			currentState: {
-				playout: {
-					bug: { onAir: true, effectiveStartedAt: 0, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				sequence: 9,
+				currentState: {
+					playout: {
+						bug: { onAir: true, effectiveStartedAt: 0, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
+			}),
+		);
 
 		// A disconnect swallowed sequences 2 through 8: the notification is not
 		// authority, so the snapshot is what resolves the gap.
@@ -812,15 +854,17 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		// as it does for a sequence gap.
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		vi.clearAllMocks();
-		mockRepository.getSession.mockResolvedValue(session({
-			sequence: 2,
-			currentState: {
-				playout: {
-					bug: { onAir: true, effectiveStartedAt: 0, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				sequence: 2,
+				currentState: {
+					playout: {
+						bug: { onAir: true, effectiveStartedAt: 0, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
+			}),
+		);
 
 		await store.applyRemoteCommand(notification({ change: undefined }));
 
@@ -829,22 +873,26 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 	});
 
 	it('removes a Broadcast Graphic a change says the committed state no longer holds', async () => {
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
+			}),
+		);
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		vi.clearAllMocks();
 
-		await store.applyRemoteCommand(notification({
-			change: {
-				playout: { slate: null },
-			},
-		}));
+		await store.applyRemoteCommand(
+			notification({
+				change: {
+					playout: { slate: null },
+				},
+			}),
+		);
 
 		expect(mockRepository.getSession).not.toHaveBeenCalled();
 		expect(store.playoutState(SCREEN_ID, 'slate')).toBe('off');
@@ -886,32 +934,39 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		// The edit states the value it replaces: its Field Ownership claim, which is
 		// what lets the server merge it with a colleague's edit to another Graphic
 		// Input while refusing to let it silently overwrite theirs to this one.
-		expect(mockRepository.sendCommand).toHaveBeenCalledWith(EVENT_ID, SCREEN_ID, 55, expect.objectContaining({
-			type: 'Set Input',
-			payload: {
-				graphicId: 'slate',
-				inputKey: 'name',
-				value: 'Ava Reed',
-				basedOn: { value: 'Unnamed' },
-			},
-		}));
+		expect(mockRepository.sendCommand).toHaveBeenCalledWith(
+			EVENT_ID,
+			SCREEN_ID,
+			55,
+			expect.objectContaining({
+				type: 'Set Input',
+				payload: {
+					graphicId: 'slate',
+					inputKey: 'name',
+					value: 'Ava Reed',
+					basedOn: { value: 'Unnamed' },
+				},
+			}),
+		);
 	});
 
 	it('names the acceptance it supersedes when it accepts a staged Graphic Input set', async () => {
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: true, effectiveStartedAt: 0, cut: false },
-				},
-				inputs: {
-					slate: {
-						working: { name: 'Ava Reed' },
-						accepted: { name: 'Unnamed' },
-						acceptedRevision: 4,
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+					},
+					inputs: {
+						slate: {
+							working: { name: 'Ava Reed' },
+							accepted: { name: 'Unnamed' },
+							acceptedRevision: 4,
+						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		const accepted = {
 			playout: {
@@ -939,27 +994,29 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 		// Two presses are two intents, and each supersedes the acceptance current when
 		// it was pressed — the second one names the acceptance the first produced.
-		expect(mockRepository.sendCommand.mock.calls.map(call => call[3].payload)).toEqual([
+		expect(mockRepository.sendCommand.mock.calls.map((call) => call[3].payload)).toEqual([
 			{ graphicId: 'slate', cut: false, basedOnAcceptedRevision: 4 },
 			{ graphicId: 'slate', cut: true, basedOnAcceptedRevision: 5 },
 		]);
 	});
 
 	it('restates one Update Graphic unchanged — same command id, same acceptance revision', async () => {
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: true, effectiveStartedAt: 0, cut: false },
-				},
-				inputs: {
-					slate: {
-						working: { name: 'Ava Reed' },
-						accepted: {},
-						acceptedRevision: 4,
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+					},
+					inputs: {
+						slate: {
+							working: { name: 'Ava Reed' },
+							accepted: {},
+							acceptedRevision: 4,
+						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		vi.clearAllMocks();
 		mockRepository.sendCommand
@@ -978,17 +1035,19 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 				session: session({ id: 56, sequence: 2 }),
 			});
 		// The reload the retry goes through reports a *different* acceptance revision.
-		mockRepository.getSession.mockResolvedValue(session({
-			id: 56,
-			currentState: {
-				playout: {
-					slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				id: 56,
+				currentState: {
+					playout: {
+						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+					},
+					inputs: {
+						slate: { working: {}, accepted: {}, acceptedRevision: 9 },
+					},
 				},
-				inputs: {
-					slate: { working: {}, accepted: {}, acceptedRevision: 9 },
-				},
-			},
-		}));
+			}),
+		);
 
 		await store.updateGraphic(EVENT_ID, SCREEN_ID, 'slate');
 
@@ -1000,7 +1059,7 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		// Two, asserted rather than assumed: a shorter list crashed here on an
 		// unnamed `Cannot read properties of undefined` instead of saying what was
 		// missing (#330).
-		const [first, retried] = callsTo(mockRepository.sendCommand, 2).map(call => call[3]);
+		const [first, retried] = callsTo(mockRepository.sendCommand, 2).map((call) => call[3]);
 		expect(retried.commandId).toBe(first.commandId);
 		expect(retried.payload).toEqual(first.payload);
 		expect(first.payload.basedOnAcceptedRevision).toBe(4);
@@ -1035,19 +1094,21 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			vi.clearAllMocks();
 			mockRepository.sendCommand.mockRejectedValue(refusal());
-			mockRepository.getSession.mockResolvedValue(session({
-				sequence: 3,
-				currentState: {
-					playout: {},
-					inputs: {
-						slate: {
-							working: { name: 'Ben Cole' },
-							accepted: {},
-							acceptedRevision: 0,
+			mockRepository.getSession.mockResolvedValue(
+				session({
+					sequence: 3,
+					currentState: {
+						playout: {},
+						inputs: {
+							slate: {
+								working: { name: 'Ben Cole' },
+								accepted: {},
+								acceptedRevision: 0,
+							},
 						},
 					},
-				},
-			}));
+				}),
+			);
 
 			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'name', 'Ava Reed', 'Unnamed');
 
@@ -1068,20 +1129,22 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			mockRepository.sendCommand
 				.mockRejectedValueOnce(bareConflict('Broadcast graphics live session has ended'))
 				.mockRejectedValueOnce(refusal());
-			mockRepository.getSession.mockResolvedValue(session({
-				id: 56,
-				sequence: 3,
-				currentState: {
-					playout: {},
-					inputs: {
-						slate: {
-							working: { name: 'Ben Cole' },
-							accepted: {},
-							acceptedRevision: 0,
+			mockRepository.getSession.mockResolvedValue(
+				session({
+					id: 56,
+					sequence: 3,
+					currentState: {
+						playout: {},
+						inputs: {
+							slate: {
+								working: { name: 'Ben Cole' },
+								accepted: {},
+								acceptedRevision: 0,
+							},
 						},
 					},
-				},
-			}));
+				}),
+			);
 
 			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'name', 'Ava Reed', 'Unnamed');
 
@@ -1098,7 +1161,9 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 			const [name] = store.inputTraces(SCREEN_ID, graphic);
 			expect(name!.status).toBe('superseded');
-			expect(store.inputTraces(SCREEN_ID, { ...graphic, id: 'bug' })[0]!.status).not.toBe('superseded');
+			expect(store.inputTraces(SCREEN_ID, { ...graphic, id: 'bug' })[0]!.status).not.toBe(
+				'superseded',
+			);
 		});
 
 		it('surfaces the refusal rather than swallowing it into a silent refresh', async () => {
@@ -1156,7 +1221,14 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			vi.clearAllMocks();
 			mockRepository.sendCommand.mockRejectedValue(refusal('missing-asset-reference'));
 
-			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'badge', { assetId: 'a', revisionId: 'r' } as never, null);
+			await store.setInput(
+				EVENT_ID,
+				SCREEN_ID,
+				'slate',
+				'badge',
+				{ assetId: 'a', revisionId: 'r' } as never,
+				null,
+			);
 
 			expect(mockRepository.sendCommand).toHaveBeenCalledOnce();
 			expect(mockRepository.getSession).not.toHaveBeenCalled();
@@ -1166,7 +1238,14 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			mockRepository.sendCommand.mockRejectedValue(refusal('missing-asset-reference'));
 
-			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'badge', { assetId: 'a', revisionId: 'r' } as never, null);
+			await store.setInput(
+				EVENT_ID,
+				SCREEN_ID,
+				'slate',
+				'badge',
+				{ assetId: 'a', revisionId: 'r' } as never,
+				null,
+			);
 
 			expect(store.inputRefusal(SCREEN_ID, 'slate', 'badge')).toBe('missing-asset-reference');
 			// Against the one field it is about, and no other.
@@ -1178,7 +1257,14 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			mockRepository.sendCommand.mockRejectedValue(refusal('unavailable-asset-content'));
 
-			await store.setOverride(EVENT_ID, SCREEN_ID, 'slate', 'badge', { assetId: 'a', revisionId: 'r' } as never, null);
+			await store.setOverride(
+				EVENT_ID,
+				SCREEN_ID,
+				'slate',
+				'badge',
+				{ assetId: 'a', revisionId: 'r' } as never,
+				null,
+			);
 
 			expect(store.inputRefusal(SCREEN_ID, 'slate', 'badge')).toBe('unavailable-asset-content');
 		});
@@ -1188,7 +1274,14 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			// while a fresh value is in flight reads as the answer to the new choice.
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			mockRepository.sendCommand.mockRejectedValueOnce(refusal('missing-asset-reference'));
-			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'badge', { assetId: 'a', revisionId: 'r' } as never, null);
+			await store.setInput(
+				EVENT_ID,
+				SCREEN_ID,
+				'slate',
+				'badge',
+				{ assetId: 'a', revisionId: 'r' } as never,
+				null,
+			);
 			mockRepository.sendCommand.mockResolvedValue({
 				screenId: SCREEN_ID,
 				sessionId: 55,
@@ -1198,7 +1291,14 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 				session: session({ sequence: 4 }),
 			});
 
-			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'badge', { assetId: 'a', revisionId: 'r2' } as never, null);
+			await store.setInput(
+				EVENT_ID,
+				SCREEN_ID,
+				'slate',
+				'badge',
+				{ assetId: 'a', revisionId: 'r2' } as never,
+				null,
+			);
 
 			expect(store.inputRefusal(SCREEN_ID, 'slate', 'badge')).toBeUndefined();
 		});
@@ -1219,7 +1319,14 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 				session: session({ id: 56, sequence: 2 }),
 			});
 
-			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'badge', { assetId: 'a', revisionId: 'r' } as never, null);
+			await store.setInput(
+				EVENT_ID,
+				SCREEN_ID,
+				'slate',
+				'badge',
+				{ assetId: 'a', revisionId: 'r' } as never,
+				null,
+			);
 
 			expect(mockRepository.sendCommand).toHaveBeenCalledTimes(2);
 			expect(store.inputRefusal(SCREEN_ID, 'slate', 'badge')).toBeUndefined();
@@ -1233,11 +1340,13 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			// A required Graphic Input with no value is a fact about the show, not about
 			// which epoch this client holds. Reloading and re-sending would be refused
 			// again for exactly the same reason.
-			mockRepository.sendCommand.mockRejectedValue(refusedCommandFailure(
-				'required-input-unavailable',
-				'Title must have a value before this Broadcast Graphic can go on air',
-				['title'],
-			));
+			mockRepository.sendCommand.mockRejectedValue(
+				refusedCommandFailure(
+					'required-input-unavailable',
+					'Title must have a value before this Broadcast Graphic can go on air',
+					['title'],
+				),
+			);
 
 			await store.take(EVENT_ID, SCREEN_ID, 'slate');
 
@@ -1257,11 +1366,13 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		const EPOCH_ENDED = 'Broadcast graphics live session has ended';
 
 		it('reports the snapshot route’s sentence rather than its status line', async () => {
-			mockRepository.getSession.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { statusCode: 409, statusMessage: 'Conflict', message: NOT_IN_MODE },
-				request: SNAPSHOT_REQUEST,
-			}));
+			mockRepository.getSession.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { statusCode: 409, statusMessage: 'Conflict', message: NOT_IN_MODE },
+					request: SNAPSHOT_REQUEST,
+				}),
+			);
 
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 
@@ -1286,10 +1397,12 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			vi.clearAllMocks();
 			mockRepository.getSession.mockResolvedValue(session({ id: 56 }));
-			mockRepository.sendCommand.mockRejectedValue(refusedCommandFailure(
-				'graphic-channel-occupied',
-				'Another Broadcast Graphic holds this Graphic Channel',
-			));
+			mockRepository.sendCommand.mockRejectedValue(
+				refusedCommandFailure(
+					'graphic-channel-occupied',
+					'Another Broadcast Graphic holds this Graphic Channel',
+				),
+			);
 
 			await store.take(EVENT_ID, SCREEN_ID, 'slate');
 
@@ -1301,9 +1414,9 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 	// A Take refused because a pinned Graphic Asset Revision has gone: the residual race the pre-check leaves (#230).
 	describe('a Take the authoritative side refuses over a Graphic Asset Reference', () => {
-		const MISSING_MESSAGE
-			= 'Graphic Asset Reference at graphics.promo.items.sting.asset is missing, '
-				+ 'so this Broadcast Graphic cannot be taken on air';
+		const MISSING_MESSAGE =
+			'Graphic Asset Reference at graphics.promo.items.sting.asset is missing, ' +
+			'so this Broadcast Graphic cannot be taken on air';
 
 		it('reports the sentence the authority wrote, not the transport’s status line', async () => {
 			await store.loadSession(EVENT_ID, SCREEN_ID);
@@ -1330,11 +1443,13 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			await store.take(EVENT_ID, SCREEN_ID, 'slate');
 			expect(store.refusal?.code).toBe('missing-asset-reference');
 
-			mockRepository.sendCommand.mockRejectedValue(refusedCommandFailure(
-				'unavailable-asset-content',
-				'Graphic Asset Content at graphics.promo.items.sting.asset is temporarily unavailable, '
-				+ 'so this Broadcast Graphic cannot be taken on air',
-			));
+			mockRepository.sendCommand.mockRejectedValue(
+				refusedCommandFailure(
+					'unavailable-asset-content',
+					'Graphic Asset Content at graphics.promo.items.sting.asset is temporarily unavailable, ' +
+						'so this Broadcast Graphic cannot be taken on air',
+				),
+			);
 			await store.take(EVENT_ID, SCREEN_ID, 'slate');
 			expect(store.refusal?.code).toBe('unavailable-asset-content');
 		});
@@ -1344,11 +1459,13 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			// what `error` is reporting. A refusal recorded before that call would be
 			// wiped by the recovery it asked for, leaving the sentence with no name.
 			await store.loadSession(EVENT_ID, SCREEN_ID);
-			mockRepository.sendCommand.mockRejectedValue(refusedCommandFailure(
-				'stale-input-edit',
-				'Another operator has already changed Name on this Broadcast Graphic',
-				['name'],
-			));
+			mockRepository.sendCommand.mockRejectedValue(
+				refusedCommandFailure(
+					'stale-input-edit',
+					'Another operator has already changed Name on this Broadcast Graphic',
+					['name'],
+				),
+			);
 
 			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'name', 'Ava Reed', 'Unnamed');
 
@@ -1367,10 +1484,12 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			vi.clearAllMocks();
 			mockRepository.sendCommand
 				.mockRejectedValueOnce(bareConflict('Broadcast graphics live session has ended'))
-				.mockRejectedValueOnce(refusedCommandFailure(
-					'stale-input-acceptance',
-					'Another operator has already accepted a newer Graphic Input set for this Broadcast Graphic',
-				));
+				.mockRejectedValueOnce(
+					refusedCommandFailure(
+						'stale-input-acceptance',
+						'Another operator has already accepted a newer Graphic Input set for this Broadcast Graphic',
+					),
+				);
 			mockRepository.getSession.mockResolvedValue(session({ id: 56 }));
 
 			await store.updateGraphic(EVENT_ID, SCREEN_ID, 'slate');
@@ -1398,7 +1517,9 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			// decline it, and put `[POST] "…": 409 Conflict` in front of an operator
 			// whose command the authority had in fact answered.
 			await store.loadSession(EVENT_ID, SCREEN_ID);
-			mockRepository.sendCommand.mockRejectedValue(refusedCommandFailure('missing-asset-reference', ''));
+			mockRepository.sendCommand.mockRejectedValue(
+				refusedCommandFailure('missing-asset-reference', ''),
+			);
 
 			await store.take(EVENT_ID, SCREEN_ID, 'slate');
 
@@ -1483,17 +1604,11 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 			it.each([
 				[
-					'a colleague\'s notification it fell behind on',
+					"a colleague's notification it fell behind on",
 					() => store.applyRemoteCommand(notification({ sequence: 9 })),
 				],
-				[
-					'an ended epoch',
-					() => store.applyEpochEnded(ended),
-				],
-				[
-					'a Reconnect Resync',
-					() => store.reloadSession(EVENT_ID, SCREEN_ID),
-				],
+				['an ended epoch', () => store.applyEpochEnded(ended)],
+				['a Reconnect Resync', () => store.reloadSession(EVENT_ID, SCREEN_ID)],
 			])('keeps the refusal on show through %s', async (_case, reload) => {
 				await store.loadSession(EVENT_ID, SCREEN_ID);
 				mockRepository.sendCommand.mockRejectedValueOnce(
@@ -1526,18 +1641,21 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 	describe('durable live state that could not be recovered', () => {
 		it('reports the fault the snapshot carries', async () => {
-			mockRepository.getSession.mockResolvedValue(session({
-				currentState: { playout: {}, inputs: {} },
-				recoveryFault: { reason: 'corrupt', detail: 'the playout record for slate is not a record' },
-			}));
+			mockRepository.getSession.mockResolvedValue(
+				session({
+					currentState: { playout: {}, inputs: {} },
+					recoveryFault: {
+						reason: 'corrupt',
+						detail: 'the playout record for slate is not a record',
+					},
+				}),
+			);
 
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 
 			expect(store.recoveryFault(SCREEN_ID)?.reason).toBe('corrupt');
 			// The recovered state is what every output composes, so nothing is on air.
-			expect(store.onAirGraphicIds(SCREEN_ID, [
-				graphic('slate'),
-			])).toEqual([]);
+			expect(store.onAirGraphicIds(SCREEN_ID, [graphic('slate')])).toEqual([]);
 		});
 
 		it('reports no fault for a Screen it has never loaded', () => {
@@ -1551,21 +1669,28 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			// sequence while leaving this client's fault asserted: it would keep showing
 			// "nothing is on air, take something" over a live show. Only the snapshot
 			// carries both facts, so only the snapshot can resolve it.
-			mockRepository.getSession.mockResolvedValue(session({
-				recoveryFault: { reason: 'corrupt', detail: 'the playout record for slate is not a record' },
-			}));
+			mockRepository.getSession.mockResolvedValue(
+				session({
+					recoveryFault: {
+						reason: 'corrupt',
+						detail: 'the playout record for slate is not a record',
+					},
+				}),
+			);
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			vi.clearAllMocks();
-			mockRepository.getSession.mockResolvedValue(session({
-				sequence: 2,
-				currentState: {
-					playout: {
-						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+			mockRepository.getSession.mockResolvedValue(
+				session({
+					sequence: 2,
+					currentState: {
+						playout: {
+							slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+						},
+						inputs: {},
 					},
-					inputs: {},
-				},
-				recoveryFault: null,
-			}));
+					recoveryFault: null,
+				}),
+			);
 
 			await store.applyRemoteCommand(notification({ sequence: 2 }));
 
@@ -1589,14 +1714,16 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 	describe('an epoch that has been replaced', () => {
 		it('discards what it holds and reloads the authoritative snapshot', async () => {
-			mockRepository.getSession.mockResolvedValue(session({
-				currentState: {
-					playout: {
-						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+			mockRepository.getSession.mockResolvedValue(
+				session({
+					currentState: {
+						playout: {
+							slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+						},
+						inputs: {},
 					},
-					inputs: {},
-				},
-			}));
+				}),
+			);
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			expect(store.playoutState(SCREEN_ID, 'slate')).toBe('on-air');
 			vi.clearAllMocks();
@@ -1617,20 +1744,24 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			// One of the ways an epoch ends is the Screen leaving Broadcast Graphics mode,
 			// after which the snapshot route refuses this client. Keeping the ended
 			// epoch's state would leave every output rendering a show that is over.
-			mockRepository.getSession.mockResolvedValue(session({
-				currentState: {
-					playout: {
-						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+			mockRepository.getSession.mockResolvedValue(
+				session({
+					currentState: {
+						playout: {
+							slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+						},
+						inputs: {},
 					},
-					inputs: {},
-				},
-			}));
+				}),
+			);
 			await store.loadSession(EVENT_ID, SCREEN_ID);
-			mockRepository.getSession.mockRejectedValue(transportFailure({
-				status: 409,
-				body: { statusCode: 409, message: 'Screen is not in Broadcast Graphics mode' },
-				request: SNAPSHOT_REQUEST,
-			}));
+			mockRepository.getSession.mockRejectedValue(
+				transportFailure({
+					status: 409,
+					body: { statusCode: 409, message: 'Screen is not in Broadcast Graphics mode' },
+					request: SNAPSHOT_REQUEST,
+				}),
+			);
 
 			await store.applyEpochEnded({
 				eventId: EVENT_ID,
@@ -1639,9 +1770,7 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 				sessionId: 55,
 			} as never);
 
-			expect(store.onAirGraphicIds(SCREEN_ID, [
-				graphic('slate'),
-			])).toEqual([]);
+			expect(store.onAirGraphicIds(SCREEN_ID, [graphic('slate')])).toEqual([]);
 		});
 
 		it('does not open an epoch for a Screen it was not following', async () => {
@@ -1668,14 +1797,16 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 				screenId: SCREEN_ID,
 				sessionId: 55,
 			} as never);
-			first.resolve(session({
-				currentState: {
-					playout: {
-						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+			first.resolve(
+				session({
+					currentState: {
+						playout: {
+							slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+						},
+						inputs: {},
 					},
-					inputs: {},
-				},
-			}));
+				}),
+			);
 			await loading;
 
 			expect(mockRepository.getSession).toHaveBeenCalledTimes(2);
@@ -1762,7 +1893,9 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 		it('keeps the later of two overlapping loads however they resolve', async () => {
 			const first = deferredSession();
 			const second = deferredSession();
-			mockRepository.getSession.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+			mockRepository.getSession
+				.mockReturnValueOnce(first.promise)
+				.mockReturnValueOnce(second.promise);
 
 			const earlier = store.loadSession(EVENT_ID, SCREEN_ID);
 			const later = store.loadSession(EVENT_ID, SCREEN_ID);
@@ -1816,18 +1949,19 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 			// what the other is still telling them about a refused edit.
 			mockRepository.getSession.mockImplementation(async (_eventId: number, screenId: number) =>
 				session({
-					id: screenId === SCREEN_ID
-						? 55
-						: 66,
+					id: screenId === SCREEN_ID ? 55 : 66,
 					screenId,
-				}));
+				}),
+			);
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			await store.loadSession(EVENT_ID, OTHER_SCREEN_ID);
-			mockRepository.sendCommand.mockRejectedValue(refusedCommandFailure(
-				'stale-input-edit',
-				'Another operator has already changed Name on this Broadcast Graphic',
-				['name'],
-			));
+			mockRepository.sendCommand.mockRejectedValue(
+				refusedCommandFailure(
+					'stale-input-edit',
+					'Another operator has already changed Name on this Broadcast Graphic',
+					['name'],
+				),
+			);
 			await store.setInput(EVENT_ID, SCREEN_ID, 'slate', 'name', 'Ava Reed', 'Unnamed');
 			await store.setInput(EVENT_ID, OTHER_SCREEN_ID, 'slate', 'name', 'Ava Reed', 'Unnamed');
 			expect(store.inputTraces(SCREEN_ID, graphic)[0]!.status).toBe('superseded');
@@ -1847,14 +1981,16 @@ describe('broadcastGraphicsLiveSessionStore', () => {
 
 	describe('resetting live state', () => {
 		it('caches the fresh epoch the reset opened', async () => {
-			mockRepository.getSession.mockResolvedValue(session({
-				currentState: {
-					playout: {
-						slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+			mockRepository.getSession.mockResolvedValue(
+				session({
+					currentState: {
+						playout: {
+							slate: { onAir: true, effectiveStartedAt: 0, cut: false },
+						},
+						inputs: {},
 					},
-					inputs: {},
-				},
-			}));
+				}),
+			);
 			await store.loadSession(EVENT_ID, SCREEN_ID);
 			mockRepository.resetSession.mockResolvedValue(session({ id: 57, sequence: 1 }));
 
@@ -1897,7 +2033,7 @@ describe('the authoritative clock a Screen Output projects on', () => {
 		mockClockSynced.value = true;
 	});
 
-	it('projects on the shared server clock, not on this browser\'s', async () => {
+	it("projects on the shared server clock, not on this browser's", async () => {
 		// A browser two minutes behind the server. Reading its own clock, it would take a
 		// graphic taken a moment ago to have been taken two minutes in its own future, pin
 		// it at full excursion for the whole of the skew, and then play its entrance from
@@ -1905,19 +2041,19 @@ describe('the authoritative clock a Screen Output projects on', () => {
 		// arriving through the clock rather than through the stored field.
 		mockServerTimeOffset.value = 120_000;
 		const serverNow = Date.now() + 120_000;
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: true, effectiveStartedAt: serverNow - 400, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: true, effectiveStartedAt: serverNow - 400, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
+			}),
+		);
 
 		await store.loadSession(EVENT_ID, SCREEN_ID);
-		const projection = store.animationProjection(SCREEN_ID, [
-			graphic('slate', FADE_IN),
-		]);
+		const projection = store.animationProjection(SCREEN_ID, [graphic('slate', FADE_IN)]);
 
 		expect(projection.slate?.[0]?.phase).toBe('enter');
 		expect(projection.slate?.[0]?.elapsed).toBeGreaterThanOrEqual(400);
@@ -1927,17 +2063,17 @@ describe('the authoritative clock a Screen Output projects on', () => {
 	it('keeps an Out Broadcast Graphic on program for exactly its exit, on that same clock', async () => {
 		mockServerTimeOffset.value = -90_000;
 		const serverNow = Date.now() - 90_000;
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: false, effectiveStartedAt: serverNow - 200, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: false, effectiveStartedAt: serverNow - 200, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
-		const graphics = [
-			graphic('slate', FADE_OUT),
-		];
+			}),
+		);
+		const graphics = [graphic('slate', FADE_OUT)];
 
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 
@@ -1955,20 +2091,20 @@ describe('the authoritative clock a Screen Output projects on', () => {
 		// full excursion and then replaying its entrance the moment the sync lands.
 		mockClockSynced.value = false;
 		const serverNow = Date.now();
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: true, effectiveStartedAt: serverNow - 400, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: true, effectiveStartedAt: serverNow - 400, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
+			}),
+		);
 
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 
-		expect(store.animationProjection(SCREEN_ID, [
-			graphic('slate', FADE_IN),
-		])).toEqual({});
+		expect(store.animationProjection(SCREEN_ID, [graphic('slate', FADE_IN)])).toEqual({});
 		expect(store.playoutState(SCREEN_ID, 'slate', graphic('slate', FADE_IN))).toBe('on-air');
 	});
 
@@ -1979,26 +2115,28 @@ describe('the authoritative clock a Screen Output projects on', () => {
 		// unsynced — program keeps showing what the graphic entered with.
 		mockClockSynced.value = false;
 		const serverNow = Date.now();
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: {
-						onAir: true,
-						effectiveStartedAt: serverNow - 200,
-						cut: false,
-						updateStartedAt: serverNow + 800,
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: {
+							onAir: true,
+							effectiveStartedAt: serverNow - 200,
+							cut: false,
+							updateStartedAt: serverNow + 800,
+						},
+					},
+					inputs: {
+						slate: {
+							working: { headline: 'after' },
+							accepted: { headline: 'after' },
+							acceptedRevision: 2,
+							updateFrom: { headline: 'before' },
+						},
 					},
 				},
-				inputs: {
-					slate: {
-						working: { headline: 'after' },
-						accepted: { headline: 'after' },
-						acceptedRevision: 2,
-						updateFrom: { headline: 'before' },
-					},
-				},
-			},
-		}));
+			}),
+		);
 		const graphics = [
 			{
 				...graphic('slate', {
@@ -2038,17 +2176,17 @@ describe('the authoritative clock a Screen Output projects on', () => {
 		// tidier but safer: an exiting graphic is on program, so an unsynced output that
 		// guessed at the phase could keep a graphic the operator has taken off on air.
 		mockClockSynced.value = false;
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: { onAir: false, effectiveStartedAt: Date.now() - 200, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: { onAir: false, effectiveStartedAt: Date.now() - 200, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
-		const graphics = [
-			graphic('slate', FADE_OUT),
-		];
+			}),
+		);
+		const graphics = [graphic('slate', FADE_OUT)];
 
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 
@@ -2057,24 +2195,24 @@ describe('the authoritative clock a Screen Output projects on', () => {
 	});
 
 	it('has no phase to project for a Broadcast Graphic that authored no animation', async () => {
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					slate: {
-						onAir: true,
-						effectiveStartedAt: Date.now(),
-						cut: false,
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						slate: {
+							onAir: true,
+							effectiveStartedAt: Date.now(),
+							cut: false,
+						},
 					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
+			}),
+		);
 
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 
-		expect(store.animationProjection(SCREEN_ID, [
-			graphic('slate'),
-		])).toEqual({});
+		expect(store.animationProjection(SCREEN_ID, [graphic('slate')])).toEqual({});
 		expect(store.playoutState(SCREEN_ID, 'slate', graphic('slate'))).toBe('on-air');
 	});
 });
@@ -2111,29 +2249,30 @@ describe('a Graphic Channel holding one member off program', () => {
 
 	it('reports the incoming graphic waiting and keeps it off every output', async () => {
 		const serverNow = Date.now();
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					alpha: { onAir: false, effectiveStartedAt: serverNow - 200, cut: false },
-					bravo: { onAir: true, effectiveStartedAt: serverNow + 800, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						alpha: { onAir: false, effectiveStartedAt: serverNow - 200, cut: false },
+						bravo: { onAir: true, effectiveStartedAt: serverNow + 800, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
-		const graphics = [
-			member('alpha'),
-			member('bravo'),
-		];
-		const channels = [
-			{ id: 'thirds', name: 'Lower thirds', handoff: 'out-then-in' as const },
-		];
+			}),
+		);
+		const graphics = [member('alpha'), member('bravo')];
+		const channels = [{ id: 'thirds', name: 'Lower thirds', handoff: 'out-then-in' as const }];
 
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 		const contexts = store.channelContexts(graphics, channels);
 
-		expect(store.playoutState(SCREEN_ID, 'bravo', graphics[1], undefined, contexts.bravo)).toBe('waiting');
+		expect(store.playoutState(SCREEN_ID, 'bravo', graphics[1], undefined, contexts.bravo)).toBe(
+			'waiting',
+		);
 		expect(store.onAirGraphicIds(SCREEN_ID, graphics, undefined, channels)).toEqual(['alpha']);
-		expect(store.animationProjection(SCREEN_ID, graphics, undefined, channels).bravo).toBeUndefined();
+		expect(
+			store.animationProjection(SCREEN_ID, graphics, undefined, channels).bravo,
+		).toBeUndefined();
 
 		// Once the outgoing exit completes, the held graphic enters and composes.
 		const entered = store.serverNow() + 900;
@@ -2144,19 +2283,18 @@ describe('a Graphic Channel holding one member off program', () => {
 		// A reader that cannot see the channel reaches the target immediately, which is
 		// the failure direction every projection in this store chooses.
 		const serverNow = Date.now();
-		mockRepository.getSession.mockResolvedValue(session({
-			currentState: {
-				playout: {
-					alpha: { onAir: false, effectiveStartedAt: serverNow - 200, cut: false },
-					bravo: { onAir: true, effectiveStartedAt: serverNow + 800, cut: false },
+		mockRepository.getSession.mockResolvedValue(
+			session({
+				currentState: {
+					playout: {
+						alpha: { onAir: false, effectiveStartedAt: serverNow - 200, cut: false },
+						bravo: { onAir: true, effectiveStartedAt: serverNow + 800, cut: false },
+					},
+					inputs: {},
 				},
-				inputs: {},
-			},
-		}));
-		const graphics = [
-			member('alpha'),
-			member('bravo'),
-		];
+			}),
+		);
+		const graphics = [member('alpha'), member('bravo')];
 
 		await store.loadSession(EVENT_ID, SCREEN_ID);
 

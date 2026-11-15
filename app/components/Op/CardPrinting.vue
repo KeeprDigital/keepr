@@ -10,9 +10,9 @@ const cardStore = useCardStore();
 const { opPreviewCard, opPreviewPrintings } = storeToRefs(cardStore);
 
 const KIND_LABELS: Record<OpPrintingKind, string> = {
-	'standard': 'Standard',
+	standard: 'Standard',
 	'alt-art': 'Alt art',
-	'reprint': 'Reprint',
+	reprint: 'Reprint',
 };
 
 function select(printingId: string) {
@@ -31,13 +31,12 @@ function select(printingId: string) {
 	>
 		<template #body>
 			<div class="card-list" role="group" aria-label="Printing">
-				<div
-					v-for="printing in opPreviewPrintings"
-					:key="printing.id"
-					class="card-list-item"
-				>
+				<div v-for="printing in opPreviewPrintings" :key="printing.id" class="card-list-item">
 					<OpCardImage
-						:card="{ name: `${opPreviewCard?.name} ${KIND_LABELS[printing.kind]} ${printing.setId}`, imageUrl: printing.imageUrl }"
+						:card="{
+							name: `${opPreviewCard?.name} ${KIND_LABELS[printing.kind]} ${printing.setId}`,
+							imageUrl: printing.imageUrl,
+						}"
 						selectable
 						:selected="printing.id === opPreviewCard?.id"
 						@selected="select(printing.id)"

@@ -2,16 +2,34 @@
 import type { DeckModeConfig } from '~~/shared/screenModeConfigs/deck';
 import type { ScreenSettingsCard, ScreenSettingsContext } from '~~/shared/screenModeConfigs/fields';
 import type { ScreenModeConfigPatch } from '~~/shared/types/screenConfig';
-import type { ScreenModeSettingsSlotProps, SettingsPageCard, SettingsPageField, SettingsPageSection } from '~/modules/screen-mode/settingsPage';
+import type {
+	ScreenModeSettingsSlotProps,
+	SettingsPageCard,
+	SettingsPageField,
+	SettingsPageSection,
+} from '~/modules/screen-mode/settingsPage';
 import type { Screen } from '~/types';
 import { withEveryColumn } from '~~/shared/screenModeConfigs/subShapes';
 import { screenModeConfigContract } from '~~/shared/screenModes';
-import { FOLLOWS_THE_THEME, headerSummary, paginationSummary, settingsSummary } from '~/composables/screen/screenSettingsSummaries';
+import {
+	FOLLOWS_THE_THEME,
+	headerSummary,
+	paginationSummary,
+	settingsSummary,
+} from '~/composables/screen/screenSettingsSummaries';
 import { useConsumedEventData } from '~/modules/event-data/resync';
 import { useEditedScreenModeData } from '~/modules/screen-mode/editorModeData';
 import { PAGED_MODE_DATA } from '~/modules/screen-mode/pagedModeData';
 import { useRotationConfigWrites } from '~/modules/screen-mode/rotationWrites';
-import { cardFieldsSummary, fieldDescription, fieldLabel, fieldOptions, fieldPatch, isPageRotationMode, settingsPageCards } from '~/modules/screen-mode/settingsPage';
+import {
+	cardFieldsSummary,
+	fieldDescription,
+	fieldLabel,
+	fieldOptions,
+	fieldPatch,
+	isPageRotationMode,
+	settingsPageCards,
+} from '~/modules/screen-mode/settingsPage';
 
 /**
  * The generic settings renderer (#1060, #1094): a Screen Mode's settings page
@@ -66,8 +84,9 @@ const eventStore = useEventStore();
 const playerListStore = usePlayerListStore();
 
 // Whether the Event holds a Player List decides what a mode naming one offers, such as its Metagame Scope.
-const namesPlayerList = Object.values(contract.fields as Record<string, { reference?: string }>)
-	.some(field => field.reference === 'playerList');
+const namesPlayerList = Object.values(
+	contract.fields as Record<string, { reference?: string }>,
+).some((field) => field.reference === 'playerList');
 if (namesPlayerList) {
 	useConsumedEventData(['playerLists']);
 	onMounted(async () => {
@@ -76,7 +95,12 @@ if (namesPlayerList) {
 	});
 }
 
-const { config, saving, updateConfig: saveConfig, resetConfig } = useModeConfigUpdate(
+const {
+	config,
+	saving,
+	updateConfig: saveConfig,
+	resetConfig,
+} = useModeConfigUpdate(
 	() => props.eventId,
 	() => props.screen.id,
 	mode,
@@ -89,8 +113,7 @@ const configRecord = computed(() => config.value as Readonly<Record<string, any>
 // A paginated mode counts its pages from the rows its Screen Output renders,
 // read as that output reads them (#780), and writes through its rotation.
 function usePaging() {
-	if (!isPageRotationMode(mode))
-		return undefined;
+	if (!isPageRotationMode(mode)) return undefined;
 	const data = useEditedScreenModeData(
 		{
 			screen: () => props.screen,
@@ -110,9 +133,13 @@ function usePaging() {
 const paged = usePaging();
 
 // A Deck List Screen's boards run their columns no further than the cards its Deck Source gives them (ADR-0054).
-const deckBoardCards = mode === 'deck'
-	? useDeckBoardCards(() => configRecord.value as Partial<DeckModeConfig>, () => props.eventId)
-	: undefined;
+const deckBoardCards =
+	mode === 'deck'
+		? useDeckBoardCards(
+				() => configRecord.value as Partial<DeckModeConfig>,
+				() => props.eventId,
+			)
+		: undefined;
 
 const context = computed<ScreenSettingsContext>(() => ({
 	config: configRecord.value,
@@ -130,10 +157,8 @@ function update(patch: Record<string, unknown>) {
 		return;
 	}
 	const { autoPageEnabled, ...rest } = patch;
-	if (typeof autoPageEnabled === 'boolean')
-		paged.rotation.setAutoPageEnabled(autoPageEnabled);
-	if (Object.keys(rest).length > 0)
-		paged.rotation.updateConfig(rest as never);
+	if (typeof autoPageEnabled === 'boolean') paged.rotation.setAutoPageEnabled(autoPageEnabled);
+	if (Object.keys(rest).length > 0) paged.rotation.updateConfig(rest as never);
 }
 
 /** Writes one field's new value, and what it writes with it; a Source edit on a paginated mode shows page 1 of what it now reads. */
@@ -142,15 +167,15 @@ function updateField(entry: SettingsPageField, value: unknown) {
 		...fieldPatch(entry, value),
 		...entry.field.writesWith?.(value, entry.context),
 	};
-	update(paged && entry.field.card === 'source'
-		? { ...patch, currentPage: 1 }
-		: patch);
+	update(paged && entry.field.card === 'source' ? { ...patch, currentPage: 1 } : patch);
 }
 
 // ── The renderer's own slots ──
 
 function columnLabels(entry: SettingsPageField): Record<string, string> {
-	return Object.fromEntries((fieldOptions(entry) ?? []).map(option => [option.value, option.label]));
+	return Object.fromEntries(
+		(fieldOptions(entry) ?? []).map((option) => [option.value, option.label]),
+	);
 }
 
 /** A column list as the Screen holds it, with any column added since it was stored offered hidden. */
@@ -158,12 +183,8 @@ function heldColumns(entry: SettingsPageField): { key: string; visible: boolean 
 	const defaults = (contract.defaults as Record<string, unknown>)[entry.field.key];
 	const stored = configRecord.value[entry.field.key];
 	return withEveryColumn(
-		Array.isArray(stored)
-			? stored
-			: [],
-		Array.isArray(defaults)
-			? defaults
-			: [],
+		Array.isArray(stored) ? stored : [],
+		Array.isArray(defaults) ? defaults : [],
 	);
 }
 
@@ -173,14 +194,14 @@ function offersColumn(entry: SettingsPageField, key: string): boolean {
 }
 
 function columnsOf(entry: SettingsPageField): { key: string; visible: boolean }[] {
-	return heldColumns(entry).filter(column => offersColumn(entry, column.key));
+	return heldColumns(entry).filter((column) => offersColumn(entry, column.key));
 }
 
 /** Writes an edited column list, the columns it does not offer kept after it as stored. */
 function updateColumns(entry: SettingsPageField, offered: { key: string; visible: boolean }[]) {
 	updateField(entry, [
 		...offered,
-		...heldColumns(entry).filter(column => !offersColumn(entry, column.key)),
+		...heldColumns(entry).filter((column) => !offersColumn(entry, column.key)),
 	]);
 }
 
@@ -197,15 +218,17 @@ const COLLAPSIBLE: ReadonlySet<ScreenSettingsCard> = new Set([
 function summaryOf(card: SettingsPageCard): string | undefined {
 	if (card.card === 'header' && 'showHeader' in contract.fields)
 		return headerSummary(configRecord.value as { showHeader: boolean; headerText?: string | null });
-	if (card.card === 'paging' && paged)
-		return paginationSummary(paged.rotation);
-	return settingsSummary(cardFieldsSummary(card), card.sections.length === 0
-		? FOLLOWS_THE_THEME
-		: undefined) || undefined;
+	if (card.card === 'paging' && paged) return paginationSummary(paged.rotation);
+	return (
+		settingsSummary(
+			cardFieldsSummary(card),
+			card.sections.length === 0 ? FOLLOWS_THE_THEME : undefined,
+		) || undefined
+	);
 }
 
 function slotFieldKeys(fields: readonly SettingsPageField[]): string {
-	return fields.map(entry => entry.path.join('.')).join(' ');
+	return fields.map((entry) => entry.path.join('.')).join(' ');
 }
 
 /** The slot drawn at the end of a card's section: after its group, or after the card's ungrouped fields. */
@@ -225,9 +248,7 @@ function isRow(section: SettingsPageSection): boolean {
 /** A row's description: its first field's, which says what the group is (a badge's show toggle). */
 function rowDescription(section: SettingsPageSection): string | undefined {
 	const first = section.rows[0];
-	return first?.kind === 'field'
-		? fieldDescription(first.entry)
-		: undefined;
+	return first?.kind === 'field' ? fieldDescription(first.entry) : undefined;
 }
 
 /** What every slot is given but its `fields`. */
@@ -254,7 +275,9 @@ const slotProps = computed(() => ({
 					v-for="(section, index) in card.sections"
 					:key="section.group?.id ?? 'ungrouped'"
 					:role="section.group && !isRow(section) ? 'group' : undefined"
-					:aria-labelledby="section.group && !isRow(section) ? headingId(card.card, section.group.id) : undefined"
+					:aria-labelledby="
+						section.group && !isRow(section) ? headingId(card.card, section.group.id) : undefined
+					"
 					:data-settings-section="section.group?.id"
 					class="flex flex-col gap-4"
 				>
@@ -266,7 +289,10 @@ const slotProps = computed(() => ({
 						:aria-label="section.group.title"
 						:data-settings-row="section.group.id"
 					>
-						<ScreenSettingsField :label="section.group.title" :description="rowDescription(section)">
+						<ScreenSettingsField
+							:label="section.group.title"
+							:description="rowDescription(section)"
+						>
 							<div class="flex flex-wrap items-center gap-4">
 								<template v-for="row in section.rows" :key="row.key">
 									<div v-if="row.kind === 'field'" :data-settings-field="row.key">

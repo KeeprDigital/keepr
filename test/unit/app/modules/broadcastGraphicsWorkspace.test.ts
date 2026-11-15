@@ -28,17 +28,22 @@ describe('broadcastGraphicsWorkspace', () => {
 	});
 
 	it('keeps the selected Broadcast Graphic in the URL so it survives a workspace change', () => {
-		const query = broadcastGraphicsWorkspaceQuery({ workspace: 'edit', selectedGraphicId: 'slate' });
+		const query = broadcastGraphicsWorkspaceQuery({
+			workspace: 'edit',
+			selectedGraphicId: 'slate',
+		});
 
 		expect(query[BROADCAST_GRAPHICS_WORKSPACE_QUERY_KEY]).toBe('edit');
 		expect(resolveSelectedBroadcastGraphicId(query.graphic, stack)).toBe('slate');
 	});
 
 	it('drops the workspace selection from the URL when it is the Live default', () => {
-		expect(broadcastGraphicsWorkspaceQuery({ workspace: 'live', selectedGraphicId: null })).toEqual({
-			[BROADCAST_GRAPHICS_WORKSPACE_QUERY_KEY]: undefined,
-			graphic: undefined,
-		});
+		expect(broadcastGraphicsWorkspaceQuery({ workspace: 'live', selectedGraphicId: null })).toEqual(
+			{
+				[BROADCAST_GRAPHICS_WORKSPACE_QUERY_KEY]: undefined,
+				graphic: undefined,
+			},
+		);
 	});
 
 	it('forgets a selected Broadcast Graphic that is no longer on the Screen stack', () => {

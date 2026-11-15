@@ -73,12 +73,12 @@ describe('screenModesRoundClockDisplay', () => {
 
 		const wrapper = mount(Display);
 
-		expect(wrapper.find('[data-clock-state]').attributes('data-clock-state')).toBe(projection.state);
-		expect(wrapper.findAll('.round-clock-name').map(name => name.text())).toEqual(names);
+		expect(wrapper.find('[data-clock-state]').attributes('data-clock-state')).toBe(
+			projection.state,
+		);
+		expect(wrapper.findAll('.round-clock-name').map((name) => name.text())).toEqual(names);
 		const shown = wrapper.find('[role="timer"]');
-		expect(shown.exists()
-			? shown.text()
-			: null).toBe(timer);
+		expect(shown.exists() ? shown.text() : null).toBe(timer);
 	});
 
 	it('renders nothing with no Round to show', () => {

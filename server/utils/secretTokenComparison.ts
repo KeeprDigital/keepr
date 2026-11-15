@@ -19,9 +19,7 @@
  */
 
 async function tokenDigest(token: string) {
-	return new Uint8Array(
-		await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)),
-	);
+	return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)));
 }
 
 /** Whether a presented secret is the configured one, in time that does not say how nearly. */

@@ -24,10 +24,11 @@ function harness() {
 		card: vi.fn(),
 	} satisfies Record<ConsumedEventData, () => unknown>;
 	const resync = createEventDataResync(reloaders);
-	const reloaded = () => (Object.keys(reloaders) as ConsumedEventData[])
-		.filter(dataset => reloaders[dataset].mock.calls.length > 0)
-		.sort();
-	const clear = () => Object.values(reloaders).forEach(reload => reload.mockClear());
+	const reloaded = () =>
+		(Object.keys(reloaders) as ConsumedEventData[])
+			.filter((dataset) => reloaders[dataset].mock.calls.length > 0)
+			.sort();
+	const clear = () => Object.values(reloaders).forEach((reload) => reload.mockClear());
 	return { reloaders, resync, reloaded, clear };
 }
 
@@ -98,9 +99,11 @@ describe('createEventDataResync', () => {
 	it('marks nothing behind in the next Event Lifetime from a re-read the last one began', async () => {
 		const { resync, reloaders, reloaded, clear } = harness();
 		let fail!: (cause: Error) => void;
-		reloaders.players.mockReturnValue(new Promise((_, reject) => {
-			fail = reject;
-		}));
+		reloaders.players.mockReturnValue(
+			new Promise((_, reject) => {
+				fail = reject;
+			}),
+		);
 		resync.consume(['players']);
 		const inFlight = resync.resync();
 
@@ -113,7 +116,7 @@ describe('createEventDataResync', () => {
 		expect(reloaded()).toEqual([]);
 	});
 
-	it('re-runs a consumer\'s own re-read of what no store holds, until it is released', async () => {
+	it("re-runs a consumer's own re-read of what no store holds, until it is released", async () => {
 		const { resync } = harness();
 		const reread = vi.fn();
 		const release = resync.consume([], reread);
@@ -127,7 +130,7 @@ describe('createEventDataResync', () => {
 		expect(reread).toHaveBeenCalledOnce();
 	});
 
-	it('keeps re-reading the datasets when a consumer\'s own re-read fails', async () => {
+	it("keeps re-reading the datasets when a consumer's own re-read fails", async () => {
 		const { resync, reloaders } = harness();
 		resync.consume(['players'], () => Promise.reject(new Error('offline')));
 

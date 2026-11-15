@@ -6,16 +6,20 @@ import { TEMPLATE_PACKAGE_LIMITS } from '~~/shared/types/templatePackage';
 import { MAX_SILENT_VIDEO_INGESTION_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
 
 const browserDecodeEvidenceSchema = z.discriminatedUnion('outcome', [
-	z.object({
-		outcome: z.literal('decoded'),
-		sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
-		width: z.number().int().positive(),
-		height: z.number().int().positive(),
-	}).strict(),
-	z.object({
-		outcome: z.literal('rejected'),
-		sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
-	}).strict(),
+	z
+		.object({
+			outcome: z.literal('decoded'),
+			sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
+			width: z.number().int().positive(),
+			height: z.number().int().positive(),
+		})
+		.strict(),
+	z
+		.object({
+			outcome: z.literal('rejected'),
+			sourceDigest: z.string().regex(/^[a-f0-9]{64}$/),
+		})
+		.strict(),
 ]);
 
 const graphicAssetDeclarations = {
@@ -28,21 +32,25 @@ const graphicAssetDeclarations = {
 	duplicateContentPolicy: z.enum(['reuse', 'create-separate']).optional(),
 } as const;
 
-const localUploadSchema = z.object({
-	...graphicAssetDeclarations,
-	source: z.literal('local-upload'),
-	declaredByteLength: z.number().int().positive().max(MAX_SILENT_VIDEO_INGESTION_BYTES),
-}).strict();
+const localUploadSchema = z
+	.object({
+		...graphicAssetDeclarations,
+		source: z.literal('local-upload'),
+		declaredByteLength: z.number().int().positive().max(MAX_SILENT_VIDEO_INGESTION_BYTES),
+	})
+	.strict();
 
 /**
  * An approved remote copy cannot declare an exact length up front: the length is
  * only knowable from the remote response, and remains an untrusted hint until
  * the observed bytes match it.
  */
-const remoteCopySchema = z.object({
-	...graphicAssetDeclarations,
-	source: z.literal('remote-copy'),
-}).strict();
+const remoteCopySchema = z
+	.object({
+		...graphicAssetDeclarations,
+		source: z.literal('remote-copy'),
+	})
+	.strict();
 
 /**
  * A received Template Package is an envelope rather than one Graphic Asset, so
@@ -50,19 +58,25 @@ const remoteCopySchema = z.object({
  * asset, and is bounded by the archive limit instead of any one asset kind's.
  * Everything inside it is declared by its own manifest and proven by preflight.
  */
-const templatePackageSchema = z.object({
-	idempotencyKey: z.string().trim().min(1).max(200),
-	source: z.literal('template-package'),
-	sourceFileName: z.string().trim().min(1).max(255).optional(),
-	defaultEventId: z.number().int().positive().optional(),
-	// Named, because a refused package is refused for being a package: a reader
-	// told only that some byte length was too large goes looking at the Graphic
-	// Asset transfer limits, which describe a different envelope entirely.
-	declaredByteLength: z.number().int().positive().max(
-		TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength,
-		`Template Package must not exceed ${TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength} bytes`,
-	),
-}).strict();
+const templatePackageSchema = z
+	.object({
+		idempotencyKey: z.string().trim().min(1).max(200),
+		source: z.literal('template-package'),
+		sourceFileName: z.string().trim().min(1).max(255).optional(),
+		defaultEventId: z.number().int().positive().optional(),
+		// Named, because a refused package is refused for being a package: a reader
+		// told only that some byte length was too large goes looking at the Graphic
+		// Asset transfer limits, which describe a different envelope entirely.
+		declaredByteLength: z
+			.number()
+			.int()
+			.positive()
+			.max(
+				TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength,
+				`Template Package must not exceed ${TEMPLATE_PACKAGE_LIMITS.maximumArchiveByteLength} bytes`,
+			),
+	})
+	.strict();
 
 /**
  * The source decides which envelope applies, so it discriminates the schema.
@@ -70,19 +84,14 @@ const templatePackageSchema = z.object({
  * to omit it — and is filled in before the union sees the body.
  */
 const initiationSchema = z.preprocess(
-	value => (
-		typeof value === 'object'
-		&& value !== null
-		&& !Array.isArray(value)
-		&& (value as { source?: unknown }).source === undefined
+	(value) =>
+		typeof value === 'object' &&
+		value !== null &&
+		!Array.isArray(value) &&
+		(value as { source?: unknown }).source === undefined
 			? { ...value, source: 'local-upload' }
-			: value
-	),
-	z.discriminatedUnion('source', [
-		localUploadSchema,
-		remoteCopySchema,
-		templatePackageSchema,
-	]),
+			: value,
+	z.discriminatedUnion('source', [localUploadSchema, remoteCopySchema, templatePackageSchema]),
 );
 
 /**
@@ -114,8 +123,7 @@ export default defineEventHandler(async (event) => {
 		})();
 		setResponseStatus(event, 201);
 		return operation;
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

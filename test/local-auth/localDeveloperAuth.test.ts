@@ -29,36 +29,33 @@ interface LocalSessionReading {
 function cookieFrom(response: Response): string {
 	const cookies = response.headers.getSetCookie();
 	expect(cookies.join(';')).not.toContain('better-auth.session_token');
-	const local = cookies.find(cookie => cookie.startsWith(`${LOCAL_DEVELOPER_SESSION_COOKIE}=`));
+	const local = cookies.find((cookie) => cookie.startsWith(`${LOCAL_DEVELOPER_SESSION_COOKIE}=`));
 	expect(local).toBeDefined();
 	return local!.split(';', 1)[0]!;
 }
 
 async function localSession(cookie?: string) {
 	const response = await fetch('/api/auth/get-session', {
-		headers: cookie
-			? { cookie }
-			: undefined,
+		headers: cookie ? { cookie } : undefined,
 	});
 	expect(response.status).toBe(200);
 	return {
 		cookie: cookie ?? cookieFrom(response),
-		reading: await response.json() as LocalSessionReading,
+		reading: (await response.json()) as LocalSessionReading,
 	};
 }
 
-async function request(path: string, options: { cookie?: string; method?: string; body?: unknown } = {}) {
+async function request(
+	path: string,
+	options: { cookie?: string; method?: string; body?: unknown } = {},
+) {
 	const headers = new Headers();
-	if (options.cookie)
-		headers.set('cookie', options.cookie);
-	if (options.body !== undefined)
-		headers.set('content-type', 'application/json');
+	if (options.cookie) headers.set('cookie', options.cookie);
+	if (options.body !== undefined) headers.set('content-type', 'application/json');
 	return await fetch(path, {
 		method: options.method,
 		headers,
-		body: options.body === undefined
-			? undefined
-			: JSON.stringify(options.body),
+		body: options.body === undefined ? undefined : JSON.stringify(options.body),
 	});
 }
 
@@ -78,15 +75,19 @@ describe('a dev server with the Local Developer Session enabled', () => {
 			body: { name: 'Local Auth Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
 		});
 		expect(eventResponse.status).toBe(201);
-		eventId = (await eventResponse.json() as { id: number }).id;
+		eventId = ((await eventResponse.json()) as { id: number }).id;
 
 		const screenResponse = await request(`/api/events/${eventId}/screens`, {
 			cookie: browserA.cookie,
 			method: 'POST',
-			body: { name: 'Local Auth Screen', slug: 'local-auth-screen', currentMode: 'broadcast-graphics' },
+			body: {
+				name: 'Local Auth Screen',
+				slug: 'local-auth-screen',
+				currentMode: 'broadcast-graphics',
+			},
 		});
 		expect(screenResponse.status).toBe(201);
-		screenId = (await screenResponse.json() as ScreenResponse).id;
+		screenId = ((await screenResponse.json()) as ScreenResponse).id;
 	});
 
 	afterAll(async () => {
@@ -101,20 +102,22 @@ describe('a dev server with the Local Developer Session enabled', () => {
 		expect(cookieFrom(response)).toContain(`${LOCAL_DEVELOPER_SESSION_COOKIE}=`);
 	});
 
-	it('enters a protected page through the real browser gate without seeing login', async () => {
-		// The probe settles on whichever page the gate shows first, so a working
-		// bypass answers as soon as the protected page renders and a broken one as
-		// soon as login does. The deadline only bounds "neither yet": this is a cold
-		// `nuxt dev` client load, compiled on demand while `pnpm verify` runs the
-		// integration suite and the browser gates beside it, and a fixed 25 s
-		// cut-off read that compile as "neither page visible" (#687). It is set
-		// in Node and compared against the page's clock, so a redirect that
-		// replaces the document cannot restart it.
-		const deadline = Date.now() + PAGE_COLD_START_LIMIT_MS;
-		const observed = await observeChromiumValue({
-			url: url('/admin/graphics-assets'),
-			timeoutMs: PAGE_COLD_START_LIMIT_MS + 10_000,
-			expression: `(() => {
+	it(
+		'enters a protected page through the real browser gate without seeing login',
+		async () => {
+			// The probe settles on whichever page the gate shows first, so a working
+			// bypass answers as soon as the protected page renders and a broken one as
+			// soon as login does. The deadline only bounds "neither yet": this is a cold
+			// `nuxt dev` client load, compiled on demand while `pnpm verify` runs the
+			// integration suite and the browser gates beside it, and a fixed 25 s
+			// cut-off read that compile as "neither page visible" (#687). It is set
+			// in Node and compared against the page's clock, so a redirect that
+			// replaces the document cannot restart it.
+			const deadline = Date.now() + PAGE_COLD_START_LIMIT_MS;
+			const observed = await observeChromiumValue({
+				url: url('/admin/graphics-assets'),
+				timeoutMs: PAGE_COLD_START_LIMIT_MS + 10_000,
+				expression: `(() => {
 				const body = document.body?.innerText ?? '';
 				const seen = {
 					pathname: location.pathname,
@@ -126,21 +129,23 @@ describe('a dev server with the Local Developer Session enabled', () => {
 					return undefined;
 				return seen;
 			})()`,
-		});
+			});
 
-		const { diagnostics, ...verdict } = observed as typeof observed & { diagnostics?: unknown };
-		expect(
-			verdict,
-			`the browser gate showed login, or neither page before the cold-start limit; the page said ${JSON.stringify(diagnostics)}`,
-		).toEqual({
-			outcome: 'passed',
-			value: {
-				pathname: '/admin/graphics-assets',
-				protectedPageVisible: true,
-				loginPageVisible: false,
-			},
-		});
-	}, PAGE_COLD_START_LIMIT_MS + 30_000);
+			const { diagnostics, ...verdict } = observed as typeof observed & { diagnostics?: unknown };
+			expect(
+				verdict,
+				`the browser gate showed login, or neither page before the cold-start limit; the page said ${JSON.stringify(diagnostics)}`,
+			).toEqual({
+				outcome: 'passed',
+				value: {
+					pathname: '/admin/graphics-assets',
+					protectedPageVisible: true,
+					loginPageVisible: false,
+				},
+			});
+		},
+		PAGE_COLD_START_LIMIT_MS + 30_000,
+	);
 
 	it('keeps one User across browsers while giving each browser its own Session', async () => {
 		expect(browserA.reading.user).toMatchObject({
@@ -149,7 +154,9 @@ describe('a dev server with the Local Developer Session enabled', () => {
 		});
 		expect(browserB.reading.user.id).toBe(browserA.reading.user.id);
 		expect(browserA.reading.session.userId).toBe(LOCAL_DEVELOPER_USER_ID);
-		expect(browserA.reading.session.id).toMatch(new RegExp(`^${LOCAL_DEVELOPER_SESSION_ID_PREFIX}`));
+		expect(browserA.reading.session.id).toMatch(
+			new RegExp(`^${LOCAL_DEVELOPER_SESSION_ID_PREFIX}`),
+		);
 		expect(browserB.reading.session.id).not.toBe(browserA.reading.session.id);
 
 		const repeated = await localSession(browserA.cookie);
@@ -157,12 +164,15 @@ describe('a dev server with the Local Developer Session enabled', () => {
 	});
 
 	it('admits the local User on a session-optional route', async () => {
-		const response = await request(`/api/screen-output/events/${eventId}/screens/slug/local-auth-screen`, {
-			cookie: browserA.cookie,
-		});
+		const response = await request(
+			`/api/screen-output/events/${eventId}/screens/slug/local-auth-screen`,
+			{
+				cookie: browserA.cookie,
+			},
+		);
 
 		expect(response.status).toBe(200);
-		expect((await response.json() as ScreenResponse).id).toBe(screenId);
+		expect(((await response.json()) as ScreenResponse).id).toBe(screenId);
 	});
 
 	// The Local Developer Session rides every request; a Screen Output Link exchange never reads it.
@@ -171,16 +181,13 @@ describe('a dev server with the Local Developer Session enabled', () => {
 			cookie: browserA.cookie,
 		});
 		expect(issued.status).toBe(200);
-		const { assetCapability, outputLink } = await issued.json() as { assetCapability: string; outputLink: string };
-		const wrongLink = `${outputLink.slice(0, -1)}${outputLink.endsWith('2')
-			? '3'
-			: '2'}`;
+		const { assetCapability, outputLink } = (await issued.json()) as {
+			assetCapability: string;
+			outputLink: string;
+		};
+		const wrongLink = `${outputLink.slice(0, -1)}${outputLink.endsWith('2') ? '3' : '2'}`;
 
-		for (const body of [
-			{ link: wrongLink },
-			{},
-			{ link: assetCapability },
-		]) {
+		for (const body of [{ link: wrongLink }, {}, { link: assetCapability }]) {
 			const refused = await request('/api/screen-output/link', {
 				cookie: browserA.cookie,
 				method: 'POST',
@@ -200,8 +207,16 @@ describe('a dev server with the Local Developer Session enabled', () => {
 
 	it('keeps Graphics Authoring Leases scoped to the two browser Sessions', async () => {
 		const leasePath = `/api/events/${eventId}/screens/${screenId}/graphics-authoring-lease`;
-		const acquired = await request(leasePath, { cookie: browserA.cookie, method: 'POST', body: {} });
-		const observed = await request(leasePath, { cookie: browserB.cookie, method: 'POST', body: {} });
+		const acquired = await request(leasePath, {
+			cookie: browserA.cookie,
+			method: 'POST',
+			body: {},
+		});
+		const observed = await request(leasePath, {
+			cookie: browserB.cookie,
+			method: 'POST',
+			body: {},
+		});
 
 		expect(acquired.status).toBe(200);
 		expect(await acquired.json()).toMatchObject({

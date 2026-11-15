@@ -22,10 +22,10 @@ interface DnsJsonResponse {
 	Answer?: { type?: number; data?: string }[];
 }
 
-type DnsLookup
-	= | { outcome: 'answered'; addresses: string[] }
-		| { outcome: 'not-found' }
-		| { outcome: 'unavailable' };
+type DnsLookup =
+	| { outcome: 'answered'; addresses: string[] }
+	| { outcome: 'not-found' }
+	| { outcome: 'unavailable' };
 
 export function createDnsOverHttpsRemoteHostResolver(
 	dependencies: { fetch?: (request: Request) => Promise<Response> } = {},
@@ -38,32 +38,29 @@ export function createDnsOverHttpsRemoteHostResolver(
 		query.searchParams.set('type', String(type));
 		let response: Response;
 		try {
-			response = await request(new Request(query, {
-				method: 'GET',
-				headers: { accept: 'application/dns-json' },
-			}));
-		}
-		catch {
+			response = await request(
+				new Request(query, {
+					method: 'GET',
+					headers: { accept: 'application/dns-json' },
+				}),
+			);
+		} catch {
 			return { outcome: 'unavailable' };
 		}
-		if (!response.ok)
-			return { outcome: 'unavailable' };
+		if (!response.ok) return { outcome: 'unavailable' };
 		let answer: DnsJsonResponse;
 		try {
-			answer = await response.json() as DnsJsonResponse;
-		}
-		catch {
+			answer = (await response.json()) as DnsJsonResponse;
+		} catch {
 			return { outcome: 'unavailable' };
 		}
-		if (answer.Status === DNS_STATUS_NAME_ERROR)
-			return { outcome: 'not-found' };
-		if (answer.Status !== DNS_STATUS_NO_ERROR)
-			return { outcome: 'unavailable' };
+		if (answer.Status === DNS_STATUS_NAME_ERROR) return { outcome: 'not-found' };
+		if (answer.Status !== DNS_STATUS_NO_ERROR) return { outcome: 'unavailable' };
 		return {
 			outcome: 'answered',
 			addresses: (answer.Answer ?? [])
-				.filter(record => record.type === type && typeof record.data === 'string')
-				.map(record => record.data!),
+				.filter((record) => record.type === type && typeof record.data === 'string')
+				.map((record) => record.data!),
 		};
 	}
 
@@ -78,16 +75,10 @@ export function createDnsOverHttpsRemoteHostResolver(
 			if (ipv4.outcome === 'unavailable' || ipv6.outcome === 'unavailable')
 				return { outcome: 'unavailable' };
 			const addresses = [
-				...ipv4.outcome === 'answered'
-					? ipv4.addresses
-					: [],
-				...ipv6.outcome === 'answered'
-					? ipv6.addresses
-					: [],
+				...(ipv4.outcome === 'answered' ? ipv4.addresses : []),
+				...(ipv6.outcome === 'answered' ? ipv6.addresses : []),
 			];
-			return addresses.length > 0
-				? { outcome: 'resolved', addresses }
-				: { outcome: 'not-found' };
+			return addresses.length > 0 ? { outcome: 'resolved', addresses } : { outcome: 'not-found' };
 		},
 	};
 }

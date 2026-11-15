@@ -10,21 +10,20 @@ import { playerListMembers, playerLists, players } from '~~/server/db/schema';
  * Uses SQL filters/subqueries instead of materialized ID arrays so large top-N
  * or Player List scopes remain safe on D1.
  */
-export type PlayerScope
-	= | { kind: 'all'; eventId: number }
-		| { kind: 'topN'; eventId: number; topN: number }
-		| { kind: 'minPoints'; eventId: number; minPoints: number }
-		| { kind: 'playerList'; eventId: number; playerListId: number };
+export type PlayerScope =
+	| { kind: 'all'; eventId: number }
+	| { kind: 'topN'; eventId: number; topN: number }
+	| { kind: 'minPoints'; eventId: number; minPoints: number }
+	| { kind: 'playerList'; eventId: number; playerListId: number };
 
 function playerListPlayerIdsSubquery(scope: Extract<PlayerScope, { kind: 'playerList' }>) {
 	return db
 		.select({ playerId: playerListMembers.playerId })
 		.from(playerListMembers)
 		.innerJoin(playerLists, eq(playerListMembers.listId, playerLists.id))
-		.where(and(
-			eq(playerListMembers.listId, scope.playerListId),
-			eq(playerLists.eventId, scope.eventId),
-		));
+		.where(
+			and(eq(playerListMembers.listId, scope.playerListId), eq(playerLists.eventId, scope.eventId)),
+		);
 }
 
 /** Returns a Drizzle WHERE condition for filtering the joined `players` table. */
@@ -55,19 +54,13 @@ export function playerScopeWhere(scope: PlayerScope): SQL {
 
 		case 'all':
 		default:
-			return and(
-				eq(players.eventId, scope.eventId),
-				eq(players.isActive, true),
-			)!;
+			return and(eq(players.eventId, scope.eventId), eq(players.isActive, true))!;
 	}
 }
 
 export async function countScopedPlayers(scope: PlayerScope, extraCondition?: SQL) {
-	const conditions = [
-		playerScopeWhere(scope),
-	];
-	if (extraCondition)
-		conditions.push(extraCondition);
+	const conditions = [playerScopeWhere(scope)];
+	if (extraCondition) conditions.push(extraCondition);
 
 	const [result] = await db
 		.select({
@@ -86,14 +79,11 @@ export function getPlayerScope(
 	playerListId?: number,
 	minPoints?: number,
 ): PlayerScope {
-	if (scope === 'playerList' && playerListId)
-		return { kind: 'playerList', playerListId, eventId };
+	if (scope === 'playerList' && playerListId) return { kind: 'playerList', playerListId, eventId };
 
-	if (scope === 'topN' && topN)
-		return { kind: 'topN', topN, eventId };
+	if (scope === 'topN' && topN) return { kind: 'topN', topN, eventId };
 
-	if (scope === 'minPoints' && minPoints != null)
-		return { kind: 'minPoints', minPoints, eventId };
+	if (scope === 'minPoints' && minPoints != null) return { kind: 'minPoints', minPoints, eventId };
 
 	return { kind: 'all', eventId };
 }

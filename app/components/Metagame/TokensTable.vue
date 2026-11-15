@@ -13,19 +13,17 @@ const search = ref('');
 
 const filteredEntries = computed(() => {
 	const query = search.value.trim().toLowerCase();
-	if (!query)
-		return props.entries;
+	if (!query) return props.entries;
 
-	return props.entries.filter(entry =>
-		entry.name.toLowerCase().includes(query)
-		|| entry.typeLine?.toLowerCase().includes(query)
-		|| entry.sourceCards.some(card => card.name.toLowerCase().includes(query)),
+	return props.entries.filter(
+		(entry) =>
+			entry.name.toLowerCase().includes(query) ||
+			entry.typeLine?.toLowerCase().includes(query) ||
+			entry.sourceCards.some((card) => card.name.toLowerCase().includes(query)),
 	);
 });
 
-const sorting = ref([
-	{ id: 'deckCount', desc: true },
-]);
+const sorting = ref([{ id: 'deckCount', desc: true }]);
 
 const columns = computed<TableColumn<TokenRequirementEntry>[]>(() => [
 	{
@@ -65,9 +63,7 @@ const columns = computed<TableColumn<TokenRequirementEntry>[]>(() => [
 		<template #header>
 			<div class="flex items-center justify-between gap-3 flex-wrap">
 				<div>
-					<h3 class="text-base font-semibold">
-						Required Tokens
-					</h3>
+					<h3 class="text-base font-semibold">Required Tokens</h3>
 					<p class="text-sm text-muted mt-1">
 						Token inventory required by cards across the current scope.
 					</p>
@@ -126,9 +122,7 @@ const columns = computed<TableColumn<TokenRequirementEntry>[]>(() => [
 				</template>
 			</UTable>
 
-			<div v-else class="text-center text-muted py-8">
-				No tokens match the current scope
-			</div>
+			<div v-else class="text-center text-muted py-8">No tokens match the current scope</div>
 
 			<div
 				v-if="loading"

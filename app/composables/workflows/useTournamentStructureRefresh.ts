@@ -19,8 +19,7 @@ export function useTournamentStructureRefresh() {
 
 	async function refreshAfterPhaseDelete(eventId: number) {
 		// Rounds first: the Match scope to re-read depends on which Rounds remain.
-		if (roundStore.isLoaded)
-			await roundStore.loadRoundsByEventId(eventId);
+		if (roundStore.isLoaded) await roundStore.loadRoundsByEventId(eventId);
 		await refreshAfterRoundDelete(eventId);
 	}
 

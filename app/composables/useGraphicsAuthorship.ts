@@ -45,8 +45,7 @@ export const GRAPHICS_AUTHOR_SIGNED_OUT_NOTICE = {
 } as const;
 
 /** The one sentence a failed action shows in place of its own message. */
-export const GRAPHICS_AUTHOR_SIGNED_OUT_MESSAGE
-	= `${GRAPHICS_AUTHOR_SIGNED_OUT_NOTICE.title}. Sign in again to continue.`;
+export const GRAPHICS_AUTHOR_SIGNED_OUT_MESSAGE = `${GRAPHICS_AUTHOR_SIGNED_OUT_NOTICE.title}. Sign in again to continue.`;
 
 /**
  * Whether a failure means this browser has no session any more.

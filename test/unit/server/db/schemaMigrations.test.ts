@@ -11,7 +11,7 @@ const migrationsDirectory = resolve(repositoryRoot, 'server/db/migrations/sqlite
 const scratch: string[] = [];
 
 afterAll(async () => {
-	await Promise.all(scratch.map(directory => rm(directory, { recursive: true, force: true })));
+	await Promise.all(scratch.map((directory) => rm(directory, { recursive: true, force: true })));
 });
 
 /**
@@ -25,19 +25,17 @@ async function pendingMigrations() {
 	const out = join(directory, 'migrations');
 	await cp(migrationsDirectory, out, { recursive: true });
 	const config = join(directory, 'drizzle.config.ts');
-	await writeFile(config, [
-		`import base from ${JSON.stringify(resolve(repositoryRoot, 'drizzle.config.ts'))};`,
-		`export default { ...base, out: ${JSON.stringify(relative(repositoryRoot, out))} };`,
-	].join('\n'));
+	await writeFile(
+		config,
+		[
+			`import base from ${JSON.stringify(resolve(repositoryRoot, 'drizzle.config.ts'))};`,
+			`export default { ...base, out: ${JSON.stringify(relative(repositoryRoot, out))} };`,
+		].join('\n'),
+	);
 
 	const generated = promisify(execFile)(
 		process.execPath,
-		[
-			resolve(repositoryRoot, 'node_modules/drizzle-kit/bin.cjs'),
-			'generate',
-			'--config',
-			config,
-		],
+		[resolve(repositoryRoot, 'node_modules/drizzle-kit/bin.cjs'), 'generate', '--config', config],
 		{ cwd: repositoryRoot },
 	);
 	// A rename drizzle-kit cannot tell from a drop-and-add asks which; with no one to answer, it fails.
@@ -45,10 +43,14 @@ async function pendingMigrations() {
 	await generated;
 
 	const committed = new Set(await readdir(migrationsDirectory));
-	const written = (await readdir(out)).filter(name => name.endsWith('.sql') && !committed.has(name));
-	return Object.fromEntries(await Promise.all(
-		written.map(async name => [name, await readFile(join(out, name), 'utf8')] as const),
-	));
+	const written = (await readdir(out)).filter(
+		(name) => name.endsWith('.sql') && !committed.has(name),
+	);
+	return Object.fromEntries(
+		await Promise.all(
+			written.map(async (name) => [name, await readFile(join(out, name), 'utf8')] as const),
+		),
+	);
 }
 
 // A table, column, index, default or constraint changed in `server/db/schema*`

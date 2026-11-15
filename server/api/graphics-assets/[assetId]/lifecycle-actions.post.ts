@@ -5,9 +5,11 @@ import { requireUserId } from '~~/server/utils/auth';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 import { GRAPHIC_ASSET_LIFECYCLE_ACTIONS } from '~~/shared/types/graphicsAsset';
 
-const actionSchema = z.object({
-	action: z.enum(GRAPHIC_ASSET_LIFECYCLE_ACTIONS),
-}).strict();
+const actionSchema = z
+	.object({
+		action: z.enum(GRAPHIC_ASSET_LIFECYCLE_ACTIONS),
+	})
+	.strict();
 
 /**
  * The Library Workspace's Retire, Trash, and Restore.
@@ -29,13 +31,10 @@ export default defineEventHandler(async (event) => {
 			actor,
 		};
 		const library = graphicsAssetLibraryForEvent(event);
-		if (action === 'retire')
-			return await library.retireGraphicAsset(input);
-		if (action === 'trash')
-			return await library.trashGraphicAsset(input);
+		if (action === 'retire') return await library.retireGraphicAsset(input);
+		if (action === 'trash') return await library.trashGraphicAsset(input);
 		return await library.restoreGraphicAsset(input);
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

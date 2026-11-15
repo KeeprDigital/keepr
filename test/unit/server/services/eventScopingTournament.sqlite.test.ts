@@ -28,14 +28,16 @@ interface SeededEvent {
 }
 
 async function seedEvent(name: string, sortOrder: number): Promise<SeededEvent> {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name, game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
 
 	// Identical external identities and round numbers in both Events: every
 	// predicate except the Event scope matches both rows.
-	const [phase] = await db.insert(schema.phases)
+	const [phase] = await db
+		.insert(schema.phases)
 		.values({
 			eventId,
 			name: `${name} Swiss`,
@@ -44,7 +46,8 @@ async function seedEvent(name: string, sortOrder: number): Promise<SeededEvent> 
 			externalSource: 'melee',
 		})
 		.returning({ id: schema.phases.id });
-	const [round] = await db.insert(schema.rounds)
+	const [round] = await db
+		.insert(schema.rounds)
 		.values({
 			eventId,
 			phaseId: phase!.id,
@@ -54,10 +57,12 @@ async function seedEvent(name: string, sortOrder: number): Promise<SeededEvent> 
 			externalSource: 'melee',
 		})
 		.returning({ id: schema.rounds.id });
-	const [player] = await db.insert(schema.players)
+	const [player] = await db
+		.insert(schema.players)
 		.values({ eventId, name: `${name} Player` })
 		.returning({ id: schema.players.id });
-	const [match] = await db.insert(schema.matches)
+	const [match] = await db
+		.insert(schema.matches)
 		.values({
 			eventId,
 			roundId: round!.id,
@@ -67,10 +72,12 @@ async function seedEvent(name: string, sortOrder: number): Promise<SeededEvent> 
 			player1Id: player!.id,
 		})
 		.returning({ id: schema.matches.id });
-	const [slot] = await db.insert(schema.featureMatches)
+	const [slot] = await db
+		.insert(schema.featureMatches)
 		.values({ eventId, externalId: 'match-shared', externalSource: 'melee' })
 		.returning({ id: schema.featureMatches.id });
-	const [assignment] = await db.insert(schema.featureMatchAssignments)
+	const [assignment] = await db
+		.insert(schema.featureMatchAssignments)
 		.values({
 			eventId,
 			roundId: round!.id,
@@ -79,14 +86,13 @@ async function seedEvent(name: string, sortOrder: number): Promise<SeededEvent> 
 			note: `${name} note`,
 		})
 		.returning({ id: schema.featureMatchAssignments.id });
-	await db.insert(schema.playerRoundStandings)
-		.values({
-			eventId,
-			playerId: player!.id,
-			roundId: round!.id,
-			wins: sortOrder,
-			position: 1,
-		});
+	await db.insert(schema.playerRoundStandings).values({
+		eventId,
+		playerId: player!.id,
+		roundId: round!.id,
+		wins: sortOrder,
+		position: 1,
+	});
 
 	return {
 		eventId,
@@ -118,15 +124,21 @@ describe('phaseService event scoping', () => {
 		expect(await service.exists(two.phaseId, one.eventId)).toBe(false);
 	});
 
-	it('resolves a shared external identity to the asking Event\'s row', async () => {
+	it("resolves a shared external identity to the asking Event's row", async () => {
 		const service = phaseService();
-		expect((await service.findByExternalId(one.eventId, 'phase-shared', 'melee'))?.id).toBe(one.phaseId);
-		expect((await service.findByExternalId(two.eventId, 'phase-shared', 'melee'))?.id).toBe(two.phaseId);
+		expect((await service.findByExternalId(one.eventId, 'phase-shared', 'melee'))?.id).toBe(
+			one.phaseId,
+		);
+		expect((await service.findByExternalId(two.eventId, 'phase-shared', 'melee'))?.id).toBe(
+			two.phaseId,
+		);
 	});
 
 	it('lists and aggregates only the asking Event', async () => {
 		const service = phaseService();
-		expect((await service.findByEventId(one.eventId)).map(phase => phase.id)).toEqual([one.phaseId]);
+		expect((await service.findByEventId(one.eventId)).map((phase) => phase.id)).toEqual([
+			one.phaseId,
+		]);
 		expect(await service.getMaxSortOrder(one.eventId)).toBe(1);
 	});
 
@@ -150,15 +162,21 @@ describe('roundService event scoping', () => {
 		expect(await service.findByPhaseId(two.phaseId, one.eventId)).toEqual([]);
 	});
 
-	it('resolves a shared external identity to the asking Event\'s row', async () => {
+	it("resolves a shared external identity to the asking Event's row", async () => {
 		const service = roundService();
-		expect((await service.findByExternalId(one.eventId, 'round-shared', 'melee'))?.id).toBe(one.roundId);
-		expect((await service.findByExternalId(two.eventId, 'round-shared', 'melee'))?.id).toBe(two.roundId);
+		expect((await service.findByExternalId(one.eventId, 'round-shared', 'melee'))?.id).toBe(
+			one.roundId,
+		);
+		expect((await service.findByExternalId(two.eventId, 'round-shared', 'melee'))?.id).toBe(
+			two.roundId,
+		);
 	});
 
 	it('lists only the asking Event', async () => {
 		const service = roundService();
-		expect((await service.findByEventId(one.eventId)).map(round => round.id)).toEqual([one.roundId]);
+		expect((await service.findByEventId(one.eventId)).map((round) => round.id)).toEqual([
+			one.roundId,
+		]);
 	});
 
 	it('writes with the wrong Event touch nothing', async () => {
@@ -183,7 +201,9 @@ describe('matchService event scoping', () => {
 
 	it('lists only the asking Event', async () => {
 		const service = matchService();
-		expect((await service.findByEventId(one.eventId)).map(match => match.id)).toEqual([one.matchId]);
+		expect((await service.findByEventId(one.eventId)).map((match) => match.id)).toEqual([
+			one.matchId,
+		]);
 	});
 
 	it('writes with the wrong Event touch nothing', async () => {
@@ -195,7 +215,7 @@ describe('matchService event scoping', () => {
 });
 
 describe('buildMatchPromotionPlan event scoping', () => {
-	it('never clears another Event\'s Slot holding the same external identity', async () => {
+	it("never clears another Event's Slot holding the same external identity", async () => {
 		const match = await matchService().findById(one.matchId, one.eventId);
 		const slotOne = (await db.query.featureMatches.findFirst({
 			where: (table, { eq }) => eq(table.id, one.slotId),
@@ -203,7 +223,7 @@ describe('buildMatchPromotionPlan event scoping', () => {
 
 		// Event 2's Slot advertises the identical externalId/externalSource pair.
 		const plan = await buildMatchPromotionPlan(one.eventId, one.slotId, match!, slotOne);
-		expect(plan.clearedSlots.map(slot => slot.id)).not.toContain(two.slotId);
+		expect(plan.clearedSlots.map((slot) => slot.id)).not.toContain(two.slotId);
 		expect(plan.promotedSlot.id).toBe(one.slotId);
 	});
 });
@@ -213,18 +233,24 @@ describe('featureMatchAssignmentService event scoping', () => {
 		const service = featureMatchAssignmentService();
 		expect(await service.findById(one.eventId, two.assignmentId)).toBeUndefined();
 		expect(await service.findByRoundAndSlot(one.eventId, two.roundId, two.slotId)).toBeUndefined();
-		expect(await service.findByRoundAndMatch(one.eventId, two.roundId, two.matchId)).toBeUndefined();
+		expect(
+			await service.findByRoundAndMatch(one.eventId, two.roundId, two.matchId),
+		).toBeUndefined();
 	});
 
 	it('round listings stay inside the asking Event', async () => {
 		const service = featureMatchAssignmentService();
 		expect(await service.findByRound(one.eventId, two.roundId)).toEqual([]);
-		expect((await service.findByRound(two.eventId, two.roundId)).map(assignment => assignment.id)).toEqual([two.assignmentId]);
+		expect(
+			(await service.findByRound(two.eventId, two.roundId)).map((assignment) => assignment.id),
+		).toEqual([two.assignmentId]);
 	});
 
 	it('writes with the wrong Event touch nothing', async () => {
 		const service = featureMatchAssignmentService();
-		expect(await service.update(one.eventId, two.assignmentId, { note: 'Hijacked' })).toBeUndefined();
+		expect(
+			await service.update(one.eventId, two.assignmentId, { note: 'Hijacked' }),
+		).toBeUndefined();
 		expect(await service.remove(one.eventId, two.assignmentId)).toBe(false);
 		expect((await service.findById(two.eventId, two.assignmentId))?.note).toBe('Event Two note');
 	});
@@ -235,6 +261,6 @@ describe('playerRoundStandingsService event scoping', () => {
 		const service = playerRoundStandingsService();
 		expect(await service.findByRoundId(one.eventId, two.roundId)).toEqual([]);
 		const own = await service.findByRoundId(two.eventId, two.roundId);
-		expect(own.map(standing => standing.playerId)).toEqual([two.playerId]);
+		expect(own.map((standing) => standing.playerId)).toEqual([two.playerId]);
 	});
 });

@@ -2,7 +2,11 @@
 import type { AnimationEffectSelection } from '~~/shared/animationEffects';
 import type { GraphicFillEdit } from '~~/shared/modules/graphics';
 import type { GraphicLinearGradientFill } from '~~/shared/types/graphics';
-import type { BackgroundLayer, BackgroundLayerType, ScreenMediaSource } from '~~/shared/types/screenConfig';
+import type {
+	BackgroundLayer,
+	BackgroundLayerType,
+	ScreenMediaSource,
+} from '~~/shared/types/screenConfig';
 import type { MediaFieldsPatch } from '~/utils/mediaFields';
 import { applyGraphicFillEdit } from '~~/shared/modules/graphics';
 import { BACKGROUND_LAYER_TYPE_VALUES } from '~~/shared/types/screenConfig';
@@ -30,16 +34,18 @@ const emit = defineEmits<{
 	'update:layers': [layers: BackgroundLayer[]];
 }>();
 
-const hasAnimationLayer = computed(() => props.layers.some(layer => layer.type === 'animation'));
+const hasAnimationLayer = computed(() => props.layers.some((layer) => layer.type === 'animation'));
 
 const addLayerType = ref<BackgroundLayerType>('color');
 
 /** One animation layer per stack — the schema's rule, refused here before the write. */
-const addLayerOptions = computed(() => BACKGROUND_LAYER_TYPE_VALUES.map(type => ({
-	label: BACKGROUND_LAYER_TYPE_LABELS[type],
-	value: type,
-	disabled: type === 'animation' && hasAnimationLayer.value,
-})));
+const addLayerOptions = computed(() =>
+	BACKGROUND_LAYER_TYPE_VALUES.map((type) => ({
+		label: BACKGROUND_LAYER_TYPE_LABELS[type],
+		value: type,
+		disabled: type === 'animation' && hasAnimationLayer.value,
+	})),
+);
 
 function writeLayers(nextLayers: BackgroundLayer[]) {
 	emit('update:layers', nextLayers);
@@ -99,45 +105,41 @@ function newLayer(type: BackgroundLayerType): BackgroundLayer {
 }
 
 function addLayer() {
-	if (addLayerType.value === 'animation' && hasAnimationLayer.value)
-		return;
-	writeLayers([
-		...props.layers,
-		newLayer(addLayerType.value),
-	]);
+	if (addLayerType.value === 'animation' && hasAnimationLayer.value) return;
+	writeLayers([...props.layers, newLayer(addLayerType.value)]);
 }
 
 function removeLayer(id: string) {
-	writeLayers(props.layers.filter(layer => layer.id !== id));
+	writeLayers(props.layers.filter((layer) => layer.id !== id));
 }
 
 function moveLayer(id: string, direction: -1 | 1) {
 	const current = [...props.layers];
-	const index = current.findIndex(layer => layer.id === id);
+	const index = current.findIndex((layer) => layer.id === id);
 	const target = index + direction;
-	if (index < 0 || target < 0 || target >= current.length)
-		return;
+	if (index < 0 || target < 0 || target >= current.length) return;
 	const [moved] = current.splice(index, 1);
 	current.splice(target, 0, moved!);
 	writeLayers(current);
 }
 
 function patchLayer(id: string, updates: Partial<BackgroundLayer>) {
-	writeLayers(props.layers.map(layer =>
-		layer.id === id
-			? {
-					...layer,
-					...updates,
-				} as BackgroundLayer
-			: layer,
-	));
+	writeLayers(
+		props.layers.map((layer) =>
+			layer.id === id
+				? ({
+						...layer,
+						...updates,
+					} as BackgroundLayer)
+				: layer,
+		),
+	);
 }
 
 /** The fill control never changes kind here, so the edited fill is still a gradient. */
 function editGradient(id: string, gradient: GraphicLinearGradientFill, edit: GraphicFillEdit) {
 	const next = applyGraphicFillEdit(gradient, edit);
-	if (next.type === 'linear-gradient')
-		patchLayer(id, { gradient: next });
+	if (next.type === 'linear-gradient') patchLayer(id, { gradient: next });
 }
 
 /** A media layer's fit and playback; its opacity is the layer's own, edited above. */
@@ -216,11 +218,15 @@ function updateAnimationSelection(id: string, selection: AnimationEffectSelectio
 				</div>
 
 				<ScreenSettingsField v-if="layer.type === 'color'" label="Colour" stacked>
-					<slot name="color" :value="layer.color" :update="(color: string) => patchLayer(layer.id, { color })">
+					<slot
+						name="color"
+						:value="layer.color"
+						:update="(color: string) => patchLayer(layer.id, { color })"
+					>
 						<UIColorPicker
 							:model-value="layer.color"
 							placeholder="#000000"
-							@update:model-value="color => color && patchLayer(layer.id, { color })"
+							@update:model-value="(color) => color && patchLayer(layer.id, { color })"
 						/>
 					</slot>
 				</ScreenSettingsField>
@@ -228,9 +234,12 @@ function updateAnimationSelection(id: string, selection: AnimationEffectSelectio
 				<template v-if="layer.type === 'gradient'">
 					<div v-if="typeof layer.gradient === 'string'" class="space-y-2">
 						<ScreenSettingsHint>
-							This layer holds a CSS gradient from an earlier version. It paints as stored until you replace it.
+							This layer holds a CSS gradient from an earlier version. It paints as stored until you
+							replace it.
 						</ScreenSettingsHint>
-						<code data-testid="stored-css-gradient" class="block break-all text-xs">{{ layer.gradient }}</code>
+						<code data-testid="stored-css-gradient" class="block break-all text-xs">{{
+							layer.gradient
+						}}</code>
 						<UButton
 							data-testid="replace-stored-gradient"
 							label="Replace with a gradient"
@@ -275,12 +284,7 @@ function updateAnimationSelection(id: string, selection: AnimationEffectSelectio
 		</div>
 
 		<div class="flex items-end gap-2">
-			<ScreenSettingsField
-				label="Add layer"
-				data-testid="add-layer-type"
-				class="grow"
-				stacked
-			>
+			<ScreenSettingsField label="Add layer" data-testid="add-layer-type" class="grow" stacked>
 				<USelect
 					:model-value="addLayerType"
 					:items="addLayerOptions"

@@ -31,50 +31,47 @@ const { formData, originalFormData, isDirty, reset, runSave } = useForm({
 useRegisterDirtyState(isDirty);
 
 async function fetchConfig() {
-	await runRequest(
-		() => eventRepo.getMeleeConfig(props.eventId),
-		{
-			loadingRef: fetching,
-			success: false,
-			error: false,
-			onSuccess: (config) => {
-				credentialsConfigured.value = config.meleeConfigured;
-				initialData.value = {
-					meleeEnabled: config.meleeEnabled,
-					meleeEventId: config.meleeEventId || '',
-					meleeClientId: config.meleeClientId || '',
-					// Server no longer returns meleeClientSecret — keep empty so the field is never pre-filled.
-					// Submitting an empty secret tells the server to preserve the existing stored value.
-					meleeClientSecret: '',
-				};
-			},
-			// One writer for one ref. `errorRef` used to be passed here too and its value
-			// never survived — `runRequest` writes it and then awaits `onFailure`, which
-			// overwrote it with static wording one line later (#271 recorded the dead
-			// write; #286 closes it). Composing here instead keeps the standing context
-			// this card needs, since the banner replaces the whole form and a bare status
-			// line would not say what failed, while letting the reason through: since
-			// #271 that is the sentence a refusal wrote, and since #286 it is also the
-			// preserved prose of a 5xx that named a deployment fault.
-			onFailure: ({ message }) => {
-				fetchError.value = `Melee configuration could not be loaded — ${message}`;
-			},
+	await runRequest(() => eventRepo.getMeleeConfig(props.eventId), {
+		loadingRef: fetching,
+		success: false,
+		error: false,
+		onSuccess: (config) => {
+			credentialsConfigured.value = config.meleeConfigured;
+			initialData.value = {
+				meleeEnabled: config.meleeEnabled,
+				meleeEventId: config.meleeEventId || '',
+				meleeClientId: config.meleeClientId || '',
+				// Server no longer returns meleeClientSecret — keep empty so the field is never pre-filled.
+				// Submitting an empty secret tells the server to preserve the existing stored value.
+				meleeClientSecret: '',
+			};
 		},
-	);
+		// One writer for one ref. `errorRef` used to be passed here too and its value
+		// never survived — `runRequest` writes it and then awaits `onFailure`, which
+		// overwrote it with static wording one line later (#271 recorded the dead
+		// write; #286 closes it). Composing here instead keeps the standing context
+		// this card needs, since the banner replaces the whole form and a bare status
+		// line would not say what failed, while letting the reason through: since
+		// #271 that is the sentence a refusal wrote, and since #286 it is also the
+		// preserved prose of a 5xx that named a deployment fault.
+		onFailure: ({ message }) => {
+			fetchError.value = `Melee configuration could not be loaded — ${message}`;
+		},
+	});
 }
 
 async function submit() {
-	const meleeEventIdChanged = originalFormData.value.meleeEventId.trim() !== formData.value.meleeEventId.trim();
-	const meleeDataWillReset = !formData.value.meleeEnabled
-		|| meleeEventIdChanged;
+	const meleeEventIdChanged =
+		originalFormData.value.meleeEventId.trim() !== formData.value.meleeEventId.trim();
+	const meleeDataWillReset = !formData.value.meleeEnabled || meleeEventIdChanged;
 	const meleeWillBeDisabled = originalFormData.value.meleeEnabled && !formData.value.meleeEnabled;
-	const meleeEventWillChange = originalFormData.value.meleeEnabled
-		&& formData.value.meleeEnabled
-		&& meleeEventIdChanged;
+	const meleeEventWillChange =
+		originalFormData.value.meleeEnabled && formData.value.meleeEnabled && meleeEventIdChanged;
 
 	if (meleeWillBeDisabled || meleeEventWillChange) {
 		const modal = overlay.create(LazyUIConfirmActionModal);
-		const keepsManualStructure = 'Manual rounds and matches stay, and an imported phase or round holding them is kept as a manual one.';
+		const keepsManualStructure =
+			'Manual rounds and matches stay, and an imported phase or round holding them is kept as a manual one.';
 		const confirmed = await modal.open({
 			title: meleeWillBeDisabled ? 'Disable Melee Integration' : 'Change Melee Event',
 			message: meleeWillBeDisabled
@@ -101,63 +98,69 @@ async function submit() {
 		meleeClientSecret: '',
 	};
 
-	await runSave(() => runRequest(
-		async () => {
-			const { warnings = [], ...updatedEvent } = await eventRepo.updateMeleeConfig(props.eventId, {
-				meleeEnabled: formData.value.meleeEnabled,
-				meleeEventId: formData.value.meleeEventId || null,
-				meleeClientId: formData.value.meleeClientId || null,
-				// Only send meleeClientSecret if the user typed a new value.
-				// Omitting it tells the server to preserve the existing secret.
-				...(formData.value.meleeClientSecret
-					? { meleeClientSecret: formData.value.meleeClientSecret }
-					: {}),
-			});
-			eventStore.setEvent(updatedEvent);
+	await runSave(() =>
+		runRequest(
+			async () => {
+				const { warnings = [], ...updatedEvent } = await eventRepo.updateMeleeConfig(
+					props.eventId,
+					{
+						meleeEnabled: formData.value.meleeEnabled,
+						meleeEventId: formData.value.meleeEventId || null,
+						meleeClientId: formData.value.meleeClientId || null,
+						// Only send meleeClientSecret if the user typed a new value.
+						// Omitting it tells the server to preserve the existing secret.
+						...(formData.value.meleeClientSecret
+							? { meleeClientSecret: formData.value.meleeClientSecret }
+							: {}),
+					},
+				);
+				eventStore.setEvent(updatedEvent);
 
-			let localRefreshFailed = false;
-			if (meleeDataWillReset) {
-				try {
-					await refreshAfterMeleeReset(props.eventId, { failure: 'raise' });
+				let localRefreshFailed = false;
+				if (meleeDataWillReset) {
+					try {
+						await refreshAfterMeleeReset(props.eventId, { failure: 'raise' });
+					} catch {
+						// Persistence has committed. Do not report the configuration request as
+						// failed (which would encourage a destructive retry) just because a
+						// follow-up projection reload failed in this browser.
+						localRefreshFailed = true;
+						console.warn(
+							`[Melee] Local data refresh failed after configuration reset for event ${props.eventId}`,
+						);
+					}
 				}
-				catch {
-					// Persistence has committed. Do not report the configuration request as
-					// failed (which would encourage a destructive retry) just because a
-					// follow-up projection reload failed in this browser.
-					localRefreshFailed = true;
-					console.warn(`[Melee] Local data refresh failed after configuration reset for event ${props.eventId}`);
-				}
-			}
-			initialData.value = saved;
-			credentialsConfigured.value = updatedEvent.meleeConfigured;
-			return { localRefreshFailed, warnings };
-		},
-		{
-			loadingRef: loading,
-			success: ({ localRefreshFailed, warnings }) => {
-				// What the operator must know beyond the save itself: the kept
-				// structure the reset named, and a local refresh that failed.
-				const notices = [
-					...(localRefreshFailed
-						? ['Local synced data could not be refreshed. Reload this page before continuing.']
-						: []),
-					...warnings,
-				];
-				return notices.length > 0
-					? {
-							title: 'Melee configuration updated',
-							description: notices.join(' · '),
-							color: 'warning',
-						}
-					: { title: 'Success', description: 'Melee configuration updated', color: 'success' };
+				initialData.value = saved;
+				credentialsConfigured.value = updatedEvent.meleeConfigured;
+				return { localRefreshFailed, warnings };
 			},
-			error: {
-				title: 'Error',
-				description: 'Failed to update Melee configuration',
-				color: 'error',
+			{
+				loadingRef: loading,
+				success: ({ localRefreshFailed, warnings }) => {
+					// What the operator must know beyond the save itself: the kept
+					// structure the reset named, and a local refresh that failed.
+					const notices = [
+						...(localRefreshFailed
+							? ['Local synced data could not be refreshed. Reload this page before continuing.']
+							: []),
+						...warnings,
+					];
+					return notices.length > 0
+						? {
+								title: 'Melee configuration updated',
+								description: notices.join(' · '),
+								color: 'warning',
+							}
+						: { title: 'Success', description: 'Melee configuration updated', color: 'success' };
+				},
+				error: {
+					title: 'Error',
+					description: 'Failed to update Melee configuration',
+					color: 'error',
+				},
 			},
-		},
-	));
+		),
+	);
 }
 
 onMounted(fetchConfig);
@@ -204,7 +207,11 @@ onMounted(fetchConfig);
 					<UFormField
 						name="meleeClientSecret"
 						label="Client Secret"
-						:description="credentialsConfigured ? 'Credentials configured. Leave blank to keep the current secret.' : 'Your Melee.gg API client secret'"
+						:description="
+							credentialsConfigured
+								? 'Credentials configured. Leave blank to keep the current secret.'
+								: 'Your Melee.gg API client secret'
+						"
 						class="flex max-sm:flex-col justify-between items-start gap-4"
 					>
 						<UInput

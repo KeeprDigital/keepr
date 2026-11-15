@@ -18,7 +18,11 @@ import { INTEGRATION_MODE_ENV } from '../integration/state';
  * real Ably app (#1028). No test in the suite reads realtime; a publish without
  * a key is logged and the write still answers.
  */
-export function localAuthServerEnv({ nodeOptions }: { nodeOptions: string }): Record<string, string> {
+export function localAuthServerEnv({
+	nodeOptions,
+}: {
+	nodeOptions: string;
+}): Record<string, string> {
 	return {
 		[INTEGRATION_MODE_ENV]: 'true',
 		[LOCAL_AUTH_BYPASS_NAME]: LOCAL_AUTH_BYPASS_ENABLED_VALUE,

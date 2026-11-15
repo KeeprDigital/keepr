@@ -48,14 +48,14 @@ import { stagedIngestionObjectIdentities } from './operation';
  * the pinned validation runtime can read it exactly as it reads any staged
  * source, and one identity is claimed, cleaned up, and leased everywhere.
  */
-export function reconciliationWorkingCopyOperationId(discrepancyId: string): GraphicsIngestionOperationId {
+export function reconciliationWorkingCopyOperationId(
+	discrepancyId: string,
+): GraphicsIngestionOperationId {
 	return `reconciliation-${discrepancyId}` as GraphicsIngestionOperationId;
 }
 
 export function reconciliationWorkingCopyIdentity(discrepancyId: string): GraphicsObjectIdentity {
-	return stagedIngestionObjectIdentities(
-		reconciliationWorkingCopyOperationId(discrepancyId),
-	)[0]!;
+	return stagedIngestionObjectIdentities(reconciliationWorkingCopyOperationId(discrepancyId))[0]!;
 }
 
 /**
@@ -160,10 +160,10 @@ export interface GraphicsAssetReconciliationCatalogue {
 	 * Content the catalogue expects to reach, least recently reconciled first,
 	 * so one bounded sweep eventually covers every expectation.
 	 */
-	listExpectedContent: (input: {
-		limit: number;
-	}) => Promise<ExpectedGraphicAssetContent[]>;
-	findExpectedContent: (input: { digest: string }) => Promise<ExpectedGraphicAssetContent | undefined>;
+	listExpectedContent: (input: { limit: number }) => Promise<ExpectedGraphicAssetContent[]>;
+	findExpectedContent: (input: {
+		digest: string;
+	}) => Promise<ExpectedGraphicAssetContent | undefined>;
 	/** One set-based read for a whole queue, rather than one read per row. */
 	findExpectedContents: (input: {
 		digests: readonly string[];
@@ -205,9 +205,9 @@ export interface GraphicsAssetReconciliationCatalogue {
 		quarantinedAt: string;
 		deleteAfter: string;
 	}) => Promise<boolean>;
-	findContentQuarantine: (input: { digest: string }) => Promise<
-		{ id: string; quarantinedAt: string; deleteAfter: string } | undefined
-	>;
+	findContentQuarantine: (input: {
+		digest: string;
+	}) => Promise<{ id: string; quarantinedAt: string; deleteAfter: string } | undefined>;
 	/** Releases quarantined bytes an administrator has just verified and restored. */
 	releaseContentQuarantine: (input: { digest: string }) => Promise<boolean>;
 	listContentUsage: (input: { digest: string }) => Promise<GraphicsDiscrepancyUsage[]>;
@@ -264,40 +264,35 @@ export interface GraphicsAssetReconciliationCatalogue {
 		limit: number;
 	}) => Promise<{ id: string; workingCopyKey: string }[]>;
 	getReconciliationState: () => Promise<GraphicsReconciliationStateRecord>;
-	recordCanonicalScanProgress: (input: {
-		cursor?: string;
-		startedAt?: string;
-	}) => Promise<void>;
+	recordCanonicalScanProgress: (input: { cursor?: string; startedAt?: string }) => Promise<void>;
 	recordReconciliationSweep: (input: {
 		correlationId: string;
 		startedAt: string;
 		completedAt: string;
 	}) => Promise<void>;
-	recordGraphicsAssetEvidence: (
-		entries: readonly GraphicsAssetEvidenceEntry[],
-	) => Promise<void>;
+	recordGraphicsAssetEvidence: (entries: readonly GraphicsAssetEvidenceEntry[]) => Promise<void>;
 }
 
 /** What an administrator's supplied or stored bytes must prove before reuse. */
-export type GraphicsContentExpectation
-	= | {
-		kind: 'source';
-		canonicalMime: string;
-		sourceKind: 'image' | 'silent-video' | 'font';
-		facts: Record<string, unknown>;
-	}
+export type GraphicsContentExpectation =
 	| {
-		kind: 'derivative';
-		canonicalMime: string;
-	};
+			kind: 'source';
+			canonicalMime: string;
+			sourceKind: 'image' | 'silent-video' | 'font';
+			facts: Record<string, unknown>;
+	  }
+	| {
+			kind: 'derivative';
+			canonicalMime: string;
+	  };
 
-export type VerifyGraphicsContentBytesOutcome
-	= | { outcome: 'verified' }
-		| { outcome: 'rejected'; code: GraphicsRepairRejectionCode; message: string };
+export type VerifyGraphicsContentBytesOutcome =
+	| { outcome: 'verified' }
+	| { outcome: 'rejected'; code: GraphicsRepairRejectionCode; message: string };
 
-export type RegenerateGraphicsDerivativeOutcome
-	= | { outcome: 'generated'; bytes: Uint8Array }
-		| { outcome: 'unavailable'; code: GraphicsRepairRejectionCode; message: string };
+export type RegenerateGraphicsDerivativeOutcome =
+	| { outcome: 'generated'; bytes: Uint8Array }
+	| { outcome: 'unavailable'; code: GraphicsRepairRejectionCode; message: string };
 
 /**
  * The media-aware seams reconciliation delegates to. Compatibility profiles,
@@ -378,10 +373,10 @@ interface GraphicsObservedReconciliationDependencies {
 	generateIdentity: () => string;
 }
 
-type CanonicalObservation
-	= | { outcome: 'agrees'; byteLength: number; canonicalMime?: string }
-		| { outcome: 'missing' }
-		| {
+type CanonicalObservation =
+	| { outcome: 'agrees'; byteLength: number; canonicalMime?: string }
+	| { outcome: 'missing' }
+	| {
 			outcome: 'mismatched';
 			reasonCode: Extract<
 				GraphicsDiscrepancyReasonCode,
@@ -389,8 +384,8 @@ type CanonicalObservation
 			>;
 			byteLength: number;
 			canonicalMime?: string;
-		}
-		| { outcome: 'byte-store-unavailable' };
+	  }
+	| { outcome: 'byte-store-unavailable' };
 
 /**
  * Comparing one expectation against the byte store and recording what that
@@ -445,10 +440,8 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 		canonicalMime: string;
 	}): Promise<CanonicalObservation> {
 		const result = await canonical.readMetadata(canonicalContentIdentity(content.digest));
-		if (result.outcome === 'missing')
-			return { outcome: 'missing' };
-		if (result.outcome === 'unavailable')
-			return { outcome: 'byte-store-unavailable' };
+		if (result.outcome === 'missing') return { outcome: 'missing' };
+		if (result.outcome === 'unavailable') return { outcome: 'byte-store-unavailable' };
 		const observed = {
 			byteLength: result.object.byteLength,
 			canonicalMime: result.object.contentType,
@@ -482,9 +475,7 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 				return {
 					present: true,
 					byteLength: observation.byteLength,
-					...(observation.canonicalMime
-						? { canonicalMime: observation.canonicalMime }
-						: {}),
+					...(observation.canonicalMime ? { canonicalMime: observation.canonicalMime } : {}),
 				};
 		}
 	}
@@ -518,8 +509,7 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 			availabilityRestored: false,
 			criticalIncident: false,
 		};
-		if (observation.outcome === 'byte-store-unavailable')
-			return unchanged;
+		if (observation.outcome === 'byte-store-unavailable') return unchanged;
 
 		await catalogue.recordContentReconciled({ digest: content.digest, checkedAt: observedAt });
 
@@ -530,9 +520,8 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 		// not an operational failure. Reporting it would put an incident on the
 		// administrator's queue offering an exact-byte repair for bytes the
 		// library is deliberately discarding.
-		const retentionOwnsIt = content.quarantined
-			&& content.revisionReach === 0
-			&& content.derivativeReach === 0;
+		const retentionOwnsIt =
+			content.quarantined && content.revisionReach === 0 && content.derivativeReach === 0;
 		if (retentionOwnsIt && observation.outcome !== 'agrees') {
 			// Anything already raised about it is withdrawn, so a queue that
 			// predates this rule heals itself rather than holding a false alarm.
@@ -542,18 +531,20 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 				resolution: 'content-no-longer-expected',
 			});
 			for (const discrepancyId of withdrawn) {
-				records.push(evidence({
-					recordedAt: observedAt,
-					correlationId,
-					category: 'discrepancy-rechecked',
-					subject: { kind: 'graphics-discrepancy', id: discrepancyId },
-					outcome: 'content-no-longer-expected',
-					reason: 'unreachable-content-held-for-retention-deletion',
-					detail: {
-						discrepancyId,
-						transition: { from: 'open', to: 'resolved' },
-					},
-				}));
+				records.push(
+					evidence({
+						recordedAt: observedAt,
+						correlationId,
+						category: 'discrepancy-rechecked',
+						subject: { kind: 'graphics-discrepancy', id: discrepancyId },
+						outcome: 'content-no-longer-expected',
+						reason: 'unreachable-content-held-for-retention-deletion',
+						detail: {
+							discrepancyId,
+							transition: { from: 'open', to: 'resolved' },
+						},
+					}),
+				);
 			}
 			return unchanged;
 		}
@@ -571,28 +562,31 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 			// A resolution always earns a ledger entry; a flag that was never
 			// raised has nothing to explain.
 			for (const discrepancyId of resolved) {
-				records.push(evidence({
-					recordedAt: observedAt,
-					correlationId,
-					category: 'content-availability-restored',
-					subject: { kind: 'graphics-discrepancy', id: discrepancyId },
-					outcome: 'content-available',
-					reason: 'byte-store-agrees-with-catalogue',
-					detail: {
-						discrepancyId,
-						transition: { from: 'open', to: 'resolved' },
-						affectedRevisionCount: content.revisionReach,
-					},
-				}));
+				records.push(
+					evidence({
+						recordedAt: observedAt,
+						correlationId,
+						category: 'content-availability-restored',
+						subject: { kind: 'graphics-discrepancy', id: discrepancyId },
+						outcome: 'content-available',
+						reason: 'byte-store-agrees-with-catalogue',
+						detail: {
+							discrepancyId,
+							transition: { from: 'open', to: 'resolved' },
+							affectedRevisionCount: content.revisionReach,
+						},
+					}),
+				);
 			}
-			if (content.availability === 'available')
-				return unchanged;
+			if (content.availability === 'available') return unchanged;
 			// Clearing the advisory alert is refused while an isolated incident is
 			// open, so a fact-level agreement can never reopen a conflict.
-			if (!await catalogue.markContentAvailable({
-				digest: content.digest,
-				restoredAt: observedAt,
-			})) {
+			if (
+				!(await catalogue.markContentAvailable({
+					digest: content.digest,
+					restoredAt: observedAt,
+				}))
+			) {
 				return unchanged;
 			}
 			return { ...unchanged, availabilityRestored: true };
@@ -603,14 +597,16 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 		// Content nothing reaches at all is still catalogued content whose bytes
 		// are gone, so it is reported as unavailable and repaired with exact
 		// bytes rather than offered a regeneration it has no source for.
-		const regenerable = content.revisionReach === 0
-			&& content.derivativeReach > 0
-			&& content.derivative !== undefined;
-		const reasonCode: GraphicsDiscrepancyReasonCode = observation.outcome === 'mismatched'
-			? observation.reasonCode
-			: regenerable
-				? 'derivative-object-missing'
-				: 'canonical-object-missing';
+		const regenerable =
+			content.revisionReach === 0 &&
+			content.derivativeReach > 0 &&
+			content.derivative !== undefined;
+		const reasonCode: GraphicsDiscrepancyReasonCode =
+			observation.outcome === 'mismatched'
+				? observation.reasonCode
+				: regenerable
+					? 'derivative-object-missing'
+					: 'canonical-object-missing';
 		const kind: GraphicsDiscrepancyKind = critical
 			? 'critical-integrity-incident'
 			: regenerable
@@ -644,29 +640,31 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 		// comparing the timestamps instead would announce once per observation
 		// that shared a millisecond with the one that won.
 		if (discrepancy.id === announcedId) {
-			records.push(evidence({
-				recordedAt: observedAt,
-				correlationId,
-				category: critical
-					? 'critical-integrity-incident'
-					: kind === 'missing-derivative'
-						? 'derivative-missing-detected'
-						: 'content-unavailable-detected',
-				subject: { kind: 'graphics-discrepancy', id: discrepancy.id },
-				outcome: critical ? 'integrity-incident-isolated' : 'content-unavailable',
-				reason: reasonCode,
-				detail: {
-					discrepancyId: discrepancy.id,
-					discrepancyKind: kind,
-					reasonCode,
-					isolated: critical,
-					transition: {
-						from: 'none',
-						to: critical ? 'isolated' : 'open',
+			records.push(
+				evidence({
+					recordedAt: observedAt,
+					correlationId,
+					category: critical
+						? 'critical-integrity-incident'
+						: kind === 'missing-derivative'
+							? 'derivative-missing-detected'
+							: 'content-unavailable-detected',
+					subject: { kind: 'graphics-discrepancy', id: discrepancy.id },
+					outcome: critical ? 'integrity-incident-isolated' : 'content-unavailable',
+					reason: reasonCode,
+					detail: {
+						discrepancyId: discrepancy.id,
+						discrepancyKind: kind,
+						reasonCode,
+						isolated: critical,
+						transition: {
+							from: 'none',
+							to: critical ? 'isolated' : 'open',
+						},
+						affectedRevisionCount: content.revisionReach,
 					},
-					affectedRevisionCount: content.revisionReach,
-				},
-			}));
+				}),
+			);
 		}
 		return {
 			observed: observation.outcome,
@@ -680,13 +678,11 @@ function createExpectationReconciliation(dependencies: GraphicsObservedReconcili
 	/** Reconciles exactly the content behind one digest a reader just observed failing. */
 	async function reconcileObservedDigest(input: { digest: string }): Promise<void> {
 		const expectation = await catalogue.findExpectedContent({ digest: input.digest });
-		if (!expectation)
-			return;
+		if (!expectation) return;
 		const correlationId = generateIdentity();
 		const records: GraphicsAssetEvidenceEntry[] = [];
 		await reconcileExpectation(expectation, correlationId, records);
-		if (records.length > 0)
-			await catalogue.recordGraphicsAssetEvidence(records);
+		if (records.length > 0) await catalogue.recordGraphicsAssetEvidence(records);
 	}
 
 	return {
@@ -724,11 +720,9 @@ export function createGraphicsDisagreementReporter(dependencies: {
 		generateIdentity: dependencies.generateIdentity ?? (() => crypto.randomUUID()),
 	});
 	return async (observed) => {
-		const digest = 'digest' in observed
-			? observed.digest
-			: await catalogue.findRevisionContentDigest(observed);
-		if (digest)
-			await reconcileObservedDigest({ digest });
+		const digest =
+			'digest' in observed ? observed.digest : await catalogue.findRevisionContentDigest(observed);
+		if (digest) await reconcileObservedDigest({ digest });
 	};
 }
 
@@ -762,8 +756,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		record: GraphicsDiscrepancyRecord,
 		context: { regenerable: boolean; sourceAvailable: boolean },
 	): GraphicsDiscrepancyAction[] {
-		if (record.state === 'resolved')
-			return [];
+		if (record.state === 'resolved') return [];
 		// An isolated incident offers no action that writes. Deep verification is
 		// offered because it is the only way to settle one: it either proves the
 		// stored bytes are exactly what the catalogue expects, or proves they are
@@ -778,14 +771,11 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		// them yet. The action itself reports honestly when there is nothing to
 		// verify.
 		if (record.isolated || record.kind === 'critical-integrity-incident') {
-			return record.digest
-				? ['recheck', 'verify-stored-bytes']
-				: ['recheck'];
+			return record.digest ? ['recheck', 'verify-stored-bytes'] : ['recheck'];
 		}
 		// An unexpected object is never adopted, so nothing here writes catalogue
 		// state for it either.
-		if (record.kind === 'unexpected-object')
-			return ['recheck'];
+		if (record.kind === 'unexpected-object') return ['recheck'];
 		const actions: GraphicsDiscrepancyAction[] = [
 			'recheck',
 			'verify-stored-bytes',
@@ -818,7 +808,9 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 	): Promise<DiscrepancyContext> {
 		const digests = [
 			...new Set(
-				records.map(record => record.digest).filter((digest): digest is string => Boolean(digest)),
+				records
+					.map((record) => record.digest)
+					.filter((digest): digest is string => Boolean(digest)),
 			),
 		];
 		if (digests.length === 0) {
@@ -837,10 +829,8 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		// different digest, so those are resolved in one further set-based read.
 		const sourceDigests = [
 			...new Set(
-				[
-					...expectations.values(),
-				]
-					.map(expectation => expectation.derivative?.sourceDigest)
+				[...expectations.values()]
+					.map((expectation) => expectation.derivative?.sourceDigest)
 					.filter((digest): digest is string => Boolean(digest) && !expectations.has(digest!)),
 			),
 		];
@@ -870,16 +860,14 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		record: GraphicsDiscrepancyRecord,
 		context: DiscrepancyContext,
 	): GraphicsDiscrepancy {
-		const expectation = record.digest
-			? context.expectations.get(record.digest)
-			: undefined;
-		const quarantine = record.digest && record.state === 'open'
-			? context.quarantine.get(record.digest)
-			: undefined;
+		const expectation = record.digest ? context.expectations.get(record.digest) : undefined;
+		const quarantine =
+			record.digest && record.state === 'open' ? context.quarantine.get(record.digest) : undefined;
 		const affectedUsage = (record.digest && context.usage.get(record.digest)) || [];
 		const derivative = expectation?.derivative;
-		const sourceAvailable = derivative !== undefined
-			&& context.expectations.get(derivative.sourceDigest)?.availability === 'available';
+		const sourceAvailable =
+			derivative !== undefined &&
+			context.expectations.get(derivative.sourceDigest)?.availability === 'available';
 		return {
 			id: record.id,
 			kind: record.kind,
@@ -888,12 +876,8 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 			isolated: record.isolated,
 			detectedAt: record.detectedAt,
 			lastCheckedAt: record.lastCheckedAt,
-			...(record.resolvedAt
-				? { resolvedAt: record.resolvedAt }
-				: {}),
-			...(record.resolution
-				? { resolution: record.resolution }
-				: {}),
+			...(record.resolvedAt ? { resolvedAt: record.resolvedAt } : {}),
+			...(record.resolution ? { resolution: record.resolution } : {}),
 			expected: record.expected,
 			observed: record.observed,
 			affectedUsage,
@@ -945,17 +929,12 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		let criticalIncidents = 0;
 		for (const content of candidates) {
 			const outcome = await reconcileExpectation(content, correlationId, records);
-			if (outcome.observed === 'byte-store-unavailable')
-				break;
+			if (outcome.observed === 'byte-store-unavailable') break;
 			checked++;
-			if (outcome.criticalIncident)
-				criticalIncidents++;
-			if (outcome.unavailableDetected)
-				unavailableDetected++;
-			if (outcome.derivativeMissing)
-				missingDetected++;
-			if (outcome.availabilityRestored)
-				availabilityRestored++;
+			if (outcome.criticalIncident) criticalIncidents++;
+			if (outcome.unavailableDetected) unavailableDetected++;
+			if (outcome.derivativeMissing) missingDetected++;
+			if (outcome.availabilityRestored) availabilityRestored++;
 		}
 		return {
 			records,
@@ -1010,30 +989,30 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					observed: {
 						present: true,
 						byteLength: object.byteLength,
-						...(object.contentType
-							? { canonicalMime: object.contentType }
-							: {}),
+						...(object.contentType ? { canonicalMime: object.contentType } : {}),
 					},
 					observedAt,
 					correlationId,
 				});
 				if (incident.id === announcedId) {
 					criticalIncidents++;
-					records.push(evidence({
-						recordedAt: observedAt,
-						correlationId,
-						category: 'critical-integrity-incident',
-						subject: { kind: 'graphics-discrepancy', id: incident.id },
-						outcome: 'integrity-incident-isolated',
-						reason: 'foreign-canonical-object',
-						detail: {
-							discrepancyId: incident.id,
-							discrepancyKind: 'critical-integrity-incident',
-							reasonCode: 'foreign-canonical-object',
-							isolated: true,
-							transition: { from: 'none', to: 'isolated' },
-						},
-					}));
+					records.push(
+						evidence({
+							recordedAt: observedAt,
+							correlationId,
+							category: 'critical-integrity-incident',
+							subject: { kind: 'graphics-discrepancy', id: incident.id },
+							outcome: 'integrity-incident-isolated',
+							reason: 'foreign-canonical-object',
+							detail: {
+								discrepancyId: incident.id,
+								discrepancyKind: 'critical-integrity-incident',
+								reasonCode: 'foreign-canonical-object',
+								isolated: true,
+								transition: { from: 'none', to: 'isolated' },
+							},
+						}),
+					);
 				}
 				continue;
 			}
@@ -1044,26 +1023,25 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		}
 
 		const accounted = await catalogue.filterAccountedDigests({
-			digests: [
-				...digestedObjects.keys(),
-			],
+			digests: [...digestedObjects.keys()],
 		});
 		let quarantined = 0;
 		for (const [digest, object] of digestedObjects) {
-			if (accounted.has(digest))
-				continue;
+			if (accounted.has(digest)) continue;
 			const quarantinedAt = timestamp();
 			const deleteAfter = graphicsRetentionDeadline(
 				quarantinedAt,
 				GRAPHICS_RETENTION_GUARANTEES.orphanContentQuarantineMilliseconds,
 			);
-			if (!await catalogue.quarantineUnexpectedObject({
-				id: generateIdentity(),
-				digest,
-				byteLength: object.byteLength,
-				quarantinedAt,
-				deleteAfter,
-			})) {
+			if (
+				!(await catalogue.quarantineUnexpectedObject({
+					id: generateIdentity(),
+					digest,
+					byteLength: object.byteLength,
+					quarantinedAt,
+					deleteAfter,
+				}))
+			) {
 				continue;
 			}
 			const discrepancy = await catalogue.openDiscrepancy({
@@ -1080,31 +1058,31 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 				correlationId,
 			});
 			quarantined++;
-			records.push(evidence({
-				recordedAt: quarantinedAt,
-				correlationId,
-				category: 'unexpected-object-quarantined',
-				subject: { kind: 'graphics-discrepancy', id: discrepancy.id },
-				outcome: 'unexpected-object-quarantined',
-				reason: 'catalogue-does-not-expect-these-bytes',
-				detail: {
-					discrepancyId: discrepancy.id,
-					discrepancyKind: 'unexpected-object',
-					reasonCode: 'unexpected-canonical-object',
-					transition: { from: 'none', to: 'open' },
-					bytesReserved: object.byteLength,
-					deadline: deleteAfter,
-				},
-			}));
+			records.push(
+				evidence({
+					recordedAt: quarantinedAt,
+					correlationId,
+					category: 'unexpected-object-quarantined',
+					subject: { kind: 'graphics-discrepancy', id: discrepancy.id },
+					outcome: 'unexpected-object-quarantined',
+					reason: 'catalogue-does-not-expect-these-bytes',
+					detail: {
+						discrepancyId: discrepancy.id,
+						discrepancyKind: 'unexpected-object',
+						reasonCode: 'unexpected-canonical-object',
+						transition: { from: 'none', to: 'open' },
+						bytesReserved: object.byteLength,
+						deadline: deleteAfter,
+					},
+				}),
+			);
 		}
 
 		// A finished pass restarts from the beginning next time, so an object
 		// added behind the cursor is still eventually seen.
 		await catalogue.recordCanonicalScanProgress({
 			cursor: page.listing.cursor,
-			startedAt: page.listing.cursor === undefined
-				? undefined
-				: startedAt,
+			startedAt: page.listing.cursor === undefined ? undefined : startedAt,
 		});
 		return {
 			records,
@@ -1136,30 +1114,33 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 				record.objectKey ?? `${GRAPHICS_CANONICAL_OBJECT_PREFIX}${record.digest}`,
 			);
 			const metadata = await canonical.readMetadata(identity);
-			if (metadata.outcome !== 'missing')
-				continue;
+			if (metadata.outcome !== 'missing') continue;
 			const resolvedAt = timestamp();
-			if (!await catalogue.resolveDiscrepancy({
-				id: record.id,
-				resolvedAt,
-				resolution: 'object-deleted-after-recheck',
-			})) {
+			if (
+				!(await catalogue.resolveDiscrepancy({
+					id: record.id,
+					resolvedAt,
+					resolution: 'object-deleted-after-recheck',
+				}))
+			) {
 				continue;
 			}
 			settled++;
-			records.push(evidence({
-				recordedAt: resolvedAt,
-				correlationId,
-				category: 'discrepancy-rechecked',
-				subject: { kind: 'graphics-discrepancy', id: record.id },
-				outcome: 'object-deleted-after-recheck',
-				reason: 'unexpected-object-removed-after-quarantine-recheck',
-				detail: {
-					discrepancyId: record.id,
-					discrepancyKind: 'unexpected-object',
-					transition: { from: 'open', to: 'resolved' },
-				},
-			}));
+			records.push(
+				evidence({
+					recordedAt: resolvedAt,
+					correlationId,
+					category: 'discrepancy-rechecked',
+					subject: { kind: 'graphics-discrepancy', id: record.id },
+					outcome: 'object-deleted-after-recheck',
+					reason: 'unexpected-object-removed-after-quarantine-recheck',
+					detail: {
+						discrepancyId: record.id,
+						discrepancyKind: 'unexpected-object',
+						transition: { from: 'open', to: 'resolved' },
+					},
+				}),
+			);
 		}
 		return { records, settled };
 	}
@@ -1180,8 +1161,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		let reclaimed = 0;
 		for (const claim of stale) {
 			const removal = await staging.delete(graphicsObjectIdentity(claim.workingCopyKey));
-			if (removal.outcome === 'unavailable')
-				continue;
+			if (removal.outcome === 'unavailable') continue;
 			await catalogue.releaseDiscrepancyWorkingCopy({ id: claim.id });
 			reclaimed++;
 		}
@@ -1213,7 +1193,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 				actor,
 			);
 		}
-		if (record.digest && await catalogue.hasOpenIsolatedIncident({ digest: record.digest })) {
+		if (record.digest && (await catalogue.hasOpenIsolatedIncident({ digest: record.digest }))) {
 			return await rejected(
 				record,
 				'integrity-incident-isolated',
@@ -1245,9 +1225,9 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					discrepancyKind: record.kind,
 					rejectionCode: code,
 					isolated: record.isolated,
-				// A refusal decides nothing and moves nothing: the discrepancy is
-				// left exactly as it was found, which is why this entry carries
-				// neither a transition nor a quota reading.
+					// A refusal decides nothing and moves nothing: the discrepancy is
+					// left exactly as it was found, which is why this entry carries
+					// neither a transition nor a quota reading.
 				},
 			}),
 		]);
@@ -1270,7 +1250,10 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		byteLength: number;
 		canonicalMime: string;
 		bytes: BoundedByteStream;
-	}): Promise<{ outcome: 'published' } | { outcome: 'rejected'; code: GraphicsRepairRejectionCode; message: string }> {
+	}): Promise<
+		| { outcome: 'published' }
+		| { outcome: 'rejected'; code: GraphicsRepairRejectionCode; message: string }
+	> {
 		// Repaired content is written exactly as publication writes it, including
 		// the redundant digest metadata every canonical object carries, so a
 		// repair leaves nothing a later sweep would read as a conflict.
@@ -1292,14 +1275,15 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		// An object that was already there must still match, otherwise this is the
 		// same digest-key conflict that must fail closed rather than be reused.
 		if (
-			write.object.byteLength !== input.byteLength
-			|| write.object.contentType !== input.canonicalMime
-			|| write.object.customMetadata.sha256 !== input.digest
+			write.object.byteLength !== input.byteLength ||
+			write.object.contentType !== input.canonicalMime ||
+			write.object.customMetadata.sha256 !== input.digest
 		) {
 			return {
 				outcome: 'rejected',
 				code: 'byte-length-mismatch',
-				message: 'The stored object does not match the exact expected size, canonical media type, and integrity metadata.',
+				message:
+					'The stored object does not match the exact expected size, canonical media type, and integrity metadata.',
 			};
 		}
 		return { outcome: 'published' };
@@ -1355,9 +1339,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					canonicalPressure: capacity.canonical.pressure,
 					// An alert left standing over restored bytes is the one thing an
 					// administrator must not have to infer from a success.
-					...(cleared
-						? {}
-						: { isolated: true }),
+					...(cleared ? {} : { isolated: true }),
 				},
 			}),
 		]);
@@ -1365,12 +1347,14 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		return {
 			outcome: 'resolved',
 			resolution: input.resolution,
-			discrepancy: await describe(updated ?? {
-				...input.record,
-				state: 'resolved',
-				resolvedAt: recordedAt,
-				resolution: input.resolution,
-			}),
+			discrepancy: await describe(
+				updated ?? {
+					...input.record,
+					state: 'resolved',
+					resolvedAt: recordedAt,
+					resolution: input.resolution,
+				},
+			),
 		};
 	}
 
@@ -1432,16 +1416,16 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 	 */
 	async function listOpenDiscrepanciesPerKind() {
 		const perKind = await Promise.all(
-			GRAPHICS_DISCREPANCY_KINDS.map(kind => catalogue.listDiscrepancies({
-				limit: OVERVIEW_KIND_LIMIT,
-				states: ['open'],
-				kinds: [kind],
-				// Quarantined bytes are sampled by how soon they are deleted; every
-				// other kind by what went wrong most recently.
-				orderBy: kind === 'unexpected-object'
-					? 'quarantine-deadline'
-					: 'detected',
-			})),
+			GRAPHICS_DISCREPANCY_KINDS.map((kind) =>
+				catalogue.listDiscrepancies({
+					limit: OVERVIEW_KIND_LIMIT,
+					states: ['open'],
+					kinds: [kind],
+					// Quarantined bytes are sampled by how soon they are deleted; every
+					// other kind by what went wrong most recently.
+					orderBy: kind === 'unexpected-object' ? 'quarantine-deadline' : 'detected',
+				}),
+			),
 		);
 		return perKind.flat();
 	}
@@ -1459,13 +1443,8 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 			const unexpected = await scanForUnexpectedObjects(correlationId);
 			const settled = await settleUnexpectedObjects(correlationId);
 			const reclaimed = await reclaimStaleWorkingCopies();
-			const records = [
-				...content.records,
-				...unexpected.records,
-				...settled.records,
-			];
-			if (records.length > 0)
-				await catalogue.recordGraphicsAssetEvidence(records);
+			const records = [...content.records, ...unexpected.records, ...settled.records];
+			if (records.length > 0) await catalogue.recordGraphicsAssetEvidence(records);
 			const completedAt = timestamp();
 			await catalogue.recordReconciliationSweep({ correlationId, startedAt, completedAt });
 			return {
@@ -1504,9 +1483,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					presentBytes: 'byte-store',
 					contentAvailabilityFlag: 'advisory-reconciliation-state',
 				},
-				...(state.lastSweepCorrelationId
-					&& state.lastSweepStartedAt
-					&& state.lastSweepCompletedAt
+				...(state.lastSweepCorrelationId && state.lastSweepStartedAt && state.lastSweepCompletedAt
 					? {
 							lastSweep: {
 								correlationId: state.lastSweepCorrelationId,
@@ -1519,16 +1496,12 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					...EMPTY_OPEN_COUNTS,
 					...openCounts,
 				},
-				discrepancies: discrepancies.map(
-					record => describeWith(record, context),
-				),
+				discrepancies: discrepancies.map((record) => describeWith(record, context)),
 			};
 		},
 		async inspect(input: { discrepancyId: string }): Promise<GraphicsDiscrepancy | undefined> {
 			const record = await catalogue.findDiscrepancy({ id: input.discrepancyId });
-			return record
-				? await describe(record)
-				: undefined;
+			return record ? await describe(record) : undefined;
 		},
 		/**
 		 * Re-observes one discrepancy now. A byte store that has come back into
@@ -1540,8 +1513,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 			actor: string;
 		}): Promise<GraphicsDiscrepancyActionOutcome | undefined> {
 			const record = await catalogue.findDiscrepancy({ id: input.discrepancyId });
-			if (!record)
-				return undefined;
+			if (!record) return undefined;
 			if (record.state === 'resolved')
 				return { outcome: 'unchanged', discrepancy: await describe(record) };
 
@@ -1582,7 +1554,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					const expectation = record.digest
 						? await catalogue.findExpectedContent({ digest: record.digest })
 						: undefined;
-					if (expectation && await canonicalObjectAgrees(expectation)) {
+					if (expectation && (await canonicalObjectAgrees(expectation))) {
 						await catalogue.resolveDiscrepancy({
 							id: record.id,
 							resolvedAt: observedAt,
@@ -1649,29 +1621,55 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 			bytes: BoundedByteStream;
 		}): Promise<GraphicsDiscrepancyActionOutcome | undefined> {
 			const record = await catalogue.findDiscrepancy({ id: input.discrepancyId });
-			if (!record)
-				return undefined;
+			if (!record) return undefined;
 			if (record.state === 'resolved')
-				return await rejected(record, 'discrepancy-already-resolved', 'This discrepancy is already resolved.', input.actor);
+				return await rejected(
+					record,
+					'discrepancy-already-resolved',
+					'This discrepancy is already resolved.',
+					input.actor,
+				);
 			const refusal = await isolationRefusal(record, input.actor);
-			if (refusal)
-				return refusal;
-			if (!record.digest || (record.kind !== 'unavailable-content' && record.kind !== 'missing-derivative'))
-				return await rejected(record, 'action-not-valid-in-state', 'Exact-byte repair is not valid for this discrepancy.', input.actor);
+			if (refusal) return refusal;
+			if (
+				!record.digest ||
+				(record.kind !== 'unavailable-content' && record.kind !== 'missing-derivative')
+			)
+				return await rejected(
+					record,
+					'action-not-valid-in-state',
+					'Exact-byte repair is not valid for this discrepancy.',
+					input.actor,
+				);
 
 			const expectation = await catalogue.findExpectedContent({ digest: record.digest });
 			if (!expectation)
-				return await rejected(record, 'action-not-valid-in-state', 'The catalogue no longer expects this content.', input.actor);
+				return await rejected(
+					record,
+					'action-not-valid-in-state',
+					'The catalogue no longer expects this content.',
+					input.actor,
+				);
 
 			const workingCopy = reconciliationWorkingCopyIdentity(record.id);
 			const claimedAt = timestamp();
-			if (!await catalogue.claimDiscrepancyWorkingCopy({
-				id: record.id,
-				workingCopyKey: workingCopy,
-				claimedAt,
-				staleClaimsBefore: graphicsRetentionDeadline(claimedAt, -GRAPHICS_WORKING_COPY_LEASE_MILLISECONDS),
-			})) {
-				return await rejected(record, 'action-not-valid-in-state', 'Another repair is already in progress for this discrepancy.', input.actor);
+			if (
+				!(await catalogue.claimDiscrepancyWorkingCopy({
+					id: record.id,
+					workingCopyKey: workingCopy,
+					claimedAt,
+					staleClaimsBefore: graphicsRetentionDeadline(
+						claimedAt,
+						-GRAPHICS_WORKING_COPY_LEASE_MILLISECONDS,
+					),
+				}))
+			) {
+				return await rejected(
+					record,
+					'action-not-valid-in-state',
+					'Another repair is already in progress for this discrepancy.',
+					input.actor,
+				);
 			}
 
 			try {
@@ -1688,7 +1686,12 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					metadata: { contentType: expectation.canonicalMime },
 				});
 				if (staged.outcome === 'unavailable') {
-					return await rejected(record, 'byte-store-unavailable', 'The staging byte store is temporarily unavailable.', input.actor);
+					return await rejected(
+						record,
+						'byte-store-unavailable',
+						'The staging byte store is temporarily unavailable.',
+						input.actor,
+					);
 				}
 				if (staged.object.byteLength !== expectation.byteLength) {
 					return await rejected(
@@ -1700,7 +1703,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 				}
 
 				const verification = await media.verifyContentBytes({
-					read: range => staging.read(workingCopy, range),
+					read: (range) => staging.read(workingCopy, range),
 					expectedDigest: record.digest,
 					expectedByteLength: expectation.byteLength,
 					// Source content must re-prove the validation facts its revision
@@ -1720,7 +1723,12 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 
 				const stagedBytes = await staging.read(workingCopy);
 				if (stagedBytes.outcome !== 'available')
-					return await rejected(record, 'byte-store-unavailable', 'The verified working copy could not be read back.', input.actor);
+					return await rejected(
+						record,
+						'byte-store-unavailable',
+						'The verified working copy could not be read back.',
+						input.actor,
+					);
 
 				const published = await publishVerifiedContent({
 					digest: record.digest,
@@ -1743,8 +1751,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					reason: 'exact-verified-bytes-restored',
 					actor: input.actor,
 				});
-			}
-			finally {
+			} finally {
 				await releaseWorkingCopy(record.id, workingCopy);
 			}
 		},
@@ -1777,16 +1784,30 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 			actor: string;
 		}): Promise<GraphicsDiscrepancyActionOutcome | undefined> {
 			const record = await catalogue.findDiscrepancy({ id: input.discrepancyId });
-			if (!record)
-				return undefined;
+			if (!record) return undefined;
 			if (record.state === 'resolved')
-				return await rejected(record, 'discrepancy-already-resolved', 'This discrepancy is already resolved.', input.actor);
+				return await rejected(
+					record,
+					'discrepancy-already-resolved',
+					'This discrepancy is already resolved.',
+					input.actor,
+				);
 			if (!record.digest)
-				return await rejected(record, 'action-not-valid-in-state', 'This discrepancy is not about catalogued content.', input.actor);
+				return await rejected(
+					record,
+					'action-not-valid-in-state',
+					'This discrepancy is not about catalogued content.',
+					input.actor,
+				);
 
 			const expectation = await catalogue.findExpectedContent({ digest: record.digest });
 			if (!expectation)
-				return await rejected(record, 'action-not-valid-in-state', 'The catalogue no longer expects this content.', input.actor);
+				return await rejected(
+					record,
+					'action-not-valid-in-state',
+					'The catalogue no longer expects this content.',
+					input.actor,
+				);
 
 			const identity = canonicalContentIdentity(record.digest);
 			const observation = await observeCanonicalObject(expectation);
@@ -1796,9 +1817,19 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 				observed: observationFacts(observation),
 			});
 			if (observation.outcome === 'missing')
-				return await rejected(record, 'stored-bytes-missing', 'The canonical store does not hold these bytes.', input.actor);
+				return await rejected(
+					record,
+					'stored-bytes-missing',
+					'The canonical store does not hold these bytes.',
+					input.actor,
+				);
 			if (observation.outcome === 'byte-store-unavailable')
-				return await rejected(record, 'byte-store-unavailable', 'The canonical byte store is temporarily unavailable.', input.actor);
+				return await rejected(
+					record,
+					'byte-store-unavailable',
+					'The canonical byte store is temporarily unavailable.',
+					input.actor,
+				);
 			if (observation.outcome === 'mismatched') {
 				await isolateIntegrityConflict({
 					record,
@@ -1819,7 +1850,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 			// A Graphics Derivative has no revision of its own, so an exact digest,
 			// size, and canonical media type is its complete proof.
 			const verification = await media.verifyContentBytes({
-				read: range => canonical.read(identity, range),
+				read: (range) => canonical.read(identity, range),
 				expectedDigest: record.digest,
 				expectedByteLength: expectation.byteLength,
 				expectation: expectation.source
@@ -1851,9 +1882,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 				record,
 				digest: record.digest,
 				resolution: released ? 'restored-from-quarantine' : 'byte-store-agrees',
-				category: released
-					? 'content-restored-from-quarantine'
-					: 'discrepancy-rechecked',
+				category: released ? 'content-restored-from-quarantine' : 'discrepancy-rechecked',
 				reason: released
 					? 'exact-verified-quarantine-copy'
 					: 'stored-bytes-verified-against-expected-content',
@@ -1871,37 +1900,67 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 			actor: string;
 		}): Promise<GraphicsDiscrepancyActionOutcome | undefined> {
 			const record = await catalogue.findDiscrepancy({ id: input.discrepancyId });
-			if (!record)
-				return undefined;
+			if (!record) return undefined;
 			if (record.state === 'resolved')
-				return await rejected(record, 'discrepancy-already-resolved', 'This discrepancy is already resolved.', input.actor);
+				return await rejected(
+					record,
+					'discrepancy-already-resolved',
+					'This discrepancy is already resolved.',
+					input.actor,
+				);
 			const regenerationRefusal = await isolationRefusal(record, input.actor);
-			if (regenerationRefusal)
-				return regenerationRefusal;
+			if (regenerationRefusal) return regenerationRefusal;
 			if (record.kind !== 'missing-derivative' || !record.digest)
-				return await rejected(record, 'action-not-valid-in-state', 'Derivative regeneration is not valid for this discrepancy.', input.actor);
+				return await rejected(
+					record,
+					'action-not-valid-in-state',
+					'Derivative regeneration is not valid for this discrepancy.',
+					input.actor,
+				);
 
 			const expectation = await catalogue.findExpectedContent({ digest: record.digest });
 			const derivative = expectation?.derivative;
 			if (!expectation || !derivative)
-				return await rejected(record, 'action-not-valid-in-state', 'The catalogue no longer expects this Graphics Derivative.', input.actor);
-			if (!await canonicalObjectAgrees({
-				digest: derivative.sourceDigest,
-				byteLength: derivative.sourceByteLength,
-				canonicalMime: derivative.sourceCanonicalMime,
-			})) {
-				return await rejected(record, 'source-content-unavailable', 'The canonical source content is not currently available.', input.actor);
+				return await rejected(
+					record,
+					'action-not-valid-in-state',
+					'The catalogue no longer expects this Graphics Derivative.',
+					input.actor,
+				);
+			if (
+				!(await canonicalObjectAgrees({
+					digest: derivative.sourceDigest,
+					byteLength: derivative.sourceByteLength,
+					canonicalMime: derivative.sourceCanonicalMime,
+				}))
+			) {
+				return await rejected(
+					record,
+					'source-content-unavailable',
+					'The canonical source content is not currently available.',
+					input.actor,
+				);
 			}
 
 			const workingCopy = reconciliationWorkingCopyIdentity(record.id);
 			const claimedAt = timestamp();
-			if (!await catalogue.claimDiscrepancyWorkingCopy({
-				id: record.id,
-				workingCopyKey: workingCopy,
-				claimedAt,
-				staleClaimsBefore: graphicsRetentionDeadline(claimedAt, -GRAPHICS_WORKING_COPY_LEASE_MILLISECONDS),
-			})) {
-				return await rejected(record, 'action-not-valid-in-state', 'Another regeneration is already in progress for this discrepancy.', input.actor);
+			if (
+				!(await catalogue.claimDiscrepancyWorkingCopy({
+					id: record.id,
+					workingCopyKey: workingCopy,
+					claimedAt,
+					staleClaimsBefore: graphicsRetentionDeadline(
+						claimedAt,
+						-GRAPHICS_WORKING_COPY_LEASE_MILLISECONDS,
+					),
+				}))
+			) {
+				return await rejected(
+					record,
+					'action-not-valid-in-state',
+					'Another regeneration is already in progress for this discrepancy.',
+					input.actor,
+				);
 			}
 
 			try {
@@ -1963,8 +2022,7 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 					reason: 'deterministic-derivative-reproduced-from-source',
 					actor: input.actor,
 				});
-			}
-			finally {
+			} finally {
 				await releaseWorkingCopy(record.id, workingCopy);
 			}
 		},

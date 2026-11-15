@@ -51,23 +51,16 @@ const event = {
 			Name: 'Swiss',
 			FormatId: 'modern',
 			SortOrder: 0,
-			Rounds: [
-				{ ID: 101, Name: 'Round 1', SortOrder: 0 },
-			],
+			Rounds: [{ ID: 101, Name: 'Round 1', SortOrder: 0 }],
 		},
 	],
 };
 
 describe('persisted bounds', () => {
 	it.each([
+		['a card quantity', meleeDecklistRecordSchema, (q: number) => ({ ...record, q }), 1_000_000],
 		[
-			'a card quantity',
-			meleeDecklistRecordSchema,
-			(q: number) => ({ ...record, q }),
-			1_000_000,
-		],
-		[
-			'a player\'s pronouns',
+			"a player's pronouns",
 			meleePlayerSchema,
 			(length: number) => ({
 				...player,
@@ -137,12 +130,14 @@ describe('persisted bounds', () => {
 });
 
 describe('what Melee may leave out', () => {
-	it('tolerates a player\'s missing or null metadata', () => {
+	it("tolerates a player's missing or null metadata", () => {
 		const minimal = meleePlayerSchema.parse({ TeamId: 1, PlayerName: 'Alice' });
 
 		expect(minimal.PronounsDescription).toBeUndefined();
 		expect(minimal.Status).toBeUndefined();
-		expect(meleePlayerSchema.parse({ ...player, Status: null, PronounsDescription: null }).Status).toBeNull();
+		expect(
+			meleePlayerSchema.parse({ ...player, Status: null, PronounsDescription: null }).Status,
+		).toBeNull();
 		expect(meleePlayerSchema.parse({ ...player, Decklists: null }).Decklists).toBeUndefined();
 	});
 
@@ -175,9 +170,7 @@ describe('what Melee may leave out', () => {
 					TeamId: 1,
 					SortOrder: 0,
 					GameWins: null,
-					Decklists: [
-						{ DecklistId: 'deck-guid', PlayerId: 10, FormatId: 'standard' },
-					],
+					Decklists: [{ DecklistId: 'deck-guid', PlayerId: 10, FormatId: 'standard' }],
 				},
 			],
 		});
@@ -199,14 +192,16 @@ describe('meleeApiResponseSchema', () => {
 			MatchDraws: 0,
 		};
 
-		expect(schema.safeParse({
-			Page: 1,
-			PageSize: 100,
-			RecordsFiltered: 1,
-			RecordsTotal: 1,
-			Content: [standing],
-			HasMore: false,
-		}).success).toBe(true);
+		expect(
+			schema.safeParse({
+				Page: 1,
+				PageSize: 100,
+				RecordsFiltered: 1,
+				RecordsTotal: 1,
+				Content: [standing],
+				HasMore: false,
+			}).success,
+		).toBe(true);
 		expect(schema.safeParse({ Content: [], HasMore: false }).success).toBe(false);
 	});
 });

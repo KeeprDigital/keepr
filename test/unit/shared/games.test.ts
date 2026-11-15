@@ -20,7 +20,7 @@ import {
 import { DEFAULT_FEATURE_MATCH_DEFAULTS } from '~~/shared/types/featureMatchDefaults';
 
 describe('game config lookups', () => {
-	it('hands out a copy of a game\'s defaults, so editing it leaves the config alone', () => {
+	it("hands out a copy of a game's defaults, so editing it leaves the config alone", () => {
 		const defaults = getMatchFormatDefaults('mtg-two-player');
 		defaults.startingLife = 1;
 
@@ -101,15 +101,7 @@ describe('the Event pages each kind of Event is offered', () => {
 	// Commander Event lacks Players too, so it keeps only the Cards page (ADR-0087).
 	it.each([
 		['mtg-two-player', []],
-		[
-			'op',
-			[
-				'matches',
-				'eventStructure',
-				'archetypeReview',
-				'integrations',
-			],
-		],
+		['op', ['matches', 'eventStructure', 'archetypeReview', 'integrations']],
 		[
 			'mtg-commander',
 			[
@@ -125,53 +117,31 @@ describe('the Event pages each kind of Event is offered', () => {
 	] as const)('withholds from a %s Event the pages %j', (kind, withheld) => {
 		const pages = Object.keys(EVENT_PAGE_OFFERED_TO) as (keyof typeof EVENT_PAGE_OFFERED_TO)[];
 
-		expect(pages.filter(page => !isOfferedToEvent(EVENT_PAGE_OFFERED_TO[page], kind))).toEqual(withheld);
+		expect(pages.filter((page) => !isOfferedToEvent(EVENT_PAGE_OFFERED_TO[page], kind))).toEqual(
+			withheld,
+		);
 	});
 });
 
-describe('what each Card Game\'s Metagame reads', () => {
+describe("what each Card Game's Metagame reads", () => {
 	// TCG+ exports Deck Lists but no standings, so an OP Metagame reads participation only (ADR-0074).
 	it.each([
-		[
-			'mtg',
-			[
-				'all',
-				'topN',
-				'playerList',
-				'minPoints',
-			],
-			true,
-		],
-		[
-			'op',
-			['all', 'playerList'],
-			false,
-		],
-	] as const)('a %s Metagame offers the scopes %j, reading standings: %s', (game, scopes, readsStandings) => {
-		expect(getMetagameRules(game)).toEqual({ scopes, readsStandings });
-	});
+		['mtg', ['all', 'topN', 'playerList', 'minPoints'], true],
+		['op', ['all', 'playerList'], false],
+	] as const)(
+		'a %s Metagame offers the scopes %j, reading standings: %s',
+		(game, scopes, readsStandings) => {
+			expect(getMetagameRules(game)).toEqual({ scopes, readsStandings });
+		},
+	);
 });
 
 describe('the Seats a Feature Match Slot has', () => {
 	// A pair on every Event but a Commander Event, whose Slot seats four (ADR-0087).
 	it.each([
-		[
-			'mtg-two-player',
-			['player1', 'player2'],
-		],
-		[
-			'op',
-			['player1', 'player2'],
-		],
-		[
-			'mtg-commander',
-			[
-				'player1',
-				'player2',
-				'player3',
-				'player4',
-			],
-		],
+		['mtg-two-player', ['player1', 'player2']],
+		['op', ['player1', 'player2']],
+		['mtg-commander', ['player1', 'player2', 'player3', 'player4']],
 	] as const)('on a %s Event are %j', (kind, seats) => {
 		expect(eventSeats(kind)).toEqual(seats);
 	});

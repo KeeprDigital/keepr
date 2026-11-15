@@ -8,7 +8,7 @@ import ThemeColorField from '~/components/Theme/ColorField.vue';
 
 enableAutoUnmount(afterEach);
 
-describe('a composite token\'s colour field', () => {
+describe("a composite token's colour field", () => {
 	it('updates its own colour once the picker closes, carrying its alpha', async () => {
 		const wrapper = mount(ThemeColorField, {
 			props: { value: '#112233', label: 'Fill colour', alpha: true },
@@ -22,8 +22,6 @@ describe('a composite token\'s colour field', () => {
 		expect(wrapper.emitted('update')).toBeUndefined();
 
 		await trigger.trigger('click');
-		expect(wrapper.emitted('update')).toEqual([
-			['rgba(255, 0, 0, 0.3)'],
-		]);
+		expect(wrapper.emitted('update')).toEqual([['rgba(255, 0, 0, 0.3)']]);
 	});
 });

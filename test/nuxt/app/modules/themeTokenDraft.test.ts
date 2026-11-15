@@ -15,7 +15,11 @@ let cancelDraft: () => void;
 
 const Harness = defineComponent({
 	setup() {
-		const { draft, edit, commitNow, cancel } = useThemeTokenDraft(() => theme.value, value => commits.push(value), () => writing.value);
+		const { draft, edit, commitNow, cancel } = useThemeTokenDraft(
+			() => theme.value,
+			(value) => commits.push(value),
+			() => writing.value,
+		);
 		editDraft = edit;
 		commitDraft = commitNow;
 		cancelDraft = cancel;
@@ -55,8 +59,7 @@ describe('a Theme Token draft', () => {
 		['takes a landing value while no edit is pending', false, 'landed'],
 	])('%s', async (_case, editing, shown) => {
 		const wrapper = mount(Harness);
-		if (editing)
-			editDraft('mine');
+		if (editing) editDraft('mine');
 
 		theme.value = 'landed';
 		await nextTick();
@@ -88,7 +91,7 @@ describe('a Theme Token draft', () => {
 	});
 
 	// A Reset drops the edit still waiting, so the token is not set again after it.
-	it('commits nothing once a pending edit is cancelled, and shows the Theme\'s value', async () => {
+	it("commits nothing once a pending edit is cancelled, and shows the Theme's value", async () => {
 		const wrapper = mount(Harness);
 
 		editDraft('unwanted');
@@ -117,7 +120,7 @@ describe('a Theme Token draft', () => {
 
 	it.each([
 		['the stored value once its write lands', 'mine', 'mine'],
-		['the Theme\'s value once its write is refused', 'stored', 'stored'],
+		["the Theme's value once its write is refused", 'stored', 'stored'],
 	])('shows %s', async (_case, answered, shown) => {
 		const wrapper = mount(Harness);
 		commitDraft('mine');

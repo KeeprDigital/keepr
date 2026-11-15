@@ -5,7 +5,11 @@ import { toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
 
 const eventStore = useEventStore();
 
-type FeatureMatchBooleanKey = 'showTurnControls' | 'allowLifeControls' | 'allowGameWinControls' | 'allowCounterControls';
+type FeatureMatchBooleanKey =
+	| 'showTurnControls'
+	| 'allowLifeControls'
+	| 'allowGameWinControls'
+	| 'allowCounterControls';
 
 const {
 	config,
@@ -24,12 +28,9 @@ const showTurnControls = computed(() => allow('showTurnControls'));
 
 const isEmpty = computed(() => !config.value.featureMatchId);
 const modeError = computed(() => {
-	if (stateLoading.value || !config.value.featureMatchId)
-		return null;
-	if (dataError.value)
-		return dataError.value;
-	if (!match.value || !matchState.value)
-		return 'Match not found';
+	if (stateLoading.value || !config.value.featureMatchId) return null;
+	if (dataError.value) return dataError.value;
+	if (!match.value || !matchState.value) return 'Match not found';
 	return null;
 });
 
@@ -52,10 +53,7 @@ const {
 	handleSelectFirstPlayer,
 	handleNextOvertimeTurn,
 	handlePrevOvertimeTurn,
-} = useFeatureMatchGameMode(
-	() => config.value.featureMatchId ?? 0,
-	matchState,
-);
+} = useFeatureMatchGameMode(() => config.value.featureMatchId ?? 0, matchState);
 
 const {
 	displayTime,
@@ -70,34 +68,30 @@ const appearance = computed(() => clockAppearance(clockProjection.value));
 
 const gameLabel = computed(() => {
 	// A Commander Session plays one game: there is no game of a best-of to name.
-	if (!matchState.value || !match.value || isCommander.value)
-		return null;
+	if (!matchState.value || !match.value || isCommander.value) return null;
 	return `Game ${matchState.value.currentGame} of ${match.value.activeSession?.sourceSnapshot.bestOf ?? match.value.bestOf}`;
 });
 
 const hasOvertime = computed(() => !!matchState.value?.overtime);
-const showOvertime = computed(() => hasOvertime.value && overtimeTrackingEnabled.value && (config.value.showOvertime ?? true));
+const showOvertime = computed(
+	() => hasOvertime.value && overtimeTrackingEnabled.value && (config.value.showOvertime ?? true),
+);
 const showCounters = computed(() => counterTrackingEnabled.value && config.value.showCounters);
 
 const leftSide = computed(() => config.value.leftSidePlayer ?? 'player1');
-const rightSide = computed(() => leftSide.value === 'player1'
-	? 'player2'
-	: 'player1');
+const rightSide = computed(() => (leftSide.value === 'player1' ? 'player2' : 'player1'));
 
-const isVerticalArena = computed(() => eventStore.displayEvent?.featureMatchOrientation === 'vertical');
+const isVerticalArena = computed(
+	() => eventStore.displayEvent?.featureMatchOrientation === 'vertical',
+);
 const showSeatLabels = computed(() => config.value.showSeatLabels ?? true);
 
 function seatLabelFor(side: PlayerSide): string | undefined {
-	if (!showSeatLabels.value)
-		return undefined;
+	if (!showSeatLabels.value) return undefined;
 	if (isVerticalArena.value) {
-		return side === 'player1'
-			? 'Top'
-			: 'Bottom';
+		return side === 'player1' ? 'Top' : 'Bottom';
 	}
-	return side === 'player1'
-		? 'Left'
-		: 'Right';
+	return side === 'player1' ? 'Left' : 'Right';
 }
 
 /** What the Screen shows of a player and lets its viewer change, whichever Seat they sit in. */
@@ -129,15 +123,14 @@ function playerDisplayConfig(side: PlayerSide): PlayerDisplayConfig {
 </script>
 
 <template>
-	<ScreenModeBase
-		:error="modeError"
-		:ready="ready"
-		:empty="isEmpty"
-	>
+	<ScreenModeBase :error="modeError" :ready="ready" :empty="isEmpty">
 		<div
 			v-if="match && matchState"
 			class="match-layout"
-			:class="{ 'match-layout--with-counters': showCounters, 'match-layout--commander': isCommander }"
+			:class="{
+				'match-layout--with-counters': showCounters,
+				'match-layout--commander': isCommander,
+			}"
 		>
 			<header class="match-header">
 				<span v-if="gameLabel" class="game-label">
@@ -160,7 +153,10 @@ function playerDisplayConfig(side: PlayerSide): PlayerDisplayConfig {
 
 				<div class="status">
 					<span
-						v-if="(config.showTableNumber ?? true) && (match.activeSession?.sourceSnapshot.tableNumber ?? match.tableNumber)"
+						v-if="
+							(config.showTableNumber ?? true) &&
+							(match.activeSession?.sourceSnapshot.tableNumber ?? match.tableNumber)
+						"
 						class="table-number"
 					>
 						Table {{ match.activeSession?.sourceSnapshot.tableNumber ?? match.tableNumber }}
@@ -188,10 +184,7 @@ function playerDisplayConfig(side: PlayerSide): PlayerDisplayConfig {
 					side="left"
 				/>
 
-				<div
-					v-if="(showTurnControls && showTurnCounter) || showOvertime"
-					class="match-middle"
-				>
+				<div v-if="(showTurnControls && showTurnCounter) || showOvertime" class="match-middle">
 					<FeatureMatchStateOvertimeTurnsCounter
 						v-if="showOvertime && matchState?.overtime"
 						:overtime="matchState.overtime"
@@ -273,7 +266,8 @@ function playerDisplayConfig(side: PlayerSide): PlayerDisplayConfig {
 			line-height: 1;
 			font-weight: 700;
 			font-family:
-				ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Liberation Mono', Menlo, Monaco, Consolas, monospace;
+				ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Liberation Mono', Menlo, Monaco, Consolas,
+				monospace;
 			transition: color 0.3s ease;
 
 			&.clock--pulse {

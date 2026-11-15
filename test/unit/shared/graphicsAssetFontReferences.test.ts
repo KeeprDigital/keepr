@@ -4,7 +4,10 @@ import type {
 	TextGraphicItemConfig,
 } from '~~/shared/types/graphics';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
-import type { BroadcastGraphicsModeConfig, FeatureMatchLayoutConfig } from '~~/shared/types/screenConfig';
+import type {
+	BroadcastGraphicsModeConfig,
+	FeatureMatchLayoutConfig,
+} from '~~/shared/types/screenConfig';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_GRAPHIC_TYPOGRAPHY, squareShapeGeometry } from '~~/shared/modules/graphics';
 import { applicationGraphicFont } from '~~/shared/types/graphics';
@@ -58,9 +61,7 @@ function assetFontText(id: string, font: GraphicAssetReference): TextGraphicItem
 
 function graphic(items: GraphicItemConfig[]): BroadcastGraphicsModeConfig {
 	return {
-		graphics: [
-			{ id: 'lower-third', name: 'Lower Third', items } as BroadcastGraphicConfig,
-		],
+		graphics: [{ id: 'lower-third', name: 'Lower Third', items } as BroadcastGraphicConfig],
 	};
 }
 
@@ -74,22 +75,21 @@ function layout(items: GraphicItemConfig[]): FeatureMatchLayoutConfig {
 
 describe('font Graphic Asset References in the shared graphics vocabulary', () => {
 	it('publishes a Broadcast Graphic text item’s library font, named by the item that pins it', () => {
-		expect(broadcastGraphicsGraphicAssetReferences(graphic([
-			assetFontText('headline', barlow),
-		])))
-			.toEqual([
-				{
-					reference: barlow,
-					ownerSlot: 'graphics.lower-third.items.headline.typography.font',
-					kind: 'font',
-				},
-			]);
+		expect(
+			broadcastGraphicsGraphicAssetReferences(graphic([assetFontText('headline', barlow)])),
+		).toEqual([
+			{
+				reference: barlow,
+				ownerSlot: 'graphics.lower-third.items.headline.typography.font',
+				kind: 'font',
+			},
+		]);
 	});
 
 	it('publishes a Feature Match Layout text item’s library font under the layout prefix', () => {
-		const references = featureMatchLayoutGraphicAssetReferences(layout([
-			assetFontText('player1-name', barlow),
-		]));
+		const references = featureMatchLayoutGraphicAssetReferences(
+			layout([assetFontText('player1-name', barlow)]),
+		);
 
 		expect(references).toEqual([
 			{
@@ -99,30 +99,40 @@ describe('font Graphic Asset References in the shared graphics vocabulary', () =
 			},
 		]);
 		for (const item of references)
-			expect(item.ownerSlot.startsWith(graphicAssetReferenceSlotPrefix('feature-match-overlay'))).toBe(true);
+			expect(
+				item.ownerSlot.startsWith(graphicAssetReferenceSlotPrefix('feature-match-overlay')),
+			).toBe(true);
 	});
 
 	it('publishes nothing for an application font selection', () => {
-		expect(broadcastGraphicsGraphicAssetReferences(graphic([
-			text('headline', {
-				typography: {
-					...DEFAULT_GRAPHIC_TYPOGRAPHY,
-					font: applicationGraphicFont('inter'),
-				},
-			}),
-		]))).toEqual([]);
+		expect(
+			broadcastGraphicsGraphicAssetReferences(
+				graphic([
+					text('headline', {
+						typography: {
+							...DEFAULT_GRAPHIC_TYPOGRAPHY,
+							font: applicationGraphicFont('inter'),
+						},
+					}),
+				]),
+			),
+		).toEqual([]);
 	});
 
 	it('publishes a Graphic Placeholder Style’s library font under its own placeholder key', () => {
-		expect(broadcastGraphicsGraphicAssetReferences(graphic([
-			text('headline', {
-				placeholderStyles: {
-					playerName: {
-						font: { kind: 'asset', reference: grotesk },
-					},
-				},
-			}),
-		]))).toEqual([
+		expect(
+			broadcastGraphicsGraphicAssetReferences(
+				graphic([
+					text('headline', {
+						placeholderStyles: {
+							playerName: {
+								font: { kind: 'asset', reference: grotesk },
+							},
+						},
+					}),
+				]),
+			),
+		).toEqual([
 			{
 				reference: grotesk,
 				ownerSlot: 'graphics.lower-third.items.headline.placeholderStyles.playerName.font',
@@ -150,34 +160,35 @@ describe('font Graphic Asset References in the shared graphics vocabulary', () =
 			minFontSize: 12,
 		} as GraphicItemConfig;
 
-		expect(featureMatchLayoutGraphicAssetReferences(layout([clock])).map(item => item.ownerSlot))
-			.toEqual(['layout.composition.items.match-clock.typography.font']);
+		expect(
+			featureMatchLayoutGraphicAssetReferences(layout([clock])).map((item) => item.ownerSlot),
+		).toEqual(['layout.composition.items.match-clock.typography.font']);
 	});
 
 	it('publishes a Graphic Group child’s library font under the child’s own slot', () => {
-		const references = broadcastGraphicsGraphicAssetReferences(graphic([
-			{
-				type: 'group',
-				id: 'cluster',
-				label: 'cluster',
-				visible: true,
-				anchor: 'top-left',
-				x: 0,
-				y: 0,
-				width: 400,
-				height: 200,
-				arrangement: 'row',
-				padding: 0,
-				gap: 0,
-				align: 'stretch',
-				justify: 'start',
-				clip: false,
-				geometry: squareShapeGeometry(),
-				children: [
-					assetFontText('badge-text', grotesk),
-				],
-			},
-		]));
+		const references = broadcastGraphicsGraphicAssetReferences(
+			graphic([
+				{
+					type: 'group',
+					id: 'cluster',
+					label: 'cluster',
+					visible: true,
+					anchor: 'top-left',
+					x: 0,
+					y: 0,
+					width: 400,
+					height: 200,
+					arrangement: 'row',
+					padding: 0,
+					gap: 0,
+					align: 'stretch',
+					justify: 'start',
+					clip: false,
+					geometry: squareShapeGeometry(),
+					children: [assetFontText('badge-text', grotesk)],
+				},
+			]),
+		);
 
 		expect(references).toEqual([
 			{
@@ -191,10 +202,10 @@ describe('font Graphic Asset References in the shared graphics vocabulary', () =
 	it('keeps a font reference distinct from an identical image reference at the same slot depth', () => {
 		// `kind` is part of what makes two reference sets the same, so a slot that
 		// changed from an image to a font must not read as unchanged.
-		const asFont = broadcastGraphicsGraphicAssetReferences(graphic([
-			assetFontText('headline', barlow),
-		]));
-		const asImage = asFont.map(item => ({ ...item, kind: 'image' as const }));
+		const asFont = broadcastGraphicsGraphicAssetReferences(
+			graphic([assetFontText('headline', barlow)]),
+		);
+		const asImage = asFont.map((item) => ({ ...item, kind: 'image' as const }));
 
 		expect(sameScreenGraphicAssetReferences(asFont, asImage)).toBe(false);
 	});

@@ -1,7 +1,12 @@
 <script lang="ts" setup>
 import type { DropdownMenuItem } from '@nuxt/ui';
 import type { Screen, ScreenCommand, ScreenMode } from '~/types';
-import { getScreenModeDisplayType, getScreenModeIcon, getScreenModeLabel, useEventScreenModeSelectOptions } from '~/modules/screen-mode';
+import {
+	getScreenModeDisplayType,
+	getScreenModeIcon,
+	getScreenModeLabel,
+	useEventScreenModeSelectOptions,
+} from '~/modules/screen-mode';
 
 const props = defineProps<{
 	screen: Screen;
@@ -42,10 +47,11 @@ const displayType = computed(() => getScreenModeDisplayType(props.screen.current
 // mode they render. The settings page says it as a sentence; this row says it as
 // a badge, so one glance down the index covers every Screen.
 const degradedCardDataCount = useScreenOutputCardDataHealth(() => props.screen.id);
-const degradedCardDataTooltip = computed(() =>
-	`Card data incomplete on ${degradedCardDataCount.value} ${degradedCardDataCount.value === 1
-		? 'output'
-		: 'outputs'} — re-fetching until Scryfall answers`,
+const degradedCardDataTooltip = computed(
+	() =>
+		`Card data incomplete on ${degradedCardDataCount.value} ${
+			degradedCardDataCount.value === 1 ? 'output' : 'outputs'
+		} — re-fetching until Scryfall answers`,
 );
 
 function accessUrlOptions() {
@@ -62,13 +68,14 @@ async function copyUrl() {
 		// describing the address printed a few pixels above — the one URL on this card
 		// that carries no asset access — while copying a different one (#231, #266).
 		successTitle: 'Output URL copied',
-		successDescription: 'It carries asset access, so the output resolves this Screen\'s media.',
+		successDescription: "It carries asset access, so the output resolves this Screen's media.",
 		// The empty string means asset access was refused, not that the clipboard
 		// declined the write — and "failed to copy" sends the operator to the address in
 		// their browser's bar, which is the media-losing URL the refusal withholds
 		// (#231, #257).
 		nothingToCopyTitle: 'Nothing copied',
-		nothingToCopyDescription: 'Asset access for this Screen could not be obtained, so the URL would have opened an output without its media. Try again.',
+		nothingToCopyDescription:
+			'Asset access for this Screen could not be obtained, so the URL would have opened an output without its media. Try again.',
 	});
 }
 
@@ -88,25 +95,28 @@ async function copyUrl() {
  */
 async function openOutput() {
 	const result = await openScreenOutput(accessUrlOptions());
-	if (result === 'opened')
-		return;
+	if (result === 'opened') return;
 
-	toast.add(result === 'window-blocked'
-		? {
-				title: 'Output not opened',
-				description: 'This browser blocked the new tab. Allow pop-ups for this site, then open the output again.',
-				color: 'error',
-			}
-		: {
-				title: 'Output not opened',
-				description: 'Asset access for this Screen could not be obtained, so the output would have rendered without its media. Try again.',
-				color: 'error',
-			});
+	toast.add(
+		result === 'window-blocked'
+			? {
+					title: 'Output not opened',
+					description:
+						'This browser blocked the new tab. Allow pop-ups for this site, then open the output again.',
+					color: 'error',
+				}
+			: {
+					title: 'Output not opened',
+					description:
+						'Asset access for this Screen could not be obtained, so the output would have rendered without its media. Try again.',
+					color: 'error',
+				},
+	);
 }
 
 const modeOptions = useEventScreenModeSelectOptions();
 const modeItems = computed<DropdownMenuItem[][]>(() => [
-	modeOptions.value.map(option => ({
+	modeOptions.value.map((option) => ({
 		label: option.label,
 		icon: option.icon,
 		onSelect: () => emit('setMode', option.value),
@@ -129,13 +139,15 @@ const actionItems: DropdownMenuItem[][] = [
 		{
 			label: 'Copy output URL',
 			icon: 'i-lucide-copy',
-			description: 'Copy this Screen\'s Overlay Output URL, with the asset access that resolves its media',
+			description:
+				"Copy this Screen's Overlay Output URL, with the asset access that resolves its media",
 			onSelect: copyUrl,
 		},
 		{
 			label: 'Open output',
 			icon: 'i-lucide-external-link',
-			description: 'Open this Screen\'s Overlay Output in a new tab, with the asset access that resolves its media',
+			description:
+				"Open this Screen's Overlay Output in a new tab, with the asset access that resolves its media",
 			onSelect: openOutput,
 		},
 	],
@@ -183,16 +195,9 @@ const actionItems: DropdownMenuItem[][] = [
 					<h4 class="font-medium truncate">
 						{{ props.screen.name }}
 					</h4>
-					<UBadge size="xs" color="neutral" variant="subtle">
-						/{{ props.screen.slug }}
-					</UBadge>
+					<UBadge size="xs" color="neutral" variant="subtle"> /{{ props.screen.slug }} </UBadge>
 					<ScreenTypeBadge :display-type="displayType" />
-					<UBadge
-						v-if="connectedCount > 0"
-						size="xs"
-						color="success"
-						variant="subtle"
-					>
+					<UBadge v-if="connectedCount > 0" size="xs" color="success" variant="subtle">
 						<UIcon name="i-lucide-monitor" class="size-3 mr-1" />
 						{{ connectedCount }}
 					</UBadge>

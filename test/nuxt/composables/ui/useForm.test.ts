@@ -244,9 +244,7 @@ describe('useForm', () => {
 			initial.value = [];
 			await nextTick();
 
-			expect(formData.value).toEqual([
-				{ id: 1, name: 'Alicia' },
-			]);
+			expect(formData.value).toEqual([{ id: 1, name: 'Alicia' }]);
 		});
 
 		it('takes remote changes while a save is in flight and settles clean on its answer', async () => {
@@ -344,7 +342,7 @@ describe('useForm', () => {
 			expect(formData.value).toEqual({ name: 'Alicia ' });
 		});
 
-		it('takes a colleague\'s change that landed after the save', async () => {
+		it("takes a colleague's change that landed after the save", async () => {
 			const initial = ref({ name: 'Alice' });
 			const { formData, isDirty, runSave } = useForm({ initialData: initial });
 
@@ -357,7 +355,11 @@ describe('useForm', () => {
 	});
 	it('compares nested objects regardless of key order', async () => {
 		const initial = ref({
-			player: { name: 'Alice', lgs: undefined as string | undefined, archetypeId: undefined as number | undefined },
+			player: {
+				name: 'Alice',
+				lgs: undefined as string | undefined,
+				archetypeId: undefined as number | undefined,
+			},
 		});
 		const { formData, isDirty } = useForm({ initialData: initial });
 

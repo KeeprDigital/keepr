@@ -14,15 +14,21 @@ export interface FeatureMatchSlotReorderAnswer {
 }
 
 export function useFeatureMatchRepository() {
-	const base = useEventDataResource<FeatureMatch, CreateFeatureMatchInput, UpdateFeatureMatchInput>({
-		resourcePath: 'feature-match-slots',
-		eventScoped: true,
-		includeHeaders: true,
-		responseKey: 'featureMatchSlots',
-	});
+	const base = useEventDataResource<FeatureMatch, CreateFeatureMatchInput, UpdateFeatureMatchInput>(
+		{
+			resourcePath: 'feature-match-slots',
+			eventScoped: true,
+			includeHeaders: true,
+			responseKey: 'featureMatchSlots',
+		},
+	);
 	const eventData = useEventDataFetch();
 
-	const update = async (eventId: number, slotId: number, updates: UpdateFeatureMatchInput): Promise<FeatureMatch> => {
+	const update = async (
+		eventId: number,
+		slotId: number,
+		updates: UpdateFeatureMatchInput,
+	): Promise<FeatureMatch> => {
 		return await eventData.command<FeatureMatch, UpdateFeatureMatchInput>(
 			{
 				eventId,
@@ -35,8 +41,15 @@ export function useFeatureMatchRepository() {
 	};
 
 	/** Answers every Slot whose order the reorder changed, with its new order. */
-	const reorder = async (eventId: number, slotId: number, direction: 'up' | 'down'): Promise<FeatureMatchSlotReorderAnswer> => {
-		return await eventData.command<FeatureMatchSlotReorderAnswer, { slotId: number; direction: 'up' | 'down' }>(
+	const reorder = async (
+		eventId: number,
+		slotId: number,
+		direction: 'up' | 'down',
+	): Promise<FeatureMatchSlotReorderAnswer> => {
+		return await eventData.command<
+			FeatureMatchSlotReorderAnswer,
+			{ slotId: number; direction: 'up' | 'down' }
+		>(
 			{ eventId, resourcePath: 'feature-match-slots', suffix: 'reorder' },
 			{
 				method: 'PATCH',
@@ -46,7 +59,11 @@ export function useFeatureMatchRepository() {
 	};
 
 	/** Swap Seats: two Seats' players change places in a Commander Slot itself (ADR-0087). Answers the Slot. */
-	const swapSeats = async (eventId: number, slotId: number, seats: [Seat, Seat]): Promise<FeatureMatch> => {
+	const swapSeats = async (
+		eventId: number,
+		slotId: number,
+		seats: [Seat, Seat],
+	): Promise<FeatureMatch> => {
 		return await eventData.command<FeatureMatch, SwapFeatureMatchSeatsInput>(
 			{
 				eventId,
@@ -67,7 +84,10 @@ export function useFeatureMatchRepository() {
 		matchId: number,
 		confirmedNoteDiscards?: FeatureMatchNoteDiscardConfirmation[],
 	): Promise<FeatureMatchPromotionResponse> => {
-		return await eventData.command<FeatureMatchPromotionResponse, { matchId: number; confirmedNoteDiscards?: FeatureMatchNoteDiscardConfirmation[] }>(
+		return await eventData.command<
+			FeatureMatchPromotionResponse,
+			{ matchId: number; confirmedNoteDiscards?: FeatureMatchNoteDiscardConfirmation[] }
+		>(
 			{
 				eventId,
 				resourcePath: 'feature-match-slots',
@@ -78,9 +98,7 @@ export function useFeatureMatchRepository() {
 				method: 'POST',
 				body: {
 					matchId,
-					...(confirmedNoteDiscards
-						? { confirmedNoteDiscards }
-						: {}),
+					...(confirmedNoteDiscards ? { confirmedNoteDiscards } : {}),
 				},
 			},
 		);

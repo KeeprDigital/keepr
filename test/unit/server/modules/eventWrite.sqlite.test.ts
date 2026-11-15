@@ -12,7 +12,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // and a refused Broadcast Deck List disable `deckSourceInvariants.sqlite.test.ts`'s.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; data?: unknown }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -36,7 +37,8 @@ const { eventWriteModule } = await import('~~/server/modules/event-write');
 const { featureMatchService } = await import('~~/server/services/featureMatch');
 
 async function stageEvent(values: Partial<typeof schema.events.$inferInsert> = {}) {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({
 			name: 'Event',
 			game: 'mtg',
@@ -54,12 +56,18 @@ async function stored(eventId: number) {
 }
 
 async function slotsOf(eventId: number) {
-	return await db.select().from(schema.featureMatches).where(eq(schema.featureMatches.eventId, eventId)).orderBy(asc(schema.featureMatches.id));
+	return await db
+		.select()
+		.from(schema.featureMatches)
+		.where(eq(schema.featureMatches.eventId, eventId))
+		.orderBy(asc(schema.featureMatches.id));
 }
 
 /** What the Event's channel was sent, as `[type, payload]`. */
 function announced(eventId: number) {
-	return ably.on(eventRealtimeChannel(eventId)).map(({ type, payload }) => [type, payload] as const);
+	return ably
+		.on(eventRealtimeChannel(eventId))
+		.map(({ type, payload }) => [type, payload] as const);
 }
 
 beforeEach(() => {
@@ -69,7 +77,7 @@ beforeEach(() => {
 afterAll(async () => await harness.close());
 
 describe('an Event update', () => {
-	it('stores the change, answers the Event and announces it under the writer\'s origin', async () => {
+	it("stores the change, answers the Event and announces it under the writer's origin", async () => {
 		const eventId = await stageEvent();
 
 		const answered = await eventWriteModule().updateEvent({
@@ -92,12 +100,12 @@ describe('an Event update', () => {
 	});
 
 	it('answers 404 for an Event that does not exist, announcing nothing', async () => {
-		await expect(eventWriteModule().updateEvent({
-			eventId: 999_999,
-			input: { name: 'Nobody' },
-		}))
-			.rejects
-			.toMatchObject({ statusCode: 404, message: 'Event not found' });
+		await expect(
+			eventWriteModule().updateEvent({
+				eventId: 999_999,
+				input: { name: 'Nobody' },
+			}),
+		).rejects.toMatchObject({ statusCode: 404, message: 'Event not found' });
 
 		expect(ably.published).toEqual([]);
 	});
@@ -106,32 +114,34 @@ describe('an Event update', () => {
 	it.each([
 		{ variant: 'two-player', enabled: true },
 		{ variant: 'commander', enabled: false },
-	] as const)('enables Broadcast Deck Lists for a Magic: The Gathering Event of Variant $variant: $enabled', async ({ variant, enabled }) => {
-		const eventId = await stageEvent({ game: 'mtg', variant });
+	] as const)(
+		'enables Broadcast Deck Lists for a Magic: The Gathering Event of Variant $variant: $enabled',
+		async ({ variant, enabled }) => {
+			const eventId = await stageEvent({ game: 'mtg', variant });
 
-		const enabling = eventWriteModule().updateEvent({
-			eventId,
-			input: { broadcastDeckListsEnabled: true },
-		});
-
-		if (enabled) {
-			await enabling;
-		}
-		else {
-			await expect(enabling).rejects.toMatchObject({
-				statusCode: 400,
-				message: 'Broadcast Deck Lists can only be enabled for Two-Player Magic: The Gathering Events',
+			const enabling = eventWriteModule().updateEvent({
+				eventId,
+				input: { broadcastDeckListsEnabled: true },
 			});
-		}
-		expect((await stored(eventId))?.broadcastDeckListsEnabled).toBe(enabled);
-		expect(announced(eventId).map(([type]) => type)).toEqual(enabled
-			? ['event:updated']
-			: []);
-	});
+
+			if (enabled) {
+				await enabling;
+			} else {
+				await expect(enabling).rejects.toMatchObject({
+					statusCode: 400,
+					message:
+						'Broadcast Deck Lists can only be enabled for Two-Player Magic: The Gathering Events',
+				});
+			}
+			expect((await stored(eventId))?.broadcastDeckListsEnabled).toBe(enabled);
+			expect(announced(eventId).map(([type]) => type)).toEqual(enabled ? ['event:updated'] : []);
+		},
+	);
 
 	it('refuses to disable Broadcast Deck Lists while Screens select one, naming every such Screen', async () => {
 		const eventId = await stageEvent({ broadcastDeckListsEnabled: true });
-		const [list] = await db.insert(schema.broadcastDeckLists)
+		const [list] = await db
+			.insert(schema.broadcastDeckLists)
 			.values({
 				eventId,
 				name: 'List',
@@ -166,38 +176,48 @@ describe('an Event update', () => {
 			},
 		]);
 
-		await expect(eventWriteModule().updateEvent({
-			eventId,
-			input: { broadcastDeckListsEnabled: false },
-		}))
-			.rejects
-			.toMatchObject({
-				statusCode: 409,
-				message: expect.stringContaining('Alpha, Stage'),
-				data: {
-					code: 'BROADCAST_DECK_LISTS_IN_USE',
-					screens: [
-						expect.objectContaining({ name: 'Alpha' }),
-						expect.objectContaining({ name: 'Stage' }),
-					],
-				},
-			});
+		await expect(
+			eventWriteModule().updateEvent({
+				eventId,
+				input: { broadcastDeckListsEnabled: false },
+			}),
+		).rejects.toMatchObject({
+			statusCode: 409,
+			message: expect.stringContaining('Alpha, Stage'),
+			data: {
+				code: 'BROADCAST_DECK_LISTS_IN_USE',
+				screens: [
+					expect.objectContaining({ name: 'Alpha' }),
+					expect.objectContaining({ name: 'Stage' }),
+				],
+			},
+		});
 
 		expect((await stored(eventId))?.broadcastDeckListsEnabled).toBe(true);
 		expect(ably.published).toEqual([]);
 	});
 
-	it('takes a commentator from the Event\'s own Talent, and refuses another Event\'s before storing anything', async () => {
+	it("takes a commentator from the Event's own Talent, and refuses another Event's before storing anything", async () => {
 		const eventId = await stageEvent();
-		const [own] = await db.insert(schema.eventTalents).values({ eventId, name: 'Own' }).returning({ id: schema.eventTalents.id });
-		const [foreign] = await db.insert(schema.eventTalents)
+		const [own] = await db
+			.insert(schema.eventTalents)
+			.values({ eventId, name: 'Own' })
+			.returning({ id: schema.eventTalents.id });
+		const [foreign] = await db
+			.insert(schema.eventTalents)
 			.values({ eventId: await stageEvent(), name: 'Foreign' })
 			.returning({ id: schema.eventTalents.id });
 
-		await expect(eventWriteModule().updateEvent({
-			eventId,
-			input: { name: 'Not stored', commentator1TalentId: own!.id, commentator2TalentId: foreign!.id },
-		})).rejects.toMatchObject({ statusCode: 404 });
+		await expect(
+			eventWriteModule().updateEvent({
+				eventId,
+				input: {
+					name: 'Not stored',
+					commentator1TalentId: own!.id,
+					commentator2TalentId: foreign!.id,
+				},
+			}),
+		).rejects.toMatchObject({ statusCode: 404 });
 		expect(await stored(eventId)).toMatchObject({ name: 'Event', commentator1TalentId: null });
 
 		await eventWriteModule().updateEvent({
@@ -226,7 +246,7 @@ describe('an Event update and its Feature Match Slots', () => {
 			}));
 	}
 
-	it('gives every Slot the Event\'s new best of, and announces each with no origin', async () => {
+	it("gives every Slot the Event's new best of, and announces each with no origin", async () => {
 		const eventId = await stageEventWithSlots();
 
 		await eventWriteModule().updateEvent({
@@ -236,8 +256,10 @@ describe('an Event update and its Feature Match Slots', () => {
 		});
 
 		const slots = await slotsOf(eventId);
-		expect(slots.map(slot => slot.bestOf)).toEqual([5, 5]);
-		expect(slotNotices(eventId)).toEqual(slots.map(slot => ({ slotId: slot.id, origin: undefined })));
+		expect(slots.map((slot) => slot.bestOf)).toEqual([5, 5]);
+		expect(slotNotices(eventId)).toEqual(
+			slots.map((slot) => ({ slotId: slot.id, origin: undefined })),
+		);
 	});
 
 	it('announces each Slot whose active Session a changed default corrects', async () => {
@@ -245,13 +267,18 @@ describe('an Event update and its Feature Match Slots', () => {
 
 		await eventWriteModule().updateEvent({
 			eventId,
-			input: { featureMatchDefaultCountUpAfterCountdown: true, featureMatchDefaultCountUpLimit: 10 },
+			input: {
+				featureMatchDefaultCountUpAfterCountdown: true,
+				featureMatchDefaultCountUpLimit: 10,
+			},
 			originConnectionId: 'origin-1',
 		});
 
 		const slots = await slotsOf(eventId);
 		expect(slots).toHaveLength(2);
-		expect(slotNotices(eventId)).toEqual(slots.map(slot => ({ slotId: slot.id, origin: undefined })));
+		expect(slotNotices(eventId)).toEqual(
+			slots.map((slot) => ({ slotId: slot.id, origin: undefined })),
+		);
 	});
 
 	it('leaves the Slots alone, and announces none, for a write naming no Feature Match default', async () => {
@@ -269,44 +296,50 @@ describe('an Event update and its Feature Match Slots', () => {
 });
 
 describe('an Event delete', () => {
-	it('removes the Event and its Screens, cleans out each Screen\'s Card, then announces the delete', async () => {
+	it("removes the Event and its Screens, cleans out each Screen's Card, then announces the delete", async () => {
 		const eventId = await stageEvent();
-		const screens = await db.insert(schema.screens).values([
-			{
-				eventId,
-				name: 'One',
-				slug: 'one',
-				assetCapabilitySeed: 'seed-1',
-				assetCapabilityDigest: 'digest-1',
-			},
-			{
-				eventId,
-				name: 'Two',
-				slug: 'two',
-				assetCapabilitySeed: 'seed-2',
-				assetCapabilityDigest: 'digest-2',
-			},
-		]).returning({ id: schema.screens.id });
+		const screens = await db
+			.insert(schema.screens)
+			.values([
+				{
+					eventId,
+					name: 'One',
+					slug: 'one',
+					assetCapabilitySeed: 'seed-1',
+					assetCapabilityDigest: 'digest-1',
+				},
+				{
+					eventId,
+					name: 'Two',
+					slug: 'two',
+					assetCapabilitySeed: 'seed-2',
+					assetCapabilityDigest: 'digest-2',
+				},
+			])
+			.returning({ id: schema.screens.id });
 
-		const answered = await eventWriteModule().deleteEvent({ eventId, originConnectionId: 'origin-1' });
+		const answered = await eventWriteModule().deleteEvent({
+			eventId,
+			originConnectionId: 'origin-1',
+		});
 
 		expect(answered).toEqual({ success: true });
 		expect(await stored(eventId)).toBeUndefined();
-		expect(await db.select().from(schema.screens).where(eq(schema.screens.eventId, eventId))).toEqual([]);
+		expect(
+			await db.select().from(schema.screens).where(eq(schema.screens.eventId, eventId)),
+		).toEqual([]);
 		// The Screens are gone by now, so their ids were read before the cascade removed them.
-		expect(cleanedCards).toEqual(screens.map(screen => [eventId, screen.id]));
+		expect(cleanedCards).toEqual(screens.map((screen) => [eventId, screen.id]));
 		expect(announced(eventId)).toEqual([
-			[
-				'event:deleted',
-				expect.objectContaining({ originConnectionId: 'origin-1' }),
-			],
+			['event:deleted', expect.objectContaining({ originConnectionId: 'origin-1' })],
 		]);
 	});
 
 	it('answers 404 for an Event that does not exist, cleaning and announcing nothing', async () => {
-		await expect(eventWriteModule().deleteEvent({ eventId: 999_999 }))
-			.rejects
-			.toMatchObject({ statusCode: 404, message: 'Event not found' });
+		await expect(eventWriteModule().deleteEvent({ eventId: 999_999 })).rejects.toMatchObject({
+			statusCode: 404,
+			message: 'Event not found',
+		});
 
 		expect(cleanedCards).toEqual([]);
 		expect(ably.published).toEqual([]);

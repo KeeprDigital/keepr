@@ -1,7 +1,20 @@
-import type { ConfigFieldMeta, EditorField, ScreenModeConfigField, ScreenModeConfigFields, ScreenSettingsGroupDeclaration, ShapeEventReferences } from './fields';
+import type {
+	ConfigFieldMeta,
+	EditorField,
+	ScreenModeConfigField,
+	ScreenModeConfigFields,
+	ScreenSettingsGroupDeclaration,
+	ShapeEventReferences,
+} from './fields';
 import { z } from 'zod';
 import { isPlainRecord } from '../utils/plainObject';
-import { assertFieldGroupsDeclared, clampToShapeBounds, EDITOR_META_KEY, screenModeConfigFields, unwrapOptionalField } from './fields';
+import {
+	assertFieldGroupsDeclared,
+	clampToShapeBounds,
+	EDITOR_META_KEY,
+	screenModeConfigFields,
+	unwrapOptionalField,
+} from './fields';
 
 /** Refuses a field carrying a zod default: a default lives only in `defaults` (ADR-0037). */
 type FieldsWithoutDefaults<Shape extends z.ZodRawShape> = {
@@ -31,7 +44,9 @@ export type ServerValidatedKeys<Shape extends z.ZodRawShape> = {
 const serverValidatedFields = new WeakSet<z.ZodType>();
 
 /** `meta` is the field's editor description: a server-validated field is edited by a named slot's widget. */
-export function serverValidatedField<T>(meta: ConfigFieldMeta): EditorField<ServerValidatedField<T>>;
+export function serverValidatedField<T>(
+	meta: ConfigFieldMeta,
+): EditorField<ServerValidatedField<T>>;
 export function serverValidatedField<T>(): ServerValidatedField<T>;
 export function serverValidatedField<T>(meta?: ConfigFieldMeta): ServerValidatedField<T> {
 	const custom = z.custom<T>(() => false, 'Validated only on the server');
@@ -51,7 +66,8 @@ export function isServerValidatedField(field: z.ZodType): boolean {
 /** The fields of a shape that hold a list, and so may be declared an authored stack. */
 type ListKeys<Shape extends z.ZodRawShape> = {
 	[K in keyof Shape]: z.output<Shape[K]> extends readonly unknown[] ? K : never;
-}[keyof Shape] & string;
+}[keyof Shape] &
+	string;
 
 /**
  * One Screen Mode's config contract: the single source of its config's shape,
@@ -141,13 +157,17 @@ export interface ScreenModeConfigContract<
  * upgraded on every read. A PATCH body is a fragment too: one naming only part
  * of what a mapping needs is the hook's to map or leave to be dropped.
  */
-export type UpgradeFormerFields = (fragment: Readonly<Record<string, unknown>>) => Record<string, unknown>;
+export type UpgradeFormerFields = (
+	fragment: Readonly<Record<string, unknown>>,
+) => Record<string, unknown>;
 
 /** The config type a contract defines: what a rendering of its mode reads. */
-export type ScreenModeConfigOf<Contract extends ScreenModeConfigContract<any, any, any>> = Contract['defaults'];
+export type ScreenModeConfigOf<Contract extends ScreenModeConfigContract<any, any, any>> =
+	Contract['defaults'];
 
 /** The Screen Settings Groups a contract declares: the groups its Mode Tokens may name (ADR-0072). */
-export type ScreenSettingsGroupOf<Contract extends ScreenModeConfigContract<any, any, any>> = keyof Contract['groups'] & string;
+export type ScreenSettingsGroupOf<Contract extends ScreenModeConfigContract<any, any, any>> =
+	keyof Contract['groups'] & string;
 
 export function defineScreenModeConfigContract<
 	const Shape extends z.ZodRawShape,
@@ -164,22 +184,24 @@ export function defineScreenModeConfigContract<
 	} = {},
 ): ScreenModeConfigContract<Shape, AuthoredStack, Group> {
 	const formerFields = options.formerFields ?? [];
-	const formerPaths = formerFields.map(field => field.split('.'));
+	const formerPaths = formerFields.map((field) => field.split('.'));
 	for (const path of formerPaths) {
 		if (shapeHoldsPath(shape, path))
-			throw new Error(`Config field "${path.join('.')}" cannot be both a field and a former field of one contract.`);
+			throw new Error(
+				`Config field "${path.join('.')}" cannot be both a field and a former field of one contract.`,
+			);
 	}
-	const groups = options.groups ?? {} as Readonly<Record<Group, ScreenSettingsGroupDeclaration>>;
+	const groups = options.groups ?? ({} as Readonly<Record<Group, ScreenSettingsGroupDeclaration>>);
 	const fields = screenModeConfigFields(shape);
 	assertFieldGroupsDeclared(fields, groups);
 
 	function upgradeStored<T>(fragment: T): T {
-		const upgraded = options.upgradeFormerFields && isPlainRecord(fragment)
-			? options.upgradeFormerFields(fragment)
-			: fragment;
+		const upgraded =
+			options.upgradeFormerFields && isPlainRecord(fragment)
+				? options.upgradeFormerFields(fragment)
+				: fragment;
 		let kept: Record<string, unknown> | undefined;
-		for (const path of formerPaths)
-			kept = withoutPath(kept ?? upgraded, path) ?? kept;
+		for (const path of formerPaths) kept = withoutPath(kept ?? upgraded, path) ?? kept;
 		return (kept ?? upgraded) as T;
 	}
 
@@ -192,36 +214,36 @@ export function defineScreenModeConfigContract<
 		groups,
 		eventReferences: eventReferencesOf(fields) as ShapeEventReferences<Shape>,
 		formerFields,
-		readStored: fragment => clampToShapeBounds(shape, upgradeStored(fragment)),
+		readStored: (fragment) => clampToShapeBounds(shape, upgradeStored(fragment)),
 		upgradeStored,
 	};
 }
 
 /** Each field naming an Event Reference, with its kind. */
-function eventReferencesOf(fields: Readonly<Record<string, ScreenModeConfigField>>): Record<string, string> {
-	return Object.fromEntries(Object.values(fields)
-		.flatMap(field => field.reference === undefined
-			? []
-			: [
-					[field.key, field.reference],
-				]));
+function eventReferencesOf(
+	fields: Readonly<Record<string, ScreenModeConfigField>>,
+): Record<string, string> {
+	return Object.fromEntries(
+		Object.values(fields).flatMap((field) =>
+			field.reference === undefined ? [] : [[field.key, field.reference]],
+		),
+	);
 }
 
 /** Whether `shape` declares the field at `path`, through its nested blocks. */
 function shapeHoldsPath(shape: z.ZodRawShape, [key, ...rest]: readonly string[]): boolean {
-	const field = key === undefined
-		? undefined
-		: shape[key] as z.ZodType | undefined;
-	if (!field)
-		return false;
-	if (rest.length === 0)
-		return true;
+	const field = key === undefined ? undefined : (shape[key] as z.ZodType | undefined);
+	if (!field) return false;
+	if (rest.length === 0) return true;
 	const inner = unwrapOptionalField(field);
 	return inner instanceof z.ZodObject && shapeHoldsPath(inner.shape, rest);
 }
 
 /** A copy of `fragment` without the field at `path`, or undefined when it holds none. */
-function withoutPath(fragment: unknown, [key, ...rest]: readonly string[]): Record<string, unknown> | undefined {
+function withoutPath(
+	fragment: unknown,
+	[key, ...rest]: readonly string[],
+): Record<string, unknown> | undefined {
 	if (!isPlainRecord(fragment) || key === undefined || !Object.hasOwn(fragment, key))
 		return undefined;
 	if (rest.length === 0) {
@@ -229,7 +251,5 @@ function withoutPath(fragment: unknown, [key, ...rest]: readonly string[]): Reco
 		return kept;
 	}
 	const block = withoutPath(fragment[key], rest);
-	return block
-		? { ...fragment, [key]: block }
-		: undefined;
+	return block ? { ...fragment, [key]: block } : undefined;
 }

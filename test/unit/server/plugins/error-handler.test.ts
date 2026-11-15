@@ -11,7 +11,10 @@ import {
 } from '~~/server/utils/errors';
 import { MeleeCredentialCryptoError } from '~~/server/utils/meleeCredentialCrypto';
 import { mapPublicNitroError } from '~~/server/utils/nitroErrorMapping';
-import { REALTIME_PUBLISH_FAILED_MESSAGE, RealtimePublishError } from '~~/server/utils/realtimePublishFailure';
+import {
+	REALTIME_PUBLISH_FAILED_MESSAGE,
+	RealtimePublishError,
+} from '~~/server/utils/realtimePublishFailure';
 import { STATE_CONFLICT_CODE } from '~~/shared/utils/stateConflict';
 import { ErrorInfoShaped, providerRefusal } from '~~/test/helpers/providerRefusal';
 
@@ -36,9 +39,11 @@ describe('error-handler mapping logic', () => {
 
 	describe('log path safety', () => {
 		it('redacts Screen Output asset delivery identities and query parameters', () => {
-			expect(safeErrorLogPath(
-				'/api/screen-output/screens/17/assets/asset-secret/revisions/revision-secret/content?debug=1',
-			)).toBe('/api/screen-output/screens/:screenId/assets/:assetId/revisions/:revisionId/content');
+			expect(
+				safeErrorLogPath(
+					'/api/screen-output/screens/17/assets/asset-secret/revisions/revision-secret/content?debug=1',
+				),
+			).toBe('/api/screen-output/screens/:screenId/assets/:assetId/revisions/:revisionId/content');
 		});
 
 		// A Screen Output Link in the output page's address is a credential; a log names the route only.
@@ -73,9 +78,14 @@ describe('error-handler mapping logic', () => {
 			// the string-only guard this replaces logged `null` for precisely the
 			// failure the field exists to name. A rejected key then spent an outbound
 			// request per Screen mutation with nothing in the log to say why.
-			expect(errorLogFields(failed({
-				cause: providerRefusal(),
-			}), '/api/events/1')).toMatchObject({
+			expect(
+				errorLogFields(
+					failed({
+						cause: providerRefusal(),
+					}),
+					'/api/events/1',
+				),
+			).toMatchObject({
 				// A genuine `ErrorInfo` never assigns `name`, so the sibling field
 				// reports the inherited 'Error' and identifies nothing. The code is the
 				// only thing in the line that can name the refusal.
@@ -86,39 +96,59 @@ describe('error-handler mapping logic', () => {
 
 		it('still carries a provider code that arrives as a string', () => {
 			// Node's own convention, and the shape the previous guard was written for.
-			expect(errorLogFields(failed({
-				cause: { name: 'SystemError', code: 'ENOENT' },
-			}), '/api/events/1'))
-				.toMatchObject({ errorName: 'SystemError', errorCode: 'ENOENT' });
+			expect(
+				errorLogFields(
+					failed({
+						cause: { name: 'SystemError', code: 'ENOENT' },
+					}),
+					'/api/events/1',
+				),
+			).toMatchObject({ errorName: 'SystemError', errorCode: 'ENOENT' });
 		});
 
 		it('reports a NaN code as absent rather than as a number', () => {
 			// The Ably transport builds `Number(headers['x-ably-errorcode'])` for a
 			// response carrying no Ably error body, so NaN is a shape that reaches
 			// here. #253 guards the same value the same way in the publish log.
-			expect(errorLogFields(failed({
-				cause: new ErrorInfoShaped('', Number.NaN, 502),
-			}), '/api/events/1'))
-				.toMatchObject({ errorCode: null });
-			expect(errorLogFields(failed({
-				cause: new ErrorInfoShaped('', Number.POSITIVE_INFINITY, 502),
-			}), '/api/events/1'))
-				.toMatchObject({ errorCode: null });
+			expect(
+				errorLogFields(
+					failed({
+						cause: new ErrorInfoShaped('', Number.NaN, 502),
+					}),
+					'/api/events/1',
+				),
+			).toMatchObject({ errorCode: null });
+			expect(
+				errorLogFields(
+					failed({
+						cause: new ErrorInfoShaped('', Number.POSITIVE_INFINITY, 502),
+					}),
+					'/api/events/1',
+				),
+			).toMatchObject({ errorCode: null });
 		});
 
 		it('reports a code that is neither string nor number as absent', () => {
 			// Widening the guard must not turn it into no guard: an object or a
 			// boolean in `code` is not an identifier anyone can look up.
-			expect(errorLogFields(failed({
-				cause: {
-					code: { value: 40400 },
-				},
-			}), '/api/events/1'))
-				.toMatchObject({ errorCode: null });
-			expect(errorLogFields(failed({
-				cause: { code: true },
-			}), '/api/events/1'))
-				.toMatchObject({ errorCode: null });
+			expect(
+				errorLogFields(
+					failed({
+						cause: {
+							code: { value: 40400 },
+						},
+					}),
+					'/api/events/1',
+				),
+			).toMatchObject({ errorCode: null });
+			expect(
+				errorLogFields(
+					failed({
+						cause: { code: true },
+					}),
+					'/api/events/1',
+				),
+			).toMatchObject({ errorCode: null });
 		});
 
 		it('walks the cause chain for a code the nearest cause does not carry, keeping the class name', () => {
@@ -155,38 +185,49 @@ describe('error-handler mapping logic', () => {
 		it('skips an invalid code and keeps walking', () => {
 			// An object in `code` is not an identifier anyone can look up; the number
 			// beneath it is.
-			expect(errorLogFields(failed({
-				cause: {
-					code: { value: 1 },
-					cause: { code: 40400 },
-				},
-			}), '/api/events/1'))
-				.toMatchObject({ errorCode: 40400 });
+			expect(
+				errorLogFields(
+					failed({
+						cause: {
+							code: { value: 1 },
+							cause: { code: 40400 },
+						},
+					}),
+					'/api/events/1',
+				),
+			).toMatchObject({ errorCode: 40400 });
 		});
 
 		it('bounds the walk, so a cycle terminates and a too-deep code stays absent', () => {
 			const cyclic: { code?: unknown; cause?: unknown } = {};
 			cyclic.cause = cyclic;
-			expect(errorLogFields(failed({ cause: cyclic }), '/api/events/1'))
-				.toMatchObject({ errorCode: null });
+			expect(errorLogFields(failed({ cause: cyclic }), '/api/events/1')).toMatchObject({
+				errorCode: null,
+			});
 
-			const tooDeep = Array.from({ length: 5 }).reduce<object>(
-				cause => ({ cause }),
-				{ code: 'BURIED' },
-			);
-			expect(errorLogFields(failed({ cause: tooDeep }), '/api/events/1'))
-				.toMatchObject({ errorCode: null });
+			const tooDeep = Array.from({ length: 5 }).reduce<object>((cause) => ({ cause }), {
+				code: 'BURIED',
+			});
+			expect(errorLogFields(failed({ cause: tooDeep }), '/api/events/1')).toMatchObject({
+				errorCode: null,
+			});
 		});
 
 		it('reports an absent unhandled flag as handled, and a set one as unhandled', () => {
 			// `unhandled: false` means something classified the failure, never that the flag was absent.
 			expect(errorLogFields(failed({}), '/api/events/1')).toMatchObject({ unhandled: false });
-			expect(errorLogFields(failed({ unhandled: false }), '/api/events/1')).toMatchObject({ unhandled: false });
-			expect(errorLogFields(failed({ unhandled: true }), '/api/events/1')).toMatchObject({ unhandled: true });
+			expect(errorLogFields(failed({ unhandled: false }), '/api/events/1')).toMatchObject({
+				unhandled: false,
+			});
+			expect(errorLogFields(failed({ unhandled: true }), '/api/events/1')).toMatchObject({
+				unhandled: true,
+			});
 		});
 
-		it('falls back to the error\'s own name, and to no code at all, without a cause', () => {
-			expect(errorLogFields(failed({ name: 'TypeError', statusCode: 500, unhandled: true }), undefined)).toEqual({
+		it("falls back to the error's own name, and to no code at all, without a cause", () => {
+			expect(
+				errorLogFields(failed({ name: 'TypeError', statusCode: 500, unhandled: true }), undefined),
+			).toEqual({
 				message: 'api_request_failed',
 				path: null,
 				statusCode: 500,
@@ -231,7 +272,8 @@ describe('error-handler mapping logic', () => {
 			const error: MappableNitroError = {
 				statusCode: 409,
 				statusMessage: 'Conflict',
-				message: 'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
+				message:
+					'Graphic Asset Reference at graphics.lower-third.items.logo.asset is not selectable',
 				unhandled: false,
 			};
 			mapPublicNitroError(error);
@@ -246,7 +288,10 @@ describe('error-handler mapping logic', () => {
 			const error: MappableNitroError = {
 				statusCode: 500,
 				message: 'Something went wrong',
-				cause: new ServiceConfigurationError('NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY', 'is not set'),
+				cause: new ServiceConfigurationError(
+					'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY',
+					'is not set',
+				),
 				unhandled: true,
 			};
 
@@ -276,7 +321,7 @@ describe('error-handler mapping logic', () => {
 	});
 
 	describe('realtimePublishError mapping', () => {
-		it('answers a refused publish in its own name rather than the provider\'s status', () => {
+		it("answers a refused publish in its own name rather than the provider's status", () => {
 			// A refused publish answers in its own name, not with the provider's 404 (#264).
 			const error: MappableNitroError = {
 				statusCode: 404,
@@ -420,7 +465,8 @@ describe('error-handler mapping logic', () => {
 			expect(error).toMatchObject({
 				statusCode: 503,
 				statusMessage: 'Service Unavailable',
-				message: 'Card data provider is temporarily unavailable. Existing deck data was preserved; retry the sync.',
+				message:
+					'Card data provider is temporarily unavailable. Existing deck data was preserved; retry the sync.',
 			});
 			expect(error.message).not.toContain('private upstream body');
 		});
@@ -480,7 +526,12 @@ describe('error-handler mapping logic', () => {
 			});
 			// The classified 503 keeps the crypto error where the failure log reads
 			// it — the cause is not consumed by the mapping.
-			expect(errorLogFields({ name: 'H3Error', statusCode: error.statusCode, cause: error.cause }, '/api/events/1/melee-config')).toMatchObject({
+			expect(
+				errorLogFields(
+					{ name: 'H3Error', statusCode: error.statusCode, cause: error.cause },
+					'/api/events/1/melee-config',
+				),
+			).toMatchObject({
 				errorName: 'MeleeCredentialCryptoError',
 				errorCode: 'MELEE_CREDENTIAL_KEY_VERSION_MISSING',
 			});
@@ -503,7 +554,8 @@ describe('error-handler mapping logic', () => {
 			expect(error).toMatchObject({
 				statusCode: 503,
 				statusMessage: 'Service Unavailable',
-				message: 'NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS is not a JSON object of key versions to base64 keys',
+				message:
+					'NUXT_MELEE_CREDENTIAL_ENCRYPTION_PREVIOUS_KEYS is not a JSON object of key versions to base64 keys',
 			});
 		});
 
@@ -525,7 +577,12 @@ describe('error-handler mapping logic', () => {
 				statusMessage: 'Internal Server Error',
 				message: 'Internal Server Error',
 			});
-			expect(errorLogFields({ name: 'H3Error', statusCode: error.statusCode, cause: error.cause }, '/api/events/1/melee-config')).toMatchObject({
+			expect(
+				errorLogFields(
+					{ name: 'H3Error', statusCode: error.statusCode, cause: error.cause },
+					'/api/events/1/melee-config',
+				),
+			).toMatchObject({
 				errorName: 'MeleeCredentialCryptoError',
 				errorCode: 'MELEE_CREDENTIAL_DECRYPTION_FAILED',
 			});
@@ -555,7 +612,7 @@ describe('error-handler mapping logic', () => {
 			});
 		});
 
-		it('preserves the byte store\'s own wording rather than a sentence of its own', () => {
+		it("preserves the byte store's own wording rather than a sentence of its own", () => {
 			// Many throw sites share the code, so the branch carries the library's own wording.
 			const error: MappableNitroError = {
 				statusCode: 503,
@@ -585,7 +642,7 @@ describe('error-handler mapping logic', () => {
 			expect(error.message).toBe('Internal Server Error');
 		});
 
-		it('leaves the library\'s other codes to the routes that already answer them', () => {
+		it("leaves the library's other codes to the routes that already answer them", () => {
 			// `rethrowGraphicsAssetApiError` answers every other code below 500, so a
 			// 5xx carrying one is not a store that went away and gets no exemption.
 			const error: MappableNitroError = {
@@ -612,7 +669,9 @@ describe('error-handler mapping logic', () => {
 				statusCode: 503,
 				statusMessage: 'Service Unavailable',
 				message: 'Graphic Asset thumbnail is temporarily unavailable',
-				cause: new TemporarilyUnavailableError('Graphic Asset thumbnail is temporarily unavailable'),
+				cause: new TemporarilyUnavailableError(
+					'Graphic Asset thumbnail is temporarily unavailable',
+				),
 			};
 
 			mapPublicNitroError(error);
@@ -625,7 +684,7 @@ describe('error-handler mapping logic', () => {
 			});
 		});
 
-		it('carries each raiser\'s own words, having none of its own', () => {
+		it("carries each raiser's own words, having none of its own", () => {
 			// The one class is shared by every subsystem that raises it, so it may not
 			// substitute a sentence: a Screen Output whose delivery is down and an author
 			// whose staged bytes are unreadable are told different things.
@@ -681,7 +740,10 @@ describe('error-handler mapping logic', () => {
 		const preserved: readonly { family: string; cause: unknown; sentence: string }[] = [
 			{
 				family: 'a setting that was never configured (#233)',
-				cause: new ServiceConfigurationError('NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY', 'is not set'),
+				cause: new ServiceConfigurationError(
+					'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY',
+					'is not set',
+				),
 				sentence: 'NUXT_SCREEN_OUTPUT_CAPABILITY_SIGNING_KEY is not set',
 			},
 			{
@@ -691,18 +753,25 @@ describe('error-handler mapping logic', () => {
 			},
 			{
 				family: 'an exhausted staging byte store',
-				cause: new GraphicsAssetLibraryError('Staging byte store capacity is exhausted', 'staging-capacity-exhausted'),
+				cause: new GraphicsAssetLibraryError(
+					'Staging byte store capacity is exhausted',
+					'staging-capacity-exhausted',
+				),
 				sentence: 'Staging byte store capacity is exhausted',
 			},
 			{
 				family: 'an exhausted canonical byte store',
-				cause: new GraphicsAssetLibraryError('Canonical byte store capacity is exhausted', 'canonical-capacity-exhausted'),
+				cause: new GraphicsAssetLibraryError(
+					'Canonical byte store capacity is exhausted',
+					'canonical-capacity-exhausted',
+				),
 				sentence: 'Canonical byte store capacity is exhausted',
 			},
 			{
 				family: 'a card lookup that preserved the deck it could not enrich',
 				cause: { code: 'IMPORTED_CARD_LOOKUP_UNAVAILABLE' },
-				sentence: 'Card data provider is temporarily unavailable. Existing deck data was preserved; retry the sync.',
+				sentence:
+					'Card data provider is temporarily unavailable. Existing deck data was preserved; retry the sync.',
 			},
 			{
 				family: 'a Broadcast Deck List card provider outage',
@@ -731,7 +800,10 @@ describe('error-handler mapping logic', () => {
 			},
 			{
 				family: 'a Graphics Asset Library store that could not be reached (#294)',
-				cause: new GraphicsAssetLibraryError('Graphics Asset catalogue is unavailable', 'graphics-asset-library-unavailable'),
+				cause: new GraphicsAssetLibraryError(
+					'Graphics Asset catalogue is unavailable',
+					'graphics-asset-library-unavailable',
+				),
 				sentence: 'Graphics Asset catalogue is unavailable',
 			},
 			{
@@ -742,20 +814,23 @@ describe('error-handler mapping logic', () => {
 		];
 
 		// A family raised at 500 would be quoted by nothing: the client refuses that status.
-		it.each(preserved)('says something an operator can act on, away from 500, for $family', ({ cause, sentence }) => {
-			const error: MappableNitroError = {
-				statusCode: 500,
-				message: 'Something went wrong',
-				cause,
-				unhandled: true,
-			};
+		it.each(preserved)(
+			'says something an operator can act on, away from 500, for $family',
+			({ cause, sentence }) => {
+				const error: MappableNitroError = {
+					statusCode: 500,
+					message: 'Something went wrong',
+					cause,
+					unhandled: true,
+				};
 
-			mapPublicNitroError(error);
+				mapPublicNitroError(error);
 
-			expect(error.message).toBe(sentence);
-			expect(error.unhandled).toBe(false);
-			expect([502, 503, 504, 507]).toContain(error.statusCode);
-		});
+				expect(error.message).toBe(sentence);
+				expect(error.unhandled).toBe(false);
+				expect([502, 503, 504, 507]).toContain(error.statusCode);
+			},
+		);
 	});
 
 	describe('priority ordering', () => {

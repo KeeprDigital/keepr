@@ -36,25 +36,28 @@ function archetypeName(index: number) {
 	return `Archetype ${String(index).padStart(3, '0')}`;
 }
 
-async function insertAll<T>(rows: T[], insert: (row: T, index: number) => Parameters<typeof db.batch>[0][number]) {
+async function insertAll<T>(
+	rows: T[],
+	insert: (row: T, index: number) => Parameters<typeof db.batch>[0][number],
+) {
 	const [first, ...rest] = rows.map(insert);
-	if (first)
-		await db.batch([first, ...rest]);
+	if (first) await db.batch([first, ...rest]);
 }
 
 async function stageEvent(name: string) {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name, game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning();
 	return event!.id;
 }
 
 async function stageArchetypes(eventId: number, names: string[]) {
-	await insertAll(names, name => db.insert(schema.archetypes).values({ eventId, name }));
+	await insertAll(names, (name) => db.insert(schema.archetypes).values({ eventId, name }));
 	const rows = await db.query.archetypes.findMany({
 		where: (archetypes, { eq }) => eq(archetypes.eventId, eventId),
 	});
-	return new Map(rows.map(row => [row.name, row.id]));
+	return new Map(rows.map((row) => [row.name, row.id]));
 }
 
 interface StagedPlayer {
@@ -66,11 +69,13 @@ interface StagedPlayer {
 }
 
 async function stagePlayers(eventId: number, players: StagedPlayer[]) {
-	await insertAll(players, (player, index) => db.insert(schema.players).values({
-		eventId,
-		name: `Player ${index}`,
-		...player,
-	}));
+	await insertAll(players, (player, index) =>
+		db.insert(schema.players).values({
+			eventId,
+			name: `Player ${index}`,
+			...player,
+		}),
+	);
 }
 
 async function stageCard(name: string) {
@@ -88,13 +93,13 @@ beforeAll(async () => {
 	const idOf = (index: number) => ids.get(archetypeName(index))!;
 
 	const players: StagedPlayer[] = [
-		...[1, 2, 3, 4].map(position => ({
+		...[1, 2, 3, 4].map((position) => ({
 			archetypeId: idOf(1),
 			wins: 3,
 			losses: 1,
 			position,
 		})),
-		...[5, 6, 7].map(position => ({
+		...[5, 6, 7].map((position) => ({
 			archetypeId: idOf(2),
 			wins: 1,
 			losses: 1,
@@ -115,7 +120,11 @@ beforeAll(async () => {
 	];
 	await stagePlayers(largeEventId, players);
 
-	const [bolt, guide, wrath] = [await stageCard('Lightning Bolt'), await stageCard('Goblin Guide'), await stageCard('Wrath of God')];
+	const [bolt, guide, wrath] = [
+		await stageCard('Lightning Bolt'),
+		await stageCard('Goblin Guide'),
+		await stageCard('Wrath of God'),
+	];
 	await db.insert(schema.archetypeCards).values([
 		{
 			archetypeId: idOf(1),
@@ -142,12 +151,15 @@ beforeAll(async () => {
 describe('the Metagame Archetype breakdown on D1', () => {
 	describe('with a hundred and more represented Archetypes', () => {
 		it('answers every represented Archetype with its counts, shares, ordering and key cards', async () => {
-			const breakdown = await metagameReadModel().getArchetypeBreakdown(largeEventId, { scope: 'all' });
+			const breakdown = await metagameReadModel().getArchetypeBreakdown(largeEventId, {
+				scope: 'all',
+			});
 
 			expect(breakdown).toMatchObject({ totalPlayers: 130, classifiedPlayers: 125, scope: 'all' });
 			expect(breakdown.entries).toHaveLength(REPRESENTED);
-			expect(breakdown.entries.map(entry => entry.name))
-				.toEqual(Array.from({ length: REPRESENTED }, (_, index) => archetypeName(index + 1)));
+			expect(breakdown.entries.map((entry) => entry.name)).toEqual(
+				Array.from({ length: REPRESENTED }, (_, index) => archetypeName(index + 1)),
+			);
 
 			const [first, second, third] = breakdown.entries;
 			expect(first).toMatchObject({
@@ -156,7 +168,7 @@ describe('the Metagame Archetype breakdown on D1', () => {
 				winRate: 75,
 				avgPosition: 2.5,
 			});
-			expect(first!.keyCards.map(card => card.name)).toEqual(keyCards.first);
+			expect(first!.keyCards.map((card) => card.name)).toEqual(keyCards.first);
 			expect(second).toMatchObject({
 				count: 3,
 				metaShare: 2.4,
@@ -171,15 +183,19 @@ describe('the Metagame Archetype breakdown on D1', () => {
 				avgPosition: null,
 				keyCards: [],
 			});
-			expect(breakdown.entries.at(-1)!.keyCards.map(card => card.name)).toEqual(keyCards.last);
+			expect(breakdown.entries.at(-1)!.keyCards.map((card) => card.name)).toEqual(keyCards.last);
 		});
 
 		it('answers a small requested limit with the leading Archetypes and the rest aggregated as Other', async () => {
-			const breakdown = await metagameReadModel().getArchetypeBreakdown(largeEventId, { scope: 'all', limit: 5 });
+			const breakdown = await metagameReadModel().getArchetypeBreakdown(largeEventId, {
+				scope: 'all',
+				limit: 5,
+			});
 
-			expect(breakdown.entries.map(entry => entry.name))
-				.toEqual([1, 2, 3, 4, 5].map(archetypeName).concat('Other'));
-			expect(breakdown.entries[0]!.keyCards.map(card => card.name)).toEqual(keyCards.first);
+			expect(breakdown.entries.map((entry) => entry.name)).toEqual(
+				[1, 2, 3, 4, 5].map(archetypeName).concat('Other'),
+			);
+			expect(breakdown.entries[0]!.keyCards.map((card) => card.name)).toEqual(keyCards.first);
 			expect(breakdown.entries.at(-1)).toEqual({
 				id: -1,
 				name: 'Other',
@@ -203,24 +219,27 @@ describe('the Metagame Archetype breakdown on D1', () => {
 				totalArchetypes: REPRESENTED + 1,
 				scopedArchetypeCount: REPRESENTED,
 			});
-			expect(summary.topArchetypes.map(entry => entry.name)).toEqual([1, 2, 3, 4, 5].map(archetypeName));
-			expect(summary.topArchetypes[0]!.keyCards.map(card => card.name)).toEqual(keyCards.first);
+			expect(summary.topArchetypes.map((entry) => entry.name)).toEqual(
+				[1, 2, 3, 4, 5].map(archetypeName),
+			);
+			expect(summary.topArchetypes[0]!.keyCards.map((card) => card.name)).toEqual(keyCards.first);
 		});
 	});
 
 	it('answers an empty scope with no entries', async () => {
 		const eventId = await stageEvent('Empty Metagame');
 
-		expect(await metagameReadModel().getArchetypeBreakdown(eventId, { scope: 'all', limit: 5 }))
-			.toEqual({
-				entries: [],
-				totalPlayers: 0,
-				classifiedPlayers: 0,
-				scope: 'all',
-			});
+		expect(
+			await metagameReadModel().getArchetypeBreakdown(eventId, { scope: 'all', limit: 5 }),
+		).toEqual({
+			entries: [],
+			totalPlayers: 0,
+			classifiedPlayers: 0,
+			scope: 'all',
+		});
 	});
 
-	it('answers an ordinary small scope, naming only the Event\'s own Archetypes', async () => {
+	it("answers an ordinary small scope, naming only the Event's own Archetypes", async () => {
 		const eventId = await stageEvent('Small Metagame');
 		const ids = await stageArchetypes(eventId, ['Mono Red', 'Azorius Control']);
 		const elsewhere = await stageArchetypes(await stageEvent('Elsewhere'), ['Foreign']);
@@ -251,9 +270,19 @@ describe('the Metagame Archetype breakdown on D1', () => {
 			},
 		]);
 
-		const breakdown = await metagameReadModel().getArchetypeBreakdown(eventId, { scope: 'all', limit: 5 });
+		const breakdown = await metagameReadModel().getArchetypeBreakdown(eventId, {
+			scope: 'all',
+			limit: 5,
+		});
 
-		expect(breakdown.entries.map(({ name, count, winRate, avgPosition }) => ({ name, count, winRate, avgPosition }))).toEqual([
+		expect(
+			breakdown.entries.map(({ name, count, winRate, avgPosition }) => ({
+				name,
+				count,
+				winRate,
+				avgPosition,
+			})),
+		).toEqual([
 			{
 				name: 'Mono Red',
 				count: 2,
@@ -281,41 +310,41 @@ describe('the Metagame Archetype breakdown on D1', () => {
 		beforeAll(async () => {
 			eventId = await stageEvent('Wide Scope Metagame');
 			archetypeId = (await stageArchetypes(eventId, ['Domain Ramp'])).get('Domain Ramp')!;
-			await stagePlayers(eventId, Array.from({ length: WIDE }, (_, index) => ({
-				archetypeId,
-				wins: 1,
-				losses: 0,
-				position: index + 1,
-				points: WIDE - index,
-			})));
+			await stagePlayers(
+				eventId,
+				Array.from({ length: WIDE }, (_, index) => ({
+					archetypeId,
+					wins: 1,
+					losses: 0,
+					position: index + 1,
+					points: WIDE - index,
+				})),
+			);
 			const members = await db.query.players.findMany({
 				where: (players, { eq }) => eq(players.eventId, eventId),
 			});
-			const [list] = await db.insert(schema.playerLists).values({ eventId, name: 'Everybody' }).returning();
+			const [list] = await db
+				.insert(schema.playerLists)
+				.values({ eventId, name: 'Everybody' })
+				.returning();
 			playerListId = list!.id;
-			await insertAll(members, (player, index) => db.insert(schema.playerListMembers).values({
-				listId: playerListId,
-				playerId: player.id,
-				sortOrder: index,
-			}));
+			await insertAll(members, (player, index) =>
+				db.insert(schema.playerListMembers).values({
+					listId: playerListId,
+					playerId: player.id,
+					sortOrder: index,
+				}),
+			);
 		});
 
 		it.each([
-			[
-				'the top 110 by position',
-				() => ({ scope: 'topN', topN: 110 }) as const,
-				110,
-			],
+			['the top 110 by position', () => ({ scope: 'topN', topN: 110 }) as const, 110],
 			[
 				'the 110 holding at least 11 points',
 				() => ({ scope: 'minPoints', minPoints: 11 }) as const,
 				110,
 			],
-			[
-				'a Player List of all 120',
-				() => ({ scope: 'playerList', playerListId }) as const,
-				WIDE,
-			],
+			['a Player List of all 120', () => ({ scope: 'playerList', playerListId }) as const, WIDE],
 		])('answers the breakdown of %s', async (_case, scope, players) => {
 			const breakdown = await metagameReadModel().getArchetypeBreakdown(eventId, scope());
 
@@ -325,8 +354,11 @@ describe('the Metagame Archetype breakdown on D1', () => {
 			]);
 		});
 
-		it('answers an Archetype\'s detail naming every one of its Players', async () => {
-			const detail = await metagameReadModel().getArchetypeDetail(eventId, { scope: 'all', archetypeId });
+		it("answers an Archetype's detail naming every one of its Players", async () => {
+			const detail = await metagameReadModel().getArchetypeDetail(eventId, {
+				scope: 'all',
+				archetypeId,
+			});
 
 			expect(detail?.playerCount).toBe(WIDE);
 			expect(detail?.players).toHaveLength(WIDE);

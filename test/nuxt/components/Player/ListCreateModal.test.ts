@@ -26,13 +26,14 @@ describe('player list create modal', () => {
 		});
 
 		await wrapper.get('input').setValue('Top 8');
-		await wrapper.findAll('button').find(button => button.text() === 'Create List')!.trigger('click');
+		await wrapper
+			.findAll('button')
+			.find((button) => button.text() === 'Create List')!
+			.trigger('click');
 		await flushPromises();
 
 		expect(playerListStore.createList).toHaveBeenCalledWith(1, { name: 'Top 8' });
-		expect(wrapper.emitted('created')).toEqual([
-			[42],
-		]);
+		expect(wrapper.emitted('created')).toEqual([[42]]);
 		expect(wrapper.emitted('close')).toEqual([[]]);
 	});
 });

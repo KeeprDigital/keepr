@@ -104,8 +104,7 @@ describe('screen Output exact Graphic Asset Revision delivery', () => {
 		const result = await delivery().deliver(request);
 
 		expect(result.outcome).toBe('delivered');
-		if (result.outcome !== 'delivered')
-			return;
+		if (result.outcome !== 'delivered') return;
 		expect(result.response.status).toBe(200);
 		expect(await responseBytes(result.response)).toEqual([10, 20, 30, 40, 50]);
 		expect(result.response.headers.get('content-type')).toBe('image/png');
@@ -115,9 +114,11 @@ describe('screen Output exact Graphic Asset Revision delivery', () => {
 		expect(result.response.headers.get('vary')).toBe('authorization, cookie');
 		expect(result.response.headers.get('etag')).toMatch(/^"sk-[\w-]{43}"$/);
 		expect(result.response.headers.get('etag')).not.toContain('asset-1');
-		expect(match).toHaveBeenCalledWith(expect.objectContaining({
-			url: expect.not.stringContaining('asset-1'),
-		}));
+		expect(match).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: expect.not.stringContaining('asset-1'),
+			}),
+		);
 		expect(defer).toHaveBeenCalledOnce();
 
 		const deferred = defer.mock.calls[0]![0] as Promise<unknown>;
@@ -134,30 +135,35 @@ describe('screen Output exact Graphic Asset Revision delivery', () => {
 	// reader has not taken. Only a body small enough to hold whole is teed.
 	it.each([
 		{ size: 'at the bound', byteLength: SCREEN_OUTPUT_ASSET_CACHE_MAXIMUM_BYTES, cachePuts: 1 },
-		{ size: 'over the bound', byteLength: SCREEN_OUTPUT_ASSET_CACHE_MAXIMUM_BYTES + 1, cachePuts: 0 },
-	])('delivers a full body $size and fills the cache $cachePuts time(s)', async ({ byteLength, cachePuts }) => {
-		inspect.mockResolvedValue({ outcome: 'available', byteLength, contentType: 'video/webm' });
-		resolve.mockResolvedValue({
-			...availableContent(),
-			byteLength,
-			contentType: 'video/webm',
-		});
+		{
+			size: 'over the bound',
+			byteLength: SCREEN_OUTPUT_ASSET_CACHE_MAXIMUM_BYTES + 1,
+			cachePuts: 0,
+		},
+	])(
+		'delivers a full body $size and fills the cache $cachePuts time(s)',
+		async ({ byteLength, cachePuts }) => {
+			inspect.mockResolvedValue({ outcome: 'available', byteLength, contentType: 'video/webm' });
+			resolve.mockResolvedValue({
+				...availableContent(),
+				byteLength,
+				contentType: 'video/webm',
+			});
 
-		const result = await delivery().deliver(request);
+			const result = await delivery().deliver(request);
 
-		if (result.outcome !== 'delivered')
-			throw new Error('expected delivered response');
-		expect(result.response.status).toBe(200);
-		expect(result.response.headers.get('content-length')).toBe(String(byteLength));
-		expect(await responseBytes(result.response)).toEqual([10, 20, 30, 40, 50]);
-		await Promise.all(defer.mock.calls.map(([deferred]) => deferred));
-		expect(put).toHaveBeenCalledTimes(cachePuts);
-	});
+			if (result.outcome !== 'delivered') throw new Error('expected delivered response');
+			expect(result.response.status).toBe(200);
+			expect(result.response.headers.get('content-length')).toBe(String(byteLength));
+			expect(await responseBytes(result.response)).toEqual([10, 20, 30, 40, 50]);
+			await Promise.all(defer.mock.calls.map(([deferred]) => deferred));
+			expect(put).toHaveBeenCalledTimes(cachePuts);
+		},
+	);
 
 	it('returns a strong conditional 304 only after confirming bytes are available', async () => {
 		const first = await delivery().deliver(request);
-		if (first.outcome !== 'delivered')
-			throw new Error('expected delivered response');
+		if (first.outcome !== 'delivered') throw new Error('expected delivered response');
 		const etag = first.response.headers.get('etag')!;
 		inspect.mockClear();
 		resolve.mockClear();
@@ -167,8 +173,7 @@ describe('screen Output exact Graphic Asset Revision delivery', () => {
 		});
 
 		expect(result.outcome).toBe('delivered');
-		if (result.outcome !== 'delivered')
-			return;
+		if (result.outcome !== 'delivered') return;
 		expect(result.response.status).toBe(304);
 		expect(result.response.body).toBeNull();
 		expect(inspect).toHaveBeenCalledOnce();
@@ -182,8 +187,7 @@ describe('screen Output exact Graphic Asset Revision delivery', () => {
 		});
 
 		expect(result.outcome).toBe('delivered');
-		if (result.outcome !== 'delivered')
-			return;
+		if (result.outcome !== 'delivered') return;
 		expect(result.response.status).toBe(206);
 		expect(result.response.headers.get('content-range')).toBe('bytes 1-3/5');
 		expect(result.response.headers.get('content-length')).toBe('3');
@@ -203,8 +207,7 @@ describe('screen Output exact Graphic Asset Revision delivery', () => {
 		});
 
 		expect(result.outcome).toBe('delivered');
-		if (result.outcome !== 'delivered')
-			return;
+		if (result.outcome !== 'delivered') return;
 		expect(result.response.status).toBe(416);
 		expect(result.response.headers.get('content-range')).toBe('bytes */5');
 		expect(inspect).toHaveBeenCalledOnce();

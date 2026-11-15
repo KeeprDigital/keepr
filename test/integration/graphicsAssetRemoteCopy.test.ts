@@ -1,7 +1,4 @@
-import type {
-	GraphicAsset,
-	GraphicsIngestionOperation,
-} from '~~/shared/types/graphicsAsset';
+import type { GraphicAsset, GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { MAX_STILL_IMAGE_INGESTION_BYTES } from '../../shared/utils/graphicsAssetCompatibility';
 import { $fetch, fetch, operatorSessionCookie } from './client';
@@ -40,9 +37,7 @@ async function copyRemoteSource(operationId: string, sourceUrl: string) {
 	);
 	return {
 		status: response.status,
-		operation: response.ok
-			? await response.json() as GraphicsIngestionOperation
-			: undefined,
+		operation: response.ok ? ((await response.json()) as GraphicsIngestionOperation) : undefined,
 	};
 }
 
@@ -71,22 +66,26 @@ describe('the approved remote HTTPS copy API', () => {
 		);
 		expect(reconnected).toEqual(initiated);
 
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Integration remote copy' },
-		})).resolves.toEqual([]);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Integration remote copy' },
+			}),
+		).resolves.toEqual([]);
 	});
 
 	it('rejects an initiation that declares a byte length for a remote copy', async () => {
 		const response = await fetch('/api/graphics-assets/ingestion-operations', {
 			method: 'POST',
 			headers: { ...authorHeaders, 'content-type': 'application/json' },
-			body: JSON.stringify(graphicsIngestionRequest({
-				idempotencyKey: 'integration-remote-copy-declared-length',
-				name: 'Invalid remote copy',
-				source: 'remote-copy',
-				declaredByteLength: 128,
-			})),
+			body: JSON.stringify(
+				graphicsIngestionRequest({
+					idempotencyKey: 'integration-remote-copy-declared-length',
+					name: 'Invalid remote copy',
+					source: 'remote-copy',
+					declaredByteLength: 128,
+				}),
+			),
 		});
 		expect(response.status).toBe(400);
 	});
@@ -112,17 +111,17 @@ describe('the approved remote HTTPS copy API', () => {
 			failure: { code: 'remote-source-rejected', retryable: false },
 			report: {
 				outcome: 'rejected',
-				issues: [
-					{ code: 'remote-source-credentials-present' },
-				],
+				issues: [{ code: 'remote-source-credentials-present' }],
 			},
 		});
 		expect(JSON.stringify(operation)).not.toContain('secret');
 
-		await expect($fetch<GraphicAsset[]>('/api/graphics-assets', {
-			headers: authorHeaders,
-			query: { search: 'Rejected remote copy' },
-		})).resolves.toEqual([]);
+		await expect(
+			$fetch<GraphicAsset[]>('/api/graphics-assets', {
+				headers: authorHeaders,
+				query: { search: 'Rejected remote copy' },
+			}),
+		).resolves.toEqual([]);
 	});
 
 	it('serves no staged source while an operation is not awaiting confirmation', async () => {
@@ -188,9 +187,11 @@ describe('the approved remote HTTPS copy API', () => {
 		expect(foreignStagedSource.status).toBe(404);
 
 		// The initiator still owns it: refusing everyone is not scoping.
-		await expect($fetch<GraphicsIngestionOperation>(
-			`/api/graphics-assets/ingestion-operations/${initiated.id}`,
-			{ headers: authorHeaders },
-		)).resolves.toMatchObject({ id: initiated.id });
+		await expect(
+			$fetch<GraphicsIngestionOperation>(
+				`/api/graphics-assets/ingestion-operations/${initiated.id}`,
+				{ headers: authorHeaders },
+			),
+		).resolves.toMatchObject({ id: initiated.id });
 	});
 });

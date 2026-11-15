@@ -8,7 +8,8 @@ export function useThemeRepository() {
 	const apiHeaders = useApiHeaders();
 	const library = '/api/themes';
 	const theme = (themeId: string) => `${library}/${encodeURIComponent(themeId)}`;
-	const token = (themeId: string, name: string) => `${theme(themeId)}/tokens/${encodeURIComponent(name)}`;
+	const token = (themeId: string, name: string) =>
+		`${theme(themeId)}/tokens/${encodeURIComponent(name)}`;
 
 	const list = async (): Promise<ThemeSummary[]> =>
 		(await $fetch<ThemeListResponse>(library)).themes;

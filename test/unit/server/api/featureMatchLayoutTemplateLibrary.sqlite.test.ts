@@ -39,37 +39,55 @@ const installed = new Map<string, InstalledGraphicsTemplateSummary>();
 vi.doMock('~~/server/modules/graphics-asset-library/runtime', () => ({
 	graphicsAssetLibraryForEvent: () => ({
 		listInstalledGraphicsTemplates: async () => [],
-		findInstalledGraphicsTemplate: async ({ templateId }: { templateId: string }) => installed.get(templateId),
+		findInstalledGraphicsTemplate: async ({ templateId }: { templateId: string }) =>
+			installed.get(templateId),
 		inspectGraphicAssetRevisions: async () => [],
 	}),
 }));
 
-interface StubEvent { params: Record<string, string>; body?: unknown }
+interface StubEvent {
+	params: Record<string, string>;
+	body?: unknown;
+}
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubEvent, parse: (value: unknown) => unknown) => parse(event.params),
+);
 vi.stubGlobal('readBody', async (event: StubEvent) => event.body);
 vi.stubGlobal('getRequestHeader', () => undefined);
 vi.stubGlobal('getRequestWebStream', () => undefined);
 vi.stubGlobal('setResponseStatus', () => {});
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 type Handler = (event: H3Event) => Promise<any>;
 const handler = (module: { default: unknown }) => module.default as Handler;
-const saveTemplate = handler(await import('~~/server/api/graphics-templates/feature-match-layouts/index.post'));
-const readTemplate = handler(await import('~~/server/api/graphics-templates/feature-match-layouts/[templateId]/index.get'));
-const reviseTemplate = handler(await import('~~/server/api/graphics-templates/feature-match-layouts/[templateId]/index.patch'));
-const placeTemplate = handler(await import('~~/server/api/events/[id]/screens/[screenId]/feature-match-overlay/layout-placements.post'));
-const { broadcastGraphicTemplateService } = await import('~~/server/services/broadcastGraphicTemplate');
+const saveTemplate = handler(
+	await import('~~/server/api/graphics-templates/feature-match-layouts/index.post'),
+);
+const readTemplate = handler(
+	await import('~~/server/api/graphics-templates/feature-match-layouts/[templateId]/index.get'),
+);
+const reviseTemplate = handler(
+	await import('~~/server/api/graphics-templates/feature-match-layouts/[templateId]/index.patch'),
+);
+const placeTemplate = handler(
+	await import('~~/server/api/events/[id]/screens/[screenId]/feature-match-overlay/layout-placements.post'),
+);
+const { broadcastGraphicTemplateService } =
+	await import('~~/server/services/broadcastGraphicTemplate');
 
 function call(handler: Handler, params: Record<string, string | number>, body?: unknown) {
-	return handler(stubH3Event({
-		params: Object.fromEntries(Object.entries(params).map(([key, value]) => [
-			key,
-			String(value),
-		])),
-		body,
-	}));
+	return handler(
+		stubH3Event({
+			params: Object.fromEntries(
+				Object.entries(params).map(([key, value]) => [key, String(value)]),
+			),
+			body,
+		}),
+	);
 }
 
 /** A layout unlike the default in its Frame and its Source Items. */
@@ -93,7 +111,11 @@ function authoredLayout(): FeatureMatchLayoutConfig {
 	return layout;
 }
 
-interface OverlayScreen { eventId: number; screenId: number; slotId: number }
+interface OverlayScreen {
+	eventId: number;
+	screenId: number;
+	slotId: number;
+}
 
 let screens = 0;
 
@@ -102,25 +124,29 @@ async function seedScreen(
 	layout: FeatureMatchLayoutConfig,
 	currentMode: 'feature-match-overlay' | 'background' = 'feature-match-overlay',
 ): Promise<OverlayScreen> {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Layouts', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [slot] = await db.insert(schema.featureMatches)
+	const [slot] = await db
+		.insert(schema.featureMatches)
 		.values({ eventId, tableNumber: 1 })
 		.returning({ id: schema.featureMatches.id });
 	const seed = ++screens;
-	const [screen] = await db.insert(schema.screens)
+	const [screen] = await db
+		.insert(schema.screens)
 		.values({
 			eventId,
 			name: `Screen ${seed}`,
 			slug: `screen-${seed}`,
 			currentMode,
-			modeConfigs: currentMode === 'feature-match-overlay'
-				? {
-						'feature-match-overlay': { layout, featureMatchId: slot!.id },
-					}
-				: {},
+			modeConfigs:
+				currentMode === 'feature-match-overlay'
+					? {
+							'feature-match-overlay': { layout, featureMatchId: slot!.id },
+						}
+					: {},
 			assetCapabilitySeed: `${seed}-seed`,
 			assetCapabilityDigest: `${seed}-digest`,
 		})
@@ -134,20 +160,32 @@ async function storedModeConfigs({ screenId }: OverlayScreen) {
 }
 
 async function storedOverlay(screen: OverlayScreen) {
-	return (await storedModeConfigs(screen))!['feature-match-overlay'] as { layout: FeatureMatchLayoutConfig; featureMatchId: number };
+	return (await storedModeConfigs(screen))!['feature-match-overlay'] as {
+		layout: FeatureMatchLayoutConfig;
+		featureMatchId: number;
+	};
 }
 
 async function storedTemplate(templateId: string) {
-	const [row] = await db.select().from(schema.featureMatchLayoutTemplates).where(eq(schema.featureMatchLayoutTemplates.id, templateId));
+	const [row] = await db
+		.select()
+		.from(schema.featureMatchLayoutTemplates)
+		.where(eq(schema.featureMatchLayoutTemplates.id, templateId));
 	return row!;
 }
 
 async function place(target: OverlayScreen, templateId: string) {
-	return await call(placeTemplate, { id: target.eventId, screenId: target.screenId }, { templateId, stateVersion: 0 });
+	return await call(
+		placeTemplate,
+		{ id: target.eventId, screenId: target.screenId },
+		{ templateId, stateVersion: 0 },
+	);
 }
 
 const AUTHORED = JSON.parse(JSON.stringify(authoredLayout())) as FeatureMatchLayoutConfig;
-const DEFAULT = JSON.parse(JSON.stringify(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout)) as FeatureMatchLayoutConfig;
+const DEFAULT = JSON.parse(
+	JSON.stringify(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout),
+) as FeatureMatchLayoutConfig;
 
 let source: OverlayScreen;
 /** A Screen in another Event, holding the default layout and its own Slot. */
@@ -159,11 +197,15 @@ beforeEach(async () => {
 	installed.clear();
 	source = await seedScreen(authoredLayout());
 	target = await seedScreen(structuredClone(DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG.layout));
-	saved = await call(saveTemplate, {}, {
-		source: { eventId: source.eventId, screenId: source.screenId },
-		name: 'Authored layout',
-		description: 'Saved from the source Screen',
-	});
+	saved = await call(
+		saveTemplate,
+		{},
+		{
+			source: { eventId: source.eventId, screenId: source.screenId },
+			name: 'Authored layout',
+			description: 'Saved from the source Screen',
+		},
+	);
 	templateId = saved.id;
 });
 
@@ -171,7 +213,7 @@ afterAll(async () => {
 	await harness.close();
 });
 
-describe('saving a Screen\'s layout as a Feature Match Layout Template', () => {
+describe("saving a Screen's layout as a Feature Match Layout Template", () => {
 	it('stores the layout at revision 1 and leaves the Screen as it was', async () => {
 		expect(saved).toMatchObject({
 			name: 'Authored layout',
@@ -182,7 +224,10 @@ describe('saving a Screen\'s layout as a Feature Match Layout Template', () => {
 		});
 		expect(saved.document).toEqual(AUTHORED);
 		expect(await storedTemplate(templateId)).toMatchObject({ revision: 1, document: AUTHORED });
-		expect(await storedOverlay(source)).toEqual({ layout: AUTHORED, featureMatchId: source.slotId });
+		expect(await storedOverlay(source)).toEqual({
+			layout: AUTHORED,
+			featureMatchId: source.slotId,
+		});
 	});
 
 	// The name check reads as the rule; equality is what catches a Slot under another key.
@@ -195,12 +240,18 @@ describe('saving a Screen\'s layout as a Feature Match Layout Template', () => {
 
 	// The author is told when a layout saved here is not offered to their Event (ADR-0087).
 	it('answers whether the saved layout is four-Seat', async () => {
-		const commanderTable = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(template => template.id === 'commander-table')!;
+		const commanderTable = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(
+			(template) => template.id === 'commander-table',
+		)!;
 		const fourSeatSource = await seedScreen(structuredClone(commanderTable.config.layout));
 
-		const fourSeat = await call(saveTemplate, {}, {
-			source: { eventId: fourSeatSource.eventId, screenId: fourSeatSource.screenId },
-		});
+		const fourSeat = await call(
+			saveTemplate,
+			{},
+			{
+				source: { eventId: fourSeatSource.eventId, screenId: fourSeatSource.screenId },
+			},
+		);
 
 		expect(fourSeat.fourSeat).toBe(true);
 		expect(saved).not.toHaveProperty('fourSeat');
@@ -214,7 +265,10 @@ describe('placing a Feature Match Layout Template', () => {
 		const placed = await place(target, templateId);
 
 		expect(placed.layout).toEqual(AUTHORED);
-		expect(await storedOverlay(target)).toEqual({ layout: AUTHORED, featureMatchId: target.slotId });
+		expect(await storedOverlay(target)).toEqual({
+			layout: AUTHORED,
+			featureMatchId: target.slotId,
+		});
 	});
 
 	it('refuses a Screen that is not a Feature Match Overlay, writing nothing to it', async () => {
@@ -263,7 +317,9 @@ describe('placing a Feature Match Layout Template', () => {
 	])('does not resolve $identity, to read or to place', async ({ arrange }) => {
 		const graphicTemplateId = await arrange();
 
-		await expect(call(readTemplate, { templateId: graphicTemplateId })).rejects.toMatchObject({ statusCode: 404 });
+		await expect(call(readTemplate, { templateId: graphicTemplateId })).rejects.toMatchObject({
+			statusCode: 404,
+		});
 		await expect(place(target, graphicTemplateId)).rejects.toMatchObject({
 			statusCode: 404,
 			message: 'Feature Match Layout Template not found',
@@ -283,10 +339,14 @@ describe('revising a Feature Match Layout Template', () => {
 	it('advances the revision and leaves a layout already placed from it alone', async () => {
 		await place(target, templateId);
 
-		const revised = await call(reviseTemplate, { templateId }, {
-			document: revisedLayout(),
-			revision: 1,
-		});
+		const revised = await call(
+			reviseTemplate,
+			{ templateId },
+			{
+				document: revisedLayout(),
+				revision: 1,
+			},
+		);
 
 		expect(revised).toMatchObject({ id: templateId, revision: 2 });
 		expect(await storedTemplate(templateId)).toMatchObject({
@@ -297,16 +357,25 @@ describe('revising a Feature Match Layout Template', () => {
 	});
 
 	it('refuses a revision the writer did not read, naming the one it is at', async () => {
-		await call(reviseTemplate, { templateId }, {
-			document: revisedLayout(),
-			revision: 1,
-		});
+		await call(
+			reviseTemplate,
+			{ templateId },
+			{
+				document: revisedLayout(),
+				revision: 1,
+			},
+		);
 
-		await expect(call(reviseTemplate, { templateId }, { name: 'Stale rename', revision: 1 })).rejects.toMatchObject({
+		await expect(
+			call(reviseTemplate, { templateId }, { name: 'Stale rename', revision: 1 }),
+		).rejects.toMatchObject({
 			statusCode: 409,
 			message: expect.stringContaining('now revision 2'),
 		});
 
-		expect(await storedTemplate(templateId)).toMatchObject({ name: 'Authored layout', revision: 2 });
+		expect(await storedTemplate(templateId)).toMatchObject({
+			name: 'Authored layout',
+			revision: 2,
+		});
 	});
 });

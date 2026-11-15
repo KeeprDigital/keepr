@@ -1,4 +1,17 @@
-import type { DbArchetype, DbEvent, DbEventTalent, DbFeatureMatch, DbFeatureMatchAssignment, DbMatch, DbPhase, DbPlayer, DbPlayerDeck, DbPlayerList, DbRound, DbScreen } from '~~/server/db/schema';
+import type {
+	DbArchetype,
+	DbEvent,
+	DbEventTalent,
+	DbFeatureMatch,
+	DbFeatureMatchAssignment,
+	DbMatch,
+	DbPhase,
+	DbPlayer,
+	DbPlayerDeck,
+	DbPlayerList,
+	DbRound,
+	DbScreen,
+} from '~~/server/db/schema';
 import type { ArchetypeKeyCard } from '~~/server/services/archetypeCard';
 import type { BroadcastDeckListResponse } from '~~/shared/types/broadcastDeckList';
 import type { MessagePayload, MessageType } from '~~/shared/types/messages';
@@ -64,7 +77,8 @@ interface PlayerDeckPublicationInput extends EntityPublicationInput<DbPlayerDeck
 	archetype?: DbArchetype | null;
 }
 
-interface PlayerDeckCardsResolvedInput extends PublicationInput, MessagePayload<'playerDeck:cardsResolved'> {}
+interface PlayerDeckCardsResolvedInput
+	extends PublicationInput, MessagePayload<'playerDeck:cardsResolved'> {}
 
 interface PlayerDeckProjectionsChangedInput extends PublicationInput {
 	playerIds: readonly number[];
@@ -96,13 +110,17 @@ interface PlayersSyncedInput extends PublicationInput {
 
 interface StructureSyncedInput extends PublicationInput, MessagePayload<'melee:structureSynced'> {}
 
-interface FeatureMatchesSyncedInput extends PublicationInput, MessagePayload<'melee:featureMatchesSynced'> {}
+interface FeatureMatchesSyncedInput
+	extends PublicationInput, MessagePayload<'melee:featureMatchesSynced'> {}
 
-interface MeleeMatchResultsSyncedInput extends PublicationInput, MessagePayload<'melee:matchResultsSynced'> {}
+interface MeleeMatchResultsSyncedInput
+	extends PublicationInput, MessagePayload<'melee:matchResultsSynced'> {}
 
-interface MeleePairingsSyncedInput extends PublicationInput, MessagePayload<'melee:pairingsSynced'> {}
+interface MeleePairingsSyncedInput
+	extends PublicationInput, MessagePayload<'melee:pairingsSynced'> {}
 
-interface MeleeRoundStandingsSyncedInput extends PublicationInput, MessagePayload<'melee:roundStandingsSynced'> {}
+interface MeleeRoundStandingsSyncedInput
+	extends PublicationInput, MessagePayload<'melee:roundStandingsSynced'> {}
 
 interface MeleeDataResetInput extends PublicationInput, MessagePayload<'melee:dataReset'> {}
 
@@ -131,16 +149,18 @@ export async function publishSyncAfterCommit(
 ): Promise<void> {
 	try {
 		await publish();
-	}
-	catch (error) {
-		if (!(error instanceof RealtimePublicationError))
-			throw error;
-		console.warn(JSON.stringify({
-			message: logMessage,
-			messageType: error.messageType,
-			...publishFailureFields(error.cause),
-		}));
-		warnings.push(`Data was saved, but realtime notification "${error.messageType}" could not be delivered`);
+	} catch (error) {
+		if (!(error instanceof RealtimePublicationError)) throw error;
+		console.warn(
+			JSON.stringify({
+				message: logMessage,
+				messageType: error.messageType,
+				...publishFailureFields(error.cause),
+			}),
+		);
+		warnings.push(
+			`Data was saved, but realtime notification "${error.messageType}" could not be delivered`,
+		);
 	}
 }
 
@@ -191,8 +211,7 @@ async function publishEventDataMessages(
 	messages: readonly EventDataMessage[],
 	originConnectionId?: string,
 ): Promise<void> {
-	if (messages.length === 0)
-		return;
+	if (messages.length === 0) return;
 	// One change to the Screens too: each is told once, however many messages it shows.
 	await asOneOutputChange(async () => {
 		for (const message of messages) {
@@ -212,8 +231,7 @@ async function publishSyncMessage<T extends MessageType>(
 ) {
 	try {
 		await publishMessageStrict(eventId, messageType, payload, originConnectionId);
-	}
-	catch (error) {
+	} catch (error) {
 		throw new RealtimePublicationError(messageType, { cause: error });
 	}
 
@@ -244,27 +262,54 @@ function mapArchetypeKeyCardPublication(archetypeId: number, card: ArchetypeKeyC
 }
 
 export function eventDataPublicationModule() {
-	async function broadcastDeckListCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<BroadcastDeckListResponse>) {
-		await publishMessage(eventId, 'broadcastDeckList:created', {
-			listId: entity.id,
-			revision: entity.revision,
-		}, originConnectionId);
+	async function broadcastDeckListCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<BroadcastDeckListResponse>) {
+		await publishMessage(
+			eventId,
+			'broadcastDeckList:created',
+			{
+				listId: entity.id,
+				revision: entity.revision,
+			},
+			originConnectionId,
+		);
 		return entity;
 	}
 
-	async function broadcastDeckListUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<BroadcastDeckListResponse>) {
-		await publishMessage(eventId, 'broadcastDeckList:updated', {
-			listId: entity.id,
-			revision: entity.revision,
-		}, originConnectionId);
+	async function broadcastDeckListUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<BroadcastDeckListResponse>) {
+		await publishMessage(
+			eventId,
+			'broadcastDeckList:updated',
+			{
+				listId: entity.id,
+				revision: entity.revision,
+			},
+			originConnectionId,
+		);
 		return entity;
 	}
 
-	async function broadcastDeckListDeleted({ eventId, id, originConnectionId }: DeletedPublicationInput) {
+	async function broadcastDeckListDeleted({
+		eventId,
+		id,
+		originConnectionId,
+	}: DeletedPublicationInput) {
 		await publishMessage(eventId, 'broadcastDeckList:deleted', { listId: id }, originConnectionId);
 	}
 
-	async function archetypeCreated({ eventId, entity, originConnectionId, keyCards = [] }: ArchetypePublicationInput) {
+	async function archetypeCreated({
+		eventId,
+		entity,
+		originConnectionId,
+		keyCards = [],
+	}: ArchetypePublicationInput) {
 		const archetype = {
 			...mapArchetypeToResponse(entity),
 			keyCards: keyCards.map(mapArchetypeKeyCard),
@@ -273,7 +318,12 @@ export function eventDataPublicationModule() {
 		return archetype;
 	}
 
-	async function archetypeUpdated({ eventId, entity, originConnectionId, keyCards = [] }: ArchetypePublicationInput) {
+	async function archetypeUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+		keyCards = [],
+	}: ArchetypePublicationInput) {
 		const archetype = {
 			...mapArchetypeToResponse(entity),
 			keyCards: keyCards.map(mapArchetypeKeyCard),
@@ -283,22 +333,48 @@ export function eventDataPublicationModule() {
 	}
 
 	/** `mergedIntoArchetypeId` names the Archetype a merge moved its decks to; a plain delete left them unreviewed. */
-	async function archetypeDeleted({ eventId, id, mergedIntoArchetypeId, originConnectionId }: DeletedPublicationInput & { mergedIntoArchetypeId?: number }) {
-		await publishEventDataChange(eventId, 'archetype:deleted', mergedIntoArchetypeId === undefined
-			? { archetypeId: id }
-			: { archetypeId: id, mergedIntoArchetypeId }, originConnectionId);
+	async function archetypeDeleted({
+		eventId,
+		id,
+		mergedIntoArchetypeId,
+		originConnectionId,
+	}: DeletedPublicationInput & { mergedIntoArchetypeId?: number }) {
+		await publishEventDataChange(
+			eventId,
+			'archetype:deleted',
+			mergedIntoArchetypeId === undefined
+				? { archetypeId: id }
+				: { archetypeId: id, mergedIntoArchetypeId },
+			originConnectionId,
+		);
 	}
 
-	async function archetypeKeyCardsUpdated({ eventId, archetypeId, keyCards, originConnectionId }: ArchetypeKeyCardsUpdatedInput) {
-		const mappedKeyCards = keyCards.map(card => mapArchetypeKeyCardPublication(archetypeId, card));
-		await publishEventDataChange(eventId, 'archetype:keyCardsUpdated', {
-			archetypeId,
-			keyCards: mappedKeyCards,
-		}, originConnectionId);
+	async function archetypeKeyCardsUpdated({
+		eventId,
+		archetypeId,
+		keyCards,
+		originConnectionId,
+	}: ArchetypeKeyCardsUpdatedInput) {
+		const mappedKeyCards = keyCards.map((card) =>
+			mapArchetypeKeyCardPublication(archetypeId, card),
+		);
+		await publishEventDataChange(
+			eventId,
+			'archetype:keyCardsUpdated',
+			{
+				archetypeId,
+				keyCards: mappedKeyCards,
+			},
+			originConnectionId,
+		);
 		return mappedKeyCards;
 	}
 
-	async function eventUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<EventEntity>) {
+	async function eventUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<EventEntity>) {
 		const event = mapEventToResponse(entity);
 		await publishEventDataChange(eventId, 'event:updated', { event }, originConnectionId);
 		return event;
@@ -308,13 +384,21 @@ export function eventDataPublicationModule() {
 		await publishMessage(eventId, 'event:deleted', { eventId }, originConnectionId);
 	}
 
-	async function phaseCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbPhase>) {
+	async function phaseCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbPhase>) {
 		const phase = mapPhaseToResponse(entity);
 		await publishEventDataChange(eventId, 'phase:created', { phase }, originConnectionId);
 		return phase;
 	}
 
-	async function phaseUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbPhase>) {
+	async function phaseUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbPhase>) {
 		const phase = mapPhaseToResponse(entity);
 		await publishEventDataChange(eventId, 'phase:updated', { phase }, originConnectionId);
 		return phase;
@@ -324,13 +408,21 @@ export function eventDataPublicationModule() {
 		await publishEventDataChange(eventId, 'phase:deleted', { phaseId: id }, originConnectionId);
 	}
 
-	async function playerCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbPlayer>) {
+	async function playerCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbPlayer>) {
 		const player = mapPlayerToResponse(entity);
 		await publishEventDataChange(eventId, 'player:created', { player }, originConnectionId);
 		return player;
 	}
 
-	async function playerUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbPlayer>) {
+	async function playerUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbPlayer>) {
 		const player = mapPlayerToResponse(entity);
 		await publishEventDataChange(eventId, 'player:updated', { player }, originConnectionId);
 		return player;
@@ -340,12 +432,20 @@ export function eventDataPublicationModule() {
 	 * Announces many Players a bulk write changed, each by its own `player:updated`
 	 * in the order given, as one change: Graphic Input Bindings re-resolve once.
 	 */
-	async function playersUpdated({ eventId, entities, originConnectionId }: PublicationInput & { entities: readonly DbPlayer[] }) {
+	async function playersUpdated({
+		eventId,
+		entities,
+		originConnectionId,
+	}: PublicationInput & { entities: readonly DbPlayer[] }) {
 		const updated = entities.map(mapPlayerToResponse);
-		await publishEventDataMessages(eventId, updated.map(player => ({
-			type: 'player:updated',
-			payload: { player },
-		})), originConnectionId);
+		await publishEventDataMessages(
+			eventId,
+			updated.map((player) => ({
+				type: 'player:updated',
+				payload: { player },
+			})),
+			originConnectionId,
+		);
 		return updated;
 	}
 
@@ -358,29 +458,45 @@ export function eventDataPublicationModule() {
 	 * consumer re-reads as it does after a sync. So the message is bounded by
 	 * construction, and `realtime_publish_oversized` cannot fire for it.
 	 */
-	async function playerDeckProjectionsChanged({ eventId, playerIds, originConnectionId }: PlayerDeckProjectionsChangedInput) {
-		if (playerIds.length === 0)
-			return;
+	async function playerDeckProjectionsChanged({
+		eventId,
+		playerIds,
+		originConnectionId,
+	}: PlayerDeckProjectionsChangedInput) {
+		if (playerIds.length === 0) return;
 		const named = {
 			playerIds: [...playerIds],
 		};
-		const fits = realtimeMessageBytes(eventId, 'player:deckProjectionsChanged', named, originConnectionId) <= MAX_REALTIME_MESSAGE_BYTES;
-		await publishEventDataChange(eventId, 'player:deckProjectionsChanged', fits
-			? named
-			: { playerIds: null }, originConnectionId);
+		const fits =
+			realtimeMessageBytes(eventId, 'player:deckProjectionsChanged', named, originConnectionId) <=
+			MAX_REALTIME_MESSAGE_BYTES;
+		await publishEventDataChange(
+			eventId,
+			'player:deckProjectionsChanged',
+			fits ? named : { playerIds: null },
+			originConnectionId,
+		);
 	}
 
 	async function playerDeleted({ eventId, id, originConnectionId }: DeletedPublicationInput) {
 		await publishEventDataChange(eventId, 'player:deleted', { playerId: id }, originConnectionId);
 	}
 
-	async function playerListCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbPlayerList>) {
+	async function playerListCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbPlayerList>) {
 		const playerList = mapPlayerListToResponse(entity);
 		await publishMessage(eventId, 'playerList:created', { playerList }, originConnectionId);
 		return playerList;
 	}
 
-	async function playerListUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbPlayerList>) {
+	async function playerListUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbPlayerList>) {
 		const playerList = mapPlayerListToResponse(entity);
 		await publishMessage(eventId, 'playerList:updated', { playerList }, originConnectionId);
 		return playerList;
@@ -390,17 +506,29 @@ export function eventDataPublicationModule() {
 		await publishMessage(eventId, 'playerList:deleted', { listId: id }, originConnectionId);
 	}
 
-	async function playerListMembersChanged({ eventId, originConnectionId, ...payload }: PlayerListMembersChangedInput) {
+	async function playerListMembersChanged({
+		eventId,
+		originConnectionId,
+		...payload
+	}: PlayerListMembersChangedInput) {
 		await publishMessage(eventId, 'playerList:membersChanged', payload, originConnectionId);
 	}
 
-	async function talentCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbEventTalent>) {
+	async function talentCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbEventTalent>) {
 		const talent = mapTalentToResponse(entity);
 		await publishEventDataChange(eventId, 'talent:created', { talent }, originConnectionId);
 		return talent;
 	}
 
-	async function talentUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbEventTalent>) {
+	async function talentUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbEventTalent>) {
 		const talent = mapTalentToResponse(entity);
 		await publishEventDataChange(eventId, 'talent:updated', { talent }, originConnectionId);
 		return talent;
@@ -410,13 +538,21 @@ export function eventDataPublicationModule() {
 		await publishEventDataChange(eventId, 'talent:deleted', { talentId: id }, originConnectionId);
 	}
 
-	async function roundCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbRound>) {
+	async function roundCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbRound>) {
 		const round = mapRoundToResponse(entity);
 		await publishEventDataChange(eventId, 'round:created', { round }, originConnectionId);
 		return round;
 	}
 
-	async function roundUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbRound>) {
+	async function roundUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbRound>) {
 		const round = mapRoundToResponse(entity);
 		await publishEventDataChange(eventId, 'round:updated', { round }, originConnectionId);
 		return round;
@@ -426,13 +562,21 @@ export function eventDataPublicationModule() {
 		await publishEventDataChange(eventId, 'round:deleted', { roundId: id }, originConnectionId);
 	}
 
-	async function matchCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbMatch>) {
+	async function matchCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbMatch>) {
 		const match = mapMatchToResponse(entity);
 		await publishEventDataChange(eventId, 'match:created', { match }, originConnectionId);
 		return match;
 	}
 
-	async function matchUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbMatch>) {
+	async function matchUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbMatch>) {
 		const match = mapMatchToResponse(entity);
 		await publishEventDataChange(eventId, 'match:updated', { match }, originConnectionId);
 		return match;
@@ -442,44 +586,92 @@ export function eventDataPublicationModule() {
 		await publishEventDataChange(eventId, 'match:deleted', { matchId: id }, originConnectionId);
 	}
 
-	async function featureMatchSlotCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbFeatureMatch>) {
+	async function featureMatchSlotCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbFeatureMatch>) {
 		const featureMatch = mapFeatureMatchToResponse(entity);
-		await publishEventDataChange(eventId, 'featureMatch:created', { featureMatch }, originConnectionId);
+		await publishEventDataChange(
+			eventId,
+			'featureMatch:created',
+			{ featureMatch },
+			originConnectionId,
+		);
 		return featureMatch;
 	}
 
-	async function featureMatchSlotUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbFeatureMatch>) {
+	async function featureMatchSlotUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbFeatureMatch>) {
 		const message = featureMatchMessages.slotUpdated(entity);
 		await publishEventDataMessages(eventId, [message], originConnectionId);
 		return message.payload.featureMatch;
 	}
 
-	async function featureMatchSlotDeleted({ eventId, id, originConnectionId }: DeletedPublicationInput) {
-		await publishEventDataChange(eventId, 'featureMatch:deleted', { featureMatchId: id }, originConnectionId);
+	async function featureMatchSlotDeleted({
+		eventId,
+		id,
+		originConnectionId,
+	}: DeletedPublicationInput) {
+		await publishEventDataChange(
+			eventId,
+			'featureMatch:deleted',
+			{ featureMatchId: id },
+			originConnectionId,
+		);
 	}
 
-	async function featureMatchSlotsReordered({ eventId, slots, originConnectionId }: FeatureMatchSlotsReorderedInput) {
-		const featureMatches = slots.map(slot => ({ featureMatchId: slot.matchId, sortOrder: slot.sortOrder }));
-		await publishEventDataChange(eventId, 'featureMatch:reordered', { featureMatches }, originConnectionId);
+	async function featureMatchSlotsReordered({
+		eventId,
+		slots,
+		originConnectionId,
+	}: FeatureMatchSlotsReorderedInput) {
+		const featureMatches = slots.map((slot) => ({
+			featureMatchId: slot.matchId,
+			sortOrder: slot.sortOrder,
+		}));
+		await publishEventDataChange(
+			eventId,
+			'featureMatch:reordered',
+			{ featureMatches },
+			originConnectionId,
+		);
 		return featureMatches;
 	}
 
-	async function featureMatchAssignmentCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbFeatureMatchAssignment>) {
+	async function featureMatchAssignmentCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbFeatureMatchAssignment>) {
 		const message = featureMatchMessages.assignmentCreated(entity);
 		await publishEventDataMessages(eventId, [message], originConnectionId);
 		return message.payload.featureMatchAssignment;
 	}
 
-	async function featureMatchAssignmentUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbFeatureMatchAssignment>) {
+	async function featureMatchAssignmentUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbFeatureMatchAssignment>) {
 		const message = featureMatchMessages.assignmentUpdated(entity);
 		await publishEventDataMessages(eventId, [message], originConnectionId);
 		return message.payload.featureMatchAssignment;
 	}
 
-	async function featureMatchAssignmentDeleted({ eventId, id, originConnectionId }: DeletedPublicationInput) {
-		await publishEventDataMessages(eventId, [
-			featureMatchMessages.assignmentDeleted(id),
-		], originConnectionId);
+	async function featureMatchAssignmentDeleted({
+		eventId,
+		id,
+		originConnectionId,
+	}: DeletedPublicationInput) {
+		await publishEventDataMessages(
+			eventId,
+			[featureMatchMessages.assignmentDeleted(id)],
+			originConnectionId,
+		);
 	}
 
 	/*
@@ -497,13 +689,21 @@ export function eventDataPublicationModule() {
 	 * See #95, and #60's settled rule that realtime is notification and snapshots are
 	 * authority.
 	 */
-	async function screenCreated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbScreen>) {
+	async function screenCreated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbScreen>) {
 		const screen = mapScreenToResponse(entity);
 		await publishMessage(eventId, 'screen:created', { screenId: screen.id }, originConnectionId);
 		return screen;
 	}
 
-	async function screenUpdated({ eventId, entity, originConnectionId }: EntityPublicationInput<DbScreen>) {
+	async function screenUpdated({
+		eventId,
+		entity,
+		originConnectionId,
+	}: EntityPublicationInput<DbScreen>) {
 		const screen = mapScreenToResponse(entity);
 		await publishMessage(eventId, 'screen:updated', { screenId: screen.id }, originConnectionId);
 		return screen;
@@ -513,23 +713,22 @@ export function eventDataPublicationModule() {
 		await publishMessage(eventId, 'screen:deleted', { screenId: id }, originConnectionId);
 	}
 
-	async function featureMatchSlotsUpdated({ eventId, slotIds, originConnectionId }: FeatureMatchSlotsUpdatedInput) {
-		if (slotIds.length === 0)
-			return [];
+	async function featureMatchSlotsUpdated({
+		eventId,
+		slotIds,
+		originConnectionId,
+	}: FeatureMatchSlotsUpdatedInput) {
+		if (slotIds.length === 0) return [];
 
 		// One relational-load query for every Slot in the Event (capped at 50)
 		// instead of a findById-per-Slot loop (each of which also issued its own
 		// activeSession lookup). Slot order/skip semantics are preserved by
 		// iterating slotIds and looking up each in the fetched map.
 		const slots = await featureMatchService().findByEventId(eventId);
-		const slotsById = new Map(slots.map(slot => [slot.id, slot]));
+		const slotsById = new Map(slots.map((slot) => [slot.id, slot]));
 		const messages = slotIds.flatMap((slotId) => {
 			const slot = slotsById.get(slotId);
-			return slot
-				? [
-						featureMatchMessages.slotUpdated(slot),
-					]
-				: [];
+			return slot ? [featureMatchMessages.slotUpdated(slot)] : [];
 		});
 
 		// Announced one by one, because each message names one Slot, and caught up once,
@@ -539,51 +738,103 @@ export function eventDataPublicationModule() {
 		// times inside one request.
 		await publishEventDataMessages(eventId, messages, originConnectionId);
 
-		return messages.map(message => message.payload.featureMatch);
+		return messages.map((message) => message.payload.featureMatch);
 	}
 
 	/**
 	 * Publish a Feature Match Slot Promotion's messages, decided before any is
 	 * published, as one change: Graphic Input Bindings re-resolve once for the lot.
 	 */
-	async function featureMatchSlotPromoted({ eventId, messages, originConnectionId }: FeatureMatchSlotPromotedInput) {
+	async function featureMatchSlotPromoted({
+		eventId,
+		messages,
+		originConnectionId,
+	}: FeatureMatchSlotPromotedInput) {
 		await publishEventDataMessages(eventId, messages, originConnectionId);
 	}
 
-	async function roundMatchesRefreshed({ eventId, originConnectionId, ...payload }: RoundMatchesRefreshedInput) {
+	async function roundMatchesRefreshed({
+		eventId,
+		originConnectionId,
+		...payload
+	}: RoundMatchesRefreshedInput) {
 		await publishEventDataChange(eventId, 'round:matchesRefreshed', payload, originConnectionId);
 	}
 
-	async function meleeDeckListsSynced({ eventId, originConnectionId, playerCount, deckCount }: DeckListsSyncedInput) {
-		await publishSyncMessage(eventId, 'melee:decklistsSynced', { playerCount, deckCount }, originConnectionId);
+	async function meleeDeckListsSynced({
+		eventId,
+		originConnectionId,
+		playerCount,
+		deckCount,
+	}: DeckListsSyncedInput) {
+		await publishSyncMessage(
+			eventId,
+			'melee:decklistsSynced',
+			{ playerCount, deckCount },
+			originConnectionId,
+		);
 	}
 
 	/** A TCG+ Import reports its Players and Deck Lists as a count, as a Melee Sync does. */
-	async function tcgPlusImported({ eventId, originConnectionId, playerCount, deckCount }: TcgPlusImportedInput) {
-		await publishSyncMessage(eventId, 'tcgplus:imported', { playerCount, deckCount }, originConnectionId);
+	async function tcgPlusImported({
+		eventId,
+		originConnectionId,
+		playerCount,
+		deckCount,
+	}: TcgPlusImportedInput) {
+		await publishSyncMessage(
+			eventId,
+			'tcgplus:imported',
+			{ playerCount, deckCount },
+			originConnectionId,
+		);
 	}
 
-	async function meleePlayersSynced({ eventId, originConnectionId, playerCount }: PlayersSyncedInput) {
+	async function meleePlayersSynced({
+		eventId,
+		originConnectionId,
+		playerCount,
+	}: PlayersSyncedInput) {
 		await publishSyncMessage(eventId, 'melee:playersSynced', { playerCount }, originConnectionId);
 	}
 
-	async function meleeStructureSynced({ eventId, originConnectionId, ...payload }: StructureSyncedInput) {
+	async function meleeStructureSynced({
+		eventId,
+		originConnectionId,
+		...payload
+	}: StructureSyncedInput) {
 		await publishSyncMessage(eventId, 'melee:structureSynced', payload, originConnectionId);
 	}
 
-	async function meleeFeatureMatchesSynced({ eventId, originConnectionId, ...payload }: FeatureMatchesSyncedInput) {
+	async function meleeFeatureMatchesSynced({
+		eventId,
+		originConnectionId,
+		...payload
+	}: FeatureMatchesSyncedInput) {
 		await publishSyncMessage(eventId, 'melee:featureMatchesSynced', payload, originConnectionId);
 	}
 
-	async function meleeMatchResultsSynced({ eventId, originConnectionId, ...payload }: MeleeMatchResultsSyncedInput) {
+	async function meleeMatchResultsSynced({
+		eventId,
+		originConnectionId,
+		...payload
+	}: MeleeMatchResultsSyncedInput) {
 		await publishSyncMessage(eventId, 'melee:matchResultsSynced', payload, originConnectionId);
 	}
 
-	async function meleePairingsSynced({ eventId, originConnectionId, ...payload }: MeleePairingsSyncedInput) {
+	async function meleePairingsSynced({
+		eventId,
+		originConnectionId,
+		...payload
+	}: MeleePairingsSyncedInput) {
 		await publishSyncMessage(eventId, 'melee:pairingsSynced', payload, originConnectionId);
 	}
 
-	async function meleeRoundStandingsSynced({ eventId, originConnectionId, ...payload }: MeleeRoundStandingsSyncedInput) {
+	async function meleeRoundStandingsSynced({
+		eventId,
+		originConnectionId,
+		...payload
+	}: MeleeRoundStandingsSyncedInput) {
 		await publishSyncMessage(eventId, 'melee:roundStandingsSynced', payload, originConnectionId);
 	}
 
@@ -594,13 +845,22 @@ export function eventDataPublicationModule() {
 		await publishEventDataChange(eventId, 'melee:dataReset', payload, originConnectionId);
 	}
 
-	async function playerDeckReviewed({ eventId, entity, archetype, originConnectionId }: PlayerDeckPublicationInput) {
+	async function playerDeckReviewed({
+		eventId,
+		entity,
+		archetype,
+		originConnectionId,
+	}: PlayerDeckPublicationInput) {
 		const deck = mapPlayerDeckSummary(entity, archetype);
 		await publishEventDataChange(eventId, 'playerDeck:reviewed', { deck }, originConnectionId);
 		return deck;
 	}
 
-	async function playerDeckCardsResolved({ eventId, originConnectionId, ...payload }: PlayerDeckCardsResolvedInput) {
+	async function playerDeckCardsResolved({
+		eventId,
+		originConnectionId,
+		...payload
+	}: PlayerDeckCardsResolvedInput) {
 		// Published plainly: no Graphic Input Binding reads a Deck List's cards.
 		await publishMessage(eventId, 'playerDeck:cardsResolved', payload, originConnectionId);
 	}

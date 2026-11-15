@@ -44,9 +44,10 @@ function playerToFormData(player: Player): PlayerData {
 
 function playerToGameDataForm(player: Player) {
 	return {
-		mtg: (player.gameData as MtgPlayerGameData)?.type === 'mtg'
-			? { ...(player.gameData as MtgPlayerGameData) }
-			: { type: 'mtg', deckName: null, deckColors: null } as MtgPlayerGameData,
+		mtg:
+			(player.gameData as MtgPlayerGameData)?.type === 'mtg'
+				? { ...(player.gameData as MtgPlayerGameData) }
+				: ({ type: 'mtg', deckName: null, deckColors: null } as MtgPlayerGameData),
 	};
 }
 
@@ -54,7 +55,9 @@ const saving = ref(false);
 
 // The Player as the store holds them now: a Melee Sync or a colleague's edit
 // can change them under the open modal, and `props.player` is as it was opened.
-const heldPlayer = computed(() => playerStore.players.find(held => held.id === props.player.id) ?? props.player);
+const heldPlayer = computed(
+	() => playerStore.players.find((held) => held.id === props.player.id) ?? props.player,
+);
 
 // The forms' baselines follow the held Player, so a field the operator left
 // alone is neither shown nor saved stale. Not through this modal's own save:
@@ -62,8 +65,7 @@ const heldPlayer = computed(() => playerStore.players.find(held => held.id === p
 const playerBaseline = shallowRef(playerToFormData(heldPlayer.value));
 const gameDataBaseline = shallowRef(playerToGameDataForm(heldPlayer.value));
 watchEffect(() => {
-	if (saving.value)
-		return;
+	if (saving.value) return;
 	playerBaseline.value = playerToFormData(heldPlayer.value);
 	gameDataBaseline.value = playerToGameDataForm(heldPlayer.value);
 });
@@ -117,8 +119,7 @@ const isValid = computed(() => unshownPlayerReason(props.game, formData.value) =
 // Only what the operator changed is written, through `runSave` (ADR-0044): a
 // field left alone keeps whatever the Player holds by the time the save lands.
 async function handleSave() {
-	if (!isValid.value || !eventStore.eventId)
-		return;
+	if (!isValid.value || !eventStore.eventId) return;
 
 	const changes = getPlayerChanges() as Partial<PlayerData>;
 	const input: UpdatePlayerInput = {
@@ -127,22 +128,22 @@ async function handleSave() {
 		// A One Piece Player's game data is their Deck List's, written by the OP Deck List write (ADR-0074).
 		...(props.game === 'mtg' && isGameDataDirty.value && { gameData: mtgGameData.value }),
 	};
-	if (Object.keys(input).length === 0)
-		return;
+	if (Object.keys(input).length === 0) return;
 
-	await runPlayerSave(() => runGameDataSave(() => runRequest(
-		() => playerStore.updatePlayer(eventStore.eventId!, props.player.id, input),
-		{
-			loadingRef: saving,
-			success: { title: 'Player updated', color: 'success' },
-			error: { title: 'Failed to update player', color: 'error' },
-			onSuccess: () => {
-				settled.value = true;
-				emit('updated');
-				emit('close');
-			},
-		},
-	)));
+	await runPlayerSave(() =>
+		runGameDataSave(() =>
+			runRequest(() => playerStore.updatePlayer(eventStore.eventId!, props.player.id, input), {
+				loadingRef: saving,
+				success: { title: 'Player updated', color: 'success' },
+				error: { title: 'Failed to update player', color: 'error' },
+				onSuccess: () => {
+					settled.value = true;
+					emit('updated');
+					emit('close');
+				},
+			}),
+		),
+	);
 }
 
 // ── Delete ──
@@ -150,8 +151,7 @@ async function handleSave() {
 const deleting = ref(false);
 
 async function handleDelete() {
-	if (!eventStore.eventId)
-		return;
+	if (!eventStore.eventId) return;
 
 	const deleteModal = overlay.create(LazyUIConfirmDeleteModal);
 	const confirmed = await deleteModal.open({
@@ -159,39 +159,29 @@ async function handleDelete() {
 		itemName: playerLabel(props.player),
 	}).result;
 
-	if (!confirmed)
-		return;
+	if (!confirmed) return;
 
-	await runRequest(
-		() => playerStore.removePlayer(eventStore.eventId!, props.player.id),
-		{
-			loadingRef: deleting,
-			success: { title: 'Player deleted', color: 'success' },
-			error: { title: 'Failed to delete player', color: 'error' },
-			onSuccess: () => {
-				settled.value = true;
-				emit('deleted');
-				emit('close');
-			},
+	await runRequest(() => playerStore.removePlayer(eventStore.eventId!, props.player.id), {
+		loadingRef: deleting,
+		success: { title: 'Player deleted', color: 'success' },
+		error: { title: 'Failed to delete player', color: 'error' },
+		onSuccess: () => {
+			settled.value = true;
+			emit('deleted');
+			emit('close');
 		},
-	);
+	});
 }
 
 // ── Close ──
 
 async function handleCancel() {
-	if (await confirmDiscard())
-		emit('close');
+	if (await confirmDiscard()) emit('close');
 }
 </script>
 
 <template>
-	<UModal
-		open
-		:dismissible="false"
-		title="Edit Player"
-		:close="false"
-	>
+	<UModal open :dismissible="false" title="Edit Player" :close="false">
 		<!-- The built-in close sits inside DialogClose and closes whatever its
 		onClick does, so this one asks first while an edit is unsaved. -->
 		<template #actions>
@@ -206,12 +196,7 @@ async function handleCancel() {
 		</template>
 
 		<template #body>
-			<UForm
-				:id="formId"
-				:state="formData"
-				class="flex flex-col gap-4"
-				@submit="handleSave"
-			>
+			<UForm :id="formId" :state="formData" class="flex flex-col gap-4" @submit="handleSave">
 				<PlayerFormFields
 					v-model="formData"
 					v-model:mtg-game-data="mtgGameData"
@@ -225,13 +210,7 @@ async function handleCancel() {
 
 		<template #footer>
 			<div class="flex justify-between items-center gap-4 w-full">
-				<UButton
-					label="Reset"
-					color="error"
-					variant="ghost"
-					:disabled="!isDirty"
-					@click="reset"
-				/>
+				<UButton label="Reset" color="error" variant="ghost" :disabled="!isDirty" @click="reset" />
 				<div class="flex items-center gap-2">
 					<UButton
 						type="submit"
@@ -242,13 +221,17 @@ async function handleCancel() {
 						:disabled="!isDirty || !isValid"
 					/>
 					<UDropdownMenu
-						:items="[[{
-							label: 'Delete Player',
-							icon: 'i-lucide-trash-2',
-							color: 'error' as const,
-							loading: deleting,
-							onSelect: handleDelete,
-						}]]"
+						:items="[
+							[
+								{
+									label: 'Delete Player',
+									icon: 'i-lucide-trash-2',
+									color: 'error' as const,
+									loading: deleting,
+									onSelect: handleDelete,
+								},
+							],
+						]"
 						:content="{ align: 'end' }"
 					>
 						<UButton

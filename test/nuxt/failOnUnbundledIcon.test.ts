@@ -59,19 +59,21 @@ describe('unbundled icon guard', () => {
 		expect(() => assertEveryIconBundled()).toThrow();
 	});
 
-	describe('left to the guard\'s own afterEach', () => {
+	describe("left to the guard's own afterEach", () => {
 		let failure: string | undefined;
 
 		it.fails('fails the test that renders an unbundled icon', async () => {
 			onTestFailed(({ task }) => {
-				failure = task.result?.errors?.map(error => error.message).join('\n');
+				failure = task.result?.errors?.map((error) => error.message).join('\n');
 			});
 			await mountSuspended(iconHost(UNBUNDLED));
 		});
 
 		it('names the icon and the test that rendered it', () => {
 			expect(failure).toContain('`lucide:not-in-the-client-bundle`');
-			expect(failure).toContain('rendered in "unbundled icon guard > left to the guard\'s own afterEach > fails the test that renders an unbundled icon"');
+			expect(failure).toContain(
+				'rendered in "unbundled icon guard > left to the guard\'s own afterEach > fails the test that renders an unbundled icon"',
+			);
 		});
 	});
 });

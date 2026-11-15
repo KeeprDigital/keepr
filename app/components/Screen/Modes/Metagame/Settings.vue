@@ -22,8 +22,11 @@ defineExpose(passOnRendererExposed(renderer));
 
 /** The Conversion Target matters while the Conversion Rate orders or shows the archetypes, on a Metagame that reads it. */
 function showsConversionRate({ config, event }: ScreenSettingsContext): boolean {
-	return isMetagameSortOffered(event?.game, 'conversionRate')
-		&& (config.sortBy === 'conversionRate' || isColumnVisible(config.archetypeColumns ?? [], 'conversionRate'));
+	return (
+		isMetagameSortOffered(event?.game, 'conversionRate') &&
+		(config.sortBy === 'conversionRate' ||
+			isColumnVisible(config.archetypeColumns ?? [], 'conversionRate'))
+	);
 }
 </script>
 

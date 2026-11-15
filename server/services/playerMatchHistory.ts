@@ -16,8 +16,7 @@ export async function findPlayerMatchHistory(eventId: number, playerId: number) 
 		where: and(eq(players.id, playerId), eq(players.eventId, eventId)),
 	});
 
-	if (!player)
-		return null;
+	if (!player) return null;
 
 	const rows = await db
 		.select({
@@ -35,16 +34,26 @@ export async function findPlayerMatchHistory(eventId: number, playerId: number) 
 		.from(matches)
 		.innerJoin(rounds, eq(matches.roundId, rounds.id))
 		.innerJoin(phases, eq(rounds.phaseId, phases.id))
-		.leftJoin(players, or(
-			and(eq(matches.player1Id, playerId), eq(players.id, matches.player2Id)),
-			and(eq(matches.player2Id, playerId), eq(players.id, matches.player1Id)),
-		))
+		.leftJoin(
+			players,
+			or(
+				and(eq(matches.player1Id, playerId), eq(players.id, matches.player2Id)),
+				and(eq(matches.player2Id, playerId), eq(players.id, matches.player1Id)),
+			),
+		)
 		.leftJoin(archetypes, eq(players.archetypeId, archetypes.id))
-		.where(and(
-			eq(matches.eventId, eventId),
-			or(eq(matches.player1Id, playerId), eq(matches.player2Id, playerId)),
-		))
-		.orderBy(asc(phases.sortOrder), asc(rounds.roundNumber), asc(matches.sortOrder), asc(matches.id));
+		.where(
+			and(
+				eq(matches.eventId, eventId),
+				or(eq(matches.player1Id, playerId), eq(matches.player2Id, playerId)),
+			),
+		)
+		.orderBy(
+			asc(phases.sortOrder),
+			asc(rounds.roundNumber),
+			asc(matches.sortOrder),
+			asc(matches.id),
+		);
 
 	const history = rows.map((row) => {
 		const match = row.match;
@@ -64,9 +73,7 @@ export async function findPlayerMatchHistory(eventId: number, playerId: number) 
 			phaseName: row.phaseName,
 			tableNumber: match.tableNumber,
 			opponentId: match.isBye ? null : row.opponentId,
-			opponentName: match.isBye
-				? 'BYE'
-				: (row.opponentName ?? 'Unknown opponent'),
+			opponentName: match.isBye ? 'BYE' : (row.opponentName ?? 'Unknown opponent'),
 			opponentDeckName: match.isBye ? null : opponentDeck.name,
 			opponentDeckColors: match.isBye ? null : opponentDeck.colors,
 			...side,

@@ -1,5 +1,8 @@
 import type { EffectScope } from 'vue';
-import type { ScreenOutputRoundClockResponse, ScreenOutputRoundClockRound } from '~~/shared/types/screenOutputReads';
+import type {
+	ScreenOutputRoundClockResponse,
+	ScreenOutputRoundClockRound,
+} from '~~/shared/types/screenOutputReads';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,7 +25,9 @@ mockNuxtImport('$fetch', () => mockFetch);
 mockNuxtImport('tryUseRealtime', () => () => realtime.transport);
 mockNuxtImport('useScreenModeConfig', () => () => computed(() => config));
 // The shared clock, faked: server time is this browser's.
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime());
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(),
+);
 
 const screenContext = screenContextOf({
 	screen: ref({ id: 1, name: 'Clock' }),
@@ -33,7 +38,9 @@ const screenContext = screenContextOf({
 const START = Date.parse('2026-11-04T10:00:00.000Z');
 const MINUTE = 60_000;
 
-function answer(round: Partial<ScreenOutputRoundClockRound> | null): ScreenOutputRoundClockResponse {
+function answer(
+	round: Partial<ScreenOutputRoundClockRound> | null,
+): ScreenOutputRoundClockResponse {
 	return {
 		round: round && {
 			id: 31,
@@ -68,7 +75,7 @@ describe('useRoundClockModeData', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 		vi.useRealTimers();
 	});
 
@@ -78,7 +85,10 @@ describe('useRoundClockModeData', () => {
 		const { round, clock } = makeRoundClockModeData();
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/screen-output/events/1/screens/1/round-clock', expect.anything());
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/screen-output/events/1/screens/1/round-clock',
+			expect.anything(),
+		);
 		expect(round.value?.name).toBe('Round 4');
 		expect(clock.value).toMatchObject({ state: 'running', display: '40:00' });
 
@@ -94,7 +104,7 @@ describe('useRoundClockModeData', () => {
 	});
 
 	// The Screen's count-up setting reaches the projection; its rule is projectRoundClock's own test.
-	it('counts up past the end to the Screen\'s limit, then holds', async () => {
+	it("counts up past the end to the Screen's limit, then holds", async () => {
 		config.countUpAfterEnd = true;
 		config.countUpLimitMinutes = 2;
 		mockFetch.mockResolvedValue(answer({}));
@@ -130,7 +140,7 @@ describe('useRoundClockModeData', () => {
 	// The Round it picks reaches the rule; what a Round Clock follows is `screenOutputInterest`'s own test.
 	it.each([
 		[
-			'a picked Round, another Round\'s update',
+			"a picked Round, another Round's update",
 			31,
 			'round:updated',
 			{
@@ -139,7 +149,7 @@ describe('useRoundClockModeData', () => {
 			false,
 		],
 		[
-			'the Current Round, any Round\'s update',
+			"the Current Round, any Round's update",
 			undefined,
 			'round:updated',
 			{

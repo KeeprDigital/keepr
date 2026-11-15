@@ -3,7 +3,8 @@ import type { AdministeredUser } from '~~/shared/types/userAdministration';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
-	Object.assign(new Error(input.message), input));
+	Object.assign(new Error(input.message), input),
+);
 
 const {
 	banUserAccount,
@@ -46,7 +47,7 @@ interface FakePort extends UserAdministrationPort {
 }
 
 function fakePort(seed: AdministeredUser[] = []): FakePort {
-	const accounts = new Map(seed.map(account => [account.id, account]));
+	const accounts = new Map(seed.map((account) => [account.id, account]));
 	const sessionCounts = new Map<string, number>();
 	const issuedTokens: { userId: string; expiresAt: Date }[] = [];
 	const revoked: string[] = [];
@@ -60,16 +61,13 @@ function fakePort(seed: AdministeredUser[] = []): FakePort {
 		setPasswords,
 		minPasswordLength: 8,
 		maxPasswordLength: 128,
-		listUsers: async limit => ({
-			users: [
-				...accounts.values(),
-			].slice(0, limit),
+		listUsers: async (limit) => ({
+			users: [...accounts.values()].slice(0, limit),
 			total: accounts.size,
 		}),
-		findByEmail: async email => [
-			...accounts.values(),
-		].find(account => account.email === email) ?? null,
-		findById: async userId => accounts.get(userId) ?? null,
+		findByEmail: async (email) =>
+			[...accounts.values()].find((account) => account.email === email) ?? null,
+		findById: async (userId) => accounts.get(userId) ?? null,
 		createUser: async ({ email, name }) => {
 			const created = accountFor({
 				id: `user-${accounts.size + 1}`,
@@ -96,7 +94,7 @@ function fakePort(seed: AdministeredUser[] = []): FakePort {
 			return updated;
 		},
 		revokePasswordResetTokens: async () => {},
-		countSessions: async userId => sessionCounts.get(userId) ?? 0,
+		countSessions: async (userId) => sessionCounts.get(userId) ?? 0,
 		revokeSessions: async (userId) => {
 			revoked.push(userId);
 			sessionCounts.set(userId, 0);
@@ -106,13 +104,9 @@ function fakePort(seed: AdministeredUser[] = []): FakePort {
 
 describe('listing the accounts an installation holds', () => {
 	it('reports the true total alongside the capped rows', async () => {
-		const port = fakePort([
-			accountFor(),
-		]);
+		const port = fakePort([accountFor()]);
 		port.listUsers = async () => ({
-			users: [
-				accountFor(),
-			],
+			users: [accountFor()],
 			total: 412,
 		});
 
@@ -166,8 +160,9 @@ describe('creating an account', () => {
 		);
 
 		// The token rides in the fragment, out of access logs.
-		expect(created.passwordResetLink.url)
-			.toBe(`${ORIGIN}/reset-password#token=token-for-${created.user.id}-1`);
+		expect(created.passwordResetLink.url).toBe(
+			`${ORIGIN}/reset-password#token=token-for-${created.user.id}-1`,
+		);
 	});
 
 	it('joins a trailing-slash origin without doubling the slash', async () => {
@@ -205,25 +200,23 @@ describe('creating an account', () => {
 	it('refuses a second account for an email that already has one', async () => {
 		await createUserAccount(port, { email: 'new@keepr.digital', name: 'First' }, CONTEXT);
 
-		await expect(createUserAccount(port, { email: 'New@Keepr.Digital', name: 'Second' }, CONTEXT))
-			.rejects
-			.toMatchObject({ statusCode: 409 });
+		await expect(
+			createUserAccount(port, { email: 'New@Keepr.Digital', name: 'Second' }, CONTEXT),
+		).rejects.toMatchObject({ statusCode: 409 });
 		expect(port.accounts.size).toBe(1);
 	});
 
 	it('refuses a name that is only whitespace', async () => {
-		await expect(createUserAccount(port, { email: 'new@keepr.digital', name: '   ' }, CONTEXT))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
+		await expect(
+			createUserAccount(port, { email: 'new@keepr.digital', name: '   ' }, CONTEXT),
+		).rejects.toMatchObject({ statusCode: 400 });
 		expect(port.accounts.size).toBe(0);
 	});
 });
 
 describe('issuing a reset link for an existing account', () => {
 	it('mints a fresh one without disturbing the account', async () => {
-		const port = fakePort([
-			accountFor(),
-		]);
+		const port = fakePort([accountFor()]);
 		port.sessionCounts.set('user-1', 2);
 
 		const issued = await issuePasswordResetLinkForUser(port, 'user-1', CONTEXT);
@@ -238,9 +231,9 @@ describe('issuing a reset link for an existing account', () => {
 	it('answers 404 for an account that does not exist', async () => {
 		const port = fakePort();
 
-		await expect(issuePasswordResetLinkForUser(port, 'user-404', CONTEXT))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
+		await expect(issuePasswordResetLinkForUser(port, 'user-404', CONTEXT)).rejects.toMatchObject({
+			statusCode: 404,
+		});
 		expect(port.issuedTokens).toEqual([]);
 	});
 });
@@ -249,39 +242,35 @@ describe('setting a password outright', () => {
 	let port: FakePort;
 
 	beforeEach(() => {
-		port = fakePort([
-			accountFor(),
-		]);
+		port = fakePort([accountFor()]);
 	});
 
 	it('sets it on the named account', async () => {
 		const outcome = await setUserAccountPassword(port, 'user-1', 'a-long-enough-password');
 
 		expect(outcome.user.id).toBe('user-1');
-		expect(port.setPasswords).toEqual([
-			{ userId: 'user-1', password: 'a-long-enough-password' },
-		]);
+		expect(port.setPasswords).toEqual([{ userId: 'user-1', password: 'a-long-enough-password' }]);
 	});
 
 	it('refuses a password shorter than Better Auth is configured to accept', async () => {
 		// Better Auth's internal hasher enforces neither bound.
-		await expect(setUserAccountPassword(port, 'user-1', 'short'))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
+		await expect(setUserAccountPassword(port, 'user-1', 'short')).rejects.toMatchObject({
+			statusCode: 400,
+		});
 		expect(port.setPasswords).toEqual([]);
 	});
 
 	it('refuses a password longer than Better Auth is configured to accept', async () => {
-		await expect(setUserAccountPassword(port, 'user-1', 'x'.repeat(129)))
-			.rejects
-			.toMatchObject({ statusCode: 400 });
+		await expect(setUserAccountPassword(port, 'user-1', 'x'.repeat(129))).rejects.toMatchObject({
+			statusCode: 400,
+		});
 		expect(port.setPasswords).toEqual([]);
 	});
 
 	it('answers 404 before hashing anything for an account that does not exist', async () => {
-		await expect(setUserAccountPassword(port, 'user-404', 'a-long-enough-password'))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
+		await expect(
+			setUserAccountPassword(port, 'user-404', 'a-long-enough-password'),
+		).rejects.toMatchObject({ statusCode: 404 });
 		expect(port.setPasswords).toEqual([]);
 	});
 });
@@ -290,9 +279,7 @@ describe('banning an account', () => {
 	let port: FakePort;
 
 	beforeEach(() => {
-		port = fakePort([
-			accountFor(),
-		]);
+		port = fakePort([accountFor()]);
 		port.sessionCounts.set('user-1', 3);
 	});
 
@@ -328,9 +315,7 @@ describe('banning an account', () => {
 
 describe('revoking sessions on their own', () => {
 	it('reports how many were ended, which is what makes the action legible', async () => {
-		const port = fakePort([
-			accountFor(),
-		]);
+		const port = fakePort([accountFor()]);
 		port.sessionCounts.set('user-1', 2);
 
 		const outcome = await revokeUserSessions(port, 'user-1');
@@ -340,9 +325,7 @@ describe('revoking sessions on their own', () => {
 	});
 
 	it('leaves the account able to sign straight back in', async () => {
-		const port = fakePort([
-			accountFor(),
-		]);
+		const port = fakePort([accountFor()]);
 
 		const outcome = await revokeUserSessions(port, 'user-1');
 
@@ -351,8 +334,8 @@ describe('revoking sessions on their own', () => {
 	});
 
 	it('answers 404 for an account that does not exist', async () => {
-		await expect(revokeUserSessions(fakePort(), 'user-404'))
-			.rejects
-			.toMatchObject({ statusCode: 404 });
+		await expect(revokeUserSessions(fakePort(), 'user-404')).rejects.toMatchObject({
+			statusCode: 404,
+		});
 	});
 });

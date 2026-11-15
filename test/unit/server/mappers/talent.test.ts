@@ -4,10 +4,12 @@ import { createMockTalent } from '~~/test/helpers/fixtures';
 
 describe('talent mapper', () => {
 	it('projects the handle columns into a Social Profile map', () => {
-		const result = mapTalentToResponse(createMockTalent({
-			twitchHandle: 'Marshall_LR',
-			xHandle: 'Marshall_LR',
-		}));
+		const result = mapTalentToResponse(
+			createMockTalent({
+				twitchHandle: 'Marshall_LR',
+				xHandle: 'Marshall_LR',
+			}),
+		);
 
 		expect(result.socialProfiles).toEqual({
 			twitch: 'Marshall_LR',
@@ -18,10 +20,12 @@ describe('talent mapper', () => {
 	});
 
 	it('leaves blank handles out of the Social Profile map', () => {
-		const result = mapTalentToResponse(createMockTalent({
-			twitchHandle: '',
-			blueskyHandle: 'marshall.bsky.social',
-		}));
+		const result = mapTalentToResponse(
+			createMockTalent({
+				twitchHandle: '',
+				blueskyHandle: 'marshall.bsky.social',
+			}),
+		);
 
 		expect(result.socialProfiles).toEqual({ bluesky: 'marshall.bsky.social' });
 	});

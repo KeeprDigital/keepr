@@ -78,8 +78,16 @@ function data(overrides: Partial<GraphicBindingDataSet> = {}): GraphicBindingDat
 	};
 }
 
-const PLAYER_SOURCE: GraphicSourceSelectionDeclaration = { key: 'player', label: 'Player', kind: 'player' };
-const MATCH_SOURCE: GraphicSourceSelectionDeclaration = { key: 'match', label: 'Match', kind: 'match' };
+const PLAYER_SOURCE: GraphicSourceSelectionDeclaration = {
+	key: 'player',
+	label: 'Player',
+	kind: 'player',
+};
+const MATCH_SOURCE: GraphicSourceSelectionDeclaration = {
+	key: 'match',
+	label: 'Match',
+	kind: 'match',
+};
 const MATCH_PLAYER1: GraphicSourceSelectionDeclaration = {
 	key: 'p1',
 	label: 'Player 1',
@@ -95,14 +103,14 @@ describe('graphic Source Selection resolution', () => {
 	it('generates a picker only for the selections an operator actually makes', () => {
 		expect(isOperatorSelectedGraphicSource(PLAYER_SOURCE)).toBe(true);
 		expect(isOperatorSelectedGraphicSource(MATCH_PLAYER1)).toBe(false);
-		expect(isOperatorSelectedGraphicSource({ key: 'event', label: 'Event', kind: 'event' })).toBe(false);
+		expect(isOperatorSelectedGraphicSource({ key: 'event', label: 'Event', kind: 'event' })).toBe(
+			false,
+		);
 	});
 
 	it('resolves the current Event without anyone selecting it', () => {
 		const resolved = resolveGraphicSourceSelections(
-			[
-				{ key: 'event', label: 'Event', kind: 'event' },
-			],
+			[{ key: 'event', label: 'Event', kind: 'event' }],
 			{},
 			data(),
 		);
@@ -116,8 +124,12 @@ describe('graphic Source Selection resolution', () => {
 		expect(resolved.player!.entity).toMatchObject({ name: 'Ava Reed' });
 	});
 
-	it('resolves a Player derived from a Match out of that Match\'s production snapshot', () => {
-		const resolved = resolveGraphicSourceSelections([MATCH_SOURCE, MATCH_PLAYER1], { match: 40 }, data());
+	it("resolves a Player derived from a Match out of that Match's production snapshot", () => {
+		const resolved = resolveGraphicSourceSelections(
+			[MATCH_SOURCE, MATCH_PLAYER1],
+			{ match: 40 },
+			data(),
+		);
 
 		// The Match's own snapshot said "Ava R.", and the live Event Player is "Ava
 		// Reed". Production committed to the snapshot, so that is what resolves.
@@ -183,10 +195,7 @@ describe('graphic Input Binding resolution', () => {
 			{
 				inputs: [NAME_INPUT, WINS_INPUT],
 				sources: [PLAYER_SOURCE],
-				bindings: [
-					bind('name', 'player', 'player.name'),
-					bind('wins', 'player', 'player.wins'),
-				],
+				bindings: [bind('name', 'player', 'player.name'), bind('wins', 'player', 'player.wins')],
 			},
 			{ player: 1 },
 			data(),
@@ -200,9 +209,7 @@ describe('graphic Input Binding resolution', () => {
 			{
 				inputs: [NAME_INPUT],
 				sources: [PLAYER_SOURCE],
-				bindings: [
-					bind('name', 'player', 'player.name'),
-				],
+				bindings: [bind('name', 'player', 'player.name')],
 			},
 			{},
 			data(),
@@ -213,30 +220,33 @@ describe('graphic Input Binding resolution', () => {
 		expect('name' in bound).toBe(false);
 	});
 
-	it('contributes no value for a field this Event\'s game does not have', () => {
+	it("contributes no value for a field this Event's game does not have", () => {
 		const graphic = {
 			inputs: [NAME_INPUT],
 			sources: [PLAYER_SOURCE],
-			bindings: [
-				bind('name', 'player', 'player.deckName'),
-			],
+			bindings: [bind('name', 'player', 'player.deckName')],
 		};
 
-		expect(resolveGraphicInputBindings(graphic, { player: 1 }, data()))
-			.toEqual({ name: 'Dimir Midrange' });
-		expect(resolveGraphicInputBindings(graphic, { player: 1 }, data({
-			event: { name: 'Regional', game: 'op' },
-		}))).toEqual({});
+		expect(resolveGraphicInputBindings(graphic, { player: 1 }, data())).toEqual({
+			name: 'Dimir Midrange',
+		});
+		expect(
+			resolveGraphicInputBindings(
+				graphic,
+				{ player: 1 },
+				data({
+					event: { name: 'Regional', game: 'op' },
+				}),
+			),
+		).toEqual({});
 	});
 
-	it('contributes no value when the field\'s type is not the Graphic Input\'s', () => {
+	it("contributes no value when the field's type is not the Graphic Input's", () => {
 		const bound = resolveGraphicInputBindings(
 			{
 				inputs: [NAME_INPUT],
 				sources: [PLAYER_SOURCE],
-				bindings: [
-					bind('name', 'player', 'player.wins'),
-				],
+				bindings: [bind('name', 'player', 'player.wins')],
 			},
 			{ player: 1 },
 			data(),
@@ -245,15 +255,12 @@ describe('graphic Input Binding resolution', () => {
 		expect(bound).toEqual({});
 	});
 
-	it('resolves a derived Player\'s fields through the production snapshot', () => {
+	it("resolves a derived Player's fields through the production snapshot", () => {
 		const bound = resolveGraphicInputBindings(
 			{
 				inputs: [NAME_INPUT, WINS_INPUT],
 				sources: [MATCH_SOURCE, MATCH_PLAYER1],
-				bindings: [
-					bind('name', 'p1', 'player.name'),
-					bind('wins', 'p1', 'player.wins'),
-				],
+				bindings: [bind('name', 'p1', 'player.name'), bind('wins', 'p1', 'player.wins')],
 			},
 			{ match: 40 },
 			data(),
@@ -288,7 +295,7 @@ describe('graphic Input Binding resolution', () => {
 		expect(bound).toEqual({ name: 'Ava Reed', record: '5-0' });
 	});
 
-	it('reads a Feature Match Slot\'s live scalars from its active session', () => {
+	it("reads a Feature Match Slot's live scalars from its active session", () => {
 		const slotData = data({
 			featureMatchSlots: {
 				60: {
@@ -331,7 +338,11 @@ describe('graphic Input Binding resolution', () => {
 				},
 			},
 		});
-		const slotSource: GraphicSourceSelectionDeclaration = { key: 'slot', label: 'Slot', kind: 'feature-match-slot' };
+		const slotSource: GraphicSourceSelectionDeclaration = {
+			key: 'slot',
+			label: 'Slot',
+			kind: 'feature-match-slot',
+		};
 
 		const bound = resolveGraphicInputBindings(
 			{
@@ -367,7 +378,7 @@ describe('graphic Input Binding resolution', () => {
 	// A Commander Slot's third and fourth Seats: the Session's snapshot while one runs, the Slot's own otherwise (ADR-0087).
 	it.each([
 		{
-			name: 'the active Session\'s snapshot',
+			name: "the active Session's snapshot",
 			slot: {
 				player3Data: { name: 'Stale' },
 				activeSession: {
@@ -380,12 +391,12 @@ describe('graphic Input Binding resolution', () => {
 			},
 		},
 		{
-			name: 'the Slot\'s own Seat with no Session',
+			name: "the Slot's own Seat with no Session",
 			slot: {
 				player3Data: { name: 'Cleo' },
 			},
 		},
-	])('reaches a Feature Match Slot\'s third Seat through $name', ({ slot }) => {
+	])("reaches a Feature Match Slot's third Seat through $name", ({ slot }) => {
 		const bound = resolveGraphicInputBindings(
 			{
 				inputs: [NAME_INPUT],
@@ -398,9 +409,7 @@ describe('graphic Input Binding resolution', () => {
 						from: { sourceKey: 'slot', relation: 'player3' },
 					},
 				],
-				bindings: [
-					bind(NAME_INPUT.key, 'seat', 'player.name'),
-				],
+				bindings: [bind(NAME_INPUT.key, 'seat', 'player.name')],
 			},
 			{ slot: 60 },
 			data({
@@ -419,39 +428,47 @@ describe('graphic Input Binding resolution', () => {
 		},
 		{
 			variant: 'commander' as const,
-			relations: [
-				'player1',
-				'player2',
-				'player3',
-				'player4',
-				'match',
-			],
+			relations: ['player1', 'player2', 'player3', 'player4', 'match'],
 		},
-	])('offers a Feature Match Slot\'s relationships on a $variant Event', ({ variant, relations }) => {
-		expect(graphicSourceRelations('feature-match-slot', variant)).toEqual(relations);
-	});
+	])(
+		"offers a Feature Match Slot's relationships on a $variant Event",
+		({ variant, relations }) => {
+			expect(graphicSourceRelations('feature-match-slot', variant)).toEqual(relations);
+		},
+	);
 });
 
 describe('the Match result binding', () => {
 	const result = (match: Partial<GraphicBindingMatch>) =>
-		resolveGraphicBindingField('match', 'match.result', { roundId: 1, ...match }, createEmptyGraphicBindingDataSet());
+		resolveGraphicBindingField(
+			'match',
+			'match.result',
+			{ roundId: 1, ...match },
+			createEmptyGraphicBindingDataSet(),
+		);
 
-	it('reads a reported Match\'s Game Score from player 1\'s side', () => {
-		expect(result({
-			hasResult: true,
-			player1GameWins: 2,
-			player2GameWins: 0,
-			gameDraws: 0,
-		})).toBe('2–0');
+	it("reads a reported Match's Game Score from player 1's side", () => {
+		expect(
+			result({
+				hasResult: true,
+				player1GameWins: 2,
+				player2GameWins: 0,
+				gameDraws: 0,
+			}),
+		).toBe('2–0');
 	});
 
 	it('resolves nothing for an unreported Match or a bye', () => {
-		expect(result({ hasResult: false, player1GameWins: null, player2GameWins: null })).toBeUndefined();
-		expect(result({
-			hasResult: true,
-			isBye: true,
-			player1GameWins: null,
-			player2GameWins: null,
-		})).toBeUndefined();
+		expect(
+			result({ hasResult: false, player1GameWins: null, player2GameWins: null }),
+		).toBeUndefined();
+		expect(
+			result({
+				hasResult: true,
+				isBye: true,
+				player1GameWins: null,
+				player2GameWins: null,
+			}),
+		).toBeUndefined();
 	});
 });

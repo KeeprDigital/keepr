@@ -8,7 +8,9 @@ export interface ClockProjection<T> {
 }
 
 /** A projection whose answer itself says when it next changes: the answer is the value. */
-export function selfTimed<T extends { nextChangeInMs: number | null }>(answer: T): ClockProjection<T> {
+export function selfTimed<T extends { nextChangeInMs: number | null }>(
+	answer: T,
+): ClockProjection<T> {
 	return { value: answer, nextChangeInMs: answer.nextChangeInMs };
 }
 
@@ -58,13 +60,19 @@ export function useClockProjection<T>(
 	});
 
 	if (import.meta.client) {
-		watch(projection, ({ nextChangeInMs }, _previous, onCleanup) => {
-			if (nextChangeInMs == null)
-				return;
-			// Waited on the device for as long as server time takes to get there.
-			const timer = setTimeout(() => tick.value++, Math.min(Math.max(0, deviceDelayFor(nextChangeInMs)), MAX_TIMER_DELAY_MS));
-			onCleanup(() => clearTimeout(timer));
-		}, { immediate: true });
+		watch(
+			projection,
+			({ nextChangeInMs }, _previous, onCleanup) => {
+				if (nextChangeInMs == null) return;
+				// Waited on the device for as long as server time takes to get there.
+				const timer = setTimeout(
+					() => tick.value++,
+					Math.min(Math.max(0, deviceDelayFor(nextChangeInMs)), MAX_TIMER_DELAY_MS),
+				);
+				onCleanup(() => clearTimeout(timer));
+			},
+			{ immediate: true },
+		);
 	}
 
 	return computed(() => projection.value.value);

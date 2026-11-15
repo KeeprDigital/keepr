@@ -11,16 +11,21 @@ vi.mock('~~/server/services/eventCardNameOverride', () => ({
 	}),
 }));
 
-const { ImportedMtgCardLookupError, importedMtgCardResolverService } = await import('~~/server/services/importedMtgCardResolver');
+const { ImportedMtgCardLookupError, importedMtgCardResolverService } =
+	await import('~~/server/services/importedMtgCardResolver');
 
-function createCollectionResponse(cards: Array<Record<string, unknown>>, notFound: Array<Record<string, unknown>> = []) {
+function createCollectionResponse(
+	cards: Array<Record<string, unknown>>,
+	notFound: Array<Record<string, unknown>> = [],
+) {
 	return {
 		ok: true,
-		json: () => Promise.resolve({
-			object: 'list',
-			data: cards,
-			not_found: notFound,
-		}),
+		json: () =>
+			Promise.resolve({
+				object: 'list',
+				data: cards,
+				not_found: notFound,
+			}),
 	};
 }
 
@@ -31,36 +36,38 @@ describe('importedMtgCardResolverService', () => {
 	});
 
 	it('uses the collection endpoint for exact matches', async () => {
-		mockFetch.mockResolvedValueOnce(createCollectionResponse([
-			{
-				id: 'shock-1',
-				name: 'Shock',
-				set: 'm21',
-				oracle_id: 'oracle-shock',
-				mana_cost: '{R}',
-				cmc: 1,
-				color_identity: ['R'],
-				type_line: 'Instant',
-			},
-		]) as any);
+		mockFetch.mockResolvedValueOnce(
+			createCollectionResponse([
+				{
+					id: 'shock-1',
+					name: 'Shock',
+					set: 'm21',
+					oracle_id: 'oracle-shock',
+					mana_cost: '{R}',
+					cmc: 1,
+					color_identity: ['R'],
+					type_line: 'Instant',
+				},
+			]) as any,
+		);
 
 		const result = await importedMtgCardResolverService().resolveBatch(1, [
 			{ name: 'Shock', setCode: 'm21' },
 		]);
 
-		expect(result.resolutions.get('shock|m21')).toEqual(expect.objectContaining({
-			status: 'resolved',
-			source: 'exact',
-			resolvedName: 'Shock',
-		}));
+		expect(result.resolutions.get('shock|m21')).toEqual(
+			expect.objectContaining({
+				status: 'resolved',
+				source: 'exact',
+				resolvedName: 'Shock',
+			}),
+		);
 		expect(mockFetch).toHaveBeenCalledOnce();
 	});
 
 	it('returns unresolved when neither exact nor fuzzy lookup finds a match', async () => {
 		mockFetch
-			.mockResolvedValueOnce(createCollectionResponse([], [
-				{ name: 'Totally Fake Card' },
-			]) as any)
+			.mockResolvedValueOnce(createCollectionResponse([], [{ name: 'Totally Fake Card' }]) as any)
 			.mockResolvedValueOnce({ ok: false, statusText: 'Not Found' } as any);
 
 		const result = await importedMtgCardResolverService().resolveBatch(1, [
@@ -82,9 +89,9 @@ describe('importedMtgCardResolverService', () => {
 			text: () => Promise.resolve('temporary upstream failure'),
 		} as any);
 
-		await expect(importedMtgCardResolverService().resolveBatch(1, [
-			{ name: 'Shock', setCode: 'm21' },
-		])).rejects.toBeInstanceOf(ImportedMtgCardLookupError);
+		await expect(
+			importedMtgCardResolverService().resolveBatch(1, [{ name: 'Shock', setCode: 'm21' }]),
+		).rejects.toBeInstanceOf(ImportedMtgCardLookupError);
 
 		// Initial request plus two bounded retries. The card is never downgraded
 		// to an unresolved authoritative result.
@@ -93,18 +100,16 @@ describe('importedMtgCardResolverService', () => {
 
 	it('does not downgrade a card when exact lookup misses and fuzzy lookup has an infrastructure failure', async () => {
 		mockFetch
-			.mockResolvedValueOnce(createCollectionResponse([], [
-				{ name: 'Shock', set: 'm21' },
-			]) as any)
+			.mockResolvedValueOnce(createCollectionResponse([], [{ name: 'Shock', set: 'm21' }]) as any)
 			.mockResolvedValue({
 				ok: false,
 				status: 503,
 				statusText: 'Service Unavailable',
 			} as any);
 
-		await expect(importedMtgCardResolverService().resolveBatch(1, [
-			{ name: 'Shock', setCode: 'm21' },
-		])).rejects.toMatchObject({
+		await expect(
+			importedMtgCardResolverService().resolveBatch(1, [{ name: 'Shock', setCode: 'm21' }]),
+		).rejects.toMatchObject({
 			code: 'IMPORTED_CARD_LOOKUP_UNAVAILABLE',
 			message: 'Card data lookup is temporarily unavailable; existing deck data was preserved',
 		});

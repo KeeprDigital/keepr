@@ -1,4 +1,7 @@
-import type { FeatureMatchSessionResponse, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSessionResponse,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import type { MessageData } from '~/types/realtime';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
@@ -33,8 +36,7 @@ const EVENT_ID = 1;
 const SLOT_ID = 100;
 
 async function flushPromises() {
-	for (let i = 0; i < 6; i++)
-		await Promise.resolve();
+	for (let i = 0; i < 6; i++) await Promise.resolve();
 }
 
 function sourceSnapshot(): FeatureMatchSourceSnapshot {
@@ -55,7 +57,11 @@ function sourceSnapshot(): FeatureMatchSourceSnapshot {
 	};
 }
 
-function state(player1: { life?: number; revealed?: boolean } = {}, player2: { life?: number; revealed?: boolean } = {}, extra: Partial<FeatureMatchState> = {}) {
+function state(
+	player1: { life?: number; revealed?: boolean } = {},
+	player2: { life?: number; revealed?: boolean } = {},
+	extra: Partial<FeatureMatchState> = {},
+) {
 	return createMockFeatureMatchState({
 		player1: {
 			lifeTotal: player1.life ?? 20,
@@ -73,7 +79,11 @@ function state(player1: { life?: number; revealed?: boolean } = {}, player2: { l
 	});
 }
 
-function session(currentState: FeatureMatchState, sequence: number, id = 500): FeatureMatchSessionResponse {
+function session(
+	currentState: FeatureMatchState,
+	sequence: number,
+	id = 500,
+): FeatureMatchSessionResponse {
 	return {
 		id,
 		eventId: EVENT_ID,
@@ -96,7 +106,11 @@ function commandResult(currentState: FeatureMatchState, sequence: number, id = 5
 	};
 }
 
-function eventApplied(currentState: FeatureMatchState, sequence: number, sessionId = 500): MessageData<'featureMatchSession:eventApplied'> {
+function eventApplied(
+	currentState: FeatureMatchState,
+	sequence: number,
+	sessionId = 500,
+): MessageData<'featureMatchSession:eventApplied'> {
 	return {
 		eventId: EVENT_ID,
 		timestamp: Date.now(),
@@ -170,7 +184,7 @@ describe('the Feature Match Session client follows its aggregate', () => {
 		expect(store.sessionSequenceBySlotId.get(SLOT_ID)).toBe(1);
 	});
 
-	it('settles an older Session\'s answer from the newer Session, keeping a pending edit', async () => {
+	it("settles an older Session's answer from the newer Session, keeping a pending edit", async () => {
 		const activePlayer = deferred<ReturnType<typeof commandResult>>();
 		mockRepo.updateState.mockReturnValue(activePlayer.promise);
 
@@ -178,7 +192,9 @@ describe('the Feature Match Session client follows its aggregate', () => {
 		store.adjustLife(EVENT_ID, SLOT_ID, 'player1', -1);
 
 		// The Slot moves on to a new Session while both are outstanding.
-		await store.applyRemoteSessionEvent(eventApplied(state({ life: 20 }, { life: 7 }, { activePlayer: 'player1' }), 1, 600));
+		await store.applyRemoteSessionEvent(
+			eventApplied(state({ life: 20 }, { life: 7 }, { activePlayer: 'player1' }), 1, 600),
+		);
 		// The old Session's answer arrives late.
 		activePlayer.resolve(commandResult(state({}, {}, { activePlayer: 'player2' }), 3, 500));
 		await setting;

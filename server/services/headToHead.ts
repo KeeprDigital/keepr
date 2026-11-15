@@ -3,7 +3,14 @@ import type { ScreenOutputHeadToHeadResponse } from '~~/shared/types/screenOutpu
 import type { HeadToHeadPlayerFacts } from '~~/shared/utils/headToHead';
 import { and, desc, eq, or } from 'drizzle-orm';
 import { db } from '~~/server/db';
-import { archetypes, matches, phases, playerRoundStandings, players, rounds } from '~~/server/db/schema';
+import {
+	archetypes,
+	matches,
+	phases,
+	playerRoundStandings,
+	players,
+	rounds,
+} from '~~/server/db/schema';
 import { featureMatchService } from '~~/server/services/featureMatch';
 import { featureMatchSidePlayer } from '~~/shared/utils/featureMatchSidePlayer';
 import { projectHeadToHead } from '~~/shared/utils/headToHead';
@@ -21,12 +28,18 @@ interface HeadToHeadSides {
  * directly. A Slot the Event no longer has seats no one. A Slot's Players sit
  * on the sides its active Session shows them (ADR-0058).
  */
-async function resolveSides(eventId: number, config: HeadToHeadModeConfig): Promise<HeadToHeadSides> {
+async function resolveSides(
+	eventId: number,
+	config: HeadToHeadModeConfig,
+): Promise<HeadToHeadSides> {
 	if (config.playerSource === 'players')
-		return { player1Id: config.player1Id ?? null, player2Id: config.player2Id ?? null, currentMatchId: null };
+		return {
+			player1Id: config.player1Id ?? null,
+			player2Id: config.player2Id ?? null,
+			currentMatchId: null,
+		};
 
-	if (!config.featureMatchId)
-		return { player1Id: null, player2Id: null, currentMatchId: null };
+	if (!config.featureMatchId) return { player1Id: null, player2Id: null, currentMatchId: null };
 
 	const slot = await featureMatchService().findById(config.featureMatchId, eventId);
 	return {
@@ -37,17 +50,18 @@ async function resolveSides(eventId: number, config: HeadToHeadModeConfig): Prom
 }
 
 /** One Player of the Event with their Archetype and latest Round Standings; `null` when the Event has no such Player. */
-async function readPlayerFacts(eventId: number, playerId: number | null): Promise<HeadToHeadPlayerFacts | null> {
-	if (playerId == null)
-		return null;
+async function readPlayerFacts(
+	eventId: number,
+	playerId: number | null,
+): Promise<HeadToHeadPlayerFacts | null> {
+	if (playerId == null) return null;
 
 	const [row] = await db
 		.select({ player: players, archetypeName: archetypes.name, archetypeColors: archetypes.colors })
 		.from(players)
 		.leftJoin(archetypes, eq(archetypes.id, players.archetypeId))
 		.where(and(eq(players.id, playerId), eq(players.eventId, eventId)));
-	if (!row)
-		return null;
+	if (!row) return null;
 
 	const [latestStanding] = await db
 		.select({
@@ -59,15 +73,16 @@ async function readPlayerFacts(eventId: number, playerId: number | null): Promis
 		.from(playerRoundStandings)
 		.innerJoin(rounds, eq(rounds.id, playerRoundStandings.roundId))
 		.innerJoin(phases, eq(phases.id, rounds.phaseId))
-		.where(and(eq(playerRoundStandings.eventId, eventId), eq(playerRoundStandings.playerId, playerId)))
+		.where(
+			and(eq(playerRoundStandings.eventId, eventId), eq(playerRoundStandings.playerId, playerId)),
+		)
 		.orderBy(desc(phases.sortOrder), desc(rounds.roundNumber), desc(rounds.id))
 		.limit(1);
 
 	return {
 		player: row.player,
-		archetype: row.archetypeName == null
-			? null
-			: { name: row.archetypeName, colors: row.archetypeColors },
+		archetype:
+			row.archetypeName == null ? null : { name: row.archetypeName, colors: row.archetypeColors },
 		latestStanding: latestStanding ?? null,
 	};
 }
@@ -85,13 +100,15 @@ async function readMatchesBetween(eventId: number, player1Id: number, player2Id:
 		.from(matches)
 		.innerJoin(rounds, eq(rounds.id, matches.roundId))
 		.innerJoin(phases, eq(phases.id, rounds.phaseId))
-		.where(and(
-			eq(matches.eventId, eventId),
-			or(
-				and(eq(matches.player1Id, player1Id), eq(matches.player2Id, player2Id)),
-				and(eq(matches.player1Id, player2Id), eq(matches.player2Id, player1Id)),
+		.where(
+			and(
+				eq(matches.eventId, eventId),
+				or(
+					and(eq(matches.player1Id, player1Id), eq(matches.player2Id, player2Id)),
+					and(eq(matches.player1Id, player2Id), eq(matches.player2Id, player1Id)),
+				),
 			),
-		));
+		);
 
 	return rows.map(({ match, ...playedIn }) => ({
 		...match,
@@ -106,15 +123,19 @@ async function readMatchesBetween(eventId: number, player1Id: number, player2Id:
  *
  * The Head-to-Head Screen Output's read.
  */
-export async function findHeadToHead(eventId: number, config: HeadToHeadModeConfig): Promise<ScreenOutputHeadToHeadResponse> {
+export async function findHeadToHead(
+	eventId: number,
+	config: HeadToHeadModeConfig,
+): Promise<ScreenOutputHeadToHeadResponse> {
 	const sides = await resolveSides(eventId, config);
 	const [player1, player2] = await Promise.all([
 		readPlayerFacts(eventId, sides.player1Id),
 		readPlayerFacts(eventId, sides.player2Id),
 	]);
-	const matchesBetween = player1 && player2
-		? await readMatchesBetween(eventId, player1.player.id, player2.player.id)
-		: [];
+	const matchesBetween =
+		player1 && player2
+			? await readMatchesBetween(eventId, player1.player.id, player2.player.id)
+			: [];
 
 	return projectHeadToHead({
 		player1,

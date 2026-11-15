@@ -18,13 +18,9 @@ export const opCardSearchQuerySchema = z.object({
 	/** Part of a card's name or card number, as an operator types it. */
 	name: z.string().trim().min(1).max(200).optional(),
 	number: opCardNumberSchema.optional(),
-	color: z.union([
-		z.enum(OP_CARD_COLORS),
-		z.array(z.enum(OP_CARD_COLORS)).max(OP_CARD_COLORS.length),
-	])
-		.transform(value => Array.isArray(value)
-			? value
-			: [value])
+	color: z
+		.union([z.enum(OP_CARD_COLORS), z.array(z.enum(OP_CARD_COLORS)).max(OP_CARD_COLORS.length)])
+		.transform((value) => (Array.isArray(value) ? value : [value]))
 		.optional(),
 	category: z.enum(OP_CARD_CATEGORIES).optional(),
 	limit: z.coerce.number().int().min(1).max(250).default(60),

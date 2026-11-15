@@ -1,5 +1,8 @@
 import { broadcastDeckListWriteModule } from '~~/server/modules/broadcast-deck-list-write';
-import { broadcastDeckListParamsSchema, deleteBroadcastDeckListSchema } from '~~/server/schemas/api/broadcastDeckList';
+import {
+	broadcastDeckListParamsSchema,
+	deleteBroadcastDeckListSchema,
+} from '~~/server/schemas/api/broadcastDeckList';
 import { getOriginConnectionId } from '~~/server/utils/ably';
 
 export default defineEventHandler(async (event) => {

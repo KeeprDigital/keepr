@@ -17,33 +17,87 @@ import {
 import { screenLayoutTokens } from './modeTokens';
 
 // A mode whose settings page its contract describes entirely mounts the generic renderer (#1094).
-const ScreenModeSettings = defineAsyncComponent(() => import('~/components/Screen/ModeSettings.vue'));
-const ScreenModesBackgroundDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/Background/Display.vue'));
-const ScreenModesBackgroundSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/Background/Settings.vue'));
-const ScreenModesCardDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/Card/Display.vue'));
-const ScreenModesDeckDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/Deck/Display.vue'));
-const ScreenModesDeckSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/Deck/Settings.vue'));
-const ScreenModesStandingsDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/Standings/Display.vue'));
-const ScreenModesStandingsSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/Standings/Settings.vue'));
-const ScreenModesTopCutDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/TopCut/Display.vue'));
-const ScreenModesTopCutSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/TopCut/Settings.vue'));
-const ScreenModesFeatureMatchDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/FeatureMatch/Display.vue'));
-const ScreenModesFeatureMatchOverlayDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/FeatureMatchOverlay/Display.vue'));
-const ScreenModesFeatureMatchOverlaySettings = defineAsyncComponent(() => import('~/components/Screen/Modes/FeatureMatchOverlay/Settings.vue'));
-const ScreenModesBroadcastGraphicsDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/BroadcastGraphics/Display.vue'));
-const ScreenModesBroadcastGraphicsSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/BroadcastGraphics/Settings.vue'));
-const ScreenModesMetagameDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/Metagame/Display.vue'));
-const ScreenModesMetagameSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/Metagame/Settings.vue'));
-const ScreenModesTopCardsDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/TopCards/Display.vue'));
-const ScreenModesTopCardsSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/TopCards/Settings.vue'));
-const ScreenModesPlayerHistoryDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/PlayerHistory/Display.vue'));
-const ScreenModesPairingsDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/Pairings/Display.vue'));
-const ScreenModesArchetypeSpotlightDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/ArchetypeSpotlight/Display.vue'));
-const ScreenModesArchetypeSpotlightSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/ArchetypeSpotlight/Settings.vue'));
-const ScreenModesHeadToHeadDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/HeadToHead/Display.vue'));
-const ScreenModesRoundClockDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/RoundClock/Display.vue'));
-const ScreenModesTalentDisplay = defineAsyncComponent(() => import('~/components/Screen/Modes/Talent/Display.vue'));
-const ScreenModesTalentSettings = defineAsyncComponent(() => import('~/components/Screen/Modes/Talent/Settings.vue'));
+const ScreenModeSettings = defineAsyncComponent(
+	() => import('~/components/Screen/ModeSettings.vue'),
+);
+const ScreenModesBackgroundDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Background/Display.vue'),
+);
+const ScreenModesBackgroundSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Background/Settings.vue'),
+);
+const ScreenModesCardDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Card/Display.vue'),
+);
+const ScreenModesDeckDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Deck/Display.vue'),
+);
+const ScreenModesDeckSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Deck/Settings.vue'),
+);
+const ScreenModesStandingsDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Standings/Display.vue'),
+);
+const ScreenModesStandingsSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Standings/Settings.vue'),
+);
+const ScreenModesTopCutDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/TopCut/Display.vue'),
+);
+const ScreenModesTopCutSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/TopCut/Settings.vue'),
+);
+const ScreenModesFeatureMatchDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/FeatureMatch/Display.vue'),
+);
+const ScreenModesFeatureMatchOverlayDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/FeatureMatchOverlay/Display.vue'),
+);
+const ScreenModesFeatureMatchOverlaySettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/FeatureMatchOverlay/Settings.vue'),
+);
+const ScreenModesBroadcastGraphicsDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/BroadcastGraphics/Display.vue'),
+);
+const ScreenModesBroadcastGraphicsSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/BroadcastGraphics/Settings.vue'),
+);
+const ScreenModesMetagameDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Metagame/Display.vue'),
+);
+const ScreenModesMetagameSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Metagame/Settings.vue'),
+);
+const ScreenModesTopCardsDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/TopCards/Display.vue'),
+);
+const ScreenModesTopCardsSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/TopCards/Settings.vue'),
+);
+const ScreenModesPlayerHistoryDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/PlayerHistory/Display.vue'),
+);
+const ScreenModesPairingsDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Pairings/Display.vue'),
+);
+const ScreenModesArchetypeSpotlightDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/ArchetypeSpotlight/Display.vue'),
+);
+const ScreenModesArchetypeSpotlightSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/ArchetypeSpotlight/Settings.vue'),
+);
+const ScreenModesHeadToHeadDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/HeadToHead/Display.vue'),
+);
+const ScreenModesRoundClockDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/RoundClock/Display.vue'),
+);
+const ScreenModesTalentDisplay = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Talent/Display.vue'),
+);
+const ScreenModesTalentSettings = defineAsyncComponent(
+	() => import('~/components/Screen/Modes/Talent/Settings.vue'),
+);
 
 interface ScreenModeRuntimeDefinition {
 	displayComponent: Component;
@@ -69,25 +123,65 @@ export interface ResolvedScreenModeHost {
 	provideOverlayContainer: boolean;
 }
 
-export interface ScreenModeDefinitionWithComponents extends SharedScreenModeDefinition, ScreenModeRuntimeDefinition {}
+export interface ScreenModeDefinitionWithComponents
+	extends SharedScreenModeDefinition, ScreenModeRuntimeDefinition {}
 
 export const SCREEN_MODE_RUNTIME = {
-	'background': { displayComponent: ScreenModesBackgroundDisplay, settingsComponent: ScreenModesBackgroundSettings },
-	'card': { displayComponent: ScreenModesCardDisplay, settingsComponent: ScreenModeSettings },
-	'deck': { displayComponent: ScreenModesDeckDisplay, settingsComponent: ScreenModesDeckSettings },
-	'standings': { displayComponent: ScreenModesStandingsDisplay, settingsComponent: ScreenModesStandingsSettings },
-	'top-cut': { displayComponent: ScreenModesTopCutDisplay, settingsComponent: ScreenModesTopCutSettings },
-	'feature-match': { displayComponent: ScreenModesFeatureMatchDisplay, settingsComponent: ScreenModeSettings },
-	'feature-match-overlay': { displayComponent: ScreenModesFeatureMatchOverlayDisplay, settingsComponent: ScreenModesFeatureMatchOverlaySettings },
-	'broadcast-graphics': { displayComponent: ScreenModesBroadcastGraphicsDisplay, settingsComponent: ScreenModesBroadcastGraphicsSettings },
-	'metagame': { displayComponent: ScreenModesMetagameDisplay, settingsComponent: ScreenModesMetagameSettings },
-	'top-cards': { displayComponent: ScreenModesTopCardsDisplay, settingsComponent: ScreenModesTopCardsSettings },
-	'player-history': { displayComponent: ScreenModesPlayerHistoryDisplay, settingsComponent: ScreenModeSettings },
-	'pairings': { displayComponent: ScreenModesPairingsDisplay, settingsComponent: ScreenModeSettings },
-	'archetype-spotlight': { displayComponent: ScreenModesArchetypeSpotlightDisplay, settingsComponent: ScreenModesArchetypeSpotlightSettings },
-	'head-to-head': { displayComponent: ScreenModesHeadToHeadDisplay, settingsComponent: ScreenModeSettings },
-	'round-clock': { displayComponent: ScreenModesRoundClockDisplay, settingsComponent: ScreenModeSettings },
-	'talent': { displayComponent: ScreenModesTalentDisplay, settingsComponent: ScreenModesTalentSettings },
+	background: {
+		displayComponent: ScreenModesBackgroundDisplay,
+		settingsComponent: ScreenModesBackgroundSettings,
+	},
+	card: { displayComponent: ScreenModesCardDisplay, settingsComponent: ScreenModeSettings },
+	deck: { displayComponent: ScreenModesDeckDisplay, settingsComponent: ScreenModesDeckSettings },
+	standings: {
+		displayComponent: ScreenModesStandingsDisplay,
+		settingsComponent: ScreenModesStandingsSettings,
+	},
+	'top-cut': {
+		displayComponent: ScreenModesTopCutDisplay,
+		settingsComponent: ScreenModesTopCutSettings,
+	},
+	'feature-match': {
+		displayComponent: ScreenModesFeatureMatchDisplay,
+		settingsComponent: ScreenModeSettings,
+	},
+	'feature-match-overlay': {
+		displayComponent: ScreenModesFeatureMatchOverlayDisplay,
+		settingsComponent: ScreenModesFeatureMatchOverlaySettings,
+	},
+	'broadcast-graphics': {
+		displayComponent: ScreenModesBroadcastGraphicsDisplay,
+		settingsComponent: ScreenModesBroadcastGraphicsSettings,
+	},
+	metagame: {
+		displayComponent: ScreenModesMetagameDisplay,
+		settingsComponent: ScreenModesMetagameSettings,
+	},
+	'top-cards': {
+		displayComponent: ScreenModesTopCardsDisplay,
+		settingsComponent: ScreenModesTopCardsSettings,
+	},
+	'player-history': {
+		displayComponent: ScreenModesPlayerHistoryDisplay,
+		settingsComponent: ScreenModeSettings,
+	},
+	pairings: { displayComponent: ScreenModesPairingsDisplay, settingsComponent: ScreenModeSettings },
+	'archetype-spotlight': {
+		displayComponent: ScreenModesArchetypeSpotlightDisplay,
+		settingsComponent: ScreenModesArchetypeSpotlightSettings,
+	},
+	'head-to-head': {
+		displayComponent: ScreenModesHeadToHeadDisplay,
+		settingsComponent: ScreenModeSettings,
+	},
+	'round-clock': {
+		displayComponent: ScreenModesRoundClockDisplay,
+		settingsComponent: ScreenModeSettings,
+	},
+	talent: {
+		displayComponent: ScreenModesTalentDisplay,
+		settingsComponent: ScreenModesTalentSettings,
+	},
 } satisfies { [M in ScreenMode]: ScreenModeRuntimeDefinition };
 
 const HALIGN_MAP = { left: 'start', center: 'center', right: 'end' } as const;
@@ -130,7 +224,9 @@ export function getScreenModeConfigurationPolicy(mode: ScreenMode): ScreenModeCo
 	return getSharedScreenModeConfigurationPolicy(mode);
 }
 
-export function resolveScreenModeHost(options: ResolveScreenModeHostOptions): ResolvedScreenModeHost {
+export function resolveScreenModeHost(
+	options: ResolveScreenModeHostOptions,
+): ResolvedScreenModeHost {
 	const host = getScreenModeHostDefinition(options.mode);
 
 	// An operator surface: it fills its window in the app's own look (ADR-0051).
@@ -174,8 +270,7 @@ export function resolveScreenModeHost(options: ResolveScreenModeHostOptions): Re
 
 	// A plain mode's content sits inside the Screen inset, where the Theme aligns it.
 	const { inset, alignment } = screenLayoutTokens(options.theme, options.overrides);
-	if (host.foundationTokens.includes('inset'))
-		style.padding = `${inset}px`;
+	if (host.foundationTokens.includes('inset')) style.padding = `${inset}px`;
 	if (host.foundationTokens.includes('alignment')) {
 		style.justifyItems = HALIGN_MAP[alignment.horizontal];
 		style.alignItems = VALIGN_MAP[alignment.vertical];
@@ -197,10 +292,30 @@ export function isControlScreenMode(mode: ScreenMode): boolean {
 	return getScreenModeDisplayType(mode) === 'control';
 }
 
-export { foundationMotionVars, foundationTokenVar, foundationTypographyStyle, modeMotionVars, modeTokenVar, screenBackgroundLayers, screenLayoutTokens, screenModeThemeApplicationFonts, screenModeThemeFontReferences, screenModeThemeTokenStyle } from './modeTokens';
-export { usePaginatedScreenMode, useProjectedRotationPage, useScreenModePagination } from './pagination';
+export {
+	foundationMotionVars,
+	foundationTokenVar,
+	foundationTypographyStyle,
+	modeMotionVars,
+	modeTokenVar,
+	screenBackgroundLayers,
+	screenLayoutTokens,
+	screenModeThemeApplicationFonts,
+	screenModeThemeFontReferences,
+	screenModeThemeTokenStyle,
+} from './modeTokens';
+export {
+	usePaginatedScreenMode,
+	useProjectedRotationPage,
+	useScreenModePagination,
+} from './pagination';
 export type { ProjectedRotationPageOptions, ScreenModePaginationOptions } from './pagination';
-export { provideScreenModeReadiness, SCREEN_MODE_READY_TIMEOUT_MS, useScreenModeReady, useStagedScreenContent } from './readiness';
+export {
+	provideScreenModeReadiness,
+	SCREEN_MODE_READY_TIMEOUT_MS,
+	useScreenModeReady,
+	useStagedScreenContent,
+} from './readiness';
 export { useEventScreenModeSelectOptions } from './selectOptions';
 export type {
 	ScreenModeConfigurationPolicy,

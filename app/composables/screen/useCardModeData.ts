@@ -38,16 +38,19 @@ function holdSampleCard(context: ScreenContext) {
 	const card = ref<ScreenCard | null>(null);
 	const error = ref<string | null>(null);
 	const loading = ref(true);
-	outputReads.card().then(
-		(state) => {
-			card.value = state.card;
-		},
-		() => {
-			error.value = CARD_LOAD_FAILED;
-		},
-	).finally(() => {
-		loading.value = false;
-	});
+	outputReads
+		.card()
+		.then(
+			(state) => {
+				card.value = state.card;
+			},
+			() => {
+				error.value = CARD_LOAD_FAILED;
+			},
+		)
+		.finally(() => {
+			loading.value = false;
+		});
 	return {
 		card: computed(() => card.value),
 		loading: computed(() => loading.value),
@@ -57,7 +60,11 @@ function holdSampleCard(context: ScreenContext) {
 }
 
 /** The Screen's Card, held by the Card store and kept fresh as it changes. */
-function followScreenCard(context: ScreenContext, screenId: Readonly<Ref<number | null>>, config: Readonly<Ref<ModeConfigTypeMap['card']>>) {
+function followScreenCard(
+	context: ScreenContext,
+	screenId: Readonly<Ref<number | null>>,
+	config: Readonly<Ref<ModeConfigTypeMap['card']>>,
+) {
 	const { cardDataHealth } = context;
 	const cardStore = useCardStore();
 	const outputReads = useScreenOutputReads(context);
@@ -70,9 +77,13 @@ function followScreenCard(context: ScreenContext, screenId: Readonly<Ref<number 
 	// showing it on program. The ref is optional — operator-side consumers of
 	// the same store have no ScreenContext and load with no health reporting.
 	if (cardDataHealth) {
-		watch(() => cardStore.cardDataDegraded, (degraded) => {
-			cardDataHealth.value = degraded ? 'degraded' : 'complete';
-		}, { immediate: true });
+		watch(
+			() => cardStore.cardDataDegraded,
+			(degraded) => {
+				cardDataHealth.value = degraded ? 'degraded' : 'complete';
+			},
+			{ immediate: true },
+		);
 		onScopeDispose(() => {
 			// A degraded report must not outlive the rendering that measured it.
 			cardDataHealth.value = 'complete';
@@ -81,20 +92,18 @@ function followScreenCard(context: ScreenContext, screenId: Readonly<Ref<number 
 
 	// Selecting a Screen clears the Card held for the last one, so it happens only
 	// when the Screen changes: every other re-read holds program until it answers.
-	watch(screenId, id => cardStore.setActiveScreen(id), { immediate: true });
+	watch(screenId, (id) => cardStore.setActiveScreen(id), { immediate: true });
 
 	// The store follows the Card's own messages; this owns re-reading it on
 	// reconnection and while realtime is degraded (#610).
 	const freshness = useScreenModeFreshness<null>({
 		// The Card's own messages reach the store whole, so no message asks for a read.
 		hearing: useScreenModeHearing(context, 'card', () => config.value, { follows: [] }),
-		source: () => screenId.value === null
-			? null
-			: String(screenId.value),
+		source: () => (screenId.value === null ? null : String(screenId.value)),
 		// A failed read is this module's to retry, so it fails here too (#726). A
 		// superseded one does not: something newer already reached the Card.
 		read: async () => {
-			if (await cardStore.loadActiveCard() === 'failed')
+			if ((await cardStore.loadActiveCard()) === 'failed')
 				throw new Error(cardStore.error ?? CARD_LOAD_FAILED);
 			return null;
 		},

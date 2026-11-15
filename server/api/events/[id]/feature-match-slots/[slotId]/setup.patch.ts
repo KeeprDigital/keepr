@@ -1,5 +1,8 @@
 import { featureMatchSlotWriteModule } from '~~/server/modules/feature-match-slot-write';
-import { featureMatchSlotParamsSchema, updateFeatureMatchSchema } from '~~/server/schemas/api/featureMatch';
+import {
+	featureMatchSlotParamsSchema,
+	updateFeatureMatchSchema,
+} from '~~/server/schemas/api/featureMatch';
 import { getOriginConnectionId } from '~~/server/utils/ably';
 
 export default defineEventHandler(async (event) => {

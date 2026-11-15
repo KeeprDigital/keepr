@@ -27,24 +27,16 @@ const ENV = {
 
 const INSTALLATION = {
 	app: {
-		routes: [
-			{ pattern: 'stream.keepr.digital', custom_domain: true },
-		],
-		r2_buckets: [
-			{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: BUCKET },
-		],
+		routes: [{ pattern: 'stream.keepr.digital', custom_domain: true }],
+		r2_buckets: [{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: BUCKET }],
 		services: [
 			{ binding: 'SILENT_VIDEO_PLAYBACK_VALIDATOR', service: 'stream-silent-video-validator' },
 		],
 	},
 	validator: {
 		name: 'stream-silent-video-validator',
-		r2_buckets: [
-			{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: BUCKET },
-		],
-		workflows: [
-			{ name: WORKFLOW, binding: 'SILENT_VIDEO_VALIDATION_WORKFLOW' },
-		],
+		r2_buckets: [{ binding: 'GRAPHICS_ASSET_STAGING', bucket_name: BUCKET }],
+		workflows: [{ name: WORKFLOW, binding: 'SILENT_VIDEO_VALIDATION_WORKFLOW' }],
 	},
 	validatorConfigPath: '/repo/workers/silent-video-validator/wrangler.jsonc',
 };
@@ -70,11 +62,21 @@ interface FakeOptions {
 }
 
 function fakeCommands(options: FakeOptions = {}) {
-	const calls: { op: string; accountId: string; bucket?: string; workflow?: string; key?: string }[] = [];
+	const calls: {
+		op: string;
+		accountId: string;
+		bucket?: string;
+		workflow?: string;
+		key?: string;
+	}[] = [];
 	const objects = new Map<string, Uint8Array>();
 	const instances = new Map<string, object>();
 	let deleteFailures = options.failDeletes ?? 0;
-	const log = (op: string, target: { accountId: string; stagingBucket: string; workflow: string }, key?: string) =>
+	const log = (
+		op: string,
+		target: { accountId: string; stagingBucket: string; workflow: string },
+		key?: string,
+	) =>
 		calls.push({
 			op,
 			accountId: target.accountId,
@@ -88,18 +90,15 @@ function fakeCommands(options: FakeOptions = {}) {
 		objects,
 		async probeBucket({ target }: any) {
 			log('probe-bucket', target);
-			if (options.failProbe === 'bucket')
-				throw rawFailure('info', '');
+			if (options.failProbe === 'bucket') throw rawFailure('info', '');
 		},
 		async probeWorkflow({ target }: any) {
 			log('probe-workflow', target);
-			if (options.failProbe === 'workflow')
-				throw rawFailure('describe', '');
+			if (options.failProbe === 'workflow') throw rawFailure('describe', '');
 		},
 		async putObject({ target, key, bytes }: any) {
 			log('put', target, key);
-			if (options.failPut)
-				throw rawFailure('put', key);
+			if (options.failPut) throw rawFailure('put', key);
 			objects.set(key, bytes);
 		},
 		async getObject({ target, key }: any) {
@@ -164,7 +163,10 @@ afterEach(async () => {
 	await rm(workspace, { recursive: true, force: true });
 });
 
-async function run(commands: ReturnType<typeof fakeCommands>, { env = ENV as Record<string, string | undefined>, flags = ['--deployed'] } = {}) {
+async function run(
+	commands: ReturnType<typeof fakeCommands>,
+	{ env = ENV as Record<string, string | undefined>, flags = ['--deployed'] } = {},
+) {
 	const openSession = vi.fn(async () => ['session=a-session-cookie-value']);
 	process.exitCode = undefined;
 	await main(['node', 'run-silent-video-validator-acceptance.mjs', ...flags], {
@@ -179,21 +181,19 @@ async function run(commands: ReturnType<typeof fakeCommands>, { env = ENV as Rec
 }
 
 function mutations(commands: ReturnType<typeof fakeCommands>) {
-	return commands.calls.filter(call => MUTATIONS.has(call.op));
+	return commands.calls.filter((call) => MUTATIONS.has(call.op));
 }
 
 /** Nothing the evidence contract withholds: keys, digests, ids, filenames, Wrangler arguments, raw stderr. */
 function expectSafe(text: string) {
-	expect(text).not.toMatch(/ingestion\/|validation\/silent-video|acceptance-[a-z0-9]+-|[0-9a-f]{32}|--remote|\[ERROR\]|\.mp4|\.webm/u);
+	expect(text).not.toMatch(
+		/ingestion\/|validation\/silent-video|acceptance-[a-z0-9]+-|[0-9a-f]{32}|--remote|\[ERROR\]|\.mp4|\.webm/u,
+	);
 }
 
 describe('deployed validator acceptance: preflight', () => {
 	it.each([
-		[
-			'no account',
-			{ ...ENV, CLOUDFLARE_ACCOUNT_ID: undefined },
-			'harness-precondition-unmet',
-		],
+		['no account', { ...ENV, CLOUDFLARE_ACCOUNT_ID: undefined }, 'harness-precondition-unmet'],
 		[
 			'no acceptance URL',
 			{ ...ENV, STREAM_KEEPR_BROWSER_ACCEPTANCE_URL: undefined },
@@ -221,17 +221,20 @@ describe('deployed validator acceptance: preflight', () => {
 		expectSafe(output);
 	});
 
-	it.each(['bucket', 'workflow'] as const)('writes nothing when the account does not hold the %s', async (probe) => {
-		const commands = fakeCommands({ failProbe: probe });
-		const { exitCode, openSession } = await run(commands);
+	it.each(['bucket', 'workflow'] as const)(
+		'writes nothing when the account does not hold the %s',
+		async (probe) => {
+			const commands = fakeCommands({ failProbe: probe });
+			const { exitCode, openSession } = await run(commands);
 
-		expect(exitCode).toBe(1);
-		expect(mutations(commands)).toEqual([]);
-		// A bootstrapping sign-in creates or resets an account, so it waits for the probes.
-		expect(openSession).not.toHaveBeenCalled();
-		expect(output).toContain(`silent-video-validator-v1 harness-target-unverified step=${probe}`);
-		expectSafe(output);
-	});
+			expect(exitCode).toBe(1);
+			expect(mutations(commands)).toEqual([]);
+			// A bootstrapping sign-in creates or resets an account, so it waits for the probes.
+			expect(openSession).not.toHaveBeenCalled();
+			expect(output).toContain(`silent-video-validator-v1 harness-target-unverified step=${probe}`);
+			expectSafe(output);
+		},
+	);
 
 	it('signs in as the operator before the first write', async () => {
 		const commands = fakeCommands();
@@ -260,13 +263,20 @@ describe('deployed validator acceptance: routing', () => {
 		const { exitCode } = await run(commands);
 
 		expect(exitCode).toBeUndefined();
-		expect(new Set(commands.calls.map(({ accountId, bucket, workflow }) => `${accountId} ${bucket} ${workflow}`)))
-			.toEqual(new Set([`${ACCOUNT} ${BUCKET} ${WORKFLOW}`]));
-		expect(commands.calls.filter(call => call.op === 'put')).toHaveLength(3);
-		expect(commands.calls.filter(call => call.op === 'trigger')).toHaveLength(3);
+		expect(
+			new Set(
+				commands.calls.map(
+					({ accountId, bucket, workflow }) => `${accountId} ${bucket} ${workflow}`,
+				),
+			),
+		).toEqual(new Set([`${ACCOUNT} ${BUCKET} ${WORKFLOW}`]));
+		expect(commands.calls.filter((call) => call.op === 'put')).toHaveLength(3);
+		expect(commands.calls.filter((call) => call.op === 'trigger')).toHaveLength(3);
 		expect(commands.objects.size).toBe(0);
 		expect(existsSync(manifestPath)).toBe(false);
-		expect(output.trim()).toBe('silent-video-validator-v1 acceptance passed checks=3 fixtures=3 cleaned=6');
+		expect(output.trim()).toBe(
+			'silent-video-validator-v1 acceptance passed checks=3 fixtures=3 cleaned=6',
+		);
 	});
 });
 
@@ -276,11 +286,13 @@ describe('deployed validator acceptance: redacted failures', () => {
 		const { exitCode } = await run(commands);
 
 		expect(exitCode).toBe(1);
-		expect(output).toContain('silent-video-validator-v1 validator-command-failed fixture=h264Mp4 step=put exit=1');
+		expect(output).toContain(
+			'silent-video-validator-v1 validator-command-failed fixture=h264Mp4 step=put exit=1',
+		);
 		expectSafe(output);
 		// The source was recorded before its put, so cleanup tries it even though
 		// the put's own outcome is unknown.
-		expect(commands.calls.filter(call => call.op === 'delete')).toHaveLength(1);
+		expect(commands.calls.filter((call) => call.op === 'delete')).toHaveLength(1);
 		expect(existsSync(manifestPath)).toBe(false);
 	});
 
@@ -288,7 +300,9 @@ describe('deployed validator acceptance: redacted failures', () => {
 		const commands = fakeCommands({ outcome: 'rejected' });
 		await run(commands);
 
-		expect(output).toContain('silent-video-validator-v1 validator-output-unexpected fixture=h264Mp4 field=outcome');
+		expect(output).toContain(
+			'silent-video-validator-v1 validator-output-unexpected fixture=h264Mp4 field=outcome',
+		);
 		expectSafe(output);
 	});
 });
@@ -303,7 +317,11 @@ describe('deployed validator acceptance: cleanup', () => {
 		expect(output).not.toContain('acceptance passed');
 		expectSafe(output);
 		const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-		expect(manifest.target).toEqual({ accountId: ACCOUNT, stagingBucket: BUCKET, workflow: WORKFLOW });
+		expect(manifest.target).toEqual({
+			accountId: ACCOUNT,
+			stagingBucket: BUCKET,
+			workflow: WORKFLOW,
+		});
 		expect(manifest.objects).toHaveLength(2);
 
 		output = '';
@@ -315,8 +333,7 @@ describe('deployed validator acceptance: cleanup', () => {
 
 		output = '';
 		const retry = fakeCommands();
-		for (const { key } of manifest.objects)
-			retry.objects.set(key, new Uint8Array(1));
+		for (const { key } of manifest.objects) retry.objects.set(key, new Uint8Array(1));
 		// A retry signs in as nobody, so it does not need the operator.
 		const retried = await run(retry, {
 			env: { ...ENV, STREAM_KEEPR_ACCEPTANCE_OPERATOR_PASSWORD: undefined },
@@ -330,9 +347,13 @@ describe('deployed validator acceptance: cleanup', () => {
 		// Idempotent: a second retry finds nothing and deletes nothing.
 		output = '';
 		const again = fakeCommands();
-		expect((await run(again, {
-			flags: ['--deployed', '--cleanup'],
-		})).exitCode).toBeUndefined();
+		expect(
+			(
+				await run(again, {
+					flags: ['--deployed', '--cleanup'],
+				})
+			).exitCode,
+		).toBeUndefined();
 		expect(mutations(again)).toEqual([]);
 		expect(output.trim()).toBe('silent-video-validator-v1 acceptance passed checks=1 cleaned=0');
 	});
@@ -356,20 +377,27 @@ describe('deployed validator acceptance: cleanup', () => {
 
 		output = '';
 		const settled = fakeCommands();
-		expect((await run(settled, {
-			flags: ['--deployed', '--cleanup'],
-		})).exitCode).toBeUndefined();
+		expect(
+			(
+				await run(settled, {
+					flags: ['--deployed', '--cleanup'],
+				})
+			).exitCode,
+		).toBeUndefined();
 		expect(output.trim()).toBe('silent-video-validator-v1 acceptance passed checks=1 cleaned=1');
 		expect(existsSync(manifestPath)).toBe(false);
 	});
 
 	it('treats a manifest that lists nothing as no manifest, so a run killed before its first write blocks nothing', async () => {
 		await mkdir(workspace, { recursive: true });
-		await writeFile(manifestPath, JSON.stringify({
-			version: 1,
-			target: { accountId: ACCOUNT, stagingBucket: BUCKET, workflow: WORKFLOW },
-			objects: [],
-		}));
+		await writeFile(
+			manifestPath,
+			JSON.stringify({
+				version: 1,
+				target: { accountId: ACCOUNT, stagingBucket: BUCKET, workflow: WORKFLOW },
+				objects: [],
+			}),
+		);
 
 		expect((await run(fakeCommands())).exitCode).toBeUndefined();
 		expect(existsSync(manifestPath)).toBe(false);

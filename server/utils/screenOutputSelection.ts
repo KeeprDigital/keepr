@@ -13,7 +13,10 @@ import { resolveScreenModeConfig } from '~~/shared/types/screenConfig';
 export type ScreenSelection = Pick<DbScreen, 'currentMode' | 'modeConfigs'>;
 
 /** The saved configuration of one mode, completed with its defaults as an output renders it. */
-export function screenOutputModeConfig<M extends ScreenMode>(screen: Pick<DbScreen, 'modeConfigs'>, mode: M): ModeConfigTypeMap[M] {
+export function screenOutputModeConfig<M extends ScreenMode>(
+	screen: Pick<DbScreen, 'modeConfigs'>,
+	mode: M,
+): ModeConfigTypeMap[M] {
 	return resolveScreenModeConfig(screen.modeConfigs, mode);
 }
 
@@ -21,9 +24,7 @@ export function screenOutputModeConfig<M extends ScreenMode>(screen: Pick<DbScre
 export function screenOutputFeatureMatchSlotId(screen: ScreenSelection): number | null {
 	if (screen.currentMode === 'deck') {
 		const source = screenOutputModeConfig(screen, 'deck').deckSource;
-		return source.type === 'featureMatchSlot'
-			? source.slotId
-			: null;
+		return source.type === 'featureMatchSlot' ? source.slotId : null;
 	}
 	if (screen.currentMode !== 'feature-match' && screen.currentMode !== 'feature-match-overlay')
 		return null;

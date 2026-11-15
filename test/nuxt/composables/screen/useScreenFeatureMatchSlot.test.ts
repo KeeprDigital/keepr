@@ -27,7 +27,8 @@ mockNuxtImport('$fetch', () => mockFetch);
 const realtime = createFakeEventChannel();
 mockNuxtImport('tryUseRealtime', () => () => realtime.transport);
 
-const slotPath = (slotId: number) => `/api/screen-output/events/${EVENT_ID}/screens/${SCREEN_ID}/feature-match-slots/${slotId}`;
+const slotPath = (slotId: number) =>
+	`/api/screen-output/events/${EVENT_ID}/screens/${SCREEN_ID}/feature-match-slots/${slotId}`;
 
 /** What the server answers for each Slot, read through the Screen. */
 const served = new Map<number, ScreenOutputFeatureMatchResponse>();
@@ -36,16 +37,24 @@ const served = new Map<number, ScreenOutputFeatureMatchResponse>();
  * A Slot read's answer: the Slot following Match 300 in `round`, with its
  * Session, `50x` for Slot `x`, or none where the read predates its first (#658).
  */
-function slotRead(slotId: number, { session = 500 + slotId as number | null, round = 'Round 3' } = {}) {
+function slotRead(
+	slotId: number,
+	{ session = (500 + slotId) as number | null, round = 'Round 3' } = {},
+) {
 	return {
 		slot: createMockFeatureMatch({
 			id: slotId,
 			eventId: EVENT_ID,
 			matchId: 300,
 			activeSessionId: session,
-			activeSession: session === null
-				? null
-				: createSession(createMockFeatureMatchState(), { id: session, eventId: EVENT_ID, slotId }),
+			activeSession:
+				session === null
+					? null
+					: createSession(createMockFeatureMatchState(), {
+							id: session,
+							eventId: EVENT_ID,
+							slotId,
+						}),
 		} as never),
 		match: { id: 300, roundId: 20 },
 		round: { id: 20, name: round, phaseId: 5 },
@@ -55,36 +64,45 @@ function slotRead(slotId: number, { session = 500 + slotId as number | null, rou
 
 /** Every request made, a write named by its method. */
 function requests(): string[] {
-	return mockFetch.mock.calls.map(([path, options]) => options?.method
-		? `${options.method} ${path}`
-		: String(path));
+	return mockFetch.mock.calls.map(([path, options]) =>
+		options?.method ? `${options.method} ${path}` : String(path),
+	);
 }
 
 const scopes: EffectScope[] = [];
 
 /** A rendering showing `slotId`, keeping the name of the Round its Slot's Match is in. */
-function showing(slotId: number | null, { mode = 'feature-match-overlay', live = false }: { mode?: 'feature-match' | 'feature-match-overlay'; live?: boolean } = {}) {
+function showing(
+	slotId: number | null,
+	{
+		mode = 'feature-match-overlay',
+		live = false,
+	}: { mode?: 'feature-match' | 'feature-match-overlay'; live?: boolean } = {},
+) {
 	const selected = ref(slotId);
 	const scope = effectScope();
 	scopes.push(scope);
-	const shown = scope.run(() => useScreenFeatureMatchSlot<string>(
-		screenContextOf({
-			screen: ref({ id: SCREEN_ID }),
-			eventId: computed(() => EVENT_ID),
-			followsScreenChannel: ref(live),
-		}),
-		{
-			mode,
-			config: () => ({
-				...getDefaultConfigForMode(mode),
-				featureMatchId: selected.value,
-			}) as never,
-			slotId: () => selected.value,
-			keep: read => read.round?.name ?? 'no Round',
-			initialData: 'nothing kept',
-			errorMessage: 'Failed to read the Slot',
-		},
-	))!;
+	const shown = scope.run(() =>
+		useScreenFeatureMatchSlot<string>(
+			screenContextOf({
+				screen: ref({ id: SCREEN_ID }),
+				eventId: computed(() => EVENT_ID),
+				followsScreenChannel: ref(live),
+			}),
+			{
+				mode,
+				config: () =>
+					({
+						...getDefaultConfigForMode(mode),
+						featureMatchId: selected.value,
+					}) as never,
+				slotId: () => selected.value,
+				keep: (read) => read.round?.name ?? 'no Round',
+				initialData: 'nothing kept',
+				errorMessage: 'Failed to read the Slot',
+			},
+		),
+	)!;
 	return { ...shown, selected, scope };
 }
 
@@ -103,7 +121,7 @@ describe('useScreenFeatureMatchSlot', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
 	it('reads the Slot it shows through its Screen, and holds it with its Session', async () => {
@@ -112,9 +130,7 @@ describe('useScreenFeatureMatchSlot', () => {
 		const { slot, state, data, answered } = showing(11);
 		await flushPromises();
 
-		expect(requests()).toEqual([
-			slotPath(11),
-		]);
+		expect(requests()).toEqual([slotPath(11)]);
 		expect(slot.value).toMatchObject({
 			id: 11,
 			activeSession: { id: 511 },
@@ -132,10 +148,7 @@ describe('useScreenFeatureMatchSlot', () => {
 
 		selected.value = 12;
 		await flushPromises();
-		expect(requests()).toEqual([
-			slotPath(11),
-			slotPath(12),
-		]);
+		expect(requests()).toEqual([slotPath(11), slotPath(12)]);
 		expect(slot.value?.id).toBe(12);
 		expect(data.value).toBe('Round 4');
 
@@ -155,9 +168,13 @@ describe('useScreenFeatureMatchSlot', () => {
 		await flushPromises();
 		served.set(11, slotRead(11, { session: 512, round: 'Round 4' }));
 
-		realtime.deliver('featureMatch:updated', {
-			featureMatch: { id: 11 },
-		}, EVENT_ID);
+		realtime.deliver(
+			'featureMatch:updated',
+			{
+				featureMatch: { id: 11 },
+			},
+			EVENT_ID,
+		);
 		await flushPromises();
 
 		expect(slot.value?.activeSession?.id).toBe(512);
@@ -187,16 +204,24 @@ describe('useScreenFeatureMatchSlot', () => {
 			causes: ['round'],
 			reads: 1,
 		},
-	] as const)('a live $mode Screen told of $causes has read its Slot $reads times', async ({ mode, causes, reads }) => {
-		served.set(11, slotRead(11));
-		showing(11, { mode, live: true });
-		await flushPromises();
+	] as const)(
+		'a live $mode Screen told of $causes has read its Slot $reads times',
+		async ({ mode, causes, reads }) => {
+			served.set(11, slotRead(11));
+			showing(11, { mode, live: true });
+			await flushPromises();
 
-		realtime.deliverToScreen(SCREEN_ID, 'output:modeDataChanged', { screenId: SCREEN_ID, causes }, EVENT_ID);
-		await flushPromises();
+			realtime.deliverToScreen(
+				SCREEN_ID,
+				'output:modeDataChanged',
+				{ screenId: SCREEN_ID, causes },
+				EVENT_ID,
+			);
+			await flushPromises();
 
-		expect(requests()).toHaveLength(reads);
-	});
+			expect(requests()).toHaveLength(reads);
+		},
+	);
 
 	// A read from before a promotion or clearing this client has since heard of
 	// is left behind whole (ADR-0026): here, one predating the Slot's Session.
@@ -221,16 +246,11 @@ describe('useScreenFeatureMatchSlot', () => {
 		served.set(11, slotRead(11, { session: null, round: 'Round 2' }));
 		served.set(12, slotRead(12, { session: null, round: 'Round 2' }));
 
-		if (slotId === 11)
-			realtime.reattach(EVENT_ID);
-		else
-			selected.value = slotId;
+		if (slotId === 11) realtime.reattach(EVENT_ID);
+		else selected.value = slotId;
 		await flushPromises();
 
-		expect(requests()).toEqual([
-			slotPath(11),
-			slotPath(slotId),
-		]);
+		expect(requests()).toEqual([slotPath(11), slotPath(slotId)]);
 		expect(data.value).toBe(kept);
 		expect(slot.value?.activeSession?.id ?? null).toBe(session);
 	});
@@ -252,7 +272,7 @@ describe('useScreenFeatureMatchSlot', () => {
 	});
 
 	// A rendering never starts live state by reading it (#604).
-	it('answers the store\'s Session loads through its Screen for as long as it lives', async () => {
+	it("answers the store's Session loads through its Screen for as long as it lives", async () => {
 		served.set(11, slotRead(11));
 		const { scope } = showing(11);
 		await flushPromises();
@@ -260,14 +280,12 @@ describe('useScreenFeatureMatchSlot', () => {
 
 		mockFetch.mockClear();
 		await sessions.loadState(EVENT_ID, 11);
-		expect(requests()).toEqual([
-			slotPath(11),
-		]);
+		expect(requests()).toEqual([slotPath(11)]);
 
 		scope.stop();
 		mockFetch.mockClear();
 		await sessions.loadState(EVENT_ID, 11);
 		expect(requests()).not.toEqual([]);
-		expect(requests().filter(request => request.startsWith('/api/screen-output/'))).toEqual([]);
+		expect(requests().filter((request) => request.startsWith('/api/screen-output/'))).toEqual([]);
 	});
 });

@@ -28,8 +28,9 @@ export default defineEventHandler(async (event) => {
 	if (!screen)
 		throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Screen not found' });
 
-	const graphic = screen.modeConfigs?.['broadcast-graphics']?.graphics
-		?.find(candidate => candidate.id === body.source.graphicId);
+	const graphic = screen.modeConfigs?.['broadcast-graphics']?.graphics?.find(
+		(candidate) => candidate.id === body.source.graphicId,
+	);
 	if (!graphic) {
 		throw createError({
 			statusCode: 404,
@@ -39,18 +40,23 @@ export default defineEventHandler(async (event) => {
 	}
 
 	const document = broadcastGraphicTemplateDocument(graphic);
-	await assertBroadcastGraphicTemplateReferencesSelectable(graphicsAssetLibraryForEvent(event), document);
-
-	const template = await broadcastGraphicTemplateService().create({
-		id: randomUuid(),
-		name: body.name ?? graphic.name,
-		description: body.description ?? null,
+	await assertBroadcastGraphicTemplateReferencesSelectable(
+		graphicsAssetLibraryForEvent(event),
 		document,
-	}).catch((error: unknown) => {
-		if (error instanceof BroadcastGraphicTemplateReferenceConflict)
-			throw graphicsTemplateReferenceConflict('Broadcast Graphic Template');
-		throw error;
-	});
+	);
+
+	const template = await broadcastGraphicTemplateService()
+		.create({
+			id: randomUuid(),
+			name: body.name ?? graphic.name,
+			description: body.description ?? null,
+			document,
+		})
+		.catch((error: unknown) => {
+			if (error instanceof BroadcastGraphicTemplateReferenceConflict)
+				throw graphicsTemplateReferenceConflict('Broadcast Graphic Template');
+			throw error;
+		});
 
 	setResponseStatus(event, 201);
 	return mapBroadcastGraphicTemplateToResponse(template);

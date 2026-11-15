@@ -9,12 +9,15 @@ interface SegmentedTabItem {
 	disabled?: boolean;
 }
 
-withDefaults(defineProps<{
-	items: SegmentedTabItem[];
-	size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-}>(), {
-	size: 'sm',
-});
+withDefaults(
+	defineProps<{
+		items: SegmentedTabItem[];
+		size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+	}>(),
+	{
+		size: 'sm',
+	},
+);
 
 const model = defineModel<string | number | undefined>({ required: true });
 </script>
@@ -33,7 +36,11 @@ const model = defineModel<string | number | undefined>({ required: true });
 			:data-testid="item.value ? `tab-${item.value}` : undefined"
 			:data-active="model === item.value ? 'true' : 'false'"
 			:disabled="item.disabled"
-			@click="() => { model = item.value }"
+			@click="
+				() => {
+					model = item.value;
+				}
+			"
 		/>
 	</UFieldGroup>
 </template>

@@ -13,7 +13,12 @@ import type { GraphicFillDescriptor } from '~/modules/graphics/renderModel';
 import type { FeatureMatchOverlayBorderSide } from '~/utils/featureMatchOverlayGeometry';
 import { screenOutputCanvasBackground } from '~~/shared/utils/screenOutput';
 import { fillDescriptor } from '~/modules/graphics/renderModel';
-import { glowDropShadow, glowFlood, graphicFillCss, paintColour } from '~/modules/screen/outputPaint';
+import {
+	glowDropShadow,
+	glowFlood,
+	graphicFillCss,
+	paintColour,
+} from '~/modules/screen/outputPaint';
 import {
 	FEATURE_MATCH_OVERLAY_BORDER_SIDES,
 	featureMatchOverlayBorderRadiusCss,
@@ -131,10 +136,7 @@ export function featureMatchOverlayFrameContentMaskStyle(
 ): CSSProperties {
 	const width = Math.max(0, canvasWidth);
 	const height = Math.max(0, canvasHeight);
-	const compoundPath = [
-		`M 0 0 H ${width} V ${height} H 0 Z`,
-		...cutoutPaths,
-	].join(' ');
+	const compoundPath = [`M 0 0 H ${width} V ${height} H 0 Z`, ...cutoutPaths].join(' ');
 	const svg = [
 		'<svg xmlns="http://www.w3.org/2000/svg"',
 		` viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">`,
@@ -164,9 +166,7 @@ function rectStyle(rect: FeatureMatchOverlayRect): CSSProperties {
 
 /** A surface's outline, which a Frame or Source Item draws as its border; none at zero width. */
 function surfaceOutline(surface: FeatureMatchOverlaySurface) {
-	return surface.outline && surface.outline.width > 0
-		? surface.outline
-		: undefined;
+	return surface.outline && surface.outline.width > 0 ? surface.outline : undefined;
 }
 
 function sourceGlowMaskStyle(
@@ -176,8 +176,8 @@ function sourceGlowMaskStyle(
 ): CSSProperties {
 	const width = Math.max(0, item.width);
 	const height = Math.max(0, item.height);
-	const maskWidth = width + (extent * 2);
-	const maskHeight = height + (extent * 2);
+	const maskWidth = width + extent * 2;
+	const maskHeight = height + extent * 2;
 	const innerPath = roundedRectPath({
 		x: extent,
 		y: extent,
@@ -185,9 +185,8 @@ function sourceGlowMaskStyle(
 		height,
 		radii: resolveFeatureMatchOverlayCornerRadii(item.framingStyle ?? {}),
 	});
-	const path = position === 'inside'
-		? innerPath
-		: `M 0 0 H ${maskWidth} V ${maskHeight} H 0 Z ${innerPath}`;
+	const path =
+		position === 'inside' ? innerPath : `M 0 0 H ${maskWidth} V ${maskHeight} H 0 Z ${innerPath}`;
 	const svg = [
 		'<svg xmlns="http://www.w3.org/2000/svg"',
 		` viewBox="0 0 ${maskWidth} ${maskHeight}" preserveAspectRatio="none">`,
@@ -213,13 +212,13 @@ function sourceGlowStyles(
 ): Pick<FeatureMatchOverlaySourceItemRenderModel, 'glowContainerStyle' | 'glowStyle'> | undefined {
 	// A Source Item glows its border, so it has no glow without one.
 	const filter = glowDropShadow(output, surface.glow);
-	if (!surfaceOutline(surface) || !surface.glow || !filter)
-		return undefined;
+	if (!surfaceOutline(surface) || !surface.glow || !filter) return undefined;
 	const style = item.framingStyle ?? {};
 
-	const visibleSides = FEATURE_MATCH_OVERLAY_BORDER_SIDES.filter(side => featureMatchOverlayBorderSideEnabled(style, side));
-	if (visibleSides.length === 0)
-		return undefined;
+	const visibleSides = FEATURE_MATCH_OVERLAY_BORDER_SIDES.filter((side) =>
+		featureMatchOverlayBorderSideEnabled(style, side),
+	);
+	if (visibleSides.length === 0) return undefined;
 
 	const size = surface.glow.size;
 	// A CSS drop-shadow extends beyond the element it filters. Give that result a
@@ -232,13 +231,11 @@ function sourceGlowStyles(
 			position: 'absolute',
 			left: `${item.x - extent}px`,
 			top: `${item.y - extent}px`,
-			width: `${Math.max(0, item.width) + (extent * 2)}px`,
-			height: `${Math.max(0, item.height) + (extent * 2)}px`,
+			width: `${Math.max(0, item.width) + extent * 2}px`,
+			height: `${Math.max(0, item.height) + extent * 2}px`,
 			overflow: 'hidden',
 			pointerEvents: 'none',
-			...(position === 'both'
-				? {}
-				: sourceGlowMaskStyle(item, extent, position)),
+			...(position === 'both' ? {} : sourceGlowMaskStyle(item, extent, position)),
 		},
 		glowStyle: {
 			position: 'absolute',
@@ -270,23 +267,19 @@ function cssBorderStyle(
 		: 'none';
 	return {
 		border: 'none',
-		borderTop: featureMatchOverlayBorderSideEnabled(style, 'Top')
-			? border
-			: 'none',
-		borderRight: featureMatchOverlayBorderSideEnabled(style, 'Right')
-			? border
-			: 'none',
-		borderBottom: featureMatchOverlayBorderSideEnabled(style, 'Bottom')
-			? border
-			: 'none',
-		borderLeft: featureMatchOverlayBorderSideEnabled(style, 'Left')
-			? border
-			: 'none',
+		borderTop: featureMatchOverlayBorderSideEnabled(style, 'Top') ? border : 'none',
+		borderRight: featureMatchOverlayBorderSideEnabled(style, 'Right') ? border : 'none',
+		borderBottom: featureMatchOverlayBorderSideEnabled(style, 'Bottom') ? border : 'none',
+		borderLeft: featureMatchOverlayBorderSideEnabled(style, 'Left') ? border : 'none',
 	};
 }
 
 /** One canvas edge of the Frame's border as an SVG line, in canvas coordinates. */
-export function frameBorderLine(side: FeatureMatchOverlayBorderSide, width: number, height: number) {
+export function frameBorderLine(
+	side: FeatureMatchOverlayBorderSide,
+	width: number,
+	height: number,
+) {
 	switch (side) {
 		case 'Top':
 			return { x1: 0, y1: 0, x2: width, y2: 0 };
@@ -309,7 +302,9 @@ export function frameBorderLine(side: FeatureMatchOverlayBorderSide, width: numb
 	}
 }
 
-function frameImagePreserveAspectRatio(fit: FeatureMatchOverlayModeConfig['layout']['frame']['backgroundImageFit']) {
+function frameImagePreserveAspectRatio(
+	fit: FeatureMatchOverlayModeConfig['layout']['frame']['backgroundImageFit'],
+) {
 	switch (fit) {
 		case 'contain':
 			return 'xMidYMid meet';
@@ -333,14 +328,15 @@ function frameBorder(
 	glowFilterId: string,
 ): FeatureMatchOverlayFrameBorderRenderModel | undefined {
 	const outline = surfaceOutline(surface);
-	if (!outline)
-		return undefined;
+	if (!outline) return undefined;
 
 	const flood = glowFlood(output, surface.glow);
 	return {
 		stroke: paintColour(output, outline.color),
 		strokeWidth: outline.width,
-		sides: FEATURE_MATCH_OVERLAY_BORDER_SIDES.filter(side => featureMatchOverlayBorderSideEnabled(frame, side)),
+		sides: FEATURE_MATCH_OVERLAY_BORDER_SIDES.filter((side) =>
+			featureMatchOverlayBorderSideEnabled(frame, side),
+		),
 		glow: flood && { filterId: glowFilterId, ...flood },
 	};
 }
@@ -403,7 +399,7 @@ export function resolveFeatureMatchOverlayRenderModel(
 	const { output, config, surfaces } = input;
 	const emptySeats: readonly string[] = input.emptySeats ?? [];
 	const sourceItems = config.layout.sources
-		.filter(item => item.visible && !(item.sourceRole && emptySeats.includes(item.sourceRole)))
+		.filter((item) => item.visible && !(item.sourceRole && emptySeats.includes(item.sourceRole)))
 		.map((item) => {
 			const glow = sourceGlowStyles(output, item, surfaces.sourceSurface);
 			return {
@@ -411,7 +407,12 @@ export function resolveFeatureMatchOverlayRenderModel(
 				style: sourceItemStyle(output, item, surfaces.sourceSurface),
 				...glow,
 				cutoutPath: item.frameCutout
-					? roundedRectPath(featureMatchOverlaySourceCutoutRect(item, surfaceOutline(surfaces.sourceSurface)?.width)) || null
+					? roundedRectPath(
+							featureMatchOverlaySourceCutoutRect(
+								item,
+								surfaceOutline(surfaces.sourceSurface)?.width,
+							),
+						) || null
 					: null,
 			};
 		});
@@ -426,14 +427,20 @@ export function resolveFeatureMatchOverlayRenderModel(
 			background: screenOutputCanvasBackground(output),
 		},
 		sourceItems,
-		sourceGuides: config.layout.sources.filter(item => item.visible),
+		sourceGuides: config.layout.sources.filter((item) => item.visible),
 		sourceCutouts: sourceItems
-			.filter(source => source.cutoutPath)
-			.map(source => ({ id: source.item.id, path: source.cutoutPath! })),
-		frame: frameRenderModel(output, config.layout.frame, surfaces.frameSurface, input.paintsMedia ?? false, {
-			maskId: input.maskId ?? 'feature-match-overlay-frame-mask',
-			glowFilterId: input.frameGlowFilterId ?? 'feature-match-overlay-frame-glow',
-		}),
+			.filter((source) => source.cutoutPath)
+			.map((source) => ({ id: source.item.id, path: source.cutoutPath! })),
+		frame: frameRenderModel(
+			output,
+			config.layout.frame,
+			surfaces.frameSurface,
+			input.paintsMedia ?? false,
+			{
+				maskId: input.maskId ?? 'feature-match-overlay-frame-mask',
+				glowFilterId: input.frameGlowFilterId ?? 'feature-match-overlay-frame-glow',
+			},
+		),
 		rectStyle,
 	};
 }

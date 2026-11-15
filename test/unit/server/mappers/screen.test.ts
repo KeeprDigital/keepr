@@ -13,10 +13,12 @@ describe('screen mapper', () => {
 	});
 
 	it('carries no Screen Card, so only the Card read answers it (ADR-0022)', () => {
-		const result = mapScreenToResponse(createMockScreen({
-			activeCard: { id: 'card-1', name: 'Bolt', savedAt: 1 } as never,
-			activeCardVersion: 3,
-		}));
+		const result = mapScreenToResponse(
+			createMockScreen({
+				activeCard: { id: 'card-1', name: 'Bolt', savedAt: 1 } as never,
+				activeCardVersion: 3,
+			}),
+		);
 
 		expect(result).not.toHaveProperty('activeCard');
 		expect(result).not.toHaveProperty('activeCardVersion');

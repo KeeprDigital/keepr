@@ -9,7 +9,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 // at once, but never another operator command's, and a tick never takes one.
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; data?: unknown }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -20,7 +21,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 	publishMessageStrict: async () => {},
 }));
 
-const { acquireMeleeSyncLease, renewMeleeSyncLease } = await import('~~/server/utils/meleeSyncState');
+const { acquireMeleeSyncLease, renewMeleeSyncLease } =
+	await import('~~/server/utils/meleeSyncState');
 
 afterAll(async () => await harness.close());
 
@@ -28,14 +30,17 @@ const now = new Date('2026-10-27T12:00:00.000Z');
 const heldUntil = new Date('2026-10-27T12:02:00.000Z');
 
 async function eventHeldBy(command: string) {
-	const [event] = await db.insert(schema.events).values({
-		name: 'Lease',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-		meleeSyncLeaseToken: 'holder-token',
-		meleeSyncLeaseCommand: command,
-		meleeSyncLeaseExpiresAt: heldUntil,
-	}).returning();
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'Lease',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+			meleeSyncLeaseToken: 'holder-token',
+			meleeSyncLeaseCommand: command,
+			meleeSyncLeaseExpiresAt: heldUntil,
+		})
+		.returning();
 	return event!.id;
 }
 
@@ -81,16 +86,16 @@ describe('acquiring the Melee Sync lease', () => {
 	] as const)('$case', async ({ holder, command, outcome }) => {
 		const eventId = await eventHeldBy(holder);
 
-		const result = await acquireMeleeSyncLease(eventId, command, { now, token: 'new-token' })
-			.catch((error: { statusCode: number; data: unknown }) => error);
+		const result = await acquireMeleeSyncLease(eventId, command, { now, token: 'new-token' }).catch(
+			(error: { statusCode: number; data: unknown }) => error,
+		);
 
 		if (outcome === 'acquired') {
 			expect(result).toMatchObject({ token: 'new-token', command });
 			expect(await leaseOf(eventId)).toEqual({ token: 'new-token', command });
 			// The tick's checkpoint renews by token, so it now finds its lease gone.
 			expect(await renewMeleeSyncLease(eventId, 'holder-token', { now })).toBe(false);
-		}
-		else {
+		} else {
 			expect(result).toMatchObject({
 				statusCode: 409,
 				data: {

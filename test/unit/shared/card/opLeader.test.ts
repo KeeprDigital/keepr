@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { formatOpColors, isOpCardImageUrl, opLeaderOf, parseOpColors } from '~~/shared/utils/card/op';
+import {
+	formatOpColors,
+	isOpCardImageUrl,
+	opLeaderOf,
+	parseOpColors,
+} from '~~/shared/utils/card/op';
 import { opCardSummary, ZORO } from '~~/test/helpers/opCards';
 
 describe('opLeaderOf', () => {
@@ -8,9 +13,13 @@ describe('opLeaderOf', () => {
 	});
 
 	it('keeps only One Piece colours, which bandai-keepr spells case-sensitively', () => {
-		expect(opLeaderOf(opCardSummary({
-			colors: ['red', 'Purple', 'Teal'],
-		})).colors).toEqual(['Purple']);
+		expect(
+			opLeaderOf(
+				opCardSummary({
+					colors: ['red', 'Purple', 'Teal'],
+				}),
+			).colors,
+		).toEqual(['Purple']);
 	});
 });
 

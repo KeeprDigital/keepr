@@ -4,25 +4,28 @@ import type { BoardSelection, Game, MetagameCardSortBy } from '~~/shared/types/e
 import type { CardBreakdownEntry } from '~~/shared/types/metagame';
 import { isMetagameColumnOffered } from '~~/shared/utils/metagame';
 
-const props = withDefaults(defineProps<{
-	entries: CardBreakdownEntry[];
-	totalDecks?: number;
-	loading?: boolean;
-	sortBy: MetagameCardSortBy;
-	boardFilter: BoardSelection;
-	showDeckCount?: boolean;
-	/** The Event has a points system: show each card's points and the Pointed only toggle. */
-	showPoints?: boolean;
-	pointedOnly?: boolean;
-	/** When provided, row clicks navigate to this path */
-	getRowLink?: (entry: CardBreakdownEntry) => string;
-	/** The Event's Card Game: an OP card has no mana cost, and an OP deck no Sideboard (ADR-0074). */
-	game?: Game;
-}>(), {
-	showDeckCount: true,
-	showPoints: false,
-	pointedOnly: false,
-});
+const props = withDefaults(
+	defineProps<{
+		entries: CardBreakdownEntry[];
+		totalDecks?: number;
+		loading?: boolean;
+		sortBy: MetagameCardSortBy;
+		boardFilter: BoardSelection;
+		showDeckCount?: boolean;
+		/** The Event has a points system: show each card's points and the Pointed only toggle. */
+		showPoints?: boolean;
+		pointedOnly?: boolean;
+		/** When provided, row clicks navigate to this path */
+		getRowLink?: (entry: CardBreakdownEntry) => string;
+		/** The Event's Card Game: an OP card has no mana cost, and an OP deck no Sideboard (ADR-0074). */
+		game?: Game;
+	}>(),
+	{
+		showDeckCount: true,
+		showPoints: false,
+		pointedOnly: false,
+	},
+);
 
 const emit = defineEmits<{
 	(e: 'update:sortBy', value: MetagameCardSortBy): void;
@@ -45,63 +48,67 @@ const {
 	toggleType,
 	resetFilters,
 	filteredEntries,
-} = useMetagameCardFilters(computed(() => props.entries), {
-	defaultExcludedTypes: ['Land'],
-	game: () => props.game,
-});
+} = useMetagameCardFilters(
+	computed(() => props.entries),
+	{
+		defaultExcludedTypes: ['Land'],
+		game: () => props.game,
+	},
+);
 
 const hasSideboard = computed(() => isMetagameColumnOffered(props.game, 'sideboardCount'));
 
 // Pointed lands (Strip Mine, Wasteland, …) belong in the pointed view, so it shows lands.
-watch(() => props.pointedOnly, (pointedOnly) => {
-	if (pointedOnly && excludedTypes.value.has('Land'))
-		toggleType('Land');
-});
+watch(
+	() => props.pointedOnly,
+	(pointedOnly) => {
+		if (pointedOnly && excludedTypes.value.has('Land')) toggleType('Land');
+	},
+);
 
 function toggleMainboard() {
-	if (showMainboard.value && !showSideboard.value)
-		return;
-	emit('update:boardFilter', props.boardFilter === 'full'
-		? 'sideboard'
-		: 'full');
+	if (showMainboard.value && !showSideboard.value) return;
+	emit('update:boardFilter', props.boardFilter === 'full' ? 'sideboard' : 'full');
 }
 
 function toggleSideboard() {
-	if (showSideboard.value && !showMainboard.value)
-		return;
-	emit('update:boardFilter', props.boardFilter === 'full'
-		? 'mainboard'
-		: 'full');
+	if (showSideboard.value && !showMainboard.value) return;
+	emit('update:boardFilter', props.boardFilter === 'full' ? 'mainboard' : 'full');
 }
 
 // ── Table ──
 
 const SORTABLE_FIELDS = new Set<MetagameCardSortBy>(['inclusionRate', 'avgCopies', 'totalCopies']);
 
-const sorting = ref([
-	{ id: props.sortBy, desc: true },
-]);
+const sorting = ref([{ id: props.sortBy, desc: true }]);
 
-watch(() => props.sortBy, (sortBy) => {
-	if (sorting.value[0]?.id !== sortBy) {
-		sorting.value = [
-			{ id: sortBy, desc: true },
-		];
-	}
-});
+watch(
+	() => props.sortBy,
+	(sortBy) => {
+		if (sorting.value[0]?.id !== sortBy) {
+			sorting.value = [{ id: sortBy, desc: true }];
+		}
+	},
+);
 
-watch(sorting, (value) => {
-	const nextSortBy = value[0]?.id;
-	if (nextSortBy && SORTABLE_FIELDS.has(nextSortBy as MetagameCardSortBy) && nextSortBy !== props.sortBy)
-		emit('update:sortBy', nextSortBy as MetagameCardSortBy);
-}, { deep: true });
+watch(
+	sorting,
+	(value) => {
+		const nextSortBy = value[0]?.id;
+		if (
+			nextSortBy &&
+			SORTABLE_FIELDS.has(nextSortBy as MetagameCardSortBy) &&
+			nextSortBy !== props.sortBy
+		)
+			emit('update:sortBy', nextSortBy as MetagameCardSortBy);
+	},
+	{ deep: true },
+);
 
 const columns = computed<TableColumn<CardBreakdownEntry>[]>(() => [
 	createNameColumn<CardBreakdownEntry>(),
 	...(isMetagameColumnOffered(props.game, 'manaCost')
-		? [
-				createManaCostColumn<CardBreakdownEntry>(),
-			]
+		? [createManaCostColumn<CardBreakdownEntry>()]
 		: []),
 	createCardTypeColumn<CardBreakdownEntry>(),
 	...(props.showPoints
@@ -128,11 +135,7 @@ const columns = computed<TableColumn<CardBreakdownEntry>[]>(() => [
 		header: createSortableHeader('Total Copies'),
 		enableSorting: true,
 	},
-	...(props.showDeckCount
-		? [
-				createDeckCountColumn<CardBreakdownEntry>(),
-			]
-		: []),
+	...(props.showDeckCount ? [createDeckCountColumn<CardBreakdownEntry>()] : []),
 	{
 		accessorKey: 'mainboardCount',
 		header: createSortableHeader('MB'),
@@ -150,12 +153,11 @@ const columns = computed<TableColumn<CardBreakdownEntry>[]>(() => [
 ]);
 
 function handleRowClick(_e: unknown, row: { original: CardBreakdownEntry }) {
-	if (props.getRowLink)
-		void navigateTo(props.getRowLink(row.original));
+	if (props.getRowLink) void navigateTo(props.getRowLink(row.original));
 }
 
 const maxInclusionRate = computed(() =>
-	Math.max(...filteredEntries.value.map(e => e.inclusionRate), 1),
+	Math.max(...filteredEntries.value.map((e) => e.inclusionRate), 1),
 );
 </script>
 
@@ -164,12 +166,8 @@ const maxInclusionRate = computed(() =>
 		<template #header>
 			<div class="flex items-center justify-between gap-3 flex-wrap">
 				<div>
-					<h3 class="text-base font-semibold">
-						Most Played Cards
-					</h3>
-					<p class="text-sm text-muted mt-1">
-						Sortable card usage across the current scope.
-					</p>
+					<h3 class="text-base font-semibold">Most Played Cards</h3>
+					<p class="text-sm text-muted mt-1">Sortable card usage across the current scope.</p>
 				</div>
 				<div class="flex items-center gap-3 flex-wrap justify-end">
 					<UBadge v-if="totalDecks && totalDecks > 0" variant="subtle" color="neutral">
@@ -182,12 +180,7 @@ const maxInclusionRate = computed(() =>
 		<!-- Filters -->
 		<div class="flex flex-col gap-3 px-4 py-3 sm:px-6">
 			<div class="flex items-center gap-3">
-				<UInput
-					v-model="search"
-					icon="i-lucide-search"
-					placeholder="Search cards…"
-					class="w-56"
-				/>
+				<UInput v-model="search" icon="i-lucide-search" placeholder="Search cards…" class="w-56" />
 				<UFieldGroup v-if="hasSideboard" size="sm">
 					<UButton
 						:color="showMainboard ? 'primary' : 'neutral'"
@@ -217,14 +210,12 @@ const maxInclusionRate = computed(() =>
 					Pointed only
 				</UButton>
 				<span v-if="hasExclusions || hasFilterOverrides" class="text-xs text-muted">
-					{{ hasExclusions ? `${visibleExcludedTypes.length} type${visibleExcludedTypes.length === 1 ? '' : 's'} hidden` : 'Filters changed' }}
-					<UButton
-						variant="link"
-						size="xs"
-						color="primary"
-						class="ml-1"
-						@click="resetFilters"
-					>
+					{{
+						hasExclusions
+							? `${visibleExcludedTypes.length} type${visibleExcludedTypes.length === 1 ? '' : 's'} hidden`
+							: 'Filters changed'
+					}}
+					<UButton variant="link" size="xs" color="primary" class="ml-1" @click="resetFilters">
 						Reset
 					</UButton>
 				</span>
@@ -255,7 +246,11 @@ const maxInclusionRate = computed(() =>
 				@select="handleRowClick"
 			>
 				<template #highlanderPoints-cell="{ row }">
-					<span v-if="row.original.highlanderPoints" class="tabular-nums font-semibold text-primary">{{ row.original.highlanderPoints }}</span>
+					<span
+						v-if="row.original.highlanderPoints"
+						class="tabular-nums font-semibold text-primary"
+						>{{ row.original.highlanderPoints }}</span
+					>
 				</template>
 				<template #inclusionRate-cell="{ row }">
 					<MetagameMetaShareBar :value="row.original.inclusionRate" :max="maxInclusionRate" />
@@ -274,9 +269,7 @@ const maxInclusionRate = computed(() =>
 				</template>
 			</UTable>
 
-			<div v-else class="text-center text-muted py-8">
-				No cards match the current filters
-			</div>
+			<div v-else class="text-center text-muted py-8">No cards match the current filters</div>
 
 			<div
 				v-if="loading"

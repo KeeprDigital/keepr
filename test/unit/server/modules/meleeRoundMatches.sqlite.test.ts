@@ -5,7 +5,12 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { MeleeTransportError } from '~~/server/services/meleeTransport';
-import { meleeCompetitor, meleeMatch, meleePlayer, meleeStanding } from '~~/test/helpers/meleeFixtures';
+import {
+	meleeCompetitor,
+	meleeMatch,
+	meleePlayer,
+	meleeStanding,
+} from '~~/test/helpers/meleeFixtures';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 /*
@@ -30,8 +35,7 @@ const publishMessage = vi.fn((..._message: unknown[]) => {});
 const melee = {
 	fetchMatchesByRound: vi.fn(async (roundId: number) => {
 		const matches = meleeMatchesByRound.get(roundId) ?? [];
-		if (matches instanceof Error)
-			throw matches;
+		if (matches instanceof Error) throw matches;
 		return matches;
 	}),
 	fetchStandingsByRound: vi.fn(async (roundId: number) => meleeStandingsByRound.get(roundId) ?? []),
@@ -55,13 +59,11 @@ const melee = {
 				Name: 'Top Cut',
 				FormatId: 'modern',
 				SortOrder: 1,
-				Rounds: [
-					{ ID: QUARTERFINALS, Name: 'Quarterfinals', SortOrder: 0 },
-				],
+				Rounds: [{ ID: QUARTERFINALS, Name: 'Quarterfinals', SortOrder: 0 }],
 			},
 		],
 	})),
-	fetchPlayers: vi.fn(async () => [1, 2, 3, 4].map(teamId => meleePlayer(teamId))),
+	fetchPlayers: vi.fn(async () => [1, 2, 3, 4].map((teamId) => meleePlayer(teamId))),
 	fetchCurrentStandings: vi.fn(async () => []),
 };
 
@@ -78,7 +80,8 @@ vi.doMock('~~/server/modules/broadcast-graphics-live-session', () => ({
 	refreshBroadcastGraphicsBindings: vi.fn(),
 }));
 
-const { MeleeRoundNotReadyError, syncMatchesFromMelee } = await import('~~/server/modules/melee-sync/roundMatches');
+const { MeleeRoundNotReadyError, syncMatchesFromMelee } =
+	await import('~~/server/modules/melee-sync/roundMatches');
 const { createMeleeSyncWorkflows } = await import('~~/server/modules/melee-sync/workflows');
 const { meleeSyncModule } = await import('~~/server/modules/melee-sync');
 
@@ -94,63 +97,74 @@ const eventData = {
 
 /** A Swiss Phase holding Rounds 3 and 4, a Top Cut Phase after it, and four Players imported from Melee. */
 async function seedEvent() {
-	const [event] = await db.insert(schema.events).values({
-		name: 'Melee Championship',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-		meleeEnabled: true,
-		meleeEventId: 'melee-1',
-	}).returning({ id: schema.events.id });
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'Melee Championship',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+			meleeEnabled: true,
+			meleeEventId: 'melee-1',
+		})
+		.returning({ id: schema.events.id });
 	const eventId = event!.id;
 	// Inserted Top Cut first, so Round order is the Phase sort order's, not insertion's.
-	const [topCut, swiss] = await db.insert(schema.phases).values([
-		{
+	const [topCut, swiss] = await db
+		.insert(schema.phases)
+		.values([
+			{
+				eventId,
+				name: 'Top Cut',
+				sortOrder: 1,
+				externalId: '41',
+				externalSource: 'melee',
+			},
+			{
+				eventId,
+				name: 'Swiss',
+				sortOrder: 0,
+				externalId: '40',
+				externalSource: 'melee',
+			},
+		])
+		.returning();
+	const [quarterfinals, round3, round4] = await db
+		.insert(schema.rounds)
+		.values([
+			{
+				eventId,
+				phaseId: topCut!.id,
+				name: 'Quarterfinals',
+				roundNumber: 1,
+				externalId: String(QUARTERFINALS),
+				externalSource: 'melee',
+			},
+			{
+				eventId,
+				phaseId: swiss!.id,
+				name: 'Round 3',
+				roundNumber: 3,
+				externalId: String(ROUND_3),
+				externalSource: 'melee',
+			},
+			{
+				eventId,
+				phaseId: swiss!.id,
+				name: 'Round 4',
+				roundNumber: 4,
+				externalId: String(ROUND_4),
+				externalSource: 'melee',
+			},
+		])
+		.returning();
+	await db.insert(schema.players).values(
+		[1, 2, 3, 4].map((teamId) => ({
 			eventId,
-			name: 'Top Cut',
-			sortOrder: 1,
-			externalId: '41',
-			externalSource: 'melee',
-		},
-		{
-			eventId,
-			name: 'Swiss',
-			sortOrder: 0,
-			externalId: '40',
-			externalSource: 'melee',
-		},
-	]).returning();
-	const [quarterfinals, round3, round4] = await db.insert(schema.rounds).values([
-		{
-			eventId,
-			phaseId: topCut!.id,
-			name: 'Quarterfinals',
-			roundNumber: 1,
-			externalId: String(QUARTERFINALS),
-			externalSource: 'melee',
-		},
-		{
-			eventId,
-			phaseId: swiss!.id,
-			name: 'Round 3',
-			roundNumber: 3,
-			externalId: String(ROUND_3),
-			externalSource: 'melee',
-		},
-		{
-			eventId,
-			phaseId: swiss!.id,
-			name: 'Round 4',
-			roundNumber: 4,
-			externalId: String(ROUND_4),
-			externalSource: 'melee',
-		},
-	]).returning();
-	await db.insert(schema.players).values([1, 2, 3, 4].map(teamId => ({
-		eventId,
-		name: `Player ${teamId}`,
-		externalId: String(teamId),
-		externalSource: 'melee' as const,
-	})));
+			name: `Player ${teamId}`,
+			externalId: String(teamId),
+			externalSource: 'melee' as const,
+		})),
+	);
 	const roundIds = new Map([
 		[ROUND_3, round3!.id],
 		[ROUND_4, round4!.id],
@@ -202,18 +216,29 @@ async function syncRound(eventId: number, roundId: number) {
 }
 
 async function standingsOf(eventId: number, roundId: number) {
-	const rows = await db.select().from(schema.playerRoundStandings).where(and(
-		eq(schema.playerRoundStandings.eventId, eventId),
-		eq(schema.playerRoundStandings.roundId, roundId),
-	)).orderBy(schema.playerRoundStandings.position);
-	return rows.map(row => ({ position: row.position, points: row.points, updatedAt: row.updatedAt }));
+	const rows = await db
+		.select()
+		.from(schema.playerRoundStandings)
+		.where(
+			and(
+				eq(schema.playerRoundStandings.eventId, eventId),
+				eq(schema.playerRoundStandings.roundId, roundId),
+			),
+		)
+		.orderBy(schema.playerRoundStandings.position);
+	return rows.map((row) => ({
+		position: row.position,
+		points: row.points,
+		updatedAt: row.updatedAt,
+	}));
 }
 
 async function matchesOf(eventId: number, roundId: number) {
-	return await db.select().from(schema.matches).where(and(
-		eq(schema.matches.eventId, eventId),
-		eq(schema.matches.roundId, roundId),
-	)).orderBy(schema.matches.sortOrder);
+	return await db
+		.select()
+		.from(schema.matches)
+		.where(and(eq(schema.matches.eventId, eventId), eq(schema.matches.roundId, roundId)))
+		.orderBy(schema.matches.sortOrder);
 }
 
 /** Each realtime message published so far, as `[type, payload]`. */
@@ -225,16 +250,15 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	meleeMatchesByRound.clear();
 	meleeStandingsByRound.clear();
-	melee.fetchStandingsByRound.mockImplementation(async (roundId: number) => meleeStandingsByRound.get(roundId) ?? []);
+	melee.fetchStandingsByRound.mockImplementation(
+		async (roundId: number) => meleeStandingsByRound.get(roundId) ?? [],
+	);
 });
 
 describe('syncing a Round from Melee', () => {
-	it('stores an in-progress Round\'s Matches but not its Round Standings, without asking Melee for them', async () => {
+	it("stores an in-progress Round's Matches but not its Round Standings, without asking Melee for them", async () => {
 		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		meleeStandingsByRound.set(ROUND_3, standingsAfter);
 
 		const result = await syncRound(eventId, roundId(ROUND_3));
@@ -247,46 +271,46 @@ describe('syncing a Round from Melee', () => {
 
 	it('stores Round Standings once the final Match Result arrives, naming that Match', async () => {
 		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		meleeStandingsByRound.set(ROUND_3, standingsAfter);
 		await syncRound(eventId, roundId(ROUND_3));
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4], [2, 1]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
 
 		const result = await syncRound(eventId, roundId(ROUND_3));
 
-		const tableB = (await matchesOf(eventId, roundId(ROUND_3))).find(match => match.externalId === 'b')!;
+		const tableB = (await matchesOf(eventId, roundId(ROUND_3))).find(
+			(match) => match.externalId === 'b',
+		)!;
 		expect(result).toMatchObject({
 			complete: true,
 			standingsChanged: true,
 			resultChangedMatchIds: [tableB.id],
 		});
-		expect((await standingsOf(eventId, roundId(ROUND_3))).map(row => row.position)).toEqual([1, 2, 3, 4]);
+		expect((await standingsOf(eventId, roundId(ROUND_3))).map((row) => row.position)).toEqual([
+			1, 2, 3, 4,
+		]);
 	});
 
-	it('leaves a complete Round\'s Round Standings untouched when Melee un-reports one of its Match Results', async () => {
+	it("leaves a complete Round's Round Standings untouched when Melee un-reports one of its Match Results", async () => {
 		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4], [2, 1]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
 		meleeStandingsByRound.set(ROUND_3, standingsAfter);
 		await syncRound(eventId, roundId(ROUND_3));
 		const storedStandings = await standingsOf(eventId, roundId(ROUND_3));
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
-		meleeStandingsByRound.set(ROUND_3, standingsAfter.slice().reverse().map((standing, index) => ({ ...standing, Rank: index + 1 })));
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
+		meleeStandingsByRound.set(
+			ROUND_3,
+			standingsAfter
+				.slice()
+				.reverse()
+				.map((standing, index) => ({ ...standing, Rank: index + 1 })),
+		);
 
 		const result = await syncRound(eventId, roundId(ROUND_3));
 
-		const tableB = (await matchesOf(eventId, roundId(ROUND_3))).find(match => match.externalId === 'b')!;
+		const tableB = (await matchesOf(eventId, roundId(ROUND_3))).find(
+			(match) => match.externalId === 'b',
+		)!;
 		expect(tableB).toMatchObject({ hasResult: false, player1GameWins: null });
 		expect(result).toMatchObject({
 			complete: false,
@@ -300,29 +324,32 @@ describe('syncing a Round from Melee', () => {
 		const { eventId, roundId } = await seedEvent();
 		meleeStandingsByRound.set(ROUND_4, standingsAfter);
 
-		await expect(syncRound(eventId, roundId(ROUND_4))).rejects.toBeInstanceOf(MeleeRoundNotReadyError);
+		await expect(syncRound(eventId, roundId(ROUND_4))).rejects.toBeInstanceOf(
+			MeleeRoundNotReadyError,
+		);
 
 		expect(await matchesOf(eventId, roundId(ROUND_4))).toEqual([]);
 		expect(await standingsOf(eventId, roundId(ROUND_4))).toEqual([]);
-		expect((await db.query.rounds.findFirst({
-			where: eq(schema.rounds.id, roundId(ROUND_4)),
-		}))!.lastSyncedAt).toBeNull();
+		expect(
+			(await db.query.rounds.findFirst({
+				where: eq(schema.rounds.id, roundId(ROUND_4)),
+			}))!.lastSyncedAt,
+		).toBeNull();
 	});
 });
 
 describe('a synced Round Melee then lists no Matches for', () => {
 	// An empty answer for a Round that held Matches is Melee mid re-pair or at
 	// fault, not a Round with none: taking it would delete them and what hangs off them.
-	it('keeps the Round\'s stored Matches and refuses the answer', async () => {
+	it("keeps the Round's stored Matches and refuses the answer", async () => {
 		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		await syncRound(eventId, roundId(ROUND_3));
 		meleeMatchesByRound.set(ROUND_3, []);
 
-		await expect(syncRound(eventId, roundId(ROUND_3))).rejects.toMatchObject({ code: 'INVALID_MELEE_ROUND_SNAPSHOT' });
+		await expect(syncRound(eventId, roundId(ROUND_3))).rejects.toMatchObject({
+			code: 'INVALID_MELEE_ROUND_SNAPSHOT',
+		});
 
 		expect(await matchesOf(eventId, roundId(ROUND_3))).toHaveLength(2);
 	});
@@ -339,18 +366,15 @@ describe('update from Melee while the next Round is not yet paired', () => {
 		{ case: 'lists no Matches', next: [] },
 	])('succeeds with a warning when Melee $case for it', async ({ next }) => {
 		const { eventId, roundId } = await seedEvent();
-		await db.update(schema.events).set({
-			lastDecklistsSyncedAt: new Date(),
-		}).where(eq(schema.events.id, eventId));
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2]),
-			pairing('b', [3, 4]),
-		]);
+		await db
+			.update(schema.events)
+			.set({
+				lastDecklistsSyncedAt: new Date(),
+			})
+			.where(eq(schema.events.id, eventId));
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2]), pairing('b', [3, 4])]);
 		await syncRound(eventId, roundId(ROUND_3));
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		meleeMatchesByRound.set(ROUND_4, next);
 
 		const result = await meleeSyncModule().updateFromMelee({} as H3Event, eventId);
@@ -363,7 +387,10 @@ describe('update from Melee while the next Round is not yet paired', () => {
 				id: roundId(ROUND_3),
 			},
 		});
-		expect((await matchesOf(eventId, roundId(ROUND_3))).map(match => match.hasResult)).toEqual([true, false]);
+		expect((await matchesOf(eventId, roundId(ROUND_3))).map((match) => match.hasResult)).toEqual([
+			true,
+			false,
+		]);
 		expect(await matchesOf(eventId, roundId(ROUND_4))).toEqual([]);
 		const event = (await db.query.events.findFirst({
 			where: eq(schema.events.id, eventId),
@@ -373,7 +400,7 @@ describe('update from Melee while the next Round is not yet paired', () => {
 	});
 });
 
-describe('the Player records a Round\'s Matches carry', () => {
+describe("the Player records a Round's Matches carry", () => {
 	// Mid-Round, a Match side carries its Player's record going into the Round:
 	// the previous Round's stored Round Standings. Once complete, the Round's own.
 	const round4After = [
@@ -395,12 +422,9 @@ describe('the Player records a Round\'s Matches carry', () => {
 
 	it.each([
 		{
-			case: 'an incomplete Round carries the previous Round\'s stored records',
+			case: "an incomplete Round carries the previous Round's stored records",
 			round3Standings: standingsAfter,
-			round4: [
-				pairing('c', [1, 3]),
-				pairing('d', [2, 4], [2, 0]),
-			],
+			round4: [pairing('c', [1, 3]), pairing('d', [2, 4], [2, 0])],
 			player1: {
 				wins: 3,
 				losses: 0,
@@ -419,10 +443,7 @@ describe('the Player records a Round\'s Matches carry', () => {
 		{
 			case: 'an incomplete Round after one with no stored standings carries none',
 			round3Standings: [],
-			round4: [
-				pairing('c', [1, 3]),
-				pairing('d', [2, 4], [2, 0]),
-			],
+			round4: [pairing('c', [1, 3]), pairing('d', [2, 4], [2, 0])],
 			player1: {
 				wins: null,
 				losses: null,
@@ -441,10 +462,7 @@ describe('the Player records a Round\'s Matches carry', () => {
 		{
 			case: 'a complete Round carries its own fetched records',
 			round3Standings: standingsAfter,
-			round4: [
-				pairing('c', [1, 3], [2, 1]),
-				pairing('d', [2, 4], [2, 0]),
-			],
+			round4: [pairing('c', [1, 3], [2, 1]), pairing('d', [2, 4], [2, 0])],
 			player1: {
 				wins: 4,
 				losses: 0,
@@ -462,10 +480,7 @@ describe('the Player records a Round\'s Matches carry', () => {
 		},
 	])('$case', async ({ round3Standings, round4, player1, player3 }) => {
 		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4], [2, 1]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
 		meleeStandingsByRound.set(ROUND_3, round3Standings);
 		await syncRound(eventId, roundId(ROUND_3));
 		meleeMatchesByRound.set(ROUND_4, round4);
@@ -473,23 +488,19 @@ describe('the Player records a Round\'s Matches carry', () => {
 
 		await syncRound(eventId, roundId(ROUND_4));
 
-		const tableC = (await matchesOf(eventId, roundId(ROUND_4))).find(match => match.externalId === 'c')!;
+		const tableC = (await matchesOf(eventId, roundId(ROUND_4))).find(
+			(match) => match.externalId === 'c',
+		)!;
 		expect(tableC.player1Data).toMatchObject(player1);
 		expect(tableC.player2Data).toMatchObject(player3);
 	});
 
-	it('stores no Round Standings for an incomplete Round whose Matches carry the previous Round\'s', async () => {
+	it("stores no Round Standings for an incomplete Round whose Matches carry the previous Round's", async () => {
 		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4], [2, 1]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
 		meleeStandingsByRound.set(ROUND_3, standingsAfter);
 		await syncRound(eventId, roundId(ROUND_3));
-		meleeMatchesByRound.set(ROUND_4, [
-			pairing('c', [1, 3]),
-			pairing('d', [2, 4]),
-		]);
+		meleeMatchesByRound.set(ROUND_4, [pairing('c', [1, 3]), pairing('d', [2, 4])]);
 
 		await syncRound(eventId, roundId(ROUND_4));
 
@@ -502,33 +513,37 @@ describe('pairing the next Round completes the one before it', () => {
 	it.each([
 		{ case: 'within a Phase', previous: ROUND_3, next: ROUND_4 },
 		{ case: 'across a Phase boundary', previous: ROUND_4, next: QUARTERFINALS },
-	])('$case: stores the previous Round\'s Round Standings when the next Round\'s pairings arrive', async ({ previous, next }) => {
-		const { eventId, roundId } = await seedEvent();
-		// The previous Round is stuck on a Match Melee never reports.
-		meleeMatchesByRound.set(previous, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
-		meleeStandingsByRound.set(previous, standingsAfter);
-		await syncRound(eventId, roundId(previous));
-		meleeMatchesByRound.set(next, [
-			pairing('c', [1, 3]),
-			pairing('d', [2, 4]),
-		]);
+	])(
+		"$case: stores the previous Round's Round Standings when the next Round's pairings arrive",
+		async ({ previous, next }) => {
+			const { eventId, roundId } = await seedEvent();
+			// The previous Round is stuck on a Match Melee never reports.
+			meleeMatchesByRound.set(previous, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
+			meleeStandingsByRound.set(previous, standingsAfter);
+			await syncRound(eventId, roundId(previous));
+			meleeMatchesByRound.set(next, [pairing('c', [1, 3]), pairing('d', [2, 4])]);
 
-		const result = await createMeleeSyncWorkflows().syncRoundMatches({}, eventId, eventData, roundId(next));
+			const result = await createMeleeSyncWorkflows().syncRoundMatches(
+				{},
+				eventId,
+				eventData,
+				roundId(next),
+			);
 
-		expect(result).toMatchObject({
-			complete: false,
-			previousRoundStandings: {
-				roundId: roundId(previous),
-				standingsChanged: true,
-			},
-		});
-		expect((await standingsOf(eventId, roundId(previous))).map(row => row.position)).toEqual([1, 2, 3, 4]);
-		expect(await standingsOf(eventId, roundId(next))).toEqual([]);
-		expect(await syncRound(eventId, roundId(previous))).toMatchObject({ complete: true });
-	});
+			expect(result).toMatchObject({
+				complete: false,
+				previousRoundStandings: {
+					roundId: roundId(previous),
+					standingsChanged: true,
+				},
+			});
+			expect((await standingsOf(eventId, roundId(previous))).map((row) => row.position)).toEqual([
+				1, 2, 3, 4,
+			]);
+			expect(await standingsOf(eventId, roundId(next))).toEqual([]);
+			expect(await syncRound(eventId, roundId(previous))).toMatchObject({ complete: true });
+		},
+	);
 
 	// Polling re-syncs the Current Round every minute, so it fills the previous
 	// Round's standings only with the first pairings; a manual sync always heals.
@@ -551,88 +566,74 @@ describe('pairing the next Round completes the one before it', () => {
 			option: undefined,
 			fills: true,
 		},
-	] as const)('the previous Round\'s missing Round Standings: $case', async ({ firstPairing, option, fills }) => {
-		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
-		await syncRound(eventId, roundId(ROUND_3));
-		meleeMatchesByRound.set(ROUND_4, [
-			pairing('c', [1, 3]),
-			pairing('d', [2, 4]),
-		]);
-		const workflows = createMeleeSyncWorkflows();
-		// Melee had no standings for Round 3 when Round 4 was first paired.
-		if (!firstPairing)
-			await workflows.syncRoundMatches({}, eventId, eventData, roundId(ROUND_4));
-		meleeStandingsByRound.set(ROUND_3, standingsAfter);
-		melee.fetchMatchesByRound.mockClear();
+	] as const)(
+		"the previous Round's missing Round Standings: $case",
+		async ({ firstPairing, option, fills }) => {
+			const { eventId, roundId } = await seedEvent();
+			meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
+			await syncRound(eventId, roundId(ROUND_3));
+			meleeMatchesByRound.set(ROUND_4, [pairing('c', [1, 3]), pairing('d', [2, 4])]);
+			const workflows = createMeleeSyncWorkflows();
+			// Melee had no standings for Round 3 when Round 4 was first paired.
+			if (!firstPairing) await workflows.syncRoundMatches({}, eventId, eventData, roundId(ROUND_4));
+			meleeStandingsByRound.set(ROUND_3, standingsAfter);
+			melee.fetchMatchesByRound.mockClear();
 
-		const result = await workflows.syncRoundMatches({}, eventId, eventData, roundId(ROUND_4), option && {
-			previousRoundStandings: option,
-		});
+			const result = await workflows.syncRoundMatches(
+				{},
+				eventId,
+				eventData,
+				roundId(ROUND_4),
+				option && {
+					previousRoundStandings: option,
+				},
+			);
 
-		expect((await standingsOf(eventId, roundId(ROUND_3))).length).toBe(fills
-			? 4
-			: 0);
-		expect(result.previousRoundStandings != null).toBe(fills);
-		expect(melee.fetchMatchesByRound.mock.calls.some(([id]) => id === ROUND_3)).toBe(fills);
-	});
+			expect((await standingsOf(eventId, roundId(ROUND_3))).length).toBe(fills ? 4 : 0);
+			expect(result.previousRoundStandings != null).toBe(fills);
+			expect(melee.fetchMatchesByRound.mock.calls.some(([id]) => id === ROUND_3)).toBe(fills);
+		},
+	);
 
 	it('leaves a previous Round already holding Round Standings alone', async () => {
 		const { eventId, roundId } = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4], [2, 1]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
 		meleeStandingsByRound.set(ROUND_3, standingsAfter);
 		await syncRound(eventId, roundId(ROUND_3));
-		meleeMatchesByRound.set(ROUND_4, [
-			pairing('c', [1, 3]),
-			pairing('d', [2, 4]),
-		]);
+		meleeMatchesByRound.set(ROUND_4, [pairing('c', [1, 3]), pairing('d', [2, 4])]);
 		melee.fetchMatchesByRound.mockClear();
 
-		const result = await createMeleeSyncWorkflows().syncRoundMatches({}, eventId, eventData, roundId(ROUND_4));
+		const result = await createMeleeSyncWorkflows().syncRoundMatches(
+			{},
+			eventId,
+			eventData,
+			roundId(ROUND_4),
+		);
 
 		expect(result.previousRoundStandings).toBeNull();
-		expect(melee.fetchMatchesByRound.mock.calls).toEqual([
-			[ROUND_4],
-		]);
+		expect(melee.fetchMatchesByRound.mock.calls).toEqual([[ROUND_4]]);
 	});
 });
 
 describe('a Round sync announces only what it changed', () => {
 	type Seeded = Awaited<ReturnType<typeof seedEvent>>;
 	const matchId = async ({ eventId, roundId }: Seeded, meleeRoundId: number, guid: string) =>
-		(await matchesOf(eventId, roundId(meleeRoundId))).find(match => match.externalId === guid)!.id;
+		(await matchesOf(eventId, roundId(meleeRoundId))).find((match) => match.externalId === guid)!
+			.id;
 
 	// `before` is Melee's Round 3 at the last sync; `after` is what Melee lists now.
 	it.each([
 		{
 			case: 'nothing changed',
-			before: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4]),
-			],
-			after: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4]),
-			],
+			before: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])],
+			after: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])],
 			published: [],
 			expected: async () => [],
 		},
 		{
 			case: 'one Match Result reported',
-			before: [
-				pairing('a', [1, 2]),
-				pairing('b', [3, 4]),
-			],
-			after: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4]),
-			],
+			before: [pairing('a', [1, 2]), pairing('b', [3, 4])],
+			after: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])],
 			published: ['matchResults'],
 			expected: async (seeded: Seeded) => [
 				[
@@ -646,13 +647,8 @@ describe('a Round sync announces only what it changed', () => {
 		},
 		{
 			case: 'a Match paired',
-			before: [
-				pairing('a', [1, 2]),
-			],
-			after: [
-				pairing('a', [1, 2]),
-				pairing('b', [3, 4]),
-			],
+			before: [pairing('a', [1, 2])],
+			after: [pairing('a', [1, 2]), pairing('b', [3, 4])],
 			published: ['pairings'],
 			expected: async (seeded: Seeded) => [
 				[
@@ -666,14 +662,8 @@ describe('a Round sync announces only what it changed', () => {
 		{
 			// Completion re-maps each side's Player record, so pairings change with it.
 			case: 'the final Match Result completes the Round',
-			before: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4]),
-			],
-			after: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4], [2, 1]),
-			],
+			before: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])],
+			after: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])],
 			published: ['matchResults', 'pairings', 'roundStandings'],
 			expected: async (seeded: Seeded) => [
 				[
@@ -704,7 +694,12 @@ describe('a Round sync announces only what it changed', () => {
 		await syncRound(seeded.eventId, seeded.roundId(ROUND_3));
 		meleeMatchesByRound.set(ROUND_3, after);
 
-		const result = await createMeleeSyncWorkflows().syncRoundMatches({}, seeded.eventId, eventData, seeded.roundId(ROUND_3));
+		const result = await createMeleeSyncWorkflows().syncRoundMatches(
+			{},
+			seeded.eventId,
+			eventData,
+			seeded.roundId(ROUND_3),
+		);
 
 		const messages = await expected(seeded);
 		expect(result.published).toEqual(published);
@@ -716,34 +711,34 @@ describe('a Round sync announces only what it changed', () => {
 	it('a featured Match re-paired away: announces its Slot and its dropped Assignment', async () => {
 		const seeded = await seedEvent();
 		const roundId = seeded.roundId(ROUND_3);
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2]),
-			pairing('b', [3, 4]),
-		]);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2]), pairing('b', [3, 4])]);
 		await syncRound(seeded.eventId, roundId);
 		const featured = await matchId(seeded, ROUND_3, 'b');
-		const [slot, otherSlot] = await db.insert(schema.featureMatches).values([
-			{ eventId: seeded.eventId, matchId: featured },
-			{ eventId: seeded.eventId, sortOrder: 1, matchId: await matchId(seeded, ROUND_3, 'a') },
-		]).returning();
-		const [assignment] = await db.insert(schema.featureMatchAssignments).values([
-			{
-				eventId: seeded.eventId,
-				roundId,
-				slotId: slot!.id,
-				matchId: featured,
-			},
-			{
-				eventId: seeded.eventId,
-				roundId,
-				slotId: otherSlot!.id,
-				matchId: await matchId(seeded, ROUND_3, 'a'),
-			},
-		]).returning();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2]),
-			pairing('c', [4, 3]),
-		]);
+		const [slot, otherSlot] = await db
+			.insert(schema.featureMatches)
+			.values([
+				{ eventId: seeded.eventId, matchId: featured },
+				{ eventId: seeded.eventId, sortOrder: 1, matchId: await matchId(seeded, ROUND_3, 'a') },
+			])
+			.returning();
+		const [assignment] = await db
+			.insert(schema.featureMatchAssignments)
+			.values([
+				{
+					eventId: seeded.eventId,
+					roundId,
+					slotId: slot!.id,
+					matchId: featured,
+				},
+				{
+					eventId: seeded.eventId,
+					roundId,
+					slotId: otherSlot!.id,
+					matchId: await matchId(seeded, ROUND_3, 'a'),
+				},
+			])
+			.returning();
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2]), pairing('c', [4, 3])]);
 
 		await createMeleeSyncWorkflows().syncRoundMatches({}, seeded.eventId, eventData, roundId);
 
@@ -754,10 +749,7 @@ describe('a Round sync announces only what it changed', () => {
 					featureMatch: expect.objectContaining({ id: slot!.id, matchId: null }),
 				},
 			],
-			[
-				'featureMatchAssignment:deleted',
-				{ featureMatchAssignmentId: assignment!.id },
-			],
+			['featureMatchAssignment:deleted', { featureMatchAssignmentId: assignment!.id }],
 		]);
 	});
 
@@ -766,19 +758,13 @@ describe('a Round sync announces only what it changed', () => {
 	it.each([
 		{
 			case: 'Round 3 otherwise unchanged',
-			round3After: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4]),
-			],
+			round3After: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])],
 			published: ['pairings', 'roundStandings'],
 			round3Messages: async () => [],
 		},
 		{
-			case: 'Round 3\'s last result reported meanwhile',
-			round3After: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4], [2, 1]),
-			],
+			case: "Round 3's last result reported meanwhile",
+			round3After: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])],
 			published: ['matchResults', 'pairings', 'roundStandings'],
 			round3Messages: async (seeded: Seeded) => [
 				[
@@ -790,68 +776,67 @@ describe('a Round sync announces only what it changed', () => {
 				],
 			],
 		},
-	])('announces the previous Round\'s changes under its own id when the next Round\'s pairings store its standings: $case', async ({ round3After, published, round3Messages }) => {
+	])(
+		"announces the previous Round's changes under its own id when the next Round's pairings store its standings: $case",
+		async ({ round3After, published, round3Messages }) => {
+			const seeded = await seedEvent();
+			meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
+			meleeStandingsByRound.set(ROUND_3, standingsAfter);
+			await syncRound(seeded.eventId, seeded.roundId(ROUND_3));
+			meleeMatchesByRound.set(ROUND_3, round3After);
+			meleeMatchesByRound.set(ROUND_4, [pairing('c', [1, 3]), pairing('d', [2, 4])]);
+
+			const result = await createMeleeSyncWorkflows().syncRoundMatches(
+				{},
+				seeded.eventId,
+				eventData,
+				seeded.roundId(ROUND_4),
+			);
+
+			expect(result.published).toEqual(published);
+			expect(announced()).toEqual([
+				[
+					'melee:pairingsSynced',
+					{
+						roundId: seeded.roundId(ROUND_4),
+					},
+				],
+				...(await round3Messages(seeded)),
+				[
+					'melee:pairingsSynced',
+					{
+						roundId: seeded.roundId(ROUND_3),
+					},
+				],
+				[
+					'melee:roundStandingsSynced',
+					{
+						roundId: seeded.roundId(ROUND_3),
+					},
+				],
+			]);
+		},
+	);
+
+	it("still announces the Round's own changes, with a warning, when storing the previous Round's Round Standings fails", async () => {
 		const seeded = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
-		meleeStandingsByRound.set(ROUND_3, standingsAfter);
+		meleeMatchesByRound.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		await syncRound(seeded.eventId, seeded.roundId(ROUND_3));
-		meleeMatchesByRound.set(ROUND_3, round3After);
-		meleeMatchesByRound.set(ROUND_4, [
-			pairing('c', [1, 3]),
-			pairing('d', [2, 4]),
-		]);
-
-		const result = await createMeleeSyncWorkflows().syncRoundMatches({}, seeded.eventId, eventData, seeded.roundId(ROUND_4));
-
-		expect(result.published).toEqual(published);
-		expect(announced()).toEqual([
-			[
-				'melee:pairingsSynced',
-				{
-					roundId: seeded.roundId(ROUND_4),
-				},
-			],
-			...await round3Messages(seeded),
-			[
-				'melee:pairingsSynced',
-				{
-					roundId: seeded.roundId(ROUND_3),
-				},
-			],
-			[
-				'melee:roundStandingsSynced',
-				{
-					roundId: seeded.roundId(ROUND_3),
-				},
-			],
-		]);
-	});
-
-	it('still announces the Round\'s own changes, with a warning, when storing the previous Round\'s Round Standings fails', async () => {
-		const seeded = await seedEvent();
-		meleeMatchesByRound.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
-		await syncRound(seeded.eventId, seeded.roundId(ROUND_3));
-		meleeMatchesByRound.set(ROUND_4, [
-			pairing('c', [1, 3]),
-			pairing('d', [2, 4]),
-		]);
+		meleeMatchesByRound.set(ROUND_4, [pairing('c', [1, 3]), pairing('d', [2, 4])]);
 		melee.fetchStandingsByRound.mockRejectedValue(new Error('Melee unavailable'));
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		const result = await createMeleeSyncWorkflows().syncRoundMatches({}, seeded.eventId, eventData, seeded.roundId(ROUND_4));
+		const result = await createMeleeSyncWorkflows().syncRoundMatches(
+			{},
+			seeded.eventId,
+			eventData,
+			seeded.roundId(ROUND_4),
+		);
 
 		expect(result).toMatchObject({
 			published: ['pairings'],
 			previousRoundStandings: null,
-			warnings: [
-				expect.stringContaining('previous Round\'s Round Standings could not be stored'),
-			],
+			warnings: [expect.stringContaining("previous Round's Round Standings could not be stored")],
 		});
 		expect(await matchesOf(seeded.eventId, seeded.roundId(ROUND_4))).toHaveLength(2);
 		expect(announced()).toEqual([

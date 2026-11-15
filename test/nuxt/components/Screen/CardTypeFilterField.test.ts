@@ -30,7 +30,7 @@ describe('screenCardTypeFilterField', () => {
 	it('offers a chip for every card type, the land bucket as Nonbasic Land', () => {
 		const wrapper = mountField([]);
 
-		expect(CARD_TYPE_BUCKET_ORDER.map(bucket => chip(wrapper, bucket).text())).toEqual([
+		expect(CARD_TYPE_BUCKET_ORDER.map((bucket) => chip(wrapper, bucket).text())).toEqual([
 			'Creature',
 			'Planeswalker',
 			'Battle',
@@ -66,7 +66,9 @@ describe('screenCardTypeFilterField', () => {
 			pressed: 'true',
 		},
 	] as const)('shows $name', ({ excluded, locked, bucket, pressed }) => {
-		expect(chip(mountField([...excluded], locked && [...locked]), bucket).attributes('aria-pressed')).toBe(pressed);
+		expect(
+			chip(mountField([...excluded], locked && [...locked]), bucket).attributes('aria-pressed'),
+		).toBe(pressed);
 	});
 
 	it.each([
@@ -86,9 +88,7 @@ describe('screenCardTypeFilterField', () => {
 		const wrapper = mountField([...excluded]);
 		await chip(wrapper, bucket).trigger('click');
 
-		expect(wrapper.emitted('update')).toEqual([
-			[next],
-		]);
+		expect(wrapper.emitted('update')).toEqual([[next]]);
 	});
 
 	it('cannot toggle a locked type', async () => {

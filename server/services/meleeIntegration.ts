@@ -50,7 +50,9 @@ function requireStoredMeleeIntegration(eventData: MeleeEventData) {
  * Validates that melee integration is enabled and credentials are configured.
  * Returns the resolved credentials, ready to use.
  */
-export async function requireMeleeIntegration(eventData: MeleeEventData): Promise<MeleeCredentials> {
+export async function requireMeleeIntegration(
+	eventData: MeleeEventData,
+): Promise<MeleeCredentials> {
 	const stored = requireStoredMeleeIntegration(eventData);
 	const revealed = await revealMeleeClientSecret(stored.storedClientSecret, {
 		// Explicit, temporary compatibility path for rows written before encrypted storage.
@@ -59,14 +61,15 @@ export async function requireMeleeIntegration(eventData: MeleeEventData): Promis
 	if (revealed.needsReEncryption && eventData.id !== undefined) {
 		try {
 			await rewrapMeleeClientSecret(eventData.id, stored.storedClientSecret, revealed.plaintext);
-		}
-		catch {
+		} catch {
 			// Re-wrapping is an opportunistic migration after a successful reveal. A
 			// transient D1 or active-key failure must not block an otherwise valid sync.
-			console.warn(JSON.stringify({
-				message: 'melee_credential_rewrap_failed',
-				eventId: eventData.id,
-			}));
+			console.warn(
+				JSON.stringify({
+					message: 'melee_credential_rewrap_failed',
+					eventId: eventData.id,
+				}),
+			);
 		}
 	}
 	return {
@@ -79,7 +82,9 @@ export async function requireMeleeIntegration(eventData: MeleeEventData): Promis
 function deferredMeleeService(eventData: MeleeEventData) {
 	let servicePromise: Promise<ReturnType<typeof meleeService>> | null = null;
 	const resolve = () => {
-		servicePromise ??= requireMeleeIntegration(eventData).then(credentials => meleeService(credentials));
+		servicePromise ??= requireMeleeIntegration(eventData).then((credentials) =>
+			meleeService(credentials),
+		);
 		return servicePromise;
 	};
 
@@ -87,8 +92,10 @@ function deferredMeleeService(eventData: MeleeEventData) {
 		fetchEvent: async () => await (await resolve()).fetchEvent(),
 		fetchPlayers: async () => await (await resolve()).fetchPlayers(),
 		fetchCurrentStandings: async () => await (await resolve()).fetchCurrentStandings(),
-		fetchStandingsByRound: async (roundId: number) => await (await resolve()).fetchStandingsByRound(roundId),
-		fetchMatchesByRound: async (roundId: number) => await (await resolve()).fetchMatchesByRound(roundId),
+		fetchStandingsByRound: async (roundId: number) =>
+			await (await resolve()).fetchStandingsByRound(roundId),
+		fetchMatchesByRound: async (roundId: number) =>
+			await (await resolve()).fetchMatchesByRound(roundId),
 		fetchMergedPlayers: async () => await (await resolve()).fetchMergedPlayers(),
 	};
 }

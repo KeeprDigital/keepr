@@ -71,7 +71,7 @@ describe('the secret validation the suite cannot otherwise reach, under NODE_ENV
 	it('constructs silently on an adequate secret', () => {
 		const report = probe('adequate', 'production');
 		expect(report.outcome).toBe('constructed');
-		expect(report.warnings.filter(warning => /secret/i.test(warning))).toEqual([]);
+		expect(report.warnings.filter((warning) => /secret/i.test(warning))).toEqual([]);
 	});
 });
 
@@ -79,6 +79,6 @@ describe('the same construction under NODE_ENV=test — the blindness on record'
 	it('admits the default secret without a word', () => {
 		const report = probe('none', 'test');
 		expect(report.outcome).toBe('constructed');
-		expect(report.warnings.filter(warning => /secret/i.test(warning))).toEqual([]);
+		expect(report.warnings.filter((warning) => /secret/i.test(warning))).toEqual([]);
 	});
 });

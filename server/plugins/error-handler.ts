@@ -21,10 +21,8 @@ export default defineNitroPlugin((nitroApp) => {
 });
 
 function shouldSuppressIntegrationLog(error: NitroError) {
-	if (process.env.STREAM_KEEPR_INTEGRATION !== 'true')
-		return false;
-	if (error.unhandled)
-		return false;
+	if (process.env.STREAM_KEEPR_INTEGRATION !== 'true') return false;
+	if (error.unhandled) return false;
 
 	return error.statusCode >= 400 && error.statusCode < 500;
 }

@@ -19,10 +19,7 @@ import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
 const OVER_THE_LIMIT = D1_MAXIMUM_BOUND_PARAMETERS * 3;
 
 function digests(count: number) {
-	return Array.from(
-		{ length: count },
-		(_, index) => `${index}`.padStart(64, '0'),
-	);
+	return Array.from({ length: count }, (_, index) => `${index}`.padStart(64, '0'));
 }
 
 let harness: MiniflareD1Harness;
@@ -38,18 +35,28 @@ afterAll(async () => {
 describe('the D1 catalogue under lists longer than D1 will bind', () => {
 	it('proves the limit these queries are written against is real', async () => {
 		const within = digests(D1_MAXIMUM_BOUND_PARAMETERS);
-		await expect(harness.database.prepare(`
+		await expect(
+			harness.database
+				.prepare(`
 			SELECT digest FROM graphic_asset_contents
 			WHERE digest IN (${within.map(() => '?').join(', ')})
-		`).bind(...within).all()).resolves.toBeDefined();
+		`)
+				.bind(...within)
+				.all(),
+		).resolves.toBeDefined();
 
 		// One more than D1 will bind fails the whole statement, which is exactly
 		// what a placeholder-per-item predicate would do on a real sweep.
 		const over = digests(D1_MAXIMUM_BOUND_PARAMETERS + 1);
-		await expect(harness.database.prepare(`
+		await expect(
+			harness.database
+				.prepare(`
 			SELECT digest FROM graphic_asset_contents
 			WHERE digest IN (${over.map(() => '?').join(', ')})
-		`).bind(...over).all()).rejects.toThrow(/too many SQL variables/i);
+		`)
+				.bind(...over)
+				.all(),
+		).rejects.toThrow(/too many SQL variables/i);
 	});
 
 	it('accounts for a full scan page of digests', async () => {
@@ -78,42 +85,40 @@ describe('the D1 catalogue under lists longer than D1 will bind', () => {
 		const catalogue = createD1GraphicsAssetCatalogue(harness.database);
 		// Both are retention-path queries whose lists are sized by a sweep batch
 		// rather than by anything the caller chooses.
-		await expect(catalogue.cancelRevisionPruning({ limit: OVER_THE_LIMIT }))
-			.resolves
-			.toEqual([]);
-		await expect(catalogue.listGraphicsAssetEvidence({
-			limit: 10,
-			categories: Array.from(
-				{ length: OVER_THE_LIMIT },
-				() => 'content-deleted' as const,
-			),
-		})).resolves.toEqual([]);
+		await expect(catalogue.cancelRevisionPruning({ limit: OVER_THE_LIMIT })).resolves.toEqual([]);
+		await expect(
+			catalogue.listGraphicsAssetEvidence({
+				limit: 10,
+				categories: Array.from({ length: OVER_THE_LIMIT }, () => 'content-deleted' as const),
+			}),
+		).resolves.toEqual([]);
 		// Every filter at once: the statement's size is fixed by the filter count, not list length.
-		await expect(catalogue.listGraphicsAssetEvidence({
-			limit: 10,
-			categories: Array.from(
-				{ length: OVER_THE_LIMIT },
-				() => 'content-deleted' as const,
-			),
-			subject: { kind: 'graphic-asset', id: 'asset' },
-			actor: 'graphics-retention-policy',
-			correlationId: 'correlation',
-			recordedFrom: '2026-01-01T00:00:00.000Z',
-			recordedUntil: '2027-01-01T00:00:00.000Z',
-			cursor: { recordedAt: '2026-06-01T00:00:00.000Z', id: 'entry' },
-			direction: 'newer',
-		})).resolves.toEqual([]);
+		await expect(
+			catalogue.listGraphicsAssetEvidence({
+				limit: 10,
+				categories: Array.from({ length: OVER_THE_LIMIT }, () => 'content-deleted' as const),
+				subject: { kind: 'graphic-asset', id: 'asset' },
+				actor: 'graphics-retention-policy',
+				correlationId: 'correlation',
+				recordedFrom: '2026-01-01T00:00:00.000Z',
+				recordedUntil: '2027-01-01T00:00:00.000Z',
+				cursor: { recordedAt: '2026-06-01T00:00:00.000Z', id: 'entry' },
+				direction: 'newer',
+			}),
+		).resolves.toEqual([]);
 		// Sealing binds its terminal-category list the same way, and it is the
 		// one ledger statement whose list is fixed by the vocabulary rather than
 		// by a batch size, so it grows every time a category is added.
-		await expect(catalogue.sealGraphicsAssetEvidence({
-			terminalCategories: Array.from(
-				{ length: OVER_THE_LIMIT },
-				() => 'graphic-asset-purged' as const,
-			),
-			retentionMilliseconds: 365 * 24 * 60 * 60 * 1000,
-			limit: 200,
-		})).resolves.toBe(0);
+		await expect(
+			catalogue.sealGraphicsAssetEvidence({
+				terminalCategories: Array.from(
+					{ length: OVER_THE_LIMIT },
+					() => 'graphic-asset-purged' as const,
+				),
+				retentionMilliseconds: 365 * 24 * 60 * 60 * 1000,
+				limit: 200,
+			}),
+		).resolves.toBe(0);
 	});
 
 	// The largest batch the module binds, at a limit that sits exactly on the parameter ceiling.
@@ -198,9 +203,8 @@ describe('the D1 catalogue under lists longer than D1 will bind', () => {
 		it('publishes a hundred created identities and their references at once', async () => {
 			const catalogue = createD1GraphicsAssetCatalogue(harness.database);
 			const operation = await claimedOperation(catalogue, 'install-created');
-			const created = Array.from(
-				{ length: PACKAGED_REVISION_LIMIT },
-				(_, index) => createdAsset(index),
+			const created = Array.from({ length: PACKAGED_REVISION_LIMIT }, (_, index) =>
+				createdAsset(index),
 			);
 			const templateId = installedGraphicsTemplateId('template-created');
 
@@ -227,16 +231,15 @@ describe('the D1 catalogue under lists longer than D1 will bind', () => {
 			// The batch reports what it wrote, so a statement silently writing
 			// fewer rows than the package has revisions would have thrown by now.
 			expect(completed.stage).toBe('completed');
-			expect(completed.templatePackageInstallation?.assets)
-				.toHaveLength(PACKAGED_REVISION_LIMIT);
+			expect(completed.templatePackageInstallation?.assets).toHaveLength(PACKAGED_REVISION_LIMIT);
 			const template = await catalogue.findInstalledGraphicsTemplate(templateId);
 			expect(template?.references).toHaveLength(PACKAGED_REVISION_LIMIT);
 			// Every identity is discoverable, which is only true if every asset,
 			// revision, and derivative row landed.
 			const assets = await catalogue.listGraphicAssets('', ['active']);
 			expect(assets).toHaveLength(PACKAGED_REVISION_LIMIT);
-			expect(assets.every(asset => asset.operation.id === operation.id)).toBe(true);
-			expect(assets.every(asset => asset.revisionId.startsWith('revision-'))).toBe(true);
+			expect(assets.every((asset) => asset.operation.id === operation.id)).toBe(true);
+			expect(assets.every((asset) => asset.revisionId.startsWith('revision-'))).toBe(true);
 			// And every one of them is pinned, so none could enter Trash.
 			const usage = await catalogue.listGraphicAssetUsage(assets[0]!.id);
 			expect(usage).toHaveLength(1);
@@ -288,7 +291,7 @@ describe('the D1 catalogue under lists longer than D1 will bind', () => {
 			// origin operation rather than this package.
 			const assets = await catalogue.listGraphicAssets('', ['active']);
 			expect(assets).toHaveLength(PACKAGED_REVISION_LIMIT);
-			expect(assets.every(asset => asset.operation.id === 'install-created')).toBe(true);
+			expect(assets.every((asset) => asset.operation.id === 'install-created')).toBe(true);
 		});
 	});
 });

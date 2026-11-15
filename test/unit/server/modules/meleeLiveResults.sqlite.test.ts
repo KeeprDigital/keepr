@@ -5,7 +5,12 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import * as schema from '~~/server/db/schema';
 import { mapMeleePlayersToDb } from '~~/server/mappers/melee';
 import { MeleeTransportError } from '~~/server/services/meleeTransport';
-import { meleeCompetitor, meleeMatch, meleePlayer, meleeStanding } from '~~/test/helpers/meleeFixtures';
+import {
+	meleeCompetitor,
+	meleeMatch,
+	meleePlayer,
+	meleeStanding,
+} from '~~/test/helpers/meleeFixtures';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 /*
@@ -34,8 +39,7 @@ function fakeMelee(meleeEventId: string) {
 			meleeCalls(meleeEventId, 'matches', roundId);
 			await tournament.onFetchMatches?.();
 			const matches = tournament.matches.get(roundId) ?? [];
-			if (matches instanceof Error)
-				throw matches;
+			if (matches instanceof Error) throw matches;
 			return matches;
 		},
 		fetchStandingsByRound: async (roundId: number) => {
@@ -48,7 +52,10 @@ function fakeMelee(meleeEventId: string) {
 		},
 		fetchMergedPlayers: async () => {
 			meleeCalls(meleeEventId, 'players');
-			return mapMeleePlayersToDb(tournament.teamIds.map(teamId => meleePlayer(teamId)), []);
+			return mapMeleePlayersToDb(
+				tournament.teamIds.map((teamId) => meleePlayer(teamId)),
+				[],
+			);
 		},
 	};
 }
@@ -69,9 +76,14 @@ vi.doMock('~~/server/modules/broadcast-graphics-live-session', () => ({
 	refreshBroadcastGraphicsBindings: vi.fn(),
 }));
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: { params: Record<string, string> }, parse: (value: unknown) => unknown) => parse(event.params));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: { params: Record<string, string> }, parse: (value: unknown) => unknown) =>
+		parse(event.params),
+);
 
 const { runLiveResultsTick } = await import('~~/server/modules/melee-sync/liveResults/tick');
 const { runDueLiveResultsTicks } = await import('~~/server/modules/melee-sync/liveResults/runner');
@@ -103,66 +115,82 @@ async function seedEvent(poll: Partial<typeof schema.events.$inferInsert> = {}) 
 		standings: new Map(),
 		teamIds: [1, 2, 3, 4],
 	});
-	const [event] = await db.insert(schema.events).values({
-		name: 'Melee Championship',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-		meleeEnabled: true,
-		meleeEventId,
-		meleeLiveResultsEnabled: true,
-		meleeLiveResultsLastChangeAt: minutesAgo(5),
-		...poll,
-	}).returning();
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'Melee Championship',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+			meleeEnabled: true,
+			meleeEventId,
+			meleeLiveResultsEnabled: true,
+			meleeLiveResultsLastChangeAt: minutesAgo(5),
+			...poll,
+		})
+		.returning();
 	const eventId = event!.id;
-	const [swiss] = await db.insert(schema.phases).values({
-		eventId,
-		name: 'Swiss',
-		sortOrder: 0,
-		externalId: '40',
-		externalSource: 'melee',
-	}).returning();
-	const [round3, round4] = await db.insert(schema.rounds).values([
-		{
+	const [swiss] = await db
+		.insert(schema.phases)
+		.values({
 			eventId,
-			phaseId: swiss!.id,
-			name: 'Round 3',
-			roundNumber: 3,
-			externalId: String(ROUND_3),
+			name: 'Swiss',
+			sortOrder: 0,
+			externalId: '40',
 			externalSource: 'melee',
-		},
-		{
+		})
+		.returning();
+	const [round3, round4] = await db
+		.insert(schema.rounds)
+		.values([
+			{
+				eventId,
+				phaseId: swiss!.id,
+				name: 'Round 3',
+				roundNumber: 3,
+				externalId: String(ROUND_3),
+				externalSource: 'melee',
+			},
+			{
+				eventId,
+				phaseId: swiss!.id,
+				name: 'Round 4',
+				roundNumber: 4,
+				externalId: String(ROUND_4),
+				externalSource: 'melee',
+			},
+		])
+		.returning();
+	await db.insert(schema.players).values(
+		[1, 2, 3, 4].map((teamId) => ({
 			eventId,
-			phaseId: swiss!.id,
-			name: 'Round 4',
-			roundNumber: 4,
-			externalId: String(ROUND_4),
-			externalSource: 'melee',
-		},
-	]).returning();
-	await db.insert(schema.players).values([1, 2, 3, 4].map(teamId => ({
-		eventId,
-		name: `Player ${teamId}`,
-		externalId: String(teamId),
-		externalSource: 'melee' as const,
-	})));
+			name: `Player ${teamId}`,
+			externalId: String(teamId),
+			externalSource: 'melee' as const,
+		})),
+	);
 	const tournament = tournaments.get(meleeEventId)!;
 	return {
 		eventId,
 		swissId: swiss!.id,
 		tournament,
-		roundId: (meleeRoundId: number) => meleeRoundId === ROUND_3
-			? round3!.id
-			: round4!.id,
+		roundId: (meleeRoundId: number) => (meleeRoundId === ROUND_3 ? round3!.id : round4!.id),
 		/** Melee now holds `matches` (and `standings`) for a Round; a manual sync stored them. */
-		async stage(meleeRoundId: number, matches: MeleeMatchParsed[], standings: MeleeStandingParsed[] = []) {
+		async stage(
+			meleeRoundId: number,
+			matches: MeleeMatchParsed[],
+			standings: MeleeStandingParsed[] = [],
+		) {
 			tournament.matches.set(meleeRoundId, matches);
 			tournament.standings.set(meleeRoundId, standings);
 			const eventData = (await db.query.events.findFirst({
 				where: eq(schema.events.id, eventId),
 			}))!;
-			await createMeleeSyncWorkflows().syncRoundMatches({}, eventId, eventData, meleeRoundId === ROUND_3
-				? round3!.id
-				: round4!.id);
+			await createMeleeSyncWorkflows().syncRoundMatches(
+				{},
+				eventId,
+				eventData,
+				meleeRoundId === ROUND_3 ? round3!.id : round4!.id,
+			);
 			vi.clearAllMocks();
 		},
 	};
@@ -180,7 +208,9 @@ function pairing(guid: string, teamIds: [number, number], result?: [number, numb
 	});
 }
 
-const round3Standings = [1, 3, 2, 4].map((teamId, index) => meleeStanding(teamId, { Rank: index + 1 }));
+const round3Standings = [1, 3, 2, 4].map((teamId, index) =>
+	meleeStanding(teamId, { Rank: index + 1 }),
+);
 
 async function pollState(eventId: number) {
 	const event = (await db.query.events.findFirst({
@@ -198,27 +228,31 @@ async function pollState(eventId: number) {
 }
 
 async function matchesOf(eventId: number, roundId: number) {
-	return await db.select().from(schema.matches).where(and(
-		eq(schema.matches.eventId, eventId),
-		eq(schema.matches.roundId, roundId),
-	)).orderBy(schema.matches.sortOrder);
+	return await db
+		.select()
+		.from(schema.matches)
+		.where(and(eq(schema.matches.eventId, eventId), eq(schema.matches.roundId, roundId)))
+		.orderBy(schema.matches.sortOrder);
 }
 
 async function standingsCount(eventId: number, roundId: number) {
-	const rows = await db.select().from(schema.playerRoundStandings).where(and(
-		eq(schema.playerRoundStandings.eventId, eventId),
-		eq(schema.playerRoundStandings.roundId, roundId),
-	));
+	const rows = await db
+		.select()
+		.from(schema.playerRoundStandings)
+		.where(
+			and(
+				eq(schema.playerRoundStandings.eventId, eventId),
+				eq(schema.playerRoundStandings.roundId, roundId),
+			),
+		);
 	return rows.length;
 }
 
 /** Each realtime message published so far, as `[eventId, type]`. */
 function announced() {
-	return [
-		...publishMessage.mock.calls,
-		...publishMessageStrict.mock.calls,
-	]
-		.map(([eventId, type]) => [eventId, type]);
+	return [...publishMessage.mock.calls, ...publishMessageStrict.mock.calls].map(
+		([eventId, type]) => [eventId, type],
+	);
 }
 
 function eventUpdates(eventId: number) {
@@ -240,18 +274,14 @@ afterEach(() => vi.useRealTimers());
 describe('a Live Results tick', () => {
 	it('stores a newly reported Match Result and announces only it', async () => {
 		const { eventId, roundId, stage, tournament } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2]),
-			pairing('b', [3, 4]),
-		]);
-		tournament.matches.set(ROUND_3, [
-			pairing('a', [1, 2]),
-			pairing('b', [3, 4], [2, 1]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2]), pairing('b', [3, 4])]);
+		tournament.matches.set(ROUND_3, [pairing('a', [1, 2]), pairing('b', [3, 4], [2, 1])]);
 
 		const { outcome } = await runLiveResultsTick(eventId, now);
 
-		const reported = (await matchesOf(eventId, roundId(ROUND_3))).find(match => match.externalId === 'b')!;
+		const reported = (await matchesOf(eventId, roundId(ROUND_3))).find(
+			(match) => match.externalId === 'b',
+		)!;
 		expect(outcome).toBe('changed');
 		expect(reported).toMatchObject({ hasResult: true, player1GameWins: 2, player2GameWins: 1 });
 		expect(publishMessageStrict).toHaveBeenCalledWith(
@@ -274,10 +304,7 @@ describe('a Live Results tick', () => {
 
 	it('records only when it last checked when Melee reports nothing new', async () => {
 		const { eventId, stage } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 
 		const { outcome } = await runLiveResultsTick(eventId, now);
 
@@ -290,38 +317,26 @@ describe('a Live Results tick', () => {
 		});
 	});
 
-	it('asks Melee for the Current Round\'s Matches only, leaving the previous Round\'s missing standings to its first pairing', async () => {
+	it("asks Melee for the Current Round's Matches only, leaving the previous Round's missing standings to its first pairing", async () => {
 		const { eventId, stage, tournament } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
-		await stage(ROUND_4, [
-			pairing('c', [1, 3]),
-			pairing('d', [2, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
+		await stage(ROUND_4, [pairing('c', [1, 3]), pairing('d', [2, 4])]);
 		tournament.standings.set(ROUND_3, round3Standings);
 
 		await runLiveResultsTick(eventId, now);
 
-		expect(meleeCalls.mock.calls.map(call => call.slice(1))).toEqual([
-			['matches', ROUND_4],
-		]);
+		expect(meleeCalls.mock.calls.map((call) => call.slice(1))).toEqual([['matches', ROUND_4]]);
 	});
 
-	it('takes up the next Round once Melee pairs it: Players refreshed, pairings stored, the previous Round\'s standings filled', async () => {
-		const { eventId, roundId, stage, tournament } = await seedEvent({ meleeLiveResultsBackoffStep: 3 });
+	it("takes up the next Round once Melee pairs it: Players refreshed, pairings stored, the previous Round's standings filled", async () => {
+		const { eventId, roundId, stage, tournament } = await seedEvent({
+			meleeLiveResultsBackoffStep: 3,
+		});
 		// Round 3 completed while Melee still had no standings for it.
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4], [2, 1]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])]);
 		tournament.standings.set(ROUND_3, round3Standings);
 		tournament.teamIds = [1, 2, 3, 4, 5];
-		tournament.matches.set(ROUND_4, [
-			pairing('c', [1, 3]),
-			pairing('d', [2, 5]),
-		]);
+		tournament.matches.set(ROUND_4, [pairing('c', [1, 3]), pairing('d', [2, 5])]);
 
 		const { outcome } = await runLiveResultsTick(eventId, now);
 
@@ -330,13 +345,15 @@ describe('a Live Results tick', () => {
 		});
 		const round4 = await matchesOf(eventId, roundId(ROUND_4));
 		expect(outcome).toBe('changed');
-		expect(round4.map(match => match.externalId)).toEqual(['c', 'd']);
+		expect(round4.map((match) => match.externalId)).toEqual(['c', 'd']);
 		expect(round4[1]!.player2Id).toBe(newcomer!.id);
 		expect(await standingsCount(eventId, roundId(ROUND_3))).toBe(4);
-		expect(announced()).toEqual(expect.arrayContaining([
-			[eventId, 'melee:pairingsSynced'],
-			[eventId, 'melee:roundStandingsSynced'],
-		]));
+		expect(announced()).toEqual(
+			expect.arrayContaining([
+				[eventId, 'melee:pairingsSynced'],
+				[eventId, 'melee:roundStandingsSynced'],
+			]),
+		);
 		expect(await pollState(eventId)).toMatchObject({
 			backoffStep: 0,
 			nextCheckAt: secondsLater(60),
@@ -348,67 +365,52 @@ describe('a Live Results tick', () => {
 	// unknown to it: the tick refreshes Players once and stores the Round after all.
 	it.each([
 		{
-			case: 'the completed Round\'s standings',
-			matches: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4], [2, 1]),
-			],
-			standings: [
-				...round3Standings,
-				meleeStanding(5, { Rank: 5 }),
-			],
+			case: "the completed Round's standings",
+			matches: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4], [2, 1])],
+			standings: [...round3Standings, meleeStanding(5, { Rank: 5 })],
 			stored: { standings: 5, tableB: '4' },
 		},
 		{
 			case: 'a re-paired Match',
-			matches: [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 5]),
-			],
+			matches: [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 5])],
 			standings: [],
 			stored: { standings: 0, tableB: '5' },
 		},
-	])('takes in a Player Melee added after pairing, named by $case', async ({ matches, standings, stored }) => {
-		const { eventId, roundId, stage, tournament } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
-		tournament.teamIds = [1, 2, 3, 4, 5];
-		tournament.matches.set(ROUND_3, matches);
-		tournament.standings.set(ROUND_3, standings);
+	])(
+		'takes in a Player Melee added after pairing, named by $case',
+		async ({ matches, standings, stored }) => {
+			const { eventId, roundId, stage, tournament } = await seedEvent();
+			await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
+			tournament.teamIds = [1, 2, 3, 4, 5];
+			tournament.matches.set(ROUND_3, matches);
+			tournament.standings.set(ROUND_3, standings);
 
-		const { outcome } = await runLiveResultsTick(eventId, now);
+			const { outcome } = await runLiveResultsTick(eventId, now);
 
-		const tableB = (await matchesOf(eventId, roundId(ROUND_3))).find(match => match.externalId === 'b')!;
-		const seated = await db.query.players.findFirst({
-			where: eq(schema.players.id, tableB.player2Id!),
-		});
-		expect(outcome).toBe('changed');
-		expect(seated?.externalId).toBe(stored.tableB);
-		expect(await standingsCount(eventId, roundId(ROUND_3))).toBe(stored.standings);
-		expect(announced()).toEqual(expect.arrayContaining([
-			[eventId, 'melee:playersSynced'],
-		]));
-		expect(await pollState(eventId)).toMatchObject({ error: null, lastChangeAt: now });
-	});
+			const tableB = (await matchesOf(eventId, roundId(ROUND_3))).find(
+				(match) => match.externalId === 'b',
+			)!;
+			const seated = await db.query.players.findFirst({
+				where: eq(schema.players.id, tableB.player2Id!),
+			});
+			expect(outcome).toBe('changed');
+			expect(seated?.externalId).toBe(stored.tableB);
+			expect(await standingsCount(eventId, roundId(ROUND_3))).toBe(stored.standings);
+			expect(announced()).toEqual(expect.arrayContaining([[eventId, 'melee:playersSynced']]));
+			expect(await pollState(eventId)).toMatchObject({ error: null, lastChangeAt: now });
+		},
+	);
 
 	it('refreshes Players once only, then fails, when Melee names a participant its Players lack', async () => {
 		const { eventId, roundId, stage, tournament } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		const before = await matchesOf(eventId, roundId(ROUND_3));
-		tournament.matches.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 5]),
-		]);
+		tournament.matches.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 5])]);
 
 		const { outcome } = await runLiveResultsTick(eventId, now);
 
 		expect(outcome).toBe('failed');
-		expect(meleeCalls.mock.calls.map(call => call[1])).toEqual([
+		expect(meleeCalls.mock.calls.map((call) => call[1])).toEqual([
 			'matches',
 			'event',
 			'players',
@@ -420,16 +422,10 @@ describe('a Live Results tick', () => {
 
 	it('abandons that Player refresh when an operator command takes the Event mid-tick', async () => {
 		const { eventId, roundId, stage, tournament } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		const before = await matchesOf(eventId, roundId(ROUND_3));
 		tournament.teamIds = [1, 2, 3, 4, 5];
-		tournament.matches.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 5]),
-		]);
+		tournament.matches.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 5])]);
 		tournament.onFetchMatches = async () => {
 			await acquireMeleeSyncLease(eventId, 'update');
 		};
@@ -437,9 +433,11 @@ describe('a Live Results tick', () => {
 		const { outcome } = await runLiveResultsTick(eventId, now);
 
 		expect(outcome).toBe('skipped');
-		expect(await db.query.players.findFirst({
-			where: and(eq(schema.players.eventId, eventId), eq(schema.players.externalId, '5')),
-		})).toBeUndefined();
+		expect(
+			await db.query.players.findFirst({
+				where: and(eq(schema.players.eventId, eventId), eq(schema.players.externalId, '5')),
+			}),
+		).toBeUndefined();
 		expect(await matchesOf(eventId, roundId(ROUND_3))).toEqual(before);
 	});
 
@@ -451,9 +449,7 @@ describe('a Live Results tick', () => {
 		{ case: 'has no Matches', melee: [] },
 	])('backs off probing when Melee $case for the next Round', async ({ melee }) => {
 		const { eventId, stage, tournament } = await seedEvent({ meleeLiveResultsBackoffStep: 2 });
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-		], round3Standings);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0])], round3Standings);
 		tournament.matches.set(ROUND_4, melee);
 
 		const { outcome } = await runLiveResultsTick(eventId, now);
@@ -469,10 +465,7 @@ describe('a Live Results tick', () => {
 
 	it('records a Melee failure once, backs off, and clears it on the next good tick', async () => {
 		const { eventId, roundId, stage, tournament } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		const before = await matchesOf(eventId, roundId(ROUND_3));
 		tournament.matches.set(ROUND_3, new MeleeTransportError('Upstream failed', 'http', 500));
 
@@ -480,13 +473,14 @@ describe('a Live Results tick', () => {
 		const afterFirst = await pollState(eventId);
 		const second = await runLiveResultsTick(eventId, secondsLater(60));
 		const afterSecond = await pollState(eventId);
-		tournament.matches.set(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		tournament.matches.set(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		const third = await runLiveResultsTick(eventId, secondsLater(180));
 
-		expect([first.outcome, second.outcome, third.outcome]).toEqual(['failed', 'failed', 'unchanged']);
+		expect([first.outcome, second.outcome, third.outcome]).toEqual([
+			'failed',
+			'failed',
+			'unchanged',
+		]);
 		expect(afterFirst).toMatchObject({
 			error: GENERIC_FAILURE,
 			backoffStep: 1,
@@ -502,7 +496,10 @@ describe('a Live Results tick', () => {
 			backoffStep: 0,
 			nextCheckAt: secondsLater(240),
 		});
-		expect(eventUpdates(eventId).map(event => event.meleeLiveResultsError)).toEqual([GENERIC_FAILURE, null]);
+		expect(eventUpdates(eventId).map((event) => event.meleeLiveResultsError)).toEqual([
+			GENERIC_FAILURE,
+			null,
+		]);
 		expect(await matchesOf(eventId, roundId(ROUND_3))).toEqual(before);
 	});
 
@@ -525,30 +522,35 @@ describe('a Live Results tick', () => {
 			lastChangeAt: minutesAgo(12 * 60 + 1),
 			stopReason: 'idle',
 		},
-	])('stops itself when $case, and announces the Event once', async ({ melee, lastChangeAt, stopReason }) => {
-		const { eventId, stage, tournament } = await seedEvent({ meleeLiveResultsLastChangeAt: lastChangeAt });
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
-		if (melee)
-			tournament.matches.set(ROUND_3, melee);
+	])(
+		'stops itself when $case, and announces the Event once',
+		async ({ melee, lastChangeAt, stopReason }) => {
+			const { eventId, stage, tournament } = await seedEvent({
+				meleeLiveResultsLastChangeAt: lastChangeAt,
+			});
+			await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
+			if (melee) tournament.matches.set(ROUND_3, melee);
 
-		const { outcome } = await runLiveResultsTick(eventId, now);
+			const { outcome } = await runLiveResultsTick(eventId, now);
 
-		expect(outcome).toBe('stopped');
-		expect(await pollState(eventId)).toMatchObject({ enabled: false, stopReason, lastCheckedAt: now });
-		expect(eventUpdates(eventId)).toEqual([
-			expect.objectContaining({ meleeLiveResultsEnabled: false, meleeLiveResultsStopReason: stopReason }),
-		]);
-	});
+			expect(outcome).toBe('stopped');
+			expect(await pollState(eventId)).toMatchObject({
+				enabled: false,
+				stopReason,
+				lastCheckedAt: now,
+			});
+			expect(eventUpdates(eventId)).toEqual([
+				expect.objectContaining({
+					meleeLiveResultsEnabled: false,
+					meleeLiveResultsStopReason: stopReason,
+				}),
+			]);
+		},
+	);
 
-	it('skips, touching nothing, while an operator\'s Melee Sync command holds the Event', async () => {
+	it("skips, touching nothing, while an operator's Melee Sync command holds the Event", async () => {
 		const { eventId, stage } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		await acquireMeleeSyncLease(eventId, 'update');
 		const before = await pollState(eventId);
 
@@ -572,27 +574,27 @@ describe('a Live Results tick', () => {
 		{
 			case: 'Live Results is switched off',
 			meanwhile: async (eventId: number) => {
-				await db.update(schema.events).set({ meleeLiveResultsEnabled: false }).where(eq(schema.events.id, eventId));
+				await db
+					.update(schema.events)
+					.set({ meleeLiveResultsEnabled: false })
+					.where(eq(schema.events.id, eventId));
 			},
 		},
 		{
 			case: 'Melee Sync is switched off',
 			meanwhile: async (eventId: number) => {
-				await db.update(schema.events).set({ meleeEnabled: false }).where(eq(schema.events.id, eventId));
+				await db
+					.update(schema.events)
+					.set({ meleeEnabled: false })
+					.where(eq(schema.events.id, eventId));
 			},
 		},
 	])('abandons its write when $case mid-tick', async ({ meanwhile }) => {
 		const { eventId, roundId, stage, tournament } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2]), pairing('b', [3, 4])]);
 		const before = await matchesOf(eventId, roundId(ROUND_3));
 		const pollBefore = await pollState(eventId);
-		tournament.matches.set(ROUND_3, [
-			pairing('a', [1, 2]),
-			pairing('b', [3, 4], [2, 1]),
-		]);
+		tournament.matches.set(ROUND_3, [pairing('a', [1, 2]), pairing('b', [3, 4], [2, 1])]);
 		tournament.onFetchMatches = async () => await meanwhile(eventId);
 
 		const { outcome } = await runLiveResultsTick(eventId, now);
@@ -607,15 +609,11 @@ describe('a Live Results tick', () => {
 		expect(announced()).toEqual([]);
 	});
 
-	it('abandons a probe\'s Player refresh when an operator command takes the Event mid-tick', async () => {
+	it("abandons a probe's Player refresh when an operator command takes the Event mid-tick", async () => {
 		const { eventId, roundId, stage, tournament } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-		], round3Standings);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0])], round3Standings);
 		tournament.teamIds = [1, 2, 3, 4, 5];
-		tournament.matches.set(ROUND_4, [
-			pairing('c', [1, 5]),
-		]);
+		tournament.matches.set(ROUND_4, [pairing('c', [1, 5])]);
 		tournament.onFetchMatches = async () => {
 			await acquireMeleeSyncLease(eventId, 'update');
 		};
@@ -641,10 +639,7 @@ describe('a Live Results tick', () => {
 		},
 	])('skips, touching nothing, once $case is off', async ({ values }) => {
 		const { eventId, stage } = await seedEvent();
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		await db.update(schema.events).set(values).where(eq(schema.events.id, eventId));
 		const before = await pollState(eventId);
 
@@ -661,13 +656,19 @@ describe('the Live Results runner', () => {
 		{
 			case: 'Melee fails for the second',
 			breakSecond: (second: Awaited<ReturnType<typeof seedEvent>>) => {
-				second.tournament.matches.set(ROUND_3, new MeleeTransportError('Upstream failed', 'http', 500));
+				second.tournament.matches.set(
+					ROUND_3,
+					new MeleeTransportError('Upstream failed', 'http', 500),
+				);
 			},
 			secondAfter: { error: GENERIC_FAILURE, backoffStep: 1 },
 		},
 		{
 			case: 'the second is deleted mid-run',
-			breakSecond: (second: Awaited<ReturnType<typeof seedEvent>>, first: Awaited<ReturnType<typeof seedEvent>>) => {
+			breakSecond: (
+				second: Awaited<ReturnType<typeof seedEvent>>,
+				first: Awaited<ReturnType<typeof seedEvent>>,
+			) => {
 				first.tournament.onFetchMatches = async () => {
 					await db.delete(schema.events).where(eq(schema.events.id, second.eventId));
 				};
@@ -681,13 +682,14 @@ describe('the Live Results runner', () => {
 			const event = await seedEvent({
 				meleeLiveResultsNextCheckAt: minutesAgo(minutes),
 			});
-			await event.stage(ROUND_3, [
-				pairing('a', [1, 2], [2, 0]),
-				pairing('b', [3, 4]),
-			]);
+			await event.stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 			seeded.push(event);
 		}
-		const [first, second, third] = seeded as [typeof seeded[0], typeof seeded[0], typeof seeded[0]];
+		const [first, second, third] = seeded as [
+			(typeof seeded)[0],
+			(typeof seeded)[0],
+			(typeof seeded)[0],
+		];
 		breakSecond(second, first);
 
 		await runDueLiveResultsTicks(now);
@@ -704,10 +706,7 @@ describe('the Live Results runner', () => {
 		const { eventId, stage } = await seedEvent({
 			meleeLiveResultsNextCheckAt: secondsLater(30),
 		});
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 		const before = await pollState(eventId);
 
 		await runDueLiveResultsTicks(now);
@@ -723,10 +722,7 @@ describe('gET /api/events/:id/melee/live-results', () => {
 			meleeLiveResultsLastCheckedAt: minutesAgo(1),
 			meleeLiveResultsError: GENERIC_FAILURE,
 		});
-		await stage(ROUND_3, [
-			pairing('a', [1, 2], [2, 0]),
-			pairing('b', [3, 4]),
-		]);
+		await stage(ROUND_3, [pairing('a', [1, 2], [2, 0]), pairing('b', [3, 4])]);
 
 		const status = await getStatus({
 			params: {

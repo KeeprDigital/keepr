@@ -7,10 +7,8 @@ export function createCancelableDebounce(
 	let maxWaitTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function clearTimers() {
-		if (delayTimer !== null)
-			clearTimeout(delayTimer);
-		if (maxWaitTimer !== null)
-			clearTimeout(maxWaitTimer);
+		if (delayTimer !== null) clearTimeout(delayTimer);
+		if (maxWaitTimer !== null) clearTimeout(maxWaitTimer);
 		delayTimer = null;
 		maxWaitTimer = null;
 	}
@@ -29,13 +27,11 @@ export function createCancelableDebounce(
 	 * of those events into a write.
 	 */
 	function flushIfPending() {
-		if (delayTimer !== null || maxWaitTimer !== null)
-			flush();
+		if (delayTimer !== null || maxWaitTimer !== null) flush();
 	}
 
 	function schedule() {
-		if (delayTimer !== null)
-			clearTimeout(delayTimer);
+		if (delayTimer !== null) clearTimeout(delayTimer);
 		delayTimer = setTimeout(flush, delayMs);
 
 		if (maxWaitMs !== undefined && maxWaitTimer === null)

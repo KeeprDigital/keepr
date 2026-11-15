@@ -41,7 +41,8 @@ export const FEATURE_MATCH_OVERLAY_PREVIEW_CONFIG_MESSAGE = 'feature-match-overl
  * host's configuration push, because the two name things in different
  * vocabularies and at most one of them is ever non-canvas.
  */
-export const FEATURE_MATCH_OVERLAY_PREVIEW_SELECTED_TARGET_MESSAGE = 'feature-match-overlay:selected-target';
+export const FEATURE_MATCH_OVERLAY_PREVIEW_SELECTED_TARGET_MESSAGE =
+	'feature-match-overlay:selected-target';
 
 /**
  * A host-owned selection the frame reports back, made by clicking a guide. A
@@ -64,37 +65,44 @@ export function isFeatureMatchOverlayPreviewConfigMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
 ): message is MessageEnvelope & { data: { type: string; config: FeatureMatchOverlayModeConfig } } {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+	if (!isFromExpectedSender(message, expected)) return false;
 
 	const data = message.data as Record<string, unknown>;
-	return data.type === FEATURE_MATCH_OVERLAY_PREVIEW_CONFIG_MESSAGE
-		&& typeof data.config === 'object'
-		&& data.config !== null;
+	return (
+		data.type === FEATURE_MATCH_OVERLAY_PREVIEW_CONFIG_MESSAGE &&
+		typeof data.config === 'object' &&
+		data.config !== null
+	);
 }
 
 /** The editor's current host-owned selection, pushed into an embedded preview. */
 export function isFeatureMatchOverlayPreviewSelectedTargetMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
-): message is MessageEnvelope & { data: { type: string; target: FeatureMatchOverlaySelectionTarget } } {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+): message is MessageEnvelope & {
+	data: { type: string; target: FeatureMatchOverlaySelectionTarget };
+} {
+	if (!isFromExpectedSender(message, expected)) return false;
 
 	const data = message.data as Record<string, unknown>;
-	return data.type === FEATURE_MATCH_OVERLAY_PREVIEW_SELECTED_TARGET_MESSAGE
-		&& isFeatureMatchOverlaySelectionTarget(data.target);
+	return (
+		data.type === FEATURE_MATCH_OVERLAY_PREVIEW_SELECTED_TARGET_MESSAGE &&
+		isFeatureMatchOverlaySelectionTarget(data.target)
+	);
 }
 
 /** An embedded preview reporting the host-owned selection an author just made; `toggle` is read as `=== true`. */
 export function isFeatureMatchOverlayPreviewSelectMessage(
 	message: MessageEnvelope,
 	expected: ExpectedSender,
-): message is MessageEnvelope & { data: { type: string; target: FeatureMatchOverlaySelectionTarget; toggle?: unknown } } {
-	if (!isFromExpectedSender(message, expected))
-		return false;
+): message is MessageEnvelope & {
+	data: { type: string; target: FeatureMatchOverlaySelectionTarget; toggle?: unknown };
+} {
+	if (!isFromExpectedSender(message, expected)) return false;
 
 	const data = message.data as Record<string, unknown>;
-	return data.type === FEATURE_MATCH_OVERLAY_PREVIEW_SELECT_MESSAGE
-		&& isFeatureMatchOverlaySelectionTarget(data.target);
+	return (
+		data.type === FEATURE_MATCH_OVERLAY_PREVIEW_SELECT_MESSAGE &&
+		isFeatureMatchOverlaySelectionTarget(data.target)
+	);
 }

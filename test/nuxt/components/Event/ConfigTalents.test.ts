@@ -8,7 +8,13 @@ import { deferred } from '~~/test/helpers/deferred';
 import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
 import ConfigTalents from '~/components/Event/ConfigTalents.vue';
 
-function talent(id: number, name: string, socialProfiles: Talent['socialProfiles'] = {}, photo: Talent['photo'] = null, role: string | null = null): Talent {
+function talent(
+	id: number,
+	name: string,
+	socialProfiles: Talent['socialProfiles'] = {},
+	photo: Talent['photo'] = null,
+	role: string | null = null,
+): Talent {
 	return {
 		id,
 		eventId: 1,
@@ -21,7 +27,9 @@ function talent(id: number, name: string, socialProfiles: Talent['socialProfiles
 	};
 }
 
-const PORTRAIT = { assetId: 'asset-portrait', revisionId: 'revision-2' } as NonNullable<Talent['photo']>;
+const PORTRAIT = { assetId: 'asset-portrait', revisionId: 'revision-2' } as NonNullable<
+	Talent['photo']
+>;
 const ALICE = talent(11, 'Alice');
 const BOB = talent(12, 'Bob');
 const BOB_AGAIN = talent(13, 'Bob');
@@ -39,8 +47,7 @@ mockNuxtImport('useRequestFeedback', () => () => ({
 	runRequest: async (request: () => Promise<unknown>) => {
 		try {
 			return (await request()) ?? null;
-		}
-		catch {
+		} catch {
 			return null;
 		}
 	},
@@ -58,12 +65,7 @@ mockNuxtImport('useOverlay', () => () => ({
 /** The library picker, answering as it does: a choice or a Clear arrives as its model value. */
 const PhotoPicker = defineComponent({
 	name: 'GraphicsAssetFocusPicker',
-	props: [
-		'modelValue',
-		'eventId',
-		'assetKind',
-		'fieldLabel',
-	],
+	props: ['modelValue', 'eventId', 'assetKind', 'fieldLabel'],
 	emits: ['update:modelValue', 'select'],
 	template: '<div data-photo-picker />',
 });
@@ -79,7 +81,7 @@ enableAutoUnmount(afterEach);
 beforeEach(() => {
 	vi.clearAllMocks();
 	confirmation.answer = true;
-	eventStore.addTalent.mockImplementation(async input => ({ id: 99, ...input }));
+	eventStore.addTalent.mockImplementation(async (input) => ({ id: 99, ...input }));
 	eventStore.updateTalent.mockImplementation(async (id, input) => ({ id, ...input }));
 	eventStore.removeTalent.mockResolvedValue({ success: true });
 });
@@ -97,15 +99,17 @@ type Wrapper = ReturnType<typeof mountComponent>;
 async function chooseRowAction(wrapper: Wrapper, index: number, label: string) {
 	const menus = wrapper.findAllComponents({ name: 'UDropdownMenu' });
 	const items = menus[index]!.props('items') as DropdownMenuItem[];
-	const action = items.find(item => item.label === label);
-	if (!action)
-		throw new Error(`Row ${index} offers no "${label}" action`);
+	const action = items.find((item) => item.label === label);
+	if (!action) throw new Error(`Row ${index} offers no "${label}" action`);
 	action.onSelect?.(new Event('select') as never);
 	await flushPromises();
 }
 
 function button(wrapper: Wrapper, label: string) {
-	return wrapper.findAll('button').filter(candidate => candidate.text() === label).at(-1)!;
+	return wrapper
+		.findAll('button')
+		.filter((candidate) => candidate.text() === label)
+		.at(-1)!;
 }
 
 function profileInput(wrapper: Wrapper, network: string) {
@@ -131,18 +135,14 @@ describe('event config Talents', () => {
 		const wrapper = mountComponent([ALICE]);
 		await chooseRowAction(wrapper, 0, 'Edit');
 
-		expect(wrapper.findAll('[data-social-network]').map(input => input.attributes('data-social-network')))
-			.toEqual([
-				'twitch',
-				'youtube',
-				'x',
-				'instagram',
-				'tiktok',
-				'bluesky',
-			]);
+		expect(
+			wrapper
+				.findAll('[data-social-network]')
+				.map((input) => input.attributes('data-social-network')),
+		).toEqual(['twitch', 'youtube', 'x', 'instagram', 'tiktok', 'bluesky']);
 	});
 
-	it('saves a normalized edit under the Talent\'s id, then closes the editor', async () => {
+	it("saves a normalized edit under the Talent's id, then closes the editor", async () => {
 		const wrapper = mountComponent([ALICE]);
 		await chooseRowAction(wrapper, 0, 'Edit');
 
@@ -180,15 +180,15 @@ describe('event config Talents', () => {
 		await profileInput(wrapper, 'x').setValue('two words');
 		await saveEditor(wrapper);
 
-		expect(wrapper.get('[data-field="socialProfiles.x"] [data-error]').text()).toContain('valid X handle');
+		expect(wrapper.get('[data-field="socialProfiles.x"] [data-error]').text()).toContain(
+			'valid X handle',
+		);
 		expect(editorIsOpen(wrapper)).toBe(true);
 		expect(eventStore.updateTalent).not.toHaveBeenCalled();
 	});
 
 	it('replaces the complete profile set and treats a blank field as removal', async () => {
-		const wrapper = mountComponent([
-			talent(11, 'Alice', { twitch: 'Old', instagram: 'Kept' }),
-		]);
+		const wrapper = mountComponent([talent(11, 'Alice', { twitch: 'Old', instagram: 'Kept' })]);
 		await chooseRowAction(wrapper, 0, 'Edit');
 
 		await profileInput(wrapper, 'twitch').setValue(' ');
@@ -200,15 +200,11 @@ describe('event config Talents', () => {
 		});
 	});
 
-	it('sends only the fields edited in the open editor, keeping a colleague\'s change to the rest (#612)', async () => {
-		const wrapper = mountComponent([
-			talent(11, 'Alice', { twitch: 'Old' }),
-		]);
+	it("sends only the fields edited in the open editor, keeping a colleague's change to the rest (#612)", async () => {
+		const wrapper = mountComponent([talent(11, 'Alice', { twitch: 'Old' })]);
 		await chooseRowAction(wrapper, 0, 'Edit');
 		await wrapper.setProps({
-			talents: [
-				talent(11, 'Alice', { twitch: 'New', x: 'Added' }),
-			],
+			talents: [talent(11, 'Alice', { twitch: 'New', x: 'Added' })],
 		});
 
 		await nameInput(wrapper).setValue('Alicia');
@@ -256,33 +252,23 @@ describe('event config Talents', () => {
 	});
 
 	it.each([
-		[
-			true,
-			[BOB_AGAIN.id],
-		],
+		[true, [BOB_AGAIN.id]],
 		[false, []],
-	])('deletes the chosen namesake by id only once confirmed (confirmed: %s)', async (answer, deleted) => {
-		confirmation.answer = answer;
-		const wrapper = mountComponent([BOB, BOB_AGAIN]);
+	])(
+		'deletes the chosen namesake by id only once confirmed (confirmed: %s)',
+		async (answer, deleted) => {
+			confirmation.answer = answer;
+			const wrapper = mountComponent([BOB, BOB_AGAIN]);
 
-		await chooseRowAction(wrapper, 1, 'Delete');
+			await chooseRowAction(wrapper, 1, 'Delete');
 
-		expect(eventStore.removeTalent.mock.calls.map(([id]) => id)).toEqual(deleted);
-	});
+			expect(eventStore.removeTalent.mock.calls.map(([id]) => id)).toEqual(deleted);
+		},
+	);
 
 	it.each([
-		[
-			'sets a trimmed role',
-			ALICE,
-			' Host ',
-			{ role: 'Host' },
-		],
-		[
-			'clears a role left blank',
-			talent(11, 'Alice', {}, null, 'Host'),
-			'  ',
-			{ role: null },
-		],
+		['sets a trimmed role', ALICE, ' Host ', { role: 'Host' }],
+		['clears a role left blank', talent(11, 'Alice', {}, null, 'Host'), '  ', { role: null }],
 	])('%s', async (_case, current, role, update) => {
 		const wrapper = mountComponent([current]);
 		await chooseRowAction(wrapper, 0, 'Edit');
@@ -301,38 +287,32 @@ describe('event config Talents', () => {
 		await roleInput(wrapper).setValue('Commentator');
 		await saveEditor(wrapper);
 
-		expect(eventStore.addTalent).toHaveBeenCalledWith({ name: 'Dana', role: 'Commentator', socialProfiles: {} });
+		expect(eventStore.addTalent).toHaveBeenCalledWith({
+			name: 'Dana',
+			role: 'Commentator',
+			socialProfiles: {},
+		});
 	});
 
-	it('shows each Talent\'s role beside its name', () => {
-		const wrapper = mountComponent([
-			talent(11, 'Alice', {}, null, 'Host'),
-			BOB,
-		]);
+	it("shows each Talent's role beside its name", () => {
+		const wrapper = mountComponent([talent(11, 'Alice', {}, null, 'Host'), BOB]);
 
-		expect(wrapper.findAll('[data-talent-role]').map(role => role.text())).toEqual(['Host']);
+		expect(wrapper.findAll('[data-talent-role]').map((role) => role.text())).toEqual(['Host']);
 	});
 
-	it('offers the library\'s images for this Event as the photo', async () => {
+	it("offers the library's images for this Event as the photo", async () => {
 		const wrapper = mountComponent([ALICE]);
 		await chooseRowAction(wrapper, 0, 'Edit');
 
-		expect(wrapper.getComponent(PhotoPicker).props()).toMatchObject({ eventId: 1, assetKind: 'image' });
+		expect(wrapper.getComponent(PhotoPicker).props()).toMatchObject({
+			eventId: 1,
+			assetKind: 'image',
+		});
 	});
 
 	it.each([
-		[
-			'saves a chosen photo with the Talent',
-			ALICE,
-			PORTRAIT,
-			{ photo: PORTRAIT },
-		],
-		[
-			'clears the Talent\'s photo',
-			talent(11, 'Alice', {}, PORTRAIT),
-			null,
-			{ photo: null },
-		],
+		['saves a chosen photo with the Talent', ALICE, PORTRAIT, { photo: PORTRAIT }],
+		["clears the Talent's photo", talent(11, 'Alice', {}, PORTRAIT), null, { photo: null }],
 	])('%s', async (_case, current, photo, update) => {
 		const wrapper = mountComponent([current]);
 		await chooseRowAction(wrapper, 0, 'Edit');
@@ -351,16 +331,18 @@ describe('event config Talents', () => {
 		await pickPhoto(wrapper, PORTRAIT);
 		await saveEditor(wrapper);
 
-		expect(eventStore.addTalent).toHaveBeenCalledWith({ name: 'Dana', socialProfiles: {}, photo: PORTRAIT });
+		expect(eventStore.addTalent).toHaveBeenCalledWith({
+			name: 'Dana',
+			socialProfiles: {},
+			photo: PORTRAIT,
+		});
 	});
 
-	it('keeps a colleague\'s photo when the editor did not change it', async () => {
+	it("keeps a colleague's photo when the editor did not change it", async () => {
 		const wrapper = mountComponent([ALICE]);
 		await chooseRowAction(wrapper, 0, 'Edit');
 		await wrapper.setProps({
-			talents: [
-				talent(11, 'Alice', {}, PORTRAIT),
-			],
+			talents: [talent(11, 'Alice', {}, PORTRAIT)],
 		});
 
 		await nameInput(wrapper).setValue('Alicia');
@@ -369,18 +351,17 @@ describe('event config Talents', () => {
 		expect(eventStore.updateTalent).toHaveBeenCalledWith(11, { name: 'Alicia' });
 	});
 
-	it('shows each Talent\'s exact photo revision as a thumbnail, and none without one', () => {
-		const wrapper = mountComponent([
-			talent(11, 'Alice', {}, PORTRAIT),
-			BOB,
-		]);
+	it("shows each Talent's exact photo revision as a thumbnail, and none without one", () => {
+		const wrapper = mountComponent([talent(11, 'Alice', {}, PORTRAIT), BOB]);
 
-		expect(wrapper.findAll('[data-talent-photo]').map(row => [
-			row.attributes('data-talent-photo'),
-			row.find('img').exists()
-				? row.get('img').attributes('src')
-				: null,
-		])).toEqual([
+		expect(
+			wrapper
+				.findAll('[data-talent-photo]')
+				.map((row) => [
+					row.attributes('data-talent-photo'),
+					row.find('img').exists() ? row.get('img').attributes('src') : null,
+				]),
+		).toEqual([
 			['revision-2', '/api/graphics-assets/asset-portrait/revisions/revision-2/content'],
 			['none', null],
 		]);

@@ -32,10 +32,8 @@ function disposeSceneContents(scene: THREE.Scene) {
 	scene.traverse((object) => {
 		const mesh = object as Partial<THREE.Mesh>;
 		mesh.geometry?.dispose();
-		if (Array.isArray(mesh.material))
-			mesh.material.forEach(material => material.dispose());
-		else
-			mesh.material?.dispose();
+		if (Array.isArray(mesh.material)) mesh.material.forEach((material) => material.dispose());
+		else mesh.material?.dispose();
 	});
 }
 

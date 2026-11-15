@@ -38,9 +38,7 @@ export function integrationBroadcastGraphicWithInputs(
 		id,
 		name: `Graphic ${id}`,
 		inputs,
-		...(animation === undefined
-			? {}
-			: { animation }),
+		...(animation === undefined ? {} : { animation }),
 		items: [
 			{
 				id: `${id}-text`,
@@ -80,9 +78,12 @@ export function integrationBroadcastGraphicWithInputs(
  * Written longhand for the same reason as everything else here: the integration
  * project resolves no `~~` alias, so only type imports cross this boundary.
  */
-export function integrationGraphicAnimation(
-	durations: { enter?: number; update?: number; exit?: number; onScreen?: number },
-): NonNullable<BroadcastGraphicConfig['animation']> {
+export function integrationGraphicAnimation(durations: {
+	enter?: number;
+	update?: number;
+	exit?: number;
+	onScreen?: number;
+}): NonNullable<BroadcastGraphicConfig['animation']> {
 	const recipe = (duration: number) => ({
 		duration,
 		easing: 'linear' as const,
@@ -205,9 +206,7 @@ export function integrationBroadcastGraphic(
 	return {
 		id,
 		name: `Graphic ${id}`,
-		...(animation === undefined
-			? {}
-			: { animation }),
+		...(animation === undefined ? {} : { animation }),
 		items: [
 			{
 				id: `${id}-shape`,
@@ -253,9 +252,7 @@ export async function createBroadcastGraphicsScreen(
 			modeConfigs: {
 				'broadcast-graphics': {
 					graphics,
-					...(channels === undefined
-						? {}
-						: { channels }),
+					...(channels === undefined ? {} : { channels }),
 				},
 			},
 		},
@@ -333,7 +330,11 @@ export async function createPlayoutHarness(
 	slug: string,
 	graphicIds: string[],
 ): Promise<PlayoutHarness> {
-	const screen = await createBroadcastGraphicsScreen(eventId, slug, graphicIds.map(id => integrationBroadcastGraphic(id)));
+	const screen = await createBroadcastGraphicsScreen(
+		eventId,
+		slug,
+		graphicIds.map((id) => integrationBroadcastGraphic(id)),
+	);
 	let current = await getBroadcastGraphicsLiveSession(eventId, screen.id);
 
 	return {

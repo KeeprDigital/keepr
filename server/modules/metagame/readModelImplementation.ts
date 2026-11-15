@@ -1,7 +1,11 @@
 import type { ArchetypeConversionTarget } from '~~/server/modules/metagame/archetypes';
 import type { MetagameScopeModel } from '~~/server/modules/metagame/scopeModel';
 import type { OpCardCategory } from '~~/shared/types/card/op';
-import type { BoardSelection, MetagameConversionMetric, MetagameScope } from '~~/shared/types/enums';
+import type {
+	BoardSelection,
+	MetagameConversionMetric,
+	MetagameScope,
+} from '~~/shared/types/enums';
 import type {
 	ArchetypeBreakdownResponse,
 	ArchetypeDetailResponse,
@@ -22,10 +26,30 @@ import type { MetagameCardTypeBucket } from '~~/shared/utils/metagame';
 import { and, asc, count, desc, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 import { db } from '~~/server/db';
-import { archetypeCards, archetypes, cards, playerDeckCards, playerDecks, players } from '~~/server/db/schema';
+import {
+	archetypeCards,
+	archetypes,
+	cards,
+	playerDeckCards,
+	playerDecks,
+	players,
+} from '~~/server/db/schema';
 import { hasReviewedPlayerDeckDetails } from '~~/server/mappers/playerDeck';
-import { buildArchetypeBreakdownEntries, compareArchetypeBreakdownEntries, groupClassifiedPlayersByArchetype, isConvertedPlayer, limitArchetypeBreakdownEntries } from '~~/server/modules/metagame/archetypes';
-import { compareCardBreakdownEntries, createCardTypeBucketFilter, isEligibleMetagameCard, metagameCardColors, metagameCardType, toCardBreakdownEntry } from '~~/server/modules/metagame/cards';
+import {
+	buildArchetypeBreakdownEntries,
+	compareArchetypeBreakdownEntries,
+	groupClassifiedPlayersByArchetype,
+	isConvertedPlayer,
+	limitArchetypeBreakdownEntries,
+} from '~~/server/modules/metagame/archetypes';
+import {
+	compareCardBreakdownEntries,
+	createCardTypeBucketFilter,
+	isEligibleMetagameCard,
+	metagameCardColors,
+	metagameCardType,
+	toCardBreakdownEntry,
+} from '~~/server/modules/metagame/cards';
 import { resolveMetagameScope } from '~~/server/modules/metagame/scopeModel';
 import { archetypeService } from '~~/server/services/archetype';
 import { archetypeCardService } from '~~/server/services/archetypeCard';
@@ -88,8 +112,7 @@ interface PlayerStandings {
 }
 
 function readStandings<T extends PlayerStandings>(metagameScope: MetagameScopeModel, row: T): T {
-	if (metagameScope.rules.readsStandings)
-		return row;
+	if (metagameScope.rules.readsStandings) return row;
 
 	return {
 		...row,
@@ -97,16 +120,15 @@ function readStandings<T extends PlayerStandings>(metagameScope: MetagameScopeMo
 		points: null,
 		wins: null,
 		losses: null,
-		...('draws' in row
-			? { draws: null }
-			: {}),
+		...('draws' in row ? { draws: null } : {}),
 	};
 }
 
-function resolveConversionTarget(metric?: MetagameConversionMetric, threshold?: number): ArchetypeConversionTarget | undefined {
-	return metric != null && threshold != null
-		? { metric, threshold }
-		: undefined;
+function resolveConversionTarget(
+	metric?: MetagameConversionMetric,
+	threshold?: number,
+): ArchetypeConversionTarget | undefined {
+	return metric != null && threshold != null ? { metric, threshold } : undefined;
 }
 
 function tokenKey(token: DeckTokenRequirement): string {
@@ -151,19 +173,18 @@ export function createMetagameReadModelImplementation() {
 		}
 
 		// Players with archetypes assigned (classified)
-		const classifiedRows = (await db
-			.select({
-				archetypeId: players.archetypeId,
-				wins: players.wins,
-				losses: players.losses,
-				points: players.points,
-				position: players.position,
-			})
-			.from(players)
-			.where(and(
-				metagameScope.playerWhere,
-				isNotNull(players.archetypeId),
-			))).map(row => readStandings(metagameScope, row));
+		const classifiedRows = (
+			await db
+				.select({
+					archetypeId: players.archetypeId,
+					wins: players.wins,
+					losses: players.losses,
+					points: players.points,
+					position: players.position,
+				})
+				.from(players)
+				.where(and(metagameScope.playerWhere, isNotNull(players.archetypeId)))
+		).map((row) => readStandings(metagameScope, row));
 
 		const classifiedPlayers = classifiedRows.length;
 
@@ -181,20 +202,30 @@ export function createMetagameReadModelImplementation() {
 		// Only the Event's own Archetypes that have classified players, looked up
 		// in groups within D1's parameter limit: an Event can represent a hundred
 		// or more, and every id is a bound parameter (#702).
-		const archetypeRows = await archetypeService().findManyByIds(eventId, [
-			...groups.keys(),
-		]);
+		const archetypeRows = await archetypeService().findManyByIds(eventId, [...groups.keys()]);
 
-		const entries = buildArchetypeBreakdownEntries(groups, archetypeRows, classifiedPlayers, new Map(), conversionTarget);
+		const entries = buildArchetypeBreakdownEntries(
+			groups,
+			archetypeRows,
+			classifiedPlayers,
+			new Map(),
+			conversionTarget,
+		);
 		entries.sort((a, b) => compareArchetypeBreakdownEntries(sortBy, a, b));
-		const limitedEntries = limitArchetypeBreakdownEntries(entries, groups, classifiedPlayers, limit, conversionTarget);
+		const limitedEntries = limitArchetypeBreakdownEntries(
+			entries,
+			groups,
+			classifiedPlayers,
+			limit,
+			conversionTarget,
+		);
 
 		// Key cards only for the entries answered: the limit applies first, and
 		// the aggregated Other entry has none.
 		const keyCardRowsByArchetypeId = await archetypeCardService().getKeyCardsByArchetypeIds(
-			limitedEntries.filter(entry => groups.has(entry.id)).map(entry => entry.id),
+			limitedEntries.filter((entry) => groups.has(entry.id)).map((entry) => entry.id),
 		);
-		const answered = limitedEntries.map(entry => ({
+		const answered = limitedEntries.map((entry) => ({
 			...entry,
 			keyCards: keyCardRowsByArchetypeId.get(entry.id)?.map(mapCardRow) ?? [],
 		}));
@@ -218,10 +249,22 @@ export function createMetagameReadModelImplementation() {
 		conversionMetric?: MetagameConversionMetric,
 		conversionThreshold?: number,
 	): Promise<ArchetypeBreakdownResponse> {
-		const metagameScope = await resolveMetagameScope(eventId, { scope, topN, playerListId, minPoints });
+		const metagameScope = await resolveMetagameScope(eventId, {
+			scope,
+			topN,
+			playerListId,
+			minPoints,
+		});
 		const totalPlayers = await metagameScope.countPlayers();
 
-		return computeArchetypeBreakdown(eventId, metagameScope, totalPlayers, sortBy, limit, resolveConversionTarget(conversionMetric, conversionThreshold));
+		return computeArchetypeBreakdown(
+			eventId,
+			metagameScope,
+			totalPlayers,
+			sortBy,
+			limit,
+			resolveConversionTarget(conversionMetric, conversionThreshold),
+		);
 	}
 
 	// ── Card breakdown ─────────────────────────────────────────────
@@ -273,33 +316,47 @@ export function createMetagameReadModelImplementation() {
 			.innerJoin(cards, eq(playerDeckCards.cardId, cards.id))
 			.innerJoin(playerDecks, eq(playerDeckCards.deckId, playerDecks.id))
 			.innerJoin(players, eq(playerDecks.playerId, players.id))
-			.where(and(
-				...metagameScope.playerFilters,
-				eq(playerDecks.isPrimary, true),
-			))
-			.groupBy(playerDeckCards.cardId, cards.name, cards.cardType, cards.scryfallId, cards.colors, cards.cmc, cards.manaCost, cards.oracleId, cards.cardNumber, cards.category, cards.imageUrl);
+			.where(and(...metagameScope.playerFilters, eq(playerDecks.isPrimary, true)))
+			.groupBy(
+				playerDeckCards.cardId,
+				cards.name,
+				cards.cardType,
+				cards.scryfallId,
+				cards.colors,
+				cards.cmc,
+				cards.manaCost,
+				cards.oracleId,
+				cards.cardNumber,
+				cards.category,
+				cards.imageUrl,
+			);
 
 		const { game, pointsSystem } = metagameScope;
-		const pointsByOracleId = pointsSystem
-			? getPointsByOracleId(pointsSystem)
-			: null;
+		const pointsByOracleId = pointsSystem ? getPointsByOracleId(pointsSystem) : null;
 
 		const includesCardType = createCardTypeBucketFilter(game, excludeTypes);
 		const entries: CardBreakdownEntry[] = aggRows
-			.filter(row => isEligibleMetagameCard(game, row))
-			.map(row => ({
-				...toCardBreakdownEntry({
-					...row,
-					cardType: metagameCardType(game, row),
-					colors: metagameCardColors(game, row.colors),
-				}, totalDecks, board),
+			.filter((row) => isEligibleMetagameCard(game, row))
+			.map((row) => ({
+				...toCardBreakdownEntry(
+					{
+						...row,
+						cardType: metagameCardType(game, row),
+						colors: metagameCardColors(game, row.colors),
+					},
+					totalDecks,
+					board,
+				),
 				...(pointsByOracleId
 					? { highlanderPoints: pointsByOracleId.get(row.oracleId ?? '') ?? null }
 					: {}),
 			}))
-			.filter(entry => entry.totalCopies > 0
-				&& includesCardType(entry.cardType)
-				&& (!pointedOnly || entry.highlanderPoints != null));
+			.filter(
+				(entry) =>
+					entry.totalCopies > 0 &&
+					includesCardType(entry.cardType) &&
+					(!pointedOnly || entry.highlanderPoints != null),
+			);
 
 		entries.sort((a, b) => compareCardBreakdownEntries(sortBy, a, b));
 
@@ -332,22 +389,29 @@ export function createMetagameReadModelImplementation() {
 			minPoints,
 		});
 		// The Archetype the read is narrowed to, named for its caller: a Screen holds its id alone (ADR-0038).
-		const archetype = archetypeId == null
-			? undefined
-			: await db.query.archetypes.findFirst({
-					where: and(eq(archetypes.id, archetypeId), eq(archetypes.eventId, eventId)),
-					columns: { id: true, name: true },
-				});
+		const archetype =
+			archetypeId == null
+				? undefined
+				: await db.query.archetypes.findFirst({
+						where: and(eq(archetypes.id, archetypeId), eq(archetypes.eventId, eventId)),
+						columns: { id: true, name: true },
+					});
 		if (archetypeId != null && !archetype) {
 			return { entries: [], totalDecks: 0, scope: metagameScope.scope };
 		}
 
 		const totalDecks = await metagameScope.deckUniverse.countDecks();
-		const breakdown = await computeCardBreakdown(eventId, metagameScope, totalDecks, sortBy, limit, excludeTypes, pointedOnly);
+		const breakdown = await computeCardBreakdown(
+			eventId,
+			metagameScope,
+			totalDecks,
+			sortBy,
+			limit,
+			excludeTypes,
+			pointedOnly,
+		);
 
-		return archetype
-			? { ...breakdown, archetype }
-			: breakdown;
+		return archetype ? { ...breakdown, archetype } : breakdown;
 	}
 
 	// ── Summary dashboard ──────────────────────────────────────────
@@ -362,7 +426,12 @@ export function createMetagameReadModelImplementation() {
 		// Resolve scope and player/deck counts ONCE and thread them through the
 		// archetype/card breakdown computations below, instead of letting each
 		// independently re-resolve the same scope and re-count players/decks.
-		const metagameScope = await resolveMetagameScope(eventId, { scope, topN, playerListId, minPoints });
+		const metagameScope = await resolveMetagameScope(eventId, {
+			scope,
+			topN,
+			playerListId,
+			minPoints,
+		});
 		const totalPlayers = await metagameScope.countPlayers();
 
 		const totalArchetypesRow = await db
@@ -373,13 +442,24 @@ export function createMetagameReadModelImplementation() {
 			.where(eq(archetypes.eventId, eventId));
 		const totalArchetypes = totalArchetypesRow[0]?.c ?? 0;
 
-		const archetypeBreakdown = await computeArchetypeBreakdown(eventId, metagameScope, totalPlayers, 'metaShare');
+		const archetypeBreakdown = await computeArchetypeBreakdown(
+			eventId,
+			metagameScope,
+			totalPlayers,
+			'metaShare',
+		);
 		// classifiedPlayers is derived from the archetype breakdown's own row
 		// scan rather than a separate count query over the same population.
 		const classifiedCount = archetypeBreakdown.classifiedPlayers;
 
 		const totalDecks = await metagameScope.deckUniverse.countDecks();
-		const cardBreakdown = await computeCardBreakdown(eventId, metagameScope, totalDecks, 'inclusionRate', Number.MAX_SAFE_INTEGER);
+		const cardBreakdown = await computeCardBreakdown(
+			eventId,
+			metagameScope,
+			totalDecks,
+			'inclusionRate',
+			Number.MAX_SAFE_INTEGER,
+		);
 		const facts = buildMetagameFacts({
 			totalPlayers,
 			classifiedPlayers: classifiedCount,
@@ -410,7 +490,12 @@ export function createMetagameReadModelImplementation() {
 		playerListId?: number,
 		minPoints?: number,
 	): Promise<TokenRequirementsResponse> {
-		const metagameScope = await resolveMetagameScope(eventId, { scope, topN, playerListId, minPoints });
+		const metagameScope = await resolveMetagameScope(eventId, {
+			scope,
+			topN,
+			playerListId,
+			minPoints,
+		});
 		const totalDecks = await metagameScope.deckUniverse.countDecks();
 
 		if (totalDecks === 0) {
@@ -430,16 +515,16 @@ export function createMetagameReadModelImplementation() {
 			.innerJoin(cards, eq(playerDeckCards.cardId, cards.id))
 			.innerJoin(playerDecks, eq(playerDeckCards.deckId, playerDecks.id))
 			.innerJoin(players, eq(playerDecks.playerId, players.id))
-			.where(and(
-				...metagameScope.playerFilters,
-				eq(playerDecks.isPrimary, true),
-			));
+			.where(and(...metagameScope.playerFilters, eq(playerDecks.isPrimary, true)));
 
-		const tokenMap = new Map<string, {
-			token: DeckTokenRequirement;
-			deckIds: Set<number>;
-			sourceCards: Map<string, TokenSourceCardEntry>;
-		}>();
+		const tokenMap = new Map<
+			string,
+			{
+				token: DeckTokenRequirement;
+				deckIds: Set<number>;
+				sourceCards: Map<string, TokenSourceCardEntry>;
+			}
+		>();
 
 		for (const row of rows) {
 			const sourceCard: TokenSourceCardEntry = {
@@ -451,8 +536,7 @@ export function createMetagameReadModelImplementation() {
 
 			for (const token of row.deckTokens ?? []) {
 				const trimmedName = token.name.trim();
-				if (!trimmedName)
-					continue;
+				if (!trimmedName) continue;
 
 				const normalizedToken: DeckTokenRequirement = {
 					id: token.id,
@@ -474,18 +558,19 @@ export function createMetagameReadModelImplementation() {
 			}
 		}
 
-		const entries = [
-			...tokenMap.values(),
-		]
-			.map(entry => ({
+		const entries = [...tokenMap.values()]
+			.map((entry) => ({
 				...entry.token,
 				deckCount: entry.deckIds.size,
 				sourceCardCount: entry.sourceCards.size,
-				sourceCards: [
-					...entry.sourceCards.values(),
-				].sort((a, b) => a.name.localeCompare(b.name)),
+				sourceCards: [...entry.sourceCards.values()].sort((a, b) => a.name.localeCompare(b.name)),
 			}))
-			.sort((a, b) => b.deckCount - a.deckCount || b.sourceCardCount - a.sourceCardCount || a.name.localeCompare(b.name));
+			.sort(
+				(a, b) =>
+					b.deckCount - a.deckCount ||
+					b.sourceCardCount - a.sourceCardCount ||
+					a.name.localeCompare(b.name),
+			);
 
 		return { entries, totalDecks, scope };
 	}
@@ -507,8 +592,7 @@ export function createMetagameReadModelImplementation() {
 			where: and(eq(archetypes.id, archetypeId), eq(archetypes.eventId, eventId)),
 		});
 
-		if (!arch)
-			return null;
+		if (!arch) return null;
 
 		const metagameScope = await resolveMetagameScope(eventId, {
 			scope,
@@ -536,29 +620,26 @@ export function createMetagameReadModelImplementation() {
 				deckReviewedAt: playerDecks.reviewedAt,
 			})
 			.from(players)
-			.leftJoin(playerDecks, and(
-				eq(playerDecks.playerId, players.id),
-				eq(playerDecks.isPrimary, true),
-			))
-			.where(and(
-				metagameScope.playerWhere,
-				eq(players.archetypeId, archetypeId),
-			))
+			.leftJoin(
+				playerDecks,
+				and(eq(playerDecks.playerId, players.id), eq(playerDecks.isPrimary, true)),
+			)
+			.where(and(metagameScope.playerWhere, eq(players.archetypeId, archetypeId)))
 			.orderBy(asc(players.position));
 
-		const pilotRows = archPlayerRows.map(row => readStandings(metagameScope, row));
+		const pilotRows = archPlayerRows.map((row) => readStandings(metagameScope, row));
 		const playerCount = pilotRows.length;
-		const archPlayerIds = pilotRows.map(p => p.id);
+		const archPlayerIds = pilotRows.map((p) => p.id);
 
 		// Stats
 		const totalWins = pilotRows.reduce((s, p) => s + (p.wins ?? 0), 0);
 		const totalLosses = pilotRows.reduce((s, p) => s + (p.losses ?? 0), 0);
-		const withPosition = pilotRows.filter(p => p.position != null);
+		const withPosition = pilotRows.filter((p) => p.position != null);
 		const conversionTarget = metagameScope.rules.readsStandings
 			? resolveConversionTarget(conversionMetric, conversionThreshold)
 			: undefined;
 		const convertedCount = conversionTarget
-			? pilotRows.filter(p => isConvertedPlayer(p, conversionTarget)).length
+			? pilotRows.filter((p) => isConvertedPlayer(p, conversionTarget)).length
 			: null;
 
 		// Key cards
@@ -567,9 +648,16 @@ export function createMetagameReadModelImplementation() {
 
 		// Card breakdown for this archetype's players — reuses the scope already
 		// resolved above instead of having getCardBreakdown re-resolve it.
-		const cardBreakdown = archPlayerIds.length > 0
-			? await computeCardBreakdown(eventId, metagameScope, await metagameScope.deckUniverse.countDecks(), 'inclusionRate', 200)
-			: { entries: [], totalDecks: 0, scope };
+		const cardBreakdown =
+			archPlayerIds.length > 0
+				? await computeCardBreakdown(
+						eventId,
+						metagameScope,
+						await metagameScope.deckUniverse.countDecks(),
+						'inclusionRate',
+						200,
+					)
+				: { entries: [], totalDecks: 0, scope };
 
 		// Total classified players in scope (denominator for metaShare)
 		const classifiedCount = await metagameScope.countPlayers(isNotNull(players.archetypeId));
@@ -582,17 +670,13 @@ export function createMetagameReadModelImplementation() {
 			return {
 				id: p.id,
 				name: playerDisplayName(p),
-				deckName: reviewed
-					? arch.name
-					: p.deckName ?? null,
+				deckName: reviewed ? arch.name : (p.deckName ?? null),
 				position: p.position,
 				points: p.points,
 				wins: p.wins,
 				losses: p.losses,
 				draws: p.draws,
-				colors: reviewed
-					? arch.colors
-					: p.deckColors ?? null,
+				colors: reviewed ? arch.colors : (p.deckColors ?? null),
 			};
 		});
 
@@ -602,17 +686,20 @@ export function createMetagameReadModelImplementation() {
 			colors: arch.colors,
 			keyCards,
 			playerCount,
-			metaShare: classifiedCount > 0
-				? Math.round((playerCount / classifiedCount) * 10000) / 100
-				: 0,
+			metaShare:
+				classifiedCount > 0 ? Math.round((playerCount / classifiedCount) * 10000) / 100 : 0,
 			winRate: computeMetagameWinRate(totalWins, totalLosses),
-			avgPosition: withPosition.length > 0
-				? Math.round((withPosition.reduce((s, p) => s + (p.position ?? 0), 0) / withPosition.length) * 10) / 10
-				: null,
+			avgPosition:
+				withPosition.length > 0
+					? Math.round(
+							(withPosition.reduce((s, p) => s + (p.position ?? 0), 0) / withPosition.length) * 10,
+						) / 10
+					: null,
 			convertedCount,
-			conversionRate: convertedCount != null && playerCount > 0
-				? Math.round((convertedCount / playerCount) * 10000) / 100
-				: null,
+			conversionRate:
+				convertedCount != null && playerCount > 0
+					? Math.round((convertedCount / playerCount) * 10000) / 100
+					: null,
 			cardBreakdown: cardBreakdown.entries,
 			players: archPlayers,
 		};
@@ -631,10 +718,14 @@ export function createMetagameReadModelImplementation() {
 		const card = await db.query.cards.findFirst({
 			where: eq(cards.id, cardId),
 		});
-		if (!card)
-			return null;
+		if (!card) return null;
 
-		const metagameScope = await resolveMetagameScope(eventId, { scope, topN, playerListId, minPoints });
+		const metagameScope = await resolveMetagameScope(eventId, {
+			scope,
+			topN,
+			playerListId,
+			minPoints,
+		});
 
 		// Decks containing this card — join players for scope filtering
 		const deckRows = await db
@@ -647,25 +738,29 @@ export function createMetagameReadModelImplementation() {
 			.from(playerDeckCards)
 			.innerJoin(playerDecks, eq(playerDeckCards.deckId, playerDecks.id))
 			.innerJoin(players, eq(playerDecks.playerId, players.id))
-			.where(and(
-				metagameScope.playerWhere,
-				eq(playerDeckCards.cardId, cardId),
-				eq(playerDecks.isPrimary, true),
-			));
+			.where(
+				and(
+					metagameScope.playerWhere,
+					eq(playerDeckCards.cardId, cardId),
+					eq(playerDecks.isPrimary, true),
+				),
+			);
 
-		const totalDecksWithCard = new Set(deckRows.map(r => r.deckId)).size;
+		const totalDecksWithCard = new Set(deckRows.map((r) => r.deckId)).size;
 		const totalCopies = deckRows.reduce((s, r) => s + r.quantity, 0);
-		const mainboardCount = deckRows.filter(r => r.compartment === 'mainboard').reduce((s, r) => s + r.quantity, 0);
-		const sideboardCount = deckRows.filter(r => r.compartment === 'sideboard').reduce((s, r) => s + r.quantity, 0);
+		const mainboardCount = deckRows
+			.filter((r) => r.compartment === 'mainboard')
+			.reduce((s, r) => s + r.quantity, 0);
+		const sideboardCount = deckRows
+			.filter((r) => r.compartment === 'sideboard')
+			.reduce((s, r) => s + r.quantity, 0);
 
 		const totalDecks = await metagameScope.deckUniverse.countDecks();
 
-		const inclusionRate = totalDecks > 0
-			? Math.round((totalDecksWithCard / totalDecks) * 10000) / 100
-			: 0;
-		const avgCopies = totalDecksWithCard > 0
-			? Math.round((totalCopies / totalDecksWithCard) * 100) / 100
-			: 0;
+		const inclusionRate =
+			totalDecks > 0 ? Math.round((totalDecksWithCard / totalDecks) * 10000) / 100 : 0;
+		const avgCopies =
+			totalDecksWithCard > 0 ? Math.round((totalCopies / totalDecksWithCard) * 100) / 100 : 0;
 
 		// Players who run this card
 		const playerRowsWithCard = await db
@@ -684,24 +779,28 @@ export function createMetagameReadModelImplementation() {
 			.from(playerDeckCards)
 			.innerJoin(playerDecks, eq(playerDeckCards.deckId, playerDecks.id))
 			.innerJoin(players, eq(playerDecks.playerId, players.id))
-			.where(and(
-				metagameScope.playerWhere,
-				eq(playerDeckCards.cardId, cardId),
-				eq(playerDecks.isPrimary, true),
-			))
+			.where(
+				and(
+					metagameScope.playerWhere,
+					eq(playerDeckCards.cardId, cardId),
+					eq(playerDecks.isPrimary, true),
+				),
+			)
 			.orderBy(asc(players.position));
 
-		const cardPlayers: CardPlayerEntry[] = playerRowsWithCard.map(row => readStandings(metagameScope, row)).map(r => ({
-			id: r.id,
-			name: playerDisplayName(r),
-			position: r.position,
-			points: r.points,
-			wins: r.wins,
-			losses: r.losses,
-			draws: r.draws,
-			quantity: r.quantity,
-			compartment: r.compartment as 'mainboard' | 'sideboard',
-		}));
+		const cardPlayers: CardPlayerEntry[] = playerRowsWithCard
+			.map((row) => readStandings(metagameScope, row))
+			.map((r) => ({
+				id: r.id,
+				name: playerDisplayName(r),
+				position: r.position,
+				points: r.points,
+				wins: r.wins,
+				losses: r.losses,
+				draws: r.draws,
+				quantity: r.quantity,
+				compartment: r.compartment as 'mainboard' | 'sideboard',
+			}));
 
 		// Archetypes that run this card — JOIN playerDeckCards directly to avoid
 		// materialising a playerIdsWithCard array (could exceed D1 variable limit)
@@ -717,18 +816,15 @@ export function createMetagameReadModelImplementation() {
 				})
 				.from(players)
 				.innerJoin(archetypes, eq(players.archetypeId, archetypes.id))
-				.innerJoin(playerDecks, and(
-					eq(playerDecks.playerId, players.id),
-					eq(playerDecks.isPrimary, true),
-				))
-				.innerJoin(playerDeckCards, and(
-					eq(playerDeckCards.deckId, playerDecks.id),
-					eq(playerDeckCards.cardId, cardId),
-				))
-				.where(and(
-					metagameScope.playerWhere,
-					isNotNull(players.archetypeId),
-				))
+				.innerJoin(
+					playerDecks,
+					and(eq(playerDecks.playerId, players.id), eq(playerDecks.isPrimary, true)),
+				)
+				.innerJoin(
+					playerDeckCards,
+					and(eq(playerDeckCards.deckId, playerDecks.id), eq(playerDeckCards.cardId, cardId)),
+				)
+				.where(and(metagameScope.playerWhere, isNotNull(players.archetypeId)))
 				.groupBy(players.archetypeId, archetypes.name, archetypes.colors)
 				.orderBy(desc(sql`count(distinct ${players.id})`));
 
@@ -737,7 +833,7 @@ export function createMetagameReadModelImplementation() {
 				.select({ archetypeId: archetypeCards.archetypeId })
 				.from(archetypeCards)
 				.where(eq(archetypeCards.cardId, cardId));
-			const keyCardArchSet = new Set(keyCardArchRows.map(r => r.archetypeId));
+			const keyCardArchSet = new Set(keyCardArchRows.map((r) => r.archetypeId));
 
 			// Total scoped player count per archetype (denominator for inclusion rate)
 			const archetypeTotalCountRows = await db
@@ -746,27 +842,22 @@ export function createMetagameReadModelImplementation() {
 					totalCount: count(),
 				})
 				.from(players)
-				.where(and(
-					metagameScope.playerWhere,
-					isNotNull(players.archetypeId),
-				))
+				.where(and(metagameScope.playerWhere, isNotNull(players.archetypeId)))
 				.groupBy(players.archetypeId);
 			const archetypeTotalCountMap = new Map(
-				archetypeTotalCountRows.map(r => [r.archetypeId, r.totalCount]),
+				archetypeTotalCountRows.map((r) => [r.archetypeId, r.totalCount]),
 			);
 
 			for (const row of archetypeCountRows) {
-				if (!row.archetypeId)
-					continue;
+				if (!row.archetypeId) continue;
 				const totalInArch = archetypeTotalCountMap.get(row.archetypeId) ?? 0;
 				archEntries.push({
 					id: row.archetypeId,
 					name: row.archetypeName,
 					colors: row.archetypeColors,
 					isKeyCard: keyCardArchSet.has(row.archetypeId),
-					inclusionRate: totalInArch > 0
-						? Math.round((row.deckCount / totalInArch) * 10000) / 100
-						: 0,
+					inclusionRate:
+						totalInArch > 0 ? Math.round((row.deckCount / totalInArch) * 10000) / 100 : 0,
 					deckCount: row.deckCount,
 				});
 			}
@@ -792,37 +883,50 @@ export function createMetagameReadModelImplementation() {
 			})
 			.from(playerDeckCards)
 			.innerJoin(cards, eq(playerDeckCards.cardId, cards.id))
-			.innerJoin(pdc2, and(
-				eq(pdc2.deckId, playerDeckCards.deckId),
-				eq(pdc2.cardId, cardId),
-			))
+			.innerJoin(pdc2, and(eq(pdc2.deckId, playerDeckCards.deckId), eq(pdc2.cardId, cardId)))
 			.innerJoin(playerDecks, eq(playerDeckCards.deckId, playerDecks.id))
 			.innerJoin(players, eq(playerDecks.playerId, players.id))
-			.where(and(
-				metagameScope.playerWhere,
-				ne(playerDeckCards.cardId, cardId),
-				eq(playerDecks.isPrimary, true),
-			))
-			.groupBy(playerDeckCards.cardId, cards.name, cards.cardType, cards.scryfallId, cards.manaCost, cards.cmc, cards.colors, cards.cardNumber, cards.category, cards.imageUrl)
+			.where(
+				and(
+					metagameScope.playerWhere,
+					ne(playerDeckCards.cardId, cardId),
+					eq(playerDecks.isPrimary, true),
+				),
+			)
+			.groupBy(
+				playerDeckCards.cardId,
+				cards.name,
+				cards.cardType,
+				cards.scryfallId,
+				cards.manaCost,
+				cards.cmc,
+				cards.colors,
+				cards.cardNumber,
+				cards.category,
+				cards.imageUrl,
+			)
 			.orderBy(desc(sql`count(distinct ${playerDeckCards.deckId})`))
 			.limit(10);
 
 		const { game } = metagameScope;
-		const coOccurrence: CardCoOccurrenceEntry[] = coOccurrenceRows.filter(r => isEligibleMetagameCard(game, r)).map(r => ({
-			id: r.cardId,
-			name: r.name,
-			cardType: metagameCardType(game, r),
-			scryfallId: r.scryfallId,
-			manaCost: r.manaCost,
-			cmc: r.cmc,
-			colors: metagameCardColors(game, r.colors),
-			cardNumber: r.cardNumber,
-			imageUrl: r.imageUrl,
-			coOccurrenceRate: totalDecksWithCard > 0
-				? Math.round((r.coOccurrenceCount / totalDecksWithCard) * 10000) / 100
-				: 0,
-			deckCount: r.coOccurrenceCount,
-		}));
+		const coOccurrence: CardCoOccurrenceEntry[] = coOccurrenceRows
+			.filter((r) => isEligibleMetagameCard(game, r))
+			.map((r) => ({
+				id: r.cardId,
+				name: r.name,
+				cardType: metagameCardType(game, r),
+				scryfallId: r.scryfallId,
+				manaCost: r.manaCost,
+				cmc: r.cmc,
+				colors: metagameCardColors(game, r.colors),
+				cardNumber: r.cardNumber,
+				imageUrl: r.imageUrl,
+				coOccurrenceRate:
+					totalDecksWithCard > 0
+						? Math.round((r.coOccurrenceCount / totalDecksWithCard) * 10000) / 100
+						: 0,
+				deckCount: r.coOccurrenceCount,
+			}));
 
 		return {
 			card: mapCardRow(card),

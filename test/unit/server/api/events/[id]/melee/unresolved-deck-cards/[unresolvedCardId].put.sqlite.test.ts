@@ -19,14 +19,22 @@ interface StubRequest {
 	responseHeaders: Record<string, unknown>;
 }
 vi.stubGlobal('defineEventHandler', (handler: unknown) => handler);
-vi.stubGlobal('getValidatedRouterParams', async (event: StubRequest, parse: (value: unknown) => unknown) => parse(event.params));
-vi.stubGlobal('readValidatedBody', async (event: StubRequest, parse: (value: unknown) => unknown) => parse(event.body));
+vi.stubGlobal(
+	'getValidatedRouterParams',
+	async (event: StubRequest, parse: (value: unknown) => unknown) => parse(event.params),
+);
+vi.stubGlobal('readValidatedBody', async (event: StubRequest, parse: (value: unknown) => unknown) =>
+	parse(event.body),
+);
 vi.stubGlobal('getHeader', (event: StubRequest, name: string) => event.headers[name]);
 vi.stubGlobal('setResponseHeader', (event: Partial<StubRequest>, name: string, value: unknown) => {
 	(event.responseHeaders ??= {})[name] = value;
 });
-vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; statusMessage?: string; cause?: unknown }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode?: number; message?: string; statusMessage?: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input),
+);
 vi.stubGlobal('useRuntimeConfig', () => ({ ablyApiKey: 'test-key' }));
 
 const harness = await createSqliteD1Harness();
@@ -43,7 +51,10 @@ vi.doMock('~~/server/utils/scryfall', () => ({
 	fetchScryfallCardById: async (id: string) => {
 		scryfall.asked.push(id);
 		if (scryfall.down)
-			throw Object.assign(new Error('private upstream response body'), { code: 'SCRYFALL_UPSTREAM_FAILURE', notFound: false });
+			throw Object.assign(new Error('private upstream response body'), {
+				code: 'SCRYFALL_UPSTREAM_FAILURE',
+				notFound: false,
+			});
 		return {
 			id,
 			name: 'Lightning Bolt',
@@ -59,35 +70,47 @@ vi.doMock('~~/server/utils/scryfall', () => ({
 }));
 
 type Handler = (event: H3Event) => Promise<Record<string, unknown>>;
-const putResolution = (await import('~~/server/api/events/[id]/melee/unresolved-deck-cards/[unresolvedCardId].put')).default as unknown as Handler;
+const putResolution = (
+	await import('~~/server/api/events/[id]/melee/unresolved-deck-cards/[unresolvedCardId].put')
+).default as unknown as Handler;
 
 /** An MTG Event whose one Player's Deck List holds one Unresolved Deck Card. */
 async function stageUnresolvedDeckCard() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Resolution Open', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [player] = await db.insert(schema.players).values({ eventId, name: 'Player' }).returning({ id: schema.players.id });
-	const [deck] = await db.insert(schema.playerDecks).values({
-		eventId,
-		playerId: player!.id,
-		externalId: `deck-${eventId}`,
-		externalSource: 'melee',
-		formatExternalId: 'modern',
-		name: 'Deck',
-		isPrimary: true,
-	}).returning({ id: schema.playerDecks.id });
-	const [entry] = await db.insert(schema.playerDeckUnresolvedCards).values({
-		deckId: deck!.id,
-		entryType: 'card',
-		originalName: 'Lightnng Bolt',
-		normalizedOriginalName: 'lightnng bolt',
-		setCode: 'M11',
-		normalizedSetCode: 'm11',
-		quantity: 4,
-		compartment: 'mainboard',
-		sortOrder: 2,
-	}).returning({ id: schema.playerDeckUnresolvedCards.id });
+	const [player] = await db
+		.insert(schema.players)
+		.values({ eventId, name: 'Player' })
+		.returning({ id: schema.players.id });
+	const [deck] = await db
+		.insert(schema.playerDecks)
+		.values({
+			eventId,
+			playerId: player!.id,
+			externalId: `deck-${eventId}`,
+			externalSource: 'melee',
+			formatExternalId: 'modern',
+			name: 'Deck',
+			isPrimary: true,
+		})
+		.returning({ id: schema.playerDecks.id });
+	const [entry] = await db
+		.insert(schema.playerDeckUnresolvedCards)
+		.values({
+			deckId: deck!.id,
+			entryType: 'card',
+			originalName: 'Lightnng Bolt',
+			normalizedOriginalName: 'lightnng bolt',
+			setCode: 'M11',
+			normalizedSetCode: 'm11',
+			quantity: 4,
+			compartment: 'mainboard',
+			sortOrder: 2,
+		})
+		.returning({ id: schema.playerDeckUnresolvedCards.id });
 	return {
 		eventId,
 		playerId: player!.id,
@@ -106,14 +129,18 @@ function request(params: Record<string, string>, body: unknown): StubRequest {
 }
 
 async function deckCards(deckId: number) {
-	return await db.select({ name: schema.cards.name, quantity: schema.playerDeckCards.quantity })
+	return await db
+		.select({ name: schema.cards.name, quantity: schema.playerDeckCards.quantity })
 		.from(schema.playerDeckCards)
 		.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
 		.where(eq(schema.playerDeckCards.deckId, deckId));
 }
 
 async function unresolvedIn(deckId: number) {
-	return await db.select().from(schema.playerDeckUnresolvedCards).where(eq(schema.playerDeckUnresolvedCards.deckId, deckId));
+	return await db
+		.select()
+		.from(schema.playerDeckUnresolvedCards)
+		.where(eq(schema.playerDeckUnresolvedCards.deckId, deckId));
 }
 
 beforeEach(() => {
@@ -124,21 +151,24 @@ beforeEach(() => {
 afterAll(async () => await harness.close());
 
 describe('resolving an Unresolved Deck Card through its route', () => {
-	it('resolves the entry its path names as the card its body names, announcing under the writer\'s origin', async () => {
+	it("resolves the entry its path names as the card its body names, announcing under the writer's origin", async () => {
 		const { eventId, playerId, deckId, entryId } = await stageUnresolvedDeckCard();
 
-		const answer = await putResolution(stubH3Event({
-			...request({
-				id: String(eventId),
-				unresolvedCardId: String(entryId),
-			}, { scryfallId: BOLT_ID }),
-		}));
+		const answer = await putResolution(
+			stubH3Event({
+				...request(
+					{
+						id: String(eventId),
+						unresolvedCardId: String(entryId),
+					},
+					{ scryfallId: BOLT_ID },
+				),
+			}),
+		);
 
 		expect(answer).toMatchObject({ success: true, unresolvedId: entryId, resolvedCount: 1 });
 		expect(scryfall.asked).toEqual([BOLT_ID]);
-		expect(await deckCards(deckId)).toEqual([
-			{ name: 'Lightning Bolt', quantity: 4 },
-		]);
+		expect(await deckCards(deckId)).toEqual([{ name: 'Lightning Bolt', quantity: 4 }]);
 		expect(await unresolvedIn(deckId)).toEqual([]);
 		expect(ably.on(eventRealtimeChannel(eventId))).toEqual([
 			expect.objectContaining({
@@ -156,10 +186,13 @@ describe('resolving an Unresolved Deck Card through its route', () => {
 	it('tells the request it is answering when to retry, when the card provider is down', async () => {
 		const { eventId, deckId, entryId } = await stageUnresolvedDeckCard();
 		scryfall.down = true;
-		const asked = request({
-			id: String(eventId),
-			unresolvedCardId: String(entryId),
-		}, { scryfallId: BOLT_ID });
+		const asked = request(
+			{
+				id: String(eventId),
+				unresolvedCardId: String(entryId),
+			},
+			{ scryfallId: BOLT_ID },
+		);
 
 		await expect(putResolution(stubH3Event({ ...asked }))).rejects.toMatchObject({
 			cause: { code: 'SCRYFALL_UPSTREAM_FAILURE' },
@@ -170,30 +203,36 @@ describe('resolving an Unresolved Deck Card through its route', () => {
 	});
 
 	it.each<[string, (entryId: number) => Record<string, string>, unknown]>([
-		[
-			'a card id that is not positive',
-			() => ({ unresolvedCardId: '0' }),
-			{ scryfallId: BOLT_ID },
-		],
+		['a card id that is not positive', () => ({ unresolvedCardId: '0' }), { scryfallId: BOLT_ID }],
 		[
 			'a scryfallId that is not a UUID',
-			entryId => ({
+			(entryId) => ({
 				unresolvedCardId: String(entryId),
 			}),
 			{ scryfallId: 'not-a-uuid' },
 		],
-	])('refuses %s before the card provider is asked, resolving nothing', async (_case, params, body) => {
-		const { eventId, deckId, entryId } = await stageUnresolvedDeckCard();
+	])(
+		'refuses %s before the card provider is asked, resolving nothing',
+		async (_case, params, body) => {
+			const { eventId, deckId, entryId } = await stageUnresolvedDeckCard();
 
-		await expect(putResolution(stubH3Event({
-			...request({
-				id: String(eventId),
-				...params(entryId),
-			}, body),
-		}))).rejects.toMatchObject({ name: 'ZodError' });
+			await expect(
+				putResolution(
+					stubH3Event({
+						...request(
+							{
+								id: String(eventId),
+								...params(entryId),
+							},
+							body,
+						),
+					}),
+				),
+			).rejects.toMatchObject({ name: 'ZodError' });
 
-		expect(scryfall.asked).toEqual([]);
-		expect(await unresolvedIn(deckId)).toHaveLength(1);
-		expect(ably.published).toEqual([]);
-	});
+			expect(scryfall.asked).toEqual([]);
+			expect(await unresolvedIn(deckId)).toHaveLength(1);
+			expect(ably.published).toEqual([]);
+		},
+	);
 });

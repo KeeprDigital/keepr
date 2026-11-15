@@ -73,7 +73,7 @@ describe('getDisplayDefaultsForMode', () => {
 		expect(reset.deck?.showDeckName).toBe(getDefaultConfigForMode('deck').showDeckName);
 	});
 
-	it('never resets a Broadcast Graphics Screen\'s authored stack to defaults', () => {
+	it("never resets a Broadcast Graphics Screen's authored stack to defaults", () => {
 		const displayDefaults = getDisplayDefaultsForMode('broadcast-graphics');
 
 		expect('graphics' in displayDefaults).toBe(false);
@@ -120,7 +120,7 @@ describe('resolveDeckBoards', () => {
 	// its view and stack reveal are always its own.
 	it.each([
 		{
-			name: 'a sideboard naming no layout value takes the mainboard\'s, and keeps its own view and reveal',
+			name: "a sideboard naming no layout value takes the mainboard's, and keeps its own view and reveal",
 			sideboard: { view: 'grid', stackReveal: 50 },
 			reads: {
 				view: 'grid',
@@ -134,7 +134,7 @@ describe('resolveDeckBoards', () => {
 			customised: false,
 		},
 		{
-			name: 'an absent sideboard takes the mainboard\'s layout, as a stack with the default reveal',
+			name: "an absent sideboard takes the mainboard's layout, as a stack with the default reveal",
 			sideboard: undefined,
 			reads: {
 				view: 'stack',
@@ -263,8 +263,9 @@ describe('deckBoardsShowingArt', () => {
 
 describe('toModeConfigPatch', () => {
 	it('sends a cleared field as a deletion and leaves every field it does not name out', () => {
-		expect(toModeConfigPatch('metagame', { archetypeId: undefined, headerText: null, topN: 16 }))
-			.toEqual({ archetypeId: null, headerText: null, topN: 16 });
+		expect(
+			toModeConfigPatch('metagame', { archetypeId: undefined, headerText: null, topN: 16 }),
+		).toEqual({ archetypeId: null, headerText: null, topN: 16 });
 	});
 
 	it('never deletes an authored stack, which leaves it out instead (ADR-0037)', () => {
@@ -273,11 +274,14 @@ describe('toModeConfigPatch', () => {
 		// @ts-expect-error The Broadcast Graphics stack is authored too.
 		toModeConfigPatch('broadcast-graphics', { graphics: null });
 		expect(toModeConfigPatch('background', { layers: undefined })).toEqual({});
-		expect(toModeConfigPatch('broadcast-graphics', { graphics: undefined, channels: undefined }))
-			.toEqual({ channels: null });
+		expect(
+			toModeConfigPatch('broadcast-graphics', { graphics: undefined, channels: undefined }),
+		).toEqual({ channels: null });
 	});
 
-	it('sends a mode\'s Background Layer stack cleared as a deletion, as before', () => {
-		expect(toModeConfigPatch('metagame', { backgroundLayers: undefined })).toEqual({ backgroundLayers: null });
+	it("sends a mode's Background Layer stack cleared as a deletion, as before", () => {
+		expect(toModeConfigPatch('metagame', { backgroundLayers: undefined })).toEqual({
+			backgroundLayers: null,
+		});
 	});
 });

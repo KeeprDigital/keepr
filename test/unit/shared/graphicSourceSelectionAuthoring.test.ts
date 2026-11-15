@@ -81,9 +81,7 @@ describe('graphic Source Selection authoring', () => {
 		const graphics = patchGraphicSourceSelection(
 			stack({
 				sources: [PLAYER],
-				bindings: [
-					{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' },
-				],
+				bindings: [{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }],
 			}),
 			'lower-third',
 			'player',
@@ -181,10 +179,7 @@ describe('graphic Source Selection authoring', () => {
 				})),
 			}),
 		);
-		const roomy = [
-			...graphics,
-			{ id: 'spare', name: 'Spare', items: [] },
-		];
+		const roomy = [...graphics, { id: 'spare', name: 'Spare', items: [] }];
 
 		expect(addGraphicSourceSelection(roomy, 'spare', 'player')).toEqual(roomy);
 	});
@@ -194,41 +189,36 @@ describe('graphic Source Selection authoring', () => {
 			sources: [PLAYER],
 		});
 
-		expect(patchGraphicSourceSelection(graphics, 'lower-third', 'player', { label: '' })).toEqual(graphics);
-		expect(patchGraphicSourceSelection(graphics, 'lower-third', 'player', { label: '   ' })).toEqual(graphics);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: stack({
-				sources: [
-					{ ...PLAYER, label: '' },
-				],
-			}),
-		}).success).toBe(false);
+		expect(patchGraphicSourceSelection(graphics, 'lower-third', 'player', { label: '' })).toEqual(
+			graphics,
+		);
+		expect(
+			patchGraphicSourceSelection(graphics, 'lower-third', 'player', { label: '   ' }),
+		).toEqual(graphics);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: stack({
+					sources: [{ ...PLAYER, label: '' }],
+				}),
+			}).success,
+		).toBe(false);
 	});
 
 	it('leaves another Broadcast Graphic in the stack alone', () => {
 		const graphics = addGraphicSourceSelection(
-			[
-				...stack(),
-				{ id: 'slate', name: 'Slate', items: [] },
-			],
+			[...stack(), { id: 'slate', name: 'Slate', items: [] }],
 			'slate',
 			'round',
 		);
 
 		expect(graphics[0]!.sources).toBeUndefined();
-		expect(graphics[1]!.sources).toEqual([
-			{ key: 'source-1', label: 'Source 1', kind: 'round' },
-		]);
+		expect(graphics[1]!.sources).toEqual([{ key: 'source-1', label: 'Source 1', kind: 'round' }]);
 	});
 });
 
 describe('deriving one Graphic Source Selection from another', () => {
-	it('offers only the relationships that yield the selection\'s own kind', () => {
-		const sources = [
-			SLOT,
-			MATCH,
-			{ key: 'p1', label: 'Player 1', kind: 'player' as const },
-		];
+	it("offers only the relationships that yield the selection's own kind", () => {
+		const sources = [SLOT, MATCH, { key: 'p1', label: 'Player 1', kind: 'player' as const }];
 
 		expect(graphicSourceDerivationOptions(sources, 'p1')).toEqual([
 			{ sourceKey: 'slot', relation: 'player1' },
@@ -239,20 +229,14 @@ describe('deriving one Graphic Source Selection from another', () => {
 	});
 
 	it('offers nothing for a kind no relationship reaches', () => {
-		const sources = [
-			SLOT,
-			{ key: 'talent', label: 'Talent', kind: 'talent' as const },
-		];
+		const sources = [SLOT, { key: 'talent', label: 'Talent', kind: 'talent' as const }];
 
 		// A Talent is reached only from the current Event, which is not declared here.
 		expect(graphicSourceDerivationOptions(sources, 'talent')).toEqual([]);
 	});
 
 	it('never offers a Graphic Source Selection to derive from itself', () => {
-		const sources = [
-			{ key: 'match', label: 'Match', kind: 'match' as const },
-			SLOT,
-		];
+		const sources = [{ key: 'match', label: 'Match', kind: 'match' as const }, SLOT];
 
 		// A Match is reachable from a Feature Match Slot, and from nothing else here.
 		expect(graphicSourceDerivationOptions(sources, 'match')).toEqual([
@@ -278,7 +262,9 @@ describe('deriving one Graphic Source Selection from another', () => {
 		// A Match yields a Player, so nothing but the cycle guard stops `m` being offered
 		// back to `p` — leaving the two following each other.
 		expect(graphicSourceDerivationOptions(sources, 'p')).toEqual([]);
-		expect(canDeriveGraphicSource(sources, 'p', { sourceKey: 'm', relation: 'player1' })).toBe(false);
+		expect(canDeriveGraphicSource(sources, 'p', { sourceKey: 'm', relation: 'player1' })).toBe(
+			false,
+		);
 	});
 
 	it('never offers a Graphic Source Selection to derive from its own key', () => {
@@ -291,7 +277,9 @@ describe('deriving one Graphic Source Selection from another', () => {
 		];
 
 		expect(graphicSourceDerivationOptions(sources, 'x')).toEqual([]);
-		expect(canDeriveGraphicSource(sources, 'x', { sourceKey: 'x', relation: 'player1' })).toBe(false);
+		expect(canDeriveGraphicSource(sources, 'x', { sourceKey: 'x', relation: 'player1' })).toBe(
+			false,
+		);
 	});
 
 	/**
@@ -313,7 +301,9 @@ describe('deriving one Graphic Source Selection from another', () => {
 		// Nothing yields a Feature Match Slot, so `slot` has no options at all — and in
 		// particular not the Match that follows it.
 		expect(graphicSourceDerivationOptions(sources, 'slot')).toEqual([]);
-		expect(canDeriveGraphicSource(sources, 'slot', { sourceKey: 'match', relation: 'match' })).toBe(false);
+		expect(canDeriveGraphicSource(sources, 'slot', { sourceKey: 'match', relation: 'match' })).toBe(
+			false,
+		);
 	});
 
 	it('stores a derivation an author may choose, and clears it back to an operator pick', () => {
@@ -337,24 +327,22 @@ describe('deriving one Graphic Source Selection from another', () => {
 
 	it('refuses a derivation the relation table does not yield', () => {
 		const graphics = stack({
-			sources: [
-				{ key: 'phase', label: 'Phase', kind: 'phase' },
-				PLAYER,
-			],
+			sources: [{ key: 'phase', label: 'Phase', kind: 'phase' }, PLAYER],
 		});
 
 		// No relationship reaches a Player from a Phase, so the write path would refuse it.
-		expect(setGraphicSourceDerivation(graphics, 'lower-third', 'player', { sourceKey: 'phase', relation: 'player1' }))
-			.toEqual(graphics);
+		expect(
+			setGraphicSourceDerivation(graphics, 'lower-third', 'player', {
+				sourceKey: 'phase',
+				relation: 'player1',
+			}),
+		).toEqual(graphics);
 	});
 });
 
 describe('graphic Input Binding authoring', () => {
 	const graphics = stack({
-		inputs: [
-			textInput('name'),
-			numberInput('life'),
-		],
+		inputs: [textInput('name'), numberInput('life')],
 		sources: [PLAYER, SLOT],
 	});
 
@@ -393,71 +381,87 @@ describe('graphic Input Binding authoring', () => {
 	it('refuses a field whose type the Graphic Input cannot hold', () => {
 		// `player.wins` is a number and `name` is a text Graphic Input: resolution would
 		// drop it rather than coerce, so authoring never stores it.
-		expect(setGraphicInputBinding(
-			graphics,
-			'lower-third',
-			{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.wins' },
-			'mtg',
-		)).toEqual(graphics);
+		expect(
+			setGraphicInputBinding(
+				graphics,
+				'lower-third',
+				{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.wins' },
+				'mtg',
+			),
+		).toEqual(graphics);
 	});
 
-	it('refuses a field this Event\'s game does not have', () => {
-		expect(setGraphicInputBinding(
-			graphics,
-			'lower-third',
-			{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.leader' },
-			'mtg',
-		)).toEqual(graphics);
+	it("refuses a field this Event's game does not have", () => {
+		expect(
+			setGraphicInputBinding(
+				graphics,
+				'lower-third',
+				{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.leader' },
+				'mtg',
+			),
+		).toEqual(graphics);
 
-		expect(bindingsOf(setGraphicInputBinding(
-			graphics,
-			'lower-third',
-			{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.leader' },
-			'op',
-		))).toEqual([
-			{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.leader' },
-		]);
+		expect(
+			bindingsOf(
+				setGraphicInputBinding(
+					graphics,
+					'lower-third',
+					{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.leader' },
+					'op',
+				),
+			),
+		).toEqual([{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.leader' }]);
 	});
 
 	it('refuses a field that belongs to another Graphic Source Selection kind', () => {
 		// `player.name` is a catalog name, so the write path accepts it — and it would
 		// then resolve nothing for as long as it existed.
-		expect(setGraphicInputBinding(
-			graphics,
-			'lower-third',
-			{ inputKey: 'name', sourceKey: 'slot', fieldId: 'player.name' },
-			'mtg',
-		)).toEqual(graphics);
+		expect(
+			setGraphicInputBinding(
+				graphics,
+				'lower-third',
+				{ inputKey: 'name', sourceKey: 'slot', fieldId: 'player.name' },
+				'mtg',
+			),
+		).toEqual(graphics);
 	});
 
 	it('refuses a binding for a Graphic Input or Graphic Source Selection nothing declares', () => {
-		expect(setGraphicInputBinding(
-			graphics,
-			'lower-third',
-			{ inputKey: 'undeclared', sourceKey: 'player', fieldId: 'player.name' },
-			'mtg',
-		)).toEqual(graphics);
+		expect(
+			setGraphicInputBinding(
+				graphics,
+				'lower-third',
+				{ inputKey: 'undeclared', sourceKey: 'player', fieldId: 'player.name' },
+				'mtg',
+			),
+		).toEqual(graphics);
 
-		expect(setGraphicInputBinding(
-			graphics,
-			'lower-third',
-			{ inputKey: 'name', sourceKey: 'undeclared', fieldId: 'player.name' },
-			'mtg',
-		)).toEqual(graphics);
+		expect(
+			setGraphicInputBinding(
+				graphics,
+				'lower-third',
+				{ inputKey: 'name', sourceKey: 'undeclared', fieldId: 'player.name' },
+				'mtg',
+			),
+		).toEqual(graphics);
 	});
 
 	it('unbinds one Graphic Input without disturbing the others', () => {
 		const bound = setGraphicInputBinding(
-			setGraphicInputBinding(graphics, 'lower-third', { inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' }, 'mtg'),
+			setGraphicInputBinding(
+				graphics,
+				'lower-third',
+				{ inputKey: 'name', sourceKey: 'player', fieldId: 'player.name' },
+				'mtg',
+			),
 			'lower-third',
 			{ inputKey: 'life', sourceKey: 'slot', fieldId: 'featureMatchSlot.player1Life' },
 			'mtg',
 		);
 
-		expect(bindingsOf(deleteGraphicInputBinding(bound, 'lower-third', 'name')))
-			.toEqual([
-				{ inputKey: 'life', sourceKey: 'slot', fieldId: 'featureMatchSlot.player1Life' },
-			]);
+		expect(bindingsOf(deleteGraphicInputBinding(bound, 'lower-third', 'name'))).toEqual([
+			{ inputKey: 'life', sourceKey: 'slot', fieldId: 'featureMatchSlot.player1Life' },
+		]);
 	});
 
 	it('leaves nothing behind when the bound Graphic Input stops being declared', () => {
@@ -478,10 +482,7 @@ describe('what the write path accepts', () => {
 		const declared = addGraphicSourceSelection(
 			addGraphicSourceSelection(
 				stack({
-					inputs: [
-						textInput('name'),
-						numberInput('life'),
-					],
+					inputs: [textInput('name'), numberInput('life')],
 				}),
 				'lower-third',
 				'feature-match-slot',
@@ -489,14 +490,17 @@ describe('what the write path accepts', () => {
 			'lower-third',
 			'player',
 		);
-		const derived = setGraphicSourceDerivation(
-			declared,
-			'lower-third',
-			'source-2',
-			{ sourceKey: 'source-1', relation: 'player1' },
-		);
+		const derived = setGraphicSourceDerivation(declared, 'lower-third', 'source-2', {
+			sourceKey: 'source-1',
+			relation: 'player1',
+		});
 		const graphics = setGraphicInputBinding(
-			setGraphicInputBinding(derived, 'lower-third', { inputKey: 'name', sourceKey: 'source-2', fieldId: 'player.name' }, 'mtg'),
+			setGraphicInputBinding(
+				derived,
+				'lower-third',
+				{ inputKey: 'name', sourceKey: 'source-2', fieldId: 'player.name' },
+				'mtg',
+			),
 			'lower-third',
 			{ inputKey: 'life', sourceKey: 'source-1', fieldId: 'featureMatchSlot.player1Life' },
 			'mtg',
@@ -514,10 +518,14 @@ describe('what the write path accepts', () => {
 			},
 		];
 
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: stack({ sources }),
-		}).success).toBe(false);
-		expect(canDeriveGraphicSource(sources, 'player', { sourceKey: 'phase', relation: 'player1' })).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: stack({ sources }),
+			}).success,
+		).toBe(false);
+		expect(
+			canDeriveGraphicSource(sources, 'player', { sourceKey: 'phase', relation: 'player1' }),
+		).toBe(false);
 	});
 
 	it('leaves no derived Graphic Source Selection stranded by a deletion', () => {
@@ -533,18 +541,22 @@ describe('what the write path accepts', () => {
 
 		// Removing the parent and keeping the child is exactly what the schema rejects,
 		// so the deletion takes the child with it and the result parses.
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: stack({
-				sources: [
-					{
-						...PLAYER,
-						from: { sourceKey: 'slot', relation: 'player1' },
-					},
-				],
-			}),
-		}).success).toBe(false);
-		expect(broadcastGraphicsModeConfigSchema.safeParse({
-			graphics: deleteGraphicSourceSelection(stranded, 'lower-third', 'slot'),
-		}).success).toBe(true);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: stack({
+					sources: [
+						{
+							...PLAYER,
+							from: { sourceKey: 'slot', relation: 'player1' },
+						},
+					],
+				}),
+			}).success,
+		).toBe(false);
+		expect(
+			broadcastGraphicsModeConfigSchema.safeParse({
+				graphics: deleteGraphicSourceSelection(stranded, 'lower-third', 'slot'),
+			}).success,
+		).toBe(true);
 	});
 });

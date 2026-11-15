@@ -25,12 +25,19 @@ function refusal(channel: string) {
 	return Object.assign(new Error(`Refused ${channel}`), { statusCode: 500, code: 50000 });
 }
 
-function received(channel: string, type: string, data: unknown, encoding?: string): PublishedRealtimeMessage {
+function received(
+	channel: string,
+	type: string,
+	data: unknown,
+	encoding?: string,
+): PublishedRealtimeMessage {
 	// A batch publish carries its data as the SDK's own publish encodes an object.
-	const decoded = encoding === 'json'
-		? JSON.parse(data as string)
-		: data;
-	const { eventId: _eventId, timestamp: _timestamp, ...payload } = decoded as Record<string, unknown>;
+	const decoded = encoding === 'json' ? JSON.parse(data as string) : data;
+	const {
+		eventId: _eventId,
+		timestamp: _timestamp,
+		...payload
+	} = decoded as Record<string, unknown>;
 	return {
 		channel,
 		type,
@@ -49,8 +56,7 @@ export function createAblyRestFake() {
 
 	function refuses(channel: string): boolean {
 		const left = refusing.get(channel) ?? 0;
-		if (left <= 0)
-			return false;
+		if (left <= 0) return false;
 		refusing.set(channel, left - 1);
 		return true;
 	}
@@ -59,15 +65,14 @@ export function createAblyRestFake() {
 		channels = {
 			get: (channel: string) => ({
 				publish: async (type: string, data: unknown) => {
-					if (refuses(channel))
-						throw refusal(channel);
+					if (refuses(channel)) throw refusal(channel);
 					published.push(received(channel, type, data));
 				},
 			}),
 		};
 
 		async batchPublish(specs: BatchSpec[]) {
-			batches.push(specs.flatMap(spec => spec.channels));
+			batches.push(specs.flatMap((spec) => spec.channels));
 			const held = heldBatch;
 			heldBatch = null;
 			batchAsked?.();
@@ -93,7 +98,7 @@ export function createAblyRestFake() {
 						serials: spec.messages.map(() => 'serial'),
 					};
 				});
-				const failureCount = results.filter(result => 'error' in result).length;
+				const failureCount = results.filter((result) => 'error' in result).length;
 				return { successCount: results.length - failureCount, failureCount, results };
 			});
 		}
@@ -106,7 +111,7 @@ export function createAblyRestFake() {
 		published,
 		batches,
 		/** What `channel` received, in order. */
-		on: (channel: string) => published.filter(message => message.channel === channel),
+		on: (channel: string) => published.filter((message) => message.channel === channel),
 		/** Refuse the next `times` publishes to `channel`, however they arrive. */
 		refuse(channel: string, times = Number.POSITIVE_INFINITY) {
 			refusing.set(channel, times);

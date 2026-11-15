@@ -10,7 +10,9 @@ import { createMockRound } from '~~/test/helpers/fixtures';
 
 /** Swiss Rounds 1-4 (Phase 1), then the first Top Cut Round (Phase 2), in Round order. */
 const rounds = [
-	...[1, 2, 3, 4].map(roundNumber => createMockRound({ id: 10 + roundNumber, phaseId: 1, roundNumber })),
+	...[1, 2, 3, 4].map((roundNumber) =>
+		createMockRound({ id: 10 + roundNumber, phaseId: 1, roundNumber }),
+	),
 	createMockRound({ id: 21, phaseId: 2, roundNumber: 1 }),
 ];
 
@@ -75,24 +77,25 @@ describe('resolveCurrentRound', () => {
 			target: { kind: 'idle' },
 		},
 	])('$name', ({ ordered, complete, incomplete, current, target }) => {
-		const paired = [
-			...complete,
-			...incomplete,
-		];
-		const stats = new Map(paired.map(id => [
-			id,
-			{
-				matchCount: 8,
-				complete: complete.includes(id),
-			},
-		]));
+		const paired = [...complete, ...incomplete];
+		const stats = new Map(
+			paired.map((id) => [
+				id,
+				{
+					matchCount: 8,
+					complete: complete.includes(id),
+				},
+			]),
+		);
 
 		const resolved = resolveCurrentRound(ordered, stats);
 
 		expect(resolved.current?.id ?? null).toBe(current);
-		expect(resolved.target.kind === 'idle'
-			? { kind: 'idle' }
-			: { kind: resolved.target.kind, roundId: resolved.target.round.id }).toEqual(target);
+		expect(
+			resolved.target.kind === 'idle'
+				? { kind: 'idle' }
+				: { kind: resolved.target.kind, roundId: resolved.target.round.id },
+		).toEqual(target);
 	});
 });
 
@@ -112,223 +115,61 @@ describe('nextLiveResultsSchedule', () => {
 
 	// [target, outcome, backoff step, quiet for, next check in, next step, quiet for afterwards]
 	it.each<[Kind, Outcome, number, number, number, number, number]>([
-		[
-			'results',
-			'changed',
-			3,
-			20 * MINUTE,
-			MINUTE,
-			0,
-			0,
-		],
-		[
-			'results',
-			'unchanged',
-			0,
-			10 * MINUTE,
-			MINUTE,
-			0,
-			10 * MINUTE,
-		],
-		[
-			'results',
-			'unchanged',
-			0,
-			30 * MINUTE,
-			MINUTE,
-			0,
-			30 * MINUTE,
-		],
-		[
-			'results',
-			'unchanged',
-			0,
-			31 * MINUTE,
-			5 * MINUTE,
-			0,
-			31 * MINUTE,
-		],
-		[
-			'results',
-			'unchanged',
-			2,
-			10 * MINUTE,
-			MINUTE,
-			0,
-			10 * MINUTE,
-		],
-		[
-			'results',
-			'unchanged',
-			0,
-			12 * HOUR,
-			5 * MINUTE,
-			0,
-			12 * HOUR,
-		],
-		[
-			'probe',
-			'unchanged',
-			0,
-			MINUTE,
-			MINUTE,
-			1,
-			MINUTE,
-		],
-		[
-			'probe',
-			'unchanged',
-			1,
-			MINUTE,
-			2 * MINUTE,
-			2,
-			MINUTE,
-		],
-		[
-			'probe',
-			'unchanged',
-			2,
-			MINUTE,
-			4 * MINUTE,
-			3,
-			MINUTE,
-		],
-		[
-			'probe',
-			'unchanged',
-			3,
-			MINUTE,
-			8 * MINUTE,
-			4,
-			MINUTE,
-		],
-		[
-			'probe',
-			'unchanged',
-			4,
-			MINUTE,
-			15 * MINUTE,
-			5,
-			MINUTE,
-		],
-		[
-			'probe',
-			'unchanged',
-			5,
-			MINUTE,
-			15 * MINUTE,
-			6,
-			MINUTE,
-		],
-		[
-			'probe',
-			'changed',
-			4,
-			HOUR,
-			MINUTE,
-			0,
-			0,
-		],
-		[
-			'results',
-			'failed',
-			0,
-			MINUTE,
-			MINUTE,
-			1,
-			MINUTE,
-		],
-		[
-			'results',
-			'failed',
-			3,
-			MINUTE,
-			8 * MINUTE,
-			4,
-			MINUTE,
-		],
-		[
-			'probe',
-			'failed',
-			5,
-			MINUTE,
-			15 * MINUTE,
-			6,
-			MINUTE,
-		],
-		[
-			'idle',
-			'unchanged',
-			0,
-			MINUTE,
-			MINUTE,
-			1,
-			MINUTE,
-		],
-		[
-			'idle',
-			'unchanged',
-			3,
-			MINUTE,
-			8 * MINUTE,
-			4,
-			MINUTE,
-		],
-	])('%s %s at step %i, quiet %i ms: next check in %i ms', (target, outcome, backoffStep, quietFor, wait, nextStep, quietAfter) => {
-		expect(nextLiveResultsSchedule({
-			now,
-			target,
-			outcome,
-			backoffStep,
-			lastChangeAt: ago(quietFor),
-		})).toEqual({
-			nextCheckAt: new Date(now.getTime() + wait),
-			backoffStep: nextStep,
-			lastChangeAt: ago(quietAfter),
-			stop: null,
-		});
-	});
+		['results', 'changed', 3, 20 * MINUTE, MINUTE, 0, 0],
+		['results', 'unchanged', 0, 10 * MINUTE, MINUTE, 0, 10 * MINUTE],
+		['results', 'unchanged', 0, 30 * MINUTE, MINUTE, 0, 30 * MINUTE],
+		['results', 'unchanged', 0, 31 * MINUTE, 5 * MINUTE, 0, 31 * MINUTE],
+		['results', 'unchanged', 2, 10 * MINUTE, MINUTE, 0, 10 * MINUTE],
+		['results', 'unchanged', 0, 12 * HOUR, 5 * MINUTE, 0, 12 * HOUR],
+		['probe', 'unchanged', 0, MINUTE, MINUTE, 1, MINUTE],
+		['probe', 'unchanged', 1, MINUTE, 2 * MINUTE, 2, MINUTE],
+		['probe', 'unchanged', 2, MINUTE, 4 * MINUTE, 3, MINUTE],
+		['probe', 'unchanged', 3, MINUTE, 8 * MINUTE, 4, MINUTE],
+		['probe', 'unchanged', 4, MINUTE, 15 * MINUTE, 5, MINUTE],
+		['probe', 'unchanged', 5, MINUTE, 15 * MINUTE, 6, MINUTE],
+		['probe', 'changed', 4, HOUR, MINUTE, 0, 0],
+		['results', 'failed', 0, MINUTE, MINUTE, 1, MINUTE],
+		['results', 'failed', 3, MINUTE, 8 * MINUTE, 4, MINUTE],
+		['probe', 'failed', 5, MINUTE, 15 * MINUTE, 6, MINUTE],
+		['idle', 'unchanged', 0, MINUTE, MINUTE, 1, MINUTE],
+		['idle', 'unchanged', 3, MINUTE, 8 * MINUTE, 4, MINUTE],
+	])(
+		'%s %s at step %i, quiet %i ms: next check in %i ms',
+		(target, outcome, backoffStep, quietFor, wait, nextStep, quietAfter) => {
+			expect(
+				nextLiveResultsSchedule({
+					now,
+					target,
+					outcome,
+					backoffStep,
+					lastChangeAt: ago(quietFor),
+				}),
+			).toEqual({
+				nextCheckAt: new Date(now.getTime() + wait),
+				backoffStep: nextStep,
+				lastChangeAt: ago(quietAfter),
+				stop: null,
+			});
+		},
+	);
 
 	// [target, outcome, quiet for, stop reason]
 	it.each<[Kind, Outcome, number, 'idle' | 'auth']>([
-		[
-			'results',
-			'auth-failed',
-			MINUTE,
-			'auth',
-		],
+		['results', 'auth-failed', MINUTE, 'auth'],
 		['probe', 'auth-failed', MINUTE, 'auth'],
-		[
-			'results',
-			'unchanged',
-			12 * HOUR + 1,
-			'idle',
-		],
-		[
-			'probe',
-			'unchanged',
-			12 * HOUR + 1,
-			'idle',
-		],
-		[
-			'idle',
-			'unchanged',
-			12 * HOUR + 1,
-			'idle',
-		],
-		[
-			'results',
-			'failed',
-			12 * HOUR + 1,
-			'idle',
-		],
+		['results', 'unchanged', 12 * HOUR + 1, 'idle'],
+		['probe', 'unchanged', 12 * HOUR + 1, 'idle'],
+		['idle', 'unchanged', 12 * HOUR + 1, 'idle'],
+		['results', 'failed', 12 * HOUR + 1, 'idle'],
 	])('%s %s, quiet %i ms: stops (%s)', (target, outcome, quietFor, stop) => {
-		expect(nextLiveResultsSchedule({
-			now,
-			target,
-			outcome,
-			backoffStep: 2,
-			lastChangeAt: ago(quietFor),
-		}).stop).toBe(stop);
+		expect(
+			nextLiveResultsSchedule({
+				now,
+				target,
+				outcome,
+				backoffStep: 2,
+				lastChangeAt: ago(quietFor),
+			}).stop,
+		).toBe(stop);
 	});
 });

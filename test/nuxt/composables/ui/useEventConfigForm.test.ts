@@ -19,7 +19,10 @@ mockNuxtImport('onBeforeRouteLeave', () => () => {});
 const event = reactive({ name: 'Regional', cardTimeout: 10 });
 
 /** Stores the update the way the real Event store does: it holds the answer before resolving. */
-function storeAnswering(answer: (update: Record<string, unknown>) => Partial<typeof event>, succeeded: unknown = true) {
+function storeAnswering(
+	answer: (update: Record<string, unknown>) => Partial<typeof event>,
+	succeeded: unknown = true,
+) {
 	handleSubmit.mockImplementation(async (update: Record<string, unknown>) => {
 		Object.assign(event, answer(update));
 		return succeeded;
@@ -36,7 +39,7 @@ function mountForm(options: { validate?: () => boolean } = {}) {
 		setup() {
 			form = useEventConfigForm({
 				initialData: computed(() => ({ name: event.name, cardTimeout: event.cardTimeout })),
-				toUpdate: changes => ({
+				toUpdate: (changes) => ({
 					...changes,
 					...('name' in changes
 						? {
@@ -49,12 +52,14 @@ function mountForm(options: { validate?: () => boolean } = {}) {
 			return () => null;
 		},
 	});
-	mount(defineComponent({
-		setup() {
-			page = useUnsavedChanges();
-			return () => h(Card);
-		},
-	}));
+	mount(
+		defineComponent({
+			setup() {
+				page = useUnsavedChanges();
+				return () => h(Card);
+			},
+		}),
+	);
 	return {
 		form,
 		pageIsDirty: () => page.isDirty.value,
@@ -76,7 +81,7 @@ describe('useEventConfigForm', () => {
 	});
 
 	it('saves only the changed fields, mapped to the Event update', async () => {
-		storeAnswering(update => update);
+		storeAnswering((update) => update);
 		const { form } = mountForm();
 
 		form.formData.value.name = '  Regional 2026  ';
@@ -86,7 +91,7 @@ describe('useEventConfigForm', () => {
 	});
 
 	it('reads clean once a save the server normalized lands', async () => {
-		storeAnswering(update => update);
+		storeAnswering((update) => update);
 		const { form, pageIsDirty } = mountForm();
 
 		form.formData.value.name = '  Regional 2026  ';
@@ -98,9 +103,12 @@ describe('useEventConfigForm', () => {
 
 	it('reports a save in flight and ignores another until it lands', async () => {
 		let land = () => {};
-		handleSubmit.mockImplementation(() => new Promise((resolve) => {
-			land = () => resolve(true);
-		}));
+		handleSubmit.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					land = () => resolve(true);
+				}),
+		);
 		const { form } = mountForm();
 
 		form.formData.value.cardTimeout = 30;

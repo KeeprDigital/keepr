@@ -11,10 +11,12 @@ import { GRAPHICS_OPERATIONAL_QUEUES } from '~~/shared/utils/graphicsOperational
  * inspection of a subject that has moved on answers 404 rather than quietly
  * describing it in a state it already left.
  */
-const inspectionQuerySchema = z.object({
-	queue: z.enum(GRAPHICS_OPERATIONAL_QUEUES),
-	subjectId: z.string().min(1).max(200),
-}).strict();
+const inspectionQuerySchema = z
+	.object({
+		queue: z.enum(GRAPHICS_OPERATIONAL_QUEUES),
+		subjectId: z.string().min(1).max(200),
+	})
+	.strict();
 
 /**
  * Everything the persistent inspector shows for one selected queue item. It is
@@ -30,13 +32,12 @@ export default defineEventHandler(async (event): Promise<GraphicsQueueInspection
 		// Both places an inspection names somebody: the operation it is about, when
 		// it is about one, and every Evidence entry filtered to the subject (#398).
 		return await withActorNames(inspection, [
-			...inspection.detail.kind === 'graphics-ingestion-operation'
+			...(inspection.detail.kind === 'graphics-ingestion-operation'
 				? [inspection.detail.operation.initiatedBy]
-				: [],
-			...inspection.evidence.map(entry => entry.actor),
+				: []),
+			...inspection.evidence.map((entry) => entry.actor),
 		]);
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

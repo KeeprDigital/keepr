@@ -5,7 +5,11 @@ import * as schema from '~~/server/db/schema';
 import { graphicAssetReferences } from '~~/server/db/schema/graphicsAsset';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 
-import { createTestGraphicsLibrary, ingestImage, publishedRevision } from '~~/test/helpers/graphicsLibrary';
+import {
+	createTestGraphicsLibrary,
+	ingestImage,
+	publishedRevision,
+} from '~~/test/helpers/graphicsLibrary';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 /**
@@ -29,14 +33,16 @@ let assetId: GraphicAssetId;
 let revisionId: GraphicAssetRevisionId;
 
 async function ingestAsset(name: string) {
-	return publishedRevision(await ingestImage(context, { idempotencyKey: name, initiatedBy: 'retire-author' }));
+	return publishedRevision(
+		await ingestImage(context, { idempotencyKey: name, initiatedBy: 'retire-author' }),
+	);
 }
 
 async function lifecycleState(): Promise<string | undefined> {
 	const assets = await library.listGraphicAssets({
 		lifecycleStates: ['active', 'retired', 'trashed'],
 	});
-	return assets.find(asset => asset.id === assetId)?.lifecycle.state;
+	return assets.find((asset) => asset.id === assetId)?.lifecycle.state;
 }
 
 async function reference(ownerKind: string, ownerId: string) {
@@ -114,15 +120,18 @@ describe('retiring a Graphic Asset a saved template references', () => {
 		const outcome = await retire();
 
 		expect(outcome.outcome).toBe('in-use');
-		expect(outcome.outcome === 'in-use' && outcome.usage.map(item => item.owner.kind))
-			.toEqual(['feature-match-layout-template']);
+		expect(outcome.outcome === 'in-use' && outcome.usage.map((item) => item.owner.kind)).toEqual([
+			'feature-match-layout-template',
+		]);
 	});
 
 	it('answers not-allowed, not in-use, for an asset already retired', async () => {
 		expect((await retire()).outcome).toBe('retired');
 		await reference('broadcast-graphic-template', 'template-1');
 
-		await expect(retire()).rejects.toMatchObject({ code: 'graphic-asset-lifecycle-action-not-allowed' });
+		await expect(retire()).rejects.toMatchObject({
+			code: 'graphic-asset-lifecycle-action-not-allowed',
+		});
 	});
 
 	it('still retires an asset only a Screen references', async () => {

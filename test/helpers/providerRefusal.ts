@@ -15,7 +15,11 @@
 export class ErrorInfoShaped extends Error {
 	href?: string;
 	detail?: Record<string, string>;
-	constructor(message: string, readonly code: unknown, readonly statusCode: number) {
+	constructor(
+		message: string,
+		readonly code: unknown,
+		readonly statusCode: number,
+	) {
 		super(message);
 	}
 }

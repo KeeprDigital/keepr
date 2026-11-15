@@ -12,30 +12,10 @@ import {
 
 describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 	it.each([
-		[
-			'TTF',
-			'public/fonts/mana.ttf',
-			'font/ttf',
-			'ttf',
-		],
-		[
-			'WOFF',
-			'public/fonts/mana.woff',
-			'font/woff',
-			'woff',
-		],
-		[
-			'WOFF2',
-			'public/fonts/mana.woff2',
-			'font/woff2',
-			'woff2',
-		],
-		[
-			'OTF',
-			'node_modules/mana-font/docs/fonts/beleren.otf',
-			'font/otf',
-			'otf',
-		],
+		['TTF', 'public/fonts/mana.ttf', 'font/ttf', 'ttf'],
+		['WOFF', 'public/fonts/mana.woff', 'font/woff', 'woff'],
+		['WOFF2', 'public/fonts/mana.woff2', 'font/woff2', 'woff2'],
+		['OTF', 'node_modules/mana-font/docs/fonts/beleren.otf', 'font/otf', 'otf'],
 	] as const)('accepts one bounded static outline %s face', async (_, path, mime, format) => {
 		const bytes = new Uint8Array(await readFile(path));
 		const processed = await processStaticFont(bytes, {
@@ -58,9 +38,7 @@ describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 			},
 		});
 		expect(processed.report.facts.glyphCount).toBeGreaterThan(0);
-		expect(processed.thumbnail.slice(0, 8)).toEqual(
-			Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10),
-		);
+		expect(processed.thumbnail.slice(0, 8)).toEqual(Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10));
 		const reprocessed = await processStaticFont(bytes, {
 			sourceFileName: path,
 			declaredMime: mime,
@@ -74,21 +52,9 @@ describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 			Uint8Array.of(0x74, 0x74, 0x63, 0x66, 0, 1, 0, 0),
 			'font-collection-not-supported',
 		],
-		[
-			'EOT',
-			Uint8Array.of(8, 0, 0, 0, 0x4C, 0x50, 0, 0),
-			'unsupported-font-format',
-		],
-		[
-			'SVG',
-			new TextEncoder().encode('<svg><font /></svg>'),
-			'font-svg-not-supported',
-		],
-		[
-			'malformed sfnt',
-			Uint8Array.of(0, 1, 0, 0, 0, 1),
-			'font-table-invalid',
-		],
+		['EOT', Uint8Array.of(8, 0, 0, 0, 0x4c, 0x50, 0, 0), 'unsupported-font-format'],
+		['SVG', new TextEncoder().encode('<svg><font /></svg>'), 'font-svg-not-supported'],
+		['malformed sfnt', Uint8Array.of(0, 1, 0, 0, 0, 1), 'font-table-invalid'],
 	] as const)('rejects %s with a stable report code', async (_, bytes, code) => {
 		await expect(processStaticFont(bytes, {})).rejects.toMatchObject({
 			issue: { code },
@@ -97,10 +63,12 @@ describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 
 	it('rejects conflicting declarations without trying fallback formats', async () => {
 		const bytes = new Uint8Array(await readFile('public/fonts/mana.ttf'));
-		await expect(processStaticFont(bytes, {
-			sourceFileName: 'mana.woff',
-			declaredMime: 'font/woff',
-		})).rejects.toMatchObject({
+		await expect(
+			processStaticFont(bytes, {
+				sourceFileName: 'mana.woff',
+				declaredMime: 'font/woff',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'conflicting-font-extension' },
 		});
 	});
@@ -117,17 +85,18 @@ describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 		for (let index = 0; index < tableCount; index++) {
 			const offset = 12 + index * 16;
 			const tag = new TextDecoder().decode(bytes.subarray(offset, offset + 4));
-			if (tag !== 'gasp')
-				continue;
+			if (tag !== 'gasp') continue;
 			bytes.set(new TextEncoder().encode(replacementTag), offset);
 			replaced = true;
 			break;
 		}
 		expect(replaced).toBe(true);
-		await expect(processStaticFont(bytes, {
-			sourceFileName: 'unsupported.ttf',
-			declaredMime: 'font/ttf',
-		})).rejects.toMatchObject({
+		await expect(
+			processStaticFont(bytes, {
+				sourceFileName: 'unsupported.ttf',
+				declaredMime: 'font/ttf',
+			}),
+		).rejects.toMatchObject({
 			issue: { code },
 		});
 	});
@@ -139,32 +108,42 @@ describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 		});
 
 		const woff = new Uint8Array(await readFile('public/fonts/mana.woff'));
-		new DataView(woff.buffer, woff.byteOffset, woff.byteLength)
-			.setUint32(16, 32 * 1024 * 1024 + 1);
-		await expect(processStaticFont(woff, {
-			sourceFileName: 'expanded.woff',
-			declaredMime: 'font/woff',
-		})).rejects.toMatchObject({
+		new DataView(woff.buffer, woff.byteOffset, woff.byteLength).setUint32(16, 32 * 1024 * 1024 + 1);
+		await expect(
+			processStaticFont(woff, {
+				sourceFileName: 'expanded.woff',
+				declaredMime: 'font/woff',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'font-expanded-size-exceeded' },
 		});
 
 		const oversizedTable = new Uint8Array(await readFile('public/fonts/mana.woff'));
-		new DataView(oversizedTable.buffer, oversizedTable.byteOffset, oversizedTable.byteLength)
-			.setUint32(44 + 12, 32 * 1024 * 1024);
-		await expect(processStaticFont(oversizedTable, {
-			sourceFileName: 'expanded-table.woff',
-			declaredMime: 'font/woff',
-		})).rejects.toMatchObject({
+		new DataView(
+			oversizedTable.buffer,
+			oversizedTable.byteOffset,
+			oversizedTable.byteLength,
+		).setUint32(44 + 12, 32 * 1024 * 1024);
+		await expect(
+			processStaticFont(oversizedTable, {
+				sourceFileName: 'expanded-table.woff',
+				declaredMime: 'font/woff',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'font-expanded-size-exceeded' },
 		});
 
 		const woff2 = new Uint8Array(await readFile('public/fonts/mana.woff2'));
-		new DataView(woff2.buffer, woff2.byteOffset, woff2.byteLength)
-			.setUint32(16, 32 * 1024 * 1024 + 1);
-		await expect(processStaticFont(woff2, {
-			sourceFileName: 'expanded.woff2',
-			declaredMime: 'font/woff2',
-		})).rejects.toMatchObject({
+		new DataView(woff2.buffer, woff2.byteOffset, woff2.byteLength).setUint32(
+			16,
+			32 * 1024 * 1024 + 1,
+		);
+		await expect(
+			processStaticFont(woff2, {
+				sourceFileName: 'expanded.woff2',
+				declaredMime: 'font/woff2',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'font-expanded-size-exceeded' },
 		});
 	});
@@ -201,45 +180,38 @@ describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 	// Mana's records share one subtable; a variant that fails to split would silently equal
 	// the stock font and stop pinning the platform rules.
 	it.each([
-		[
-			'the Macintosh variant',
-			macintoshCmapLanguage,
-			{ 0: 0, 1: 1, 3: 0 },
-		],
-		[
-			'the refused variant',
-			refusedCmapLanguage,
-			{ 0: 0, 1: 1, 3: 1 },
-		],
-	])('%s carries the language each platform is meant to', async (_, languageForPlatform, expected) => {
-		const variant = withCmapLanguages(await splitMana(), languageForPlatform);
+		['the Macintosh variant', macintoshCmapLanguage, { 0: 0, 1: 1, 3: 0 }],
+		['the refused variant', refusedCmapLanguage, { 0: 0, 1: 1, 3: 1 }],
+	])(
+		'%s carries the language each platform is meant to',
+		async (_, languageForPlatform, expected) => {
+			const variant = withCmapLanguages(await splitMana(), languageForPlatform);
 
-		expect(Object.fromEntries(cmapRecords(variant).map(({ platformId, language }) => [platformId, language])))
-			.toEqual(expected);
-	});
+			expect(
+				Object.fromEntries(
+					cmapRecords(variant).map(({ platformId, language }) => [platformId, language]),
+				),
+			).toEqual(expected);
+		},
+	);
 
 	// The helpers read a subtable's length and language where formats 0-6 keep them; on any
 	// other format those bytes mean something else, so they refuse rather than misread.
 	it.each([
-		[
-			'withSeparateCmapSubtables',
-			(bytes: Uint8Array) => withSeparateCmapSubtables(bytes),
-		],
-		[
-			'cmapRecords',
-			(bytes: Uint8Array) => cmapRecords(bytes),
-		],
-		[
-			'withCmapLanguages',
-			(bytes: Uint8Array) => withCmapLanguages(bytes, macintoshCmapLanguage),
-		],
+		['withSeparateCmapSubtables', (bytes: Uint8Array) => withSeparateCmapSubtables(bytes)],
+		['cmapRecords', (bytes: Uint8Array) => cmapRecords(bytes)],
+		['withCmapLanguages', (bytes: Uint8Array) => withCmapLanguages(bytes, macintoshCmapLanguage)],
 	])('%s refuses a format 12 cmap subtable', async (_, read) => {
 		const bytes = new Uint8Array(await readFile('public/fonts/mana.ttf'));
 		const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-		const entry = Array.from({
-			length: view.getUint16(4),
-		}, (__, index) => 12 + index * 16)
-			.find(candidate => String.fromCharCode(...bytes.subarray(candidate, candidate + 4)) === 'cmap')!;
+		const entry = Array.from(
+			{
+				length: view.getUint16(4),
+			},
+			(__, index) => 12 + index * 16,
+		).find(
+			(candidate) => String.fromCharCode(...bytes.subarray(candidate, candidate + 4)) === 'cmap',
+		)!;
 		const cmap = view.getUint32(entry + 8);
 		view.setUint16(cmap + view.getUint32(cmap + 8), 12);
 
@@ -255,11 +227,9 @@ describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 	});
 
 	it('rejects a Microsoft-platform cmap language even when every other subtable is zero', async () => {
-		await expect(processTtf(
-			withCmapLanguages(await splitMana(), platform => (platform === 3
-				? 1
-				: 0)),
-		)).rejects.toMatchObject({
+		await expect(
+			processTtf(withCmapLanguages(await splitMana(), (platform) => (platform === 3 ? 1 : 0))),
+		).rejects.toMatchObject({
 			issue: { code: 'font-cmap-language-invalid' },
 		});
 	});
@@ -283,24 +253,23 @@ describe('the static-font-v1 Graphic Asset Compatibility Profile', () => {
 
 		// Every subtable of the TTF build of this face shares one offset, so one
 		// write states them all — including its Microsoft-platform one.
-		const ttf = withCmapLanguages(
-			new Uint8Array(await readFile('public/fonts/mana.ttf')),
-			() => 1,
-		);
+		const ttf = withCmapLanguages(new Uint8Array(await readFile('public/fonts/mana.ttf')), () => 1);
 
-		await expect(processStaticFont(ttf, {
-			sourceFileName: 'mana.ttf',
-			declaredMime: 'font/ttf',
-		})).rejects.toMatchObject({
+		await expect(
+			processStaticFont(ttf, {
+				sourceFileName: 'mana.ttf',
+				declaredMime: 'font/ttf',
+			}),
+		).rejects.toMatchObject({
 			issue: { code: 'font-cmap-language-invalid' },
 		});
 	});
 
 	it('renders deterministic parsed glyph outlines rather than metric bars', async () => {
-		const mana = await processStaticFont(
-			new Uint8Array(await readFile('public/fonts/mana.ttf')),
-			{ sourceFileName: 'mana.ttf', declaredMime: 'font/ttf' },
-		);
+		const mana = await processStaticFont(new Uint8Array(await readFile('public/fonts/mana.ttf')), {
+			sourceFileName: 'mana.ttf',
+			declaredMime: 'font/ttf',
+		});
 		const beleren = await processStaticFont(
 			new Uint8Array(await readFile('node_modules/mana-font/docs/fonts/beleren.otf')),
 			{ sourceFileName: 'beleren.otf', declaredMime: 'font/otf' },

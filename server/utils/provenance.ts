@@ -39,30 +39,13 @@ export const PROVENANCE_ENTITIES = {
 			'lgs',
 			'gameData',
 		],
-		meleeOwned: [
-			'externalId',
-			'externalSource',
-			'externalStatus',
-			'isActive',
-			'lastSeenAt',
-		],
-		serverManaged: [
-			'id',
-			'eventId',
-			'manuallyEditedFields',
-			'createdAt',
-			'updatedAt',
-		],
+		meleeOwned: ['externalId', 'externalSource', 'externalStatus', 'isActive', 'lastSeenAt'],
+		serverManaged: ['id', 'eventId', 'manuallyEditedFields', 'createdAt', 'updatedAt'],
 	},
 	phases: {
 		manualWritable: ['name', 'sortOrder'],
 		meleeOwned: ['externalId', 'externalSource', 'formatExternalId'],
-		serverManaged: [
-			'id',
-			'eventId',
-			'createdAt',
-			'updatedAt',
-		],
+		serverManaged: ['id', 'eventId', 'createdAt', 'updatedAt'],
 	},
 	rounds: {
 		manualWritable: [
@@ -75,12 +58,7 @@ export const PROVENANCE_ENTITIES = {
 			'durationMinutes',
 		],
 		meleeOwned: ['externalId', 'externalSource', 'lastSyncedAt'],
-		serverManaged: [
-			'id',
-			'eventId',
-			'createdAt',
-			'updatedAt',
-		],
+		serverManaged: ['id', 'eventId', 'createdAt', 'updatedAt'],
 	},
 	matches: {
 		manualWritable: [
@@ -101,12 +79,7 @@ export const PROVENANCE_ENTITIES = {
 			'gameDraws',
 			'isBye',
 		],
-		serverManaged: [
-			'id',
-			'eventId',
-			'createdAt',
-			'updatedAt',
-		],
+		serverManaged: ['id', 'eventId', 'createdAt', 'updatedAt'],
 	},
 	featureMatchSlots: {
 		manualWritable: [
@@ -125,19 +98,14 @@ export const PROVENANCE_ENTITIES = {
 			'playerDisplayMode',
 		],
 		meleeOwned: ['externalId', 'externalSource'],
-		serverManaged: [
-			'id',
-			'eventId',
-			'createdAt',
-			'updatedAt',
-			'activeSessionId',
-		],
+		serverManaged: ['id', 'eventId', 'createdAt', 'updatedAt', 'activeSessionId'],
 	},
 } as const satisfies Record<string, ProvenanceClassification>;
 
 export type ProvenanceEntity = keyof typeof PROVENANCE_ENTITIES;
 
-type ManualWritableColumn<E extends ProvenanceEntity> = (typeof PROVENANCE_ENTITIES)[E]['manualWritable'][number];
+type ManualWritableColumn<E extends ProvenanceEntity> =
+	(typeof PROVENANCE_ENTITIES)[E]['manualWritable'][number];
 
 /**
  * Allowlist a manual write payload down to the entity's manually writable

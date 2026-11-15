@@ -69,7 +69,11 @@ function shape(id: string, overrides: Partial<GraphicItemConfig> = {}): GraphicI
 	} as GraphicItemConfig;
 }
 
-function group(id: string, children: GraphicItemConfig[], overrides: Partial<GraphicGroupItemConfig> = {}): GraphicItemConfig {
+function group(
+	id: string,
+	children: GraphicItemConfig[],
+	overrides: Partial<GraphicGroupItemConfig> = {},
+): GraphicItemConfig {
 	return {
 		type: 'group',
 		id,
@@ -92,7 +96,10 @@ function group(id: string, children: GraphicItemConfig[], overrides: Partial<Gra
 	} as GraphicItemConfig;
 }
 
-function graphic(items: GraphicItemConfig[], animation?: BroadcastGraphicConfig['animation']): BroadcastGraphicConfig {
+function graphic(
+	items: GraphicItemConfig[],
+	animation?: BroadcastGraphicConfig['animation'],
+): BroadcastGraphicConfig {
 	return {
 		id: 'lower-third',
 		name: 'Lower third',
@@ -133,12 +140,20 @@ describe('graphicAnimationEasedProgress', () => {
 
 describe('graphic animation vocabulary', () => {
 	it('offers an editor option for every Graphic Animation Origin and slide direction', () => {
-		expect(GRAPHIC_ANIMATION_ORIGINS.map(origin => origin.value)).toEqual([...GRAPHIC_ANIMATION_ORIGIN_VALUES]);
-		expect(GRAPHIC_SLIDE_DIRECTIONS.map(direction => direction.value)).toEqual([...GRAPHIC_SLIDE_DIRECTION_VALUES]);
+		expect(GRAPHIC_ANIMATION_ORIGINS.map((origin) => origin.value)).toEqual([
+			...GRAPHIC_ANIMATION_ORIGIN_VALUES,
+		]);
+		expect(GRAPHIC_SLIDE_DIRECTIONS.map((direction) => direction.value)).toEqual([
+			...GRAPHIC_SLIDE_DIRECTION_VALUES,
+		]);
 	});
 
 	it('defaults a scale channel origin to centre', () => {
-		expect(resolveGraphicAnimationOrigin(undefined)).toMatchObject({ value: 'center', x: 0.5, y: 0.5 });
+		expect(resolveGraphicAnimationOrigin(undefined)).toMatchObject({
+			value: 'center',
+			x: 0.5,
+			y: 0.5,
+		});
 		expect(resolveGraphicAnimationOrigin('bottom-right')).toMatchObject({ x: 1, y: 1 });
 	});
 
@@ -169,8 +184,12 @@ describe('graphicAnimationStaggerOffset', () => {
 		const forward = { order: 'list' as const, step: 100, itemIds: direct };
 		const reverse = { order: 'reverse-list' as const, step: 100, itemIds: direct };
 
-		expect(direct.map(id => graphicAnimationStaggerOffset(forward, direct, id))).toEqual([0, 100, 200, 300]);
-		expect(direct.map(id => graphicAnimationStaggerOffset(reverse, direct, id))).toEqual([300, 200, 100, 0]);
+		expect(direct.map((id) => graphicAnimationStaggerOffset(forward, direct, id))).toEqual([
+			0, 100, 200, 300,
+		]);
+		expect(direct.map((id) => graphicAnimationStaggerOffset(reverse, direct, id))).toEqual([
+			300, 200, 100, 0,
+		]);
 	});
 
 	it('ignores an id that no longer names a direct Graphic Item without leaving a gap', () => {
@@ -195,9 +214,7 @@ describe('broadcastGraphicPhaseDurationMs', () => {
 		// A missing recipe makes its owner change immediately, which is the same
 		// arithmetic Cut relies on rather than a special case beside it.
 		for (const phase of GRAPHIC_ANIMATION_PHASE_VALUES) {
-			expect(broadcastGraphicPhaseDurationMs(graphic([
-				shape('bar'),
-			]), phase)).toBe(0);
+			expect(broadcastGraphicPhaseDurationMs(graphic([shape('bar')]), phase)).toBe(0);
 		}
 	});
 
@@ -347,9 +364,7 @@ describe('broadcastGraphicPhaseDurationMs', () => {
 	});
 
 	it('reports whether a phase has any authored recipe at all', () => {
-		const bare = graphic([
-			shape('bar'),
-		]);
+		const bare = graphic([shape('bar')]);
 		const withChild = graphic([
 			group('cluster', [
 				shape('one', {
@@ -368,13 +383,15 @@ describe('broadcastGraphicPhaseDurationMs', () => {
 
 describe('on-screen recipe timing', () => {
 	it('counts one out-and-back cycle plus its pause', () => {
-		expect(graphicOnScreenCycleMs({
-			duration: 1600,
-			easing: 'ease-in-out',
-			delay: 0,
-			pause: 400,
-			repeat: 'indefinite',
-		})).toBe(2000);
+		expect(
+			graphicOnScreenCycleMs({
+				duration: 1600,
+				easing: 'ease-in-out',
+				delay: 0,
+				pause: 400,
+				repeat: 'indefinite',
+			}),
+		).toBe(2000);
 	});
 
 	it('ends a plain recipe at its delay plus stagger plus duration', () => {
@@ -441,7 +458,7 @@ describe('lifecycle timelines', () => {
 	};
 
 	it('runs each phase where the previous one ended', () => {
-		const composition = graphic([], { 'enter': enter, 'on-screen': cycle, 'exit': exit });
+		const composition = graphic([], { enter: enter, 'on-screen': cycle, exit: exit });
 		const timeline = broadcastGraphicAnimationTimeline(composition, GRAPHIC_ANIMATION_PHASE_VALUES);
 
 		expect(timeline).toEqual([
@@ -456,7 +473,7 @@ describe('lifecycle timelines', () => {
 	it('keeps an unauthored phase in the timeline at zero length', () => {
 		const timeline = broadcastGraphicAnimationTimeline(graphic([]), GRAPHIC_ANIMATION_PHASE_VALUES);
 
-		expect(timeline.map(segment => segment.duration)).toEqual([0, 0, 0, 0]);
+		expect(timeline.map((segment) => segment.duration)).toEqual([0, 0, 0, 0]);
 		expect(graphicAnimationTimelineDurationMs(timeline)).toBe(0);
 	});
 
@@ -499,10 +516,10 @@ describe('lifecycle timelines', () => {
 	});
 
 	it('locates an elapsed time as one phase and one elapsed time inside it', () => {
-		const timeline = broadcastGraphicAnimationTimeline(
-			graphic([], { enter, exit }),
-			['enter', 'exit'],
-		);
+		const timeline = broadcastGraphicAnimationTimeline(graphic([], { enter, exit }), [
+			'enter',
+			'exit',
+		]);
 
 		expect(graphicAnimationTimelineAt(timeline, 0)).toEqual({ phase: 'enter', elapsed: 0 });
 		expect(graphicAnimationTimelineAt(timeline, 399)).toEqual({ phase: 'enter', elapsed: 399 });
@@ -511,10 +528,10 @@ describe('lifecycle timelines', () => {
 	});
 
 	it('holds the final phase past the end of the timeline rather than snapping back', () => {
-		const timeline = broadcastGraphicAnimationTimeline(
-			graphic([], { enter, exit }),
-			['enter', 'exit'],
-		);
+		const timeline = broadcastGraphicAnimationTimeline(graphic([], { enter, exit }), [
+			'enter',
+			'exit',
+		]);
 
 		expect(graphicAnimationTimelineAt(timeline, 9999)).toEqual({ phase: 'exit', elapsed: 9599 });
 	});
@@ -527,6 +544,9 @@ describe('lifecycle timelines', () => {
 		const timeline = broadcastGraphicAnimationTimeline(graphic([], { enter }), ['enter']);
 
 		expect(graphicAnimationTimelineAt(timeline, -500)).toEqual({ phase: 'enter', elapsed: 0 });
-		expect(graphicAnimationTimelineAt(timeline, Number.NaN)).toEqual({ phase: 'enter', elapsed: 0 });
+		expect(graphicAnimationTimelineAt(timeline, Number.NaN)).toEqual({
+			phase: 'enter',
+			elapsed: 0,
+		});
 	});
 });

@@ -6,8 +6,7 @@ const toast = useToast();
 const event = computed(() => eventStore.event);
 
 const holdingTextInitialData = computed(() => {
-	if (!event.value)
-		return null;
+	if (!event.value) return null;
 
 	return {
 		holdingText: event.value.holdingText ?? '',
@@ -26,8 +25,7 @@ const holdingTextInitialData = computed(() => {
  * only in case are one person to this form.
  */
 const commentatorInitialData = computed(() => {
-	if (!event.value)
-		return null;
+	if (!event.value) return null;
 
 	return {
 		commentator1TalentId: event.value.commentator1TalentId ?? undefined,
@@ -35,11 +33,23 @@ const commentatorInitialData = computed(() => {
 	};
 });
 
-const { formData: holdingTextFormData, isDirty: isHoldingTextDirty, reset: resetHoldingText, getChanges: getHoldingTextChanges, runSave: runHoldingTextSave } = useForm({
+const {
+	formData: holdingTextFormData,
+	isDirty: isHoldingTextDirty,
+	reset: resetHoldingText,
+	getChanges: getHoldingTextChanges,
+	runSave: runHoldingTextSave,
+} = useForm({
 	initialData: holdingTextInitialData,
 });
 
-const { formData: commentatorFormData, isDirty: isCommentatorsDirty, reset: resetCommentators, getChanges: getCommentatorChanges, runSave: runCommentatorSave } = useForm({
+const {
+	formData: commentatorFormData,
+	isDirty: isCommentatorsDirty,
+	reset: resetCommentators,
+	getChanges: getCommentatorChanges,
+	runSave: runCommentatorSave,
+} = useForm({
 	initialData: commentatorInitialData,
 });
 
@@ -51,7 +61,7 @@ useRegisterDirtyState(computed(() => isHoldingTextDirty.value || isCommentatorsD
 
 const talentOptions = computed(() => {
 	return (event.value?.talents || [])
-		.map(talent => ({ label: talent.name, value: talent.id }))
+		.map((talent) => ({ label: talent.name, value: talent.id }))
 		.sort((a, b) => a.label.localeCompare(b.label));
 });
 
@@ -65,17 +75,20 @@ function sameTalentName(a: string, b: string) {
  * case-insensitively, so every casing of that name goes with it (#128).
  */
 function optionsExcluding(otherTalentId: number | undefined) {
-	const other = event.value?.talents.find(talent => talent.id === otherTalentId);
-	if (!other)
-		return talentOptions.value;
-	return talentOptions.value.filter(option => !sameTalentName(option.label, other.name));
+	const other = event.value?.talents.find((talent) => talent.id === otherTalentId);
+	if (!other) return talentOptions.value;
+	return talentOptions.value.filter((option) => !sameTalentName(option.label, other.name));
 }
 
-const commentator1Options = computed(() => optionsExcluding(commentatorFormData.value.commentator2TalentId));
-const commentator2Options = computed(() => optionsExcluding(commentatorFormData.value.commentator1TalentId));
+const commentator1Options = computed(() =>
+	optionsExcluding(commentatorFormData.value.commentator2TalentId),
+);
+const commentator2Options = computed(() =>
+	optionsExcluding(commentatorFormData.value.commentator1TalentId),
+);
 
 function findTalentNamed(name: string) {
-	return event.value?.talents.find(talent => sameTalentName(talent.name, name)) ?? null;
+	return event.value?.talents.find((talent) => sameTalentName(talent.name, name)) ?? null;
 }
 
 /**
@@ -98,16 +111,13 @@ function findTalentNamed(name: string) {
  */
 async function handleCreateCommentator(name: string, commentatorNumber: 1 | 2) {
 	const trimmedName = name?.trim();
-	if (!trimmedName || !event.value || commentatorCreating.value)
-		return;
+	if (!trimmedName || !event.value || commentatorCreating.value) return;
 
 	const existing = findTalentNamed(trimmedName);
 	if (existing) {
-		const otherNumber = commentatorNumber === 1
-			? 2
-			: 1;
+		const otherNumber = commentatorNumber === 1 ? 2 : 1;
 		const otherId = commentatorFormData.value[`commentator${otherNumber}TalentId`];
-		const other = event.value.talents.find(talent => talent.id === otherId);
+		const other = event.value.talents.find((talent) => talent.id === otherId);
 
 		if (other && sameTalentName(other.name, existing.name)) {
 			toast.add({
@@ -122,47 +132,40 @@ async function handleCreateCommentator(name: string, commentatorNumber: 1 | 2) {
 		return;
 	}
 
-	await runRequest(
-		() => eventStore.addTalent({ name: trimmedName }),
-		{
-			loadingRef: commentatorCreating,
-			success: false,
-			error: { title: 'Error', description: 'Failed to create commentator', color: 'error' },
-			onSuccess: (created) => {
-				commentatorFormData.value[`commentator${commentatorNumber}TalentId`] = created.id;
-			},
-			onFailure: ({ error }) => {
-				console.error('Failed to create talent:', error);
-			},
+	await runRequest(() => eventStore.addTalent({ name: trimmedName }), {
+		loadingRef: commentatorCreating,
+		success: false,
+		error: { title: 'Error', description: 'Failed to create commentator', color: 'error' },
+		onSuccess: (created) => {
+			commentatorFormData.value[`commentator${commentatorNumber}TalentId`] = created.id;
 		},
-	);
+		onFailure: ({ error }) => {
+			console.error('Failed to create talent:', error);
+		},
+	});
 }
 
 async function saveHoldingTextSettings() {
-	if (!event.value)
-		return;
+	if (!event.value) return;
 
 	const changes = getHoldingTextChanges();
-	const updates = 'holdingText' in changes
-		? { holdingText: changes.holdingText?.trim() || null }
-		: {};
+	const updates =
+		'holdingText' in changes ? { holdingText: changes.holdingText?.trim() || null } : {};
 
-	await runHoldingTextSave(() => runRequest(
-		() => eventStore.updateEvent(updates),
-		{
+	await runHoldingTextSave(() =>
+		runRequest(() => eventStore.updateEvent(updates), {
 			loadingRef: holdingTextSaving,
 			success: { title: 'Saved', description: 'Holding text updated', color: 'success' },
 			error: { title: 'Error', description: 'Failed to save holding text', color: 'error' },
 			onFailure: ({ error }) => {
 				console.error(error);
 			},
-		},
-	));
+		}),
+	);
 }
 
 async function saveCommentatorSettings() {
-	if (!event.value)
-		return;
+	if (!event.value) return;
 	const changes = getCommentatorChanges();
 	const updates: Record<string, number | null> = {};
 
@@ -172,17 +175,16 @@ async function saveCommentatorSettings() {
 	if ('commentator2TalentId' in changes)
 		updates.commentator2TalentId = changes.commentator2TalentId ?? null;
 
-	await runCommentatorSave(() => runRequest(
-		() => eventStore.updateEvent(updates),
-		{
+	await runCommentatorSave(() =>
+		runRequest(() => eventStore.updateEvent(updates), {
 			loadingRef: commentatorsSaving,
 			success: { title: 'Saved', description: 'Commentators updated', color: 'success' },
 			error: { title: 'Error', description: 'Failed to save commentators', color: 'error' },
 			onFailure: ({ error }) => {
 				console.error(error);
 			},
-		},
-	));
+		}),
+	);
 }
 
 function swapCommentators() {
@@ -207,7 +209,11 @@ function swapCommentators() {
 				</UFormField>
 
 				<template #footer>
-					<EventConfigFormFooter :is-dirty="isHoldingTextDirty" :loading="holdingTextSaving" @reset="resetHoldingText" />
+					<EventConfigFormFooter
+						:is-dirty="isHoldingTextDirty"
+						:loading="holdingTextSaving"
+						@reset="resetHoldingText"
+					/>
 				</template>
 			</UCard>
 		</UForm>
@@ -250,7 +256,11 @@ function swapCommentators() {
 					</UFormField>
 				</div>
 				<template #footer>
-					<EventConfigFormFooter :is-dirty="isCommentatorsDirty" :loading="commentatorsSaving" @reset="resetCommentators" />
+					<EventConfigFormFooter
+						:is-dirty="isCommentatorsDirty"
+						:loading="commentatorsSaving"
+						@reset="resetCommentators"
+					/>
 				</template>
 			</UCard>
 		</UForm>

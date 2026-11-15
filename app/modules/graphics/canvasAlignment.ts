@@ -28,28 +28,24 @@ const ALIGN: Record<AlignEdge, { axis: DistributeAxis; at: 0 | 0.5 | 1 }> = {
 };
 
 function sizeOf(axis: DistributeAxis) {
-	return axis === 'x'
-		? 'width'
-		: 'height';
+	return axis === 'x' ? 'width' : 'height';
 }
 
 function along(axis: DistributeAxis, distance: number): BoxMove {
 	// `+ 0` keeps a rounded -0 from reading as a move.
 	const whole = Math.round(distance) + 0;
-	return axis === 'x'
-		? { x: whole, y: 0 }
-		: { x: 0, y: whole };
+	return axis === 'x' ? { x: whole, y: 0 } : { x: 0, y: whole };
 }
 
 /** The box several boxes cover together. */
 export function unionBox(boxes: readonly GraphicRect[]): GraphicRect {
-	const left = Math.min(...boxes.map(rect => rect.x));
-	const top = Math.min(...boxes.map(rect => rect.y));
+	const left = Math.min(...boxes.map((rect) => rect.x));
+	const top = Math.min(...boxes.map((rect) => rect.y));
 	return {
 		x: left,
 		y: top,
-		width: Math.max(...boxes.map(rect => rect.x + rect.width)) - left,
-		height: Math.max(...boxes.map(rect => rect.y + rect.height)) - top,
+		width: Math.max(...boxes.map((rect) => rect.x + rect.width)) - left,
+		height: Math.max(...boxes.map((rect) => rect.y + rect.height)) - top,
 	};
 }
 
@@ -57,14 +53,17 @@ export function unionBox(boxes: readonly GraphicRect[]): GraphicRect {
  * Line every box's edge or centre up with the same edge or centre of `to`: the
  * container for one box, and by default the bounds the boxes cover together.
  */
-export function alignBoxes(boxes: readonly GraphicRect[], edge: AlignEdge, to?: GraphicRect): BoxMove[] {
-	if (boxes.length === 0)
-		return [];
+export function alignBoxes(
+	boxes: readonly GraphicRect[],
+	edge: AlignEdge,
+	to?: GraphicRect,
+): BoxMove[] {
+	if (boxes.length === 0) return [];
 	const { axis, at } = ALIGN[edge];
 	const size = sizeOf(axis);
 	const target = to ?? unionBox(boxes);
 	const line = target[axis] + target[size] * at;
-	return boxes.map(rect => along(axis, line - (rect[axis] + rect[size] * at)));
+	return boxes.map((rect) => along(axis, line - (rect[axis] + rect[size] * at)));
 }
 
 /**
@@ -74,12 +73,11 @@ export function alignBoxes(boxes: readonly GraphicRect[], edge: AlignEdge, to?: 
  */
 export function distributeBoxes(boxes: readonly GraphicRect[], axis: DistributeAxis): BoxMove[] {
 	const moves = boxes.map(() => ({ x: 0, y: 0 }));
-	if (boxes.length < 3)
-		return moves;
+	if (boxes.length < 3) return moves;
 	const size = sizeOf(axis);
 	const order = boxes
 		.map((rect, index) => ({ rect, index }))
-		.sort((a, b) => (a.rect[axis] + a.rect[size] / 2) - (b.rect[axis] + b.rect[size] / 2));
+		.sort((a, b) => a.rect[axis] + a.rect[size] / 2 - (b.rect[axis] + b.rect[size] / 2));
 	const first = order[0]!.rect;
 	const last = order.at(-1)!.rect;
 	const between = order.slice(1, -1);

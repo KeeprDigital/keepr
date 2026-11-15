@@ -11,17 +11,16 @@ const paramsSchema = z.object({
 });
 
 function cookieCapability(value: string | undefined): string | undefined {
-	return /^[\w-]{20,200}$/.test(value ?? '')
-		? value
-		: undefined;
+	return /^[\w-]{20,200}$/.test(value ?? '') ? value : undefined;
 }
 
 export default defineEventHandler(async (event) => {
 	const params = await getValidatedRouterParams(event, paramsSchema.parse);
 	const authorization = getRequestHeader(event, 'authorization');
-	const capability = authorization === undefined
-		? cookieCapability(getCookie(event, screenOutputAssetCapabilityCookieName(params.screenId)))
-		: bearerScreenOutputCapability(authorization);
+	const capability =
+		authorization === undefined
+			? cookieCapability(getCookie(event, screenOutputAssetCapabilityCookieName(params.screenId)))
+			: bearerScreenOutputCapability(authorization);
 	if (!capability) {
 		throw createError({
 			statusCode: 404,
@@ -31,8 +30,7 @@ export default defineEventHandler(async (event) => {
 	}
 	const requestHeaders = new Headers();
 	for (const [name, value] of Object.entries(getRequestHeaders(event))) {
-		if (value)
-			requestHeaders.set(name, value);
+		if (value) requestHeaders.set(name, value);
 	}
 	const delivery = await screenOutputAssetDeliveryForEvent(event);
 	const result = await delivery.deliver({
@@ -55,7 +53,9 @@ export default defineEventHandler(async (event) => {
 		// one refusal an on-air output meets while its item is already missing, and
 		// 'Internal Server Error' does not distinguish a store that will be back from
 		// a Screen that has to be reconfigured (#321).
-		const cause = new TemporarilyUnavailableError('Screen Output asset delivery is temporarily unavailable');
+		const cause = new TemporarilyUnavailableError(
+			'Screen Output asset delivery is temporarily unavailable',
+		);
 		throw createError({
 			statusCode: cause.statusCode,
 			statusMessage: 'Service Unavailable',

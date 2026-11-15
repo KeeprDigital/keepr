@@ -10,12 +10,16 @@ let continuity = createContinuitySignal();
 let attachment = createAttachSignal();
 const mockRealtime = reactive({
 	connectionState: 'connected',
-	onContinuityLost: (channel: string, handler: () => void) => continuity.onContinuityLost(channel, handler),
+	onContinuityLost: (channel: string, handler: () => void) =>
+		continuity.onContinuityLost(channel, handler),
 	onceAttached: (channel: string, handler: () => void) => attachment.onceAttached(channel, handler),
 });
 
 mockNuxtImport('tryUseRealtime', () => () => mockRealtime);
-mockNuxtImport('useBroadcastGraphicsLiveSessionStore', () => () => ({ loadSession: mockLoadSession, reloadSession: mockReloadSession }));
+mockNuxtImport('useBroadcastGraphicsLiveSessionStore', () => () => ({
+	loadSession: mockLoadSession,
+	reloadSession: mockReloadSession,
+}));
 
 /**
  * The Live Session's own reasons to read its snapshot again: the Screen or
@@ -40,7 +44,7 @@ describe('useBroadcastGraphicsLiveSessionSync', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
 	it('loads the snapshot of the Screen it follows', async () => {

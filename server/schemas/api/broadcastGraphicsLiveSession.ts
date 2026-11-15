@@ -1,14 +1,8 @@
 import type { BroadcastGraphicsCommand } from '~~/shared/types/broadcastGraphicsLiveSession';
 import { z } from 'zod';
-import {
-	graphicAssetId,
-	graphicAssetRevisionId,
-} from '~~/server/modules/graphics-asset-library';
+import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import { SUPPORTED_SOCIAL_NETWORK_KEYS } from '~~/shared/socialProfiles';
-import {
-	GRAPHIC_INPUT_KEY_PATTERN,
-	MAX_GRAPHIC_INPUT_KEY_LENGTH,
-} from '~~/shared/types/graphics';
+import { GRAPHIC_INPUT_KEY_PATTERN, MAX_GRAPHIC_INPUT_KEY_LENGTH } from '~~/shared/types/graphics';
 import { screenParamsSchema } from './screen';
 
 /** A playout route names the epoch as well as the Screen that owns it. */
@@ -48,10 +42,12 @@ const graphicInputValueSchema = z.union([
 	z.boolean(),
 	z.number().finite(),
 	z.string().max(MAX_GRAPHIC_INPUT_VALUE_LENGTH),
-	z.object({
-		assetId: z.string().min(1).max(100).transform(graphicAssetId),
-		revisionId: z.string().min(1).max(100).transform(graphicAssetRevisionId),
-	}).strict(),
+	z
+		.object({
+			assetId: z.string().min(1).max(100).transform(graphicAssetId),
+			revisionId: z.string().min(1).max(100).transform(graphicAssetRevisionId),
+		})
+		.strict(),
 ]);
 
 /**
@@ -59,10 +55,12 @@ const graphicInputValueSchema = z.union([
  * its own, and there is no base sequence: a target-state intent stays valid
  * however far the session has advanced.
  */
-const playoutPayloadSchema = z.object({
-	graphicId: graphicIdSchema,
-	cut: z.boolean().optional(),
-}).strict();
+const playoutPayloadSchema = z
+	.object({
+		graphicId: graphicIdSchema,
+		cut: z.boolean().optional(),
+	})
+	.strict();
 
 /**
  * Update Graphic is the one action that is not target state, so it carries the
@@ -70,13 +68,19 @@ const playoutPayloadSchema = z.object({
  * built against a superseded one is refused rather than silently overwriting a
  * colleague's.
  */
-const updatePayloadSchema = z.object({
-	graphicId: graphicIdSchema,
-	cut: z.boolean().optional(),
-	basedOnAcceptedRevision: z.number().int().nonnegative(),
-}).strict();
+const updatePayloadSchema = z
+	.object({
+		graphicId: graphicIdSchema,
+		cut: z.boolean().optional(),
+		basedOnAcceptedRevision: z.number().int().nonnegative(),
+	})
+	.strict();
 
-const inputKeySchema = z.string().min(1).max(MAX_GRAPHIC_INPUT_KEY_LENGTH).regex(GRAPHIC_INPUT_KEY_PATTERN);
+const inputKeySchema = z
+	.string()
+	.min(1)
+	.max(MAX_GRAPHIC_INPUT_KEY_LENGTH)
+	.regex(GRAPHIC_INPUT_KEY_PATTERN);
 
 /**
  * One working-value edit, optionally stating the value it believes it replaces.
@@ -86,12 +90,14 @@ const inputKeySchema = z.string().min(1).max(MAX_GRAPHIC_INPUT_KEY_LENGTH).regex
  * "I claim the field was empty" apart from "I claim nothing", and the difference
  * decides whether a second operator's edit is refused or silently overwritten.
  */
-const setInputPayloadSchema = z.object({
-	graphicId: graphicIdSchema,
-	inputKey: inputKeySchema,
-	value: graphicInputValueSchema,
-	basedOn: z.object({ value: graphicInputValueSchema }).strict().optional(),
-}).strict();
+const setInputPayloadSchema = z
+	.object({
+		graphicId: graphicIdSchema,
+		inputKey: inputKeySchema,
+		value: graphicInputValueSchema,
+		basedOn: z.object({ value: graphicInputValueSchema }).strict().optional(),
+	})
+	.strict();
 
 /**
  * A Graphic Input Override carries a value in exactly the shape a working value
@@ -109,84 +115,114 @@ const setOverridePayloadSchema = setInputPayloadSchema;
  * see it, are the Event's questions and are answered by resolving against the
  * Event's own data rather than by trusting a client-supplied entity.
  */
-const selectSourcePayloadSchema = z.object({
-	graphicId: graphicIdSchema,
-	sourceKey: inputKeySchema,
-	selectionId: z.number().int().positive().nullable(),
-}).strict();
+const selectSourcePayloadSchema = z
+	.object({
+		graphicId: graphicIdSchema,
+		sourceKey: inputKeySchema,
+		selectionId: z.number().int().positive().nullable(),
+	})
+	.strict();
 
-const selectSocialProfilePayloadSchema = z.object({
-	graphicId: graphicIdSchema,
-	projectionKey: inputKeySchema,
-	network: z.enum(SUPPORTED_SOCIAL_NETWORK_KEYS),
-}).strict();
+const selectSocialProfilePayloadSchema = z
+	.object({
+		graphicId: graphicIdSchema,
+		projectionKey: inputKeySchema,
+		network: z.enum(SUPPORTED_SOCIAL_NETWORK_KEYS),
+	})
+	.strict();
 
 const stepSocialProfilePayloadSchema = selectSocialProfilePayloadSchema.omit({ network: true });
 
-const setSocialProfileAutomaticPayloadSchema = stepSocialProfilePayloadSchema.extend({
-	automatic: z.boolean(),
-}).strict();
+const setSocialProfileAutomaticPayloadSchema = stepSocialProfilePayloadSchema
+	.extend({
+		automatic: z.boolean(),
+	})
+	.strict();
 
 const commandIdSchema = z.string().min(1).max(100);
 
 export const broadcastGraphicsCommandSchema = z.discriminatedUnion('type', [
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Take'),
-		payload: playoutPayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Out'),
-		payload: playoutPayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Select Social Profile'),
-		payload: selectSocialProfilePayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Previous Social Profile'),
-		payload: stepSocialProfilePayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Next Social Profile'),
-		payload: stepSocialProfilePayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Set Social Profile Automatic'),
-		payload: setSocialProfileAutomaticPayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Update Graphic'),
-		payload: updatePayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Set Input'),
-		payload: setInputPayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Set Override'),
-		payload: setOverridePayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Select Source'),
-		payload: selectSourcePayloadSchema,
-	}).strict(),
-	z.object({
-		commandId: commandIdSchema,
-		type: z.literal('Resolve Bindings'),
-		// It names only the Broadcast Graphic. Nothing about what Event Data now says
-		// crosses the wire, because the server reads that itself.
-		payload: z.object({ graphicId: graphicIdSchema }).strict(),
-	}).strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Take'),
+			payload: playoutPayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Out'),
+			payload: playoutPayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Select Social Profile'),
+			payload: selectSocialProfilePayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Previous Social Profile'),
+			payload: stepSocialProfilePayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Next Social Profile'),
+			payload: stepSocialProfilePayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Set Social Profile Automatic'),
+			payload: setSocialProfileAutomaticPayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Update Graphic'),
+			payload: updatePayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Set Input'),
+			payload: setInputPayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Set Override'),
+			payload: setOverridePayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Select Source'),
+			payload: selectSourcePayloadSchema,
+		})
+		.strict(),
+	z
+		.object({
+			commandId: commandIdSchema,
+			type: z.literal('Resolve Bindings'),
+			// It names only the Broadcast Graphic. Nothing about what Event Data now says
+			// crosses the wire, because the server reads that itself.
+			payload: z.object({ graphicId: graphicIdSchema }).strict(),
+		})
+		.strict(),
 ]) satisfies z.ZodType<BroadcastGraphicsCommand>;
 
-export type BroadcastGraphicsLiveSessionParams = z.infer<typeof broadcastGraphicsLiveSessionParamsSchema>;
+export type BroadcastGraphicsLiveSessionParams = z.infer<
+	typeof broadcastGraphicsLiveSessionParamsSchema
+>;

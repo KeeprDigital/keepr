@@ -28,7 +28,10 @@ const RETRYABLE_UPSTREAM_INTERVAL_SECONDS = 5;
  * branches today), and only from a branch where waiting can resolve the
  * failure — each call site says why the refusals beside it do not qualify.
  */
-export function throwRetryableUpstreamRefusal(requestEvent: H3Event, upstreamError: unknown): never {
+export function throwRetryableUpstreamRefusal(
+	requestEvent: H3Event,
+	upstreamError: unknown,
+): never {
 	setResponseHeader(requestEvent, 'retry-after', RETRYABLE_UPSTREAM_INTERVAL_SECONDS);
 	throw createError({ cause: upstreamError });
 }

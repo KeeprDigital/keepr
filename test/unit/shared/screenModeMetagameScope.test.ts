@@ -1,6 +1,10 @@
 import type { ScreenMode } from '~~/shared/types/enums';
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_METAGAME_SCOPE, metagameArchetypeFilterField, metagameScopeShape } from '~~/shared/screenModeConfigs/subShapes';
+import {
+	DEFAULT_METAGAME_SCOPE,
+	metagameArchetypeFilterField,
+	metagameScopeShape,
+} from '~~/shared/screenModeConfigs/subShapes';
 import { SCREEN_MODES, screenModeConfigContract } from '~~/shared/screenModes';
 import { getDisplayDefaultsForMode } from '~~/shared/types/screenConfig';
 
@@ -33,12 +37,7 @@ describe('the Metagame Scope', () => {
 		it('keeps its scope and archetype filter through a display reset', () => {
 			const reset = getDisplayDefaultsForMode(mode);
 
-			for (const field of [
-				...SCOPE_FIELDS,
-				...(archetypeFilter
-					? ['archetypeId']
-					: []),
-			])
+			for (const field of [...SCOPE_FIELDS, ...(archetypeFilter ? ['archetypeId'] : [])])
 				expect(reset, field).not.toHaveProperty(field);
 		});
 
@@ -46,17 +45,24 @@ describe('the Metagame Scope', () => {
 			expect(SCREEN_MODES[mode].eventReferences).toHaveProperty('playerListId', 'playerList');
 		});
 
-		it(archetypeFilter ? 'carries the shared archetype filter, an Event Reference to an Archetype' : 'carries no archetype filter', () => {
-			// The shared schema itself; a mode may describe when it shows.
-			const filters = Object.entries(shape)
-				.filter(([, field]) => (field as typeof metagameArchetypeFilterField)._zod.def === metagameArchetypeFilterField._zod.def)
-				.map(([key]) => key);
+		it(
+			archetypeFilter
+				? 'carries the shared archetype filter, an Event Reference to an Archetype'
+				: 'carries no archetype filter',
+			() => {
+				// The shared schema itself; a mode may describe when it shows.
+				const filters = Object.entries(shape)
+					.filter(
+						([, field]) =>
+							(field as typeof metagameArchetypeFilterField)._zod.def ===
+							metagameArchetypeFilterField._zod.def,
+					)
+					.map(([key]) => key);
 
-			expect(filters).toEqual(archetypeFilter
-				? ['archetypeId']
-				: []);
-			if (archetypeFilter)
-				expect(SCREEN_MODES[mode].eventReferences).toHaveProperty('archetypeId', 'archetype');
-		});
+				expect(filters).toEqual(archetypeFilter ? ['archetypeId'] : []);
+				if (archetypeFilter)
+					expect(SCREEN_MODES[mode].eventReferences).toHaveProperty('archetypeId', 'archetype');
+			},
+		);
 	});
 });

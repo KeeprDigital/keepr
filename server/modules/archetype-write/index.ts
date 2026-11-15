@@ -8,7 +8,10 @@ import { playerUpdateModule } from '~~/server/modules/player-update';
 import { archetypeService } from '~~/server/services/archetype';
 import { archetypeCardService } from '~~/server/services/archetypeCard';
 import { playerDeckService } from '~~/server/services/playerDeck';
-import { buildReleaseScreenEventReferencesQuery, buildRepointScreenEventReferencesQuery } from '~~/server/services/screen';
+import {
+	buildReleaseScreenEventReferencesQuery,
+	buildRepointScreenEventReferencesQuery,
+} from '~~/server/services/screen';
 import { sameArchetypeName } from '~~/shared/utils/archetypeName';
 
 interface CreateArchetypeParams {
@@ -84,8 +87,9 @@ export function archetypeWriteModule() {
 	 * spaces. The refusal names the holder, which an operator can merge into.
 	 */
 	async function refuseTakenName(eventId: number, name: string, renamedArchetypeId?: number) {
-		const holder = (await archetypes.findByEventId(eventId))
-			.find(archetype => archetype.id !== renamedArchetypeId && sameArchetypeName(archetype.name, name));
+		const holder = (await archetypes.findByEventId(eventId)).find(
+			(archetype) => archetype.id !== renamedArchetypeId && sameArchetypeName(archetype.name, name),
+		);
 		if (holder) {
 			throw createError({
 				statusCode: 409,
@@ -107,15 +111,22 @@ export function archetypeWriteModule() {
 		});
 	}
 
-	async function updateArchetype({ eventId, archetypeId, input, originConnectionId }: UpdateArchetypeParams) {
+	async function updateArchetype({
+		eventId,
+		archetypeId,
+		input,
+		originConnectionId,
+	}: UpdateArchetypeParams) {
 		// A rename or a pin customises it, which a derived Archetype's cleanup spares (ADR-0074).
 		const current = await archetypes.findById(archetypeId, eventId);
-		if (input.name !== undefined)
-			await refuseTakenName(eventId, input.name, archetypeId);
-		const customises = (input.name !== undefined && input.name !== current?.name) || input.chartSeries != null;
-		const archetype = await archetypes.update(archetypeId, eventId, customises
-			? { ...input, customised: true }
-			: input);
+		if (input.name !== undefined) await refuseTakenName(eventId, input.name, archetypeId);
+		const customises =
+			(input.name !== undefined && input.name !== current?.name) || input.chartSeries != null;
+		const archetype = await archetypes.update(
+			archetypeId,
+			eventId,
+			customises ? { ...input, customised: true } : input,
+		);
 
 		if (!archetype) {
 			throw createError({
@@ -134,7 +145,9 @@ export function archetypeWriteModule() {
 			playerIds: affectedPrimaryPlayerIds,
 			originConnectionId,
 		});
-		const secondaryPlayerIds = affectedPlayerIds.filter(playerId => !affectedPrimaryPlayerIds.includes(playerId));
+		const secondaryPlayerIds = affectedPlayerIds.filter(
+			(playerId) => !affectedPrimaryPlayerIds.includes(playerId),
+		);
 		await playerUpdateModule().publishPlayerSnapshotUpdates({
 			eventId,
 			playerIds: secondaryPlayerIds,
@@ -151,9 +164,13 @@ export function archetypeWriteModule() {
 		});
 	}
 
-	async function deleteArchetype({ eventId, archetypeId, originConnectionId }: DeleteArchetypeParams) {
+	async function deleteArchetype({
+		eventId,
+		archetypeId,
+		originConnectionId,
+	}: DeleteArchetypeParams) {
 		await refuseOnOpEvent(eventId, 'deleted');
-		if (!await archetypes.findById(archetypeId, eventId)) {
+		if (!(await archetypes.findById(archetypeId, eventId))) {
 			throw createError({
 				statusCode: 404,
 				message: 'Archetype not found',
@@ -192,7 +209,7 @@ export function archetypeWriteModule() {
 			playerIds: primaryPlayerIds,
 			originConnectionId,
 		});
-		const secondaryPlayerIds = playerIds.filter(playerId => !primaryPlayerIds.includes(playerId));
+		const secondaryPlayerIds = playerIds.filter((playerId) => !primaryPlayerIds.includes(playerId));
 		await playerUpdateModule().publishPlayerSnapshotUpdates({
 			eventId,
 			playerIds: secondaryPlayerIds,
@@ -213,7 +230,12 @@ export function archetypeWriteModule() {
 	 * reviewed, the Screens naming it name the survivor, and it is deleted. The
 	 * survivor keeps its own colours, key cards and Pinned Chart Series.
 	 */
-	async function mergeArchetype({ eventId, archetypeId, intoArchetypeId, originConnectionId }: MergeArchetypeParams) {
+	async function mergeArchetype({
+		eventId,
+		archetypeId,
+		intoArchetypeId,
+		originConnectionId,
+	}: MergeArchetypeParams) {
 		await refuseOnOpEvent(eventId, 'merged');
 		if (archetypeId === intoArchetypeId) {
 			throw createError({
@@ -244,7 +266,8 @@ export function archetypeWriteModule() {
 			deckService.buildMoveReviewsQuery(eventId, archetypeId, intoArchetypeId),
 			// A Player's Archetype is their primary deck's, re-projected below. The Player
 			// write can also give one with no Deck List, and that Player moves here.
-			db.update(players)
+			db
+				.update(players)
 				.set({ archetypeId: intoArchetypeId })
 				.where(and(eq(players.eventId, eventId), eq(players.archetypeId, archetypeId))),
 			buildRepointScreenEventReferencesQuery(eventId, 'archetype', archetypeId, intoArchetypeId),
@@ -260,7 +283,7 @@ export function archetypeWriteModule() {
 			playerIds: primaryPlayerIds,
 			originConnectionId,
 		});
-		const secondaryPlayerIds = playerIds.filter(playerId => !primaryPlayerIds.includes(playerId));
+		const secondaryPlayerIds = playerIds.filter((playerId) => !primaryPlayerIds.includes(playerId));
 		await playerUpdateModule().publishPlayerSnapshotUpdates({
 			eventId,
 			playerIds: secondaryPlayerIds,
@@ -281,7 +304,10 @@ export function archetypeWriteModule() {
 	 * Removes the Event's Empty Archetypes. Emptiness is judged by the delete
 	 * itself, so an Archetype a deck is assigned to meanwhile stays.
 	 */
-	async function removeEmptyArchetypes({ eventId, originConnectionId }: RemoveEmptyArchetypesParams) {
+	async function removeEmptyArchetypes({
+		eventId,
+		originConnectionId,
+	}: RemoveEmptyArchetypesParams) {
 		await refuseOnOpEvent(eventId, 'removed');
 
 		const [removed, clearedScreens] = await db.batch([
@@ -302,11 +328,16 @@ export function archetypeWriteModule() {
 		}
 
 		return {
-			archetypeIds: removed.map(archetype => archetype.id),
+			archetypeIds: removed.map((archetype) => archetype.id),
 		};
 	}
 
-	async function updateCards({ eventId, archetypeId, input, originConnectionId }: UpdateCardsParams) {
+	async function updateCards({
+		eventId,
+		archetypeId,
+		input,
+		originConnectionId,
+	}: UpdateCardsParams) {
 		// Verify archetype belongs to this event
 		const archetype = await archetypes.findById(archetypeId, eventId);
 		if (!archetype) {
@@ -334,15 +365,11 @@ export function archetypeWriteModule() {
 
 			if (input.cardIds.length === 0) {
 				cardIds = [];
-			}
-			else {
+			} else {
 				const found = await db
 					.select({ id: cards.id })
 					.from(cards)
-					.where(and(
-						eq(cards.game, 'mtg'),
-						inArray(cards.id, input.cardIds),
-					));
+					.where(and(eq(cards.game, 'mtg'), inArray(cards.id, input.cardIds)));
 
 				if (found.length !== input.cardIds.length) {
 					throw createError({
@@ -354,10 +381,9 @@ export function archetypeWriteModule() {
 				// The length check above already guaranteed every requested ID is valid.
 				cardIds = input.cardIds;
 			}
-		}
-		else if (input.cardNames !== undefined && input.cardNames.length > 0) {
+		} else if (input.cardNames !== undefined && input.cardNames.length > 0) {
 			const requestedCardNames = input.cardNames;
-			const normalizedNames = requestedCardNames.map(name => name.toLowerCase());
+			const normalizedNames = requestedCardNames.map((name) => name.toLowerCase());
 			ensureUnique(normalizedNames, 'card names');
 
 			const found = await db
@@ -367,10 +393,12 @@ export function archetypeWriteModule() {
 					normalizedName: sql<string>`lower(${cards.name})`,
 				})
 				.from(cards)
-				.where(and(
-					eq(cards.game, 'mtg'),
-					or(...normalizedNames.map(name => sql`lower(${cards.name}) = ${name}`)),
-				));
+				.where(
+					and(
+						eq(cards.game, 'mtg'),
+						or(...normalizedNames.map((name) => sql`lower(${cards.name}) = ${name}`)),
+					),
+				);
 
 			const cardsByName = new Map<string, Array<{ id: number; name: string }>>();
 			for (const card of found) {
@@ -380,7 +408,8 @@ export function archetypeWriteModule() {
 			}
 
 			cardIds = normalizedNames.map((normalizedName) => {
-				const requestedName = requestedCardNames[normalizedNames.indexOf(normalizedName)] ?? normalizedName;
+				const requestedName =
+					requestedCardNames[normalizedNames.indexOf(normalizedName)] ?? normalizedName;
 				const matches = cardsByName.get(normalizedName) ?? [];
 
 				if (matches.length === 0) {
@@ -399,8 +428,7 @@ export function archetypeWriteModule() {
 
 				return matches[0]!.id;
 			});
-		}
-		else {
+		} else {
 			cardIds = [];
 		}
 

@@ -9,8 +9,7 @@ const viewportWidth = computed(() => viewport?.value.width ?? windowWidth.value)
 const viewportHeight = computed(() => viewport?.value.height ?? windowHeight.value);
 
 function updateViewportSize() {
-	if (!import.meta.client)
-		return;
+	if (!import.meta.client) return;
 	windowWidth.value = window.innerWidth;
 	windowHeight.value = window.innerHeight;
 }
@@ -36,20 +35,23 @@ const currentMode = computed<ScreenMode>(() => screen.value?.currentMode ?? 'bac
 const shownMode = ref<ScreenMode | null>(null);
 const incomingMode = ref<ScreenMode | null>(null);
 
-watch(currentMode, (mode) => {
-	incomingMode.value = mode === shownMode.value
-		? null
-		: mode;
-}, { immediate: true });
+watch(
+	currentMode,
+	(mode) => {
+		incomingMode.value = mode === shownMode.value ? null : mode;
+	},
+	{ immediate: true },
+);
 
 function onFrameReady(mode: ScreenMode) {
-	if (mode !== incomingMode.value)
-		return;
+	if (mode !== incomingMode.value) return;
 	shownMode.value = mode;
 	incomingMode.value = null;
 }
 
-const frames = computed(() => [shownMode.value, incomingMode.value].filter((mode): mode is ScreenMode => mode !== null));
+const frames = computed(() =>
+	[shownMode.value, incomingMode.value].filter((mode): mode is ScreenMode => mode !== null),
+);
 </script>
 
 <template>

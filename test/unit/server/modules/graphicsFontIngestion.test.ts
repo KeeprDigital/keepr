@@ -41,12 +41,13 @@ describe('static font ingestion through the Graphics Asset Library public module
 			outcome: 'available',
 			contentType: 'font/woff',
 		});
-		if (resolved.outcome !== 'available')
-			throw new Error('Expected exact font revision content');
-		await expect(consumeBoundedByteStream({
-			body: resolved.body,
-			byteLength: resolved.byteLength,
-			maximumByteLength: source.byteLength,
-		})).resolves.toEqual(source);
+		if (resolved.outcome !== 'available') throw new Error('Expected exact font revision content');
+		await expect(
+			consumeBoundedByteStream({
+				body: resolved.body,
+				byteLength: resolved.byteLength,
+				maximumByteLength: source.byteLength,
+			}),
+		).resolves.toEqual(source);
 	});
 });

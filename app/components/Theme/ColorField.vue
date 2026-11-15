@@ -24,6 +24,6 @@ const emit = defineEmits<{ update: [value: string] }>();
 		:aria-label="label"
 		:data-testid="testId"
 		data-token-part="colour"
-		@update:model-value="color => color && emit('update', String(color))"
+		@update:model-value="(color) => color && emit('update', String(color))"
 	/>
 </template>

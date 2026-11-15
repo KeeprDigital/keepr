@@ -50,17 +50,15 @@ import { roundService } from './round';
 function reachableKinds(
 	declarations: readonly GraphicSourceSelectionDeclaration[],
 ): Set<GraphicSourceSelectionKind> {
-	const byKey = new Map(declarations.map(declaration => [declaration.key, declaration]));
+	const byKey = new Map(declarations.map((declaration) => [declaration.key, declaration]));
 	const kinds = new Set<GraphicSourceSelectionKind>();
 
 	for (const declaration of declarations) {
 		kinds.add(declaration.kind);
-		if (!declaration.from)
-			continue;
+		if (!declaration.from) continue;
 		const parent = byKey.get(declaration.from.sourceKey);
 		const derived = parent && graphicSourceRelationKind(parent.kind, declaration.from.relation);
-		if (derived)
-			kinds.add(derived);
+		if (derived) kinds.add(derived);
 	}
 
 	return kinds;
@@ -73,16 +71,14 @@ function selectedIds(
 	kind: GraphicSourceSelectionKind,
 ): number[] {
 	const ids = declarations
-		.filter(declaration => declaration.kind === kind && declaration.from === undefined)
-		.map(declaration => selections[declaration.key])
+		.filter((declaration) => declaration.kind === kind && declaration.from === undefined)
+		.map((declaration) => selections[declaration.key])
 		.filter((id): id is number => typeof id === 'number');
-	return [
-		...new Set(ids),
-	];
+	return [...new Set(ids)];
 }
 
 function byId<T extends { id: number }>(rows: readonly T[]): Record<number, T> {
-	return Object.fromEntries(rows.map(row => [row.id, row]));
+	return Object.fromEntries(rows.map((row) => [row.id, row]));
 }
 
 export function graphicBindingDataService() {
@@ -110,13 +106,11 @@ export function graphicBindingDataService() {
 		declarations: readonly GraphicSourceSelectionDeclaration[],
 		selections: GraphicSourceSelectionsState,
 	): Promise<GraphicBindingDataSet> => {
-		if (declarations.length === 0)
-			return createEmptyGraphicBindingDataSet();
+		if (declarations.length === 0) return createEmptyGraphicBindingDataSet();
 
 		const kinds = reachableKinds(declarations);
 		const event = await events.findById(eventId);
-		if (!event)
-			return createEmptyGraphicBindingDataSet();
+		if (!event) return createEmptyGraphicBindingDataSet();
 
 		// The Event and its Talents are assigned onto a fresh empty set rather than
 		// written beside a spread of one. `{ ...createEmptyGraphicBindingDataSet(), … }`
@@ -159,29 +153,32 @@ export function graphicBindingDataService() {
 			selectedMatches,
 			selectedSlots,
 		] = await Promise.all([
-			kinds.has('archetype') || kinds.has('player')
-				? archetypes.findByEventId(eventId)
-				: [],
-			kinds.has('phase')
-				? phases.findByEventId(eventId)
-				: [],
-			kinds.has('round')
-				? rounds.findByEventId(eventId)
-				: [],
-			Promise.all(selectedIds(declarations, selections, 'player')
-				.map(async id => await players.findById(id, eventId))),
-			Promise.all(selectedIds(declarations, selections, 'match')
-				.map(async id => await matches.findById(id, eventId))),
-			Promise.all(selectedIds(declarations, selections, 'feature-match-slot')
-				.map(async id => await slots.findById(id, eventId))),
+			kinds.has('archetype') || kinds.has('player') ? archetypes.findByEventId(eventId) : [],
+			kinds.has('phase') ? phases.findByEventId(eventId) : [],
+			kinds.has('round') ? rounds.findByEventId(eventId) : [],
+			Promise.all(
+				selectedIds(declarations, selections, 'player').map(
+					async (id) => await players.findById(id, eventId),
+				),
+			),
+			Promise.all(
+				selectedIds(declarations, selections, 'match').map(
+					async (id) => await matches.findById(id, eventId),
+				),
+			),
+			Promise.all(
+				selectedIds(declarations, selections, 'feature-match-slot').map(
+					async (id) => await slots.findById(id, eventId),
+				),
+			),
 		]);
 
 		Object.assign(data.archetypes, byId(eventArchetypes));
 		Object.assign(data.phases, byId(eventPhases));
 		Object.assign(data.rounds, byId(eventRounds));
-		Object.assign(data.players, byId(selectedPlayers.filter(row => row !== undefined)));
-		Object.assign(data.matches, byId(selectedMatches.filter(row => row !== undefined)));
-		Object.assign(data.featureMatchSlots, byId(selectedSlots.filter(row => row !== undefined)));
+		Object.assign(data.players, byId(selectedPlayers.filter((row) => row !== undefined)));
+		Object.assign(data.matches, byId(selectedMatches.filter((row) => row !== undefined)));
+		Object.assign(data.featureMatchSlots, byId(selectedSlots.filter((row) => row !== undefined)));
 
 		// A Match reached from a Feature Match Slot, and a Round reached from a Match,
 		// are the two relationships whose target is not itself selectable in bulk.
@@ -189,8 +186,7 @@ export function graphicBindingDataService() {
 			const matchId = slot.matchId;
 			if (typeof matchId === 'number' && !(matchId in data.matches)) {
 				const match = await matches.findById(matchId, eventId);
-				if (match)
-					Object.assign(data.matches, { [matchId]: match });
+				if (match) Object.assign(data.matches, { [matchId]: match });
 			}
 		}
 

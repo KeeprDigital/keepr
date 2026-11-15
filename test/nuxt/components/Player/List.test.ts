@@ -80,7 +80,10 @@ describe('playerList rows', () => {
 
 	async function choose(wrapper: ReturnType<typeof mountRows>, ...path: string[]) {
 		for (const label of path)
-			await wrapper.findAll('[role="menuitem"]').find(item => item.text() === label)!.trigger('click');
+			await wrapper
+				.findAll('[role="menuitem"]')
+				.find((item) => item.text() === label)!
+				.trigger('click');
 	}
 
 	function mountRows(props: Record<string, unknown> = {}) {
@@ -95,7 +98,7 @@ describe('playerList rows', () => {
 		});
 	}
 
-	it('opens the Player\'s match history from their name, and nothing from the rest of the row', async () => {
+	it("opens the Player's match history from their name, and nothing from the rest of the row", async () => {
 		const wrapper = mountRows();
 
 		await wrapper.get('[data-column="points"]').trigger('click');
@@ -133,40 +136,25 @@ describe('playerList rows', () => {
 		expect(menu.findAll('[role="menuitem"]')[0]!.text()).toBe('Edit Player');
 		await choose(wrapper, 'Edit Player');
 
-		expect(wrapper.emitted('editPlayer')).toEqual([
-			[alice],
-		]);
+		expect(wrapper.emitted('editPlayer')).toEqual([[alice]]);
 	});
 
 	it.each([
 		[
 			'adds the Player to a list from the Add to List submenu',
 			{
-				lists: [
-					{ id: 3, name: 'Top 8' },
-				],
+				lists: [{ id: 3, name: 'Top 8' }],
 			},
 			[],
 			['Add to List', 'Top 8'],
-			[
-				'addToList',
-				[
-					3,
-					[7],
-				],
-			],
+			['addToList', [3, [7]]],
 		],
 		[
 			'sends their history to the one Player History Screen directly',
 			{},
-			[
-				{ id: 4, name: 'Desk' },
-			],
+			[{ id: 4, name: 'Desk' }],
 			['Send Match History to Screen'],
-			[
-				'sendMatchHistoryToScreen',
-				[7],
-			],
+			['sendMatchHistoryToScreen', [7]],
 		],
 		[
 			'sends their history to a chosen Screen once several could take it',
@@ -176,17 +164,14 @@ describe('playerList rows', () => {
 				{ id: 5, name: 'Stage' },
 			],
 			['Send Match History to…', 'Stage'],
-			[
-				'sendMatchHistoryToScreen',
-				[7, 5],
-			],
+			['sendMatchHistoryToScreen', [7, 5]],
 		],
 	])('%s', async (_, props, screens, path, [event, args]) => {
 		playerHistoryScreens.value = screens;
 		const wrapper = mountRows(props);
 
 		await openMenu(wrapper);
-		await choose(wrapper, ...path as string[]);
+		await choose(wrapper, ...(path as string[]));
 
 		expect(wrapper.emitted(event as string)).toEqual([args]);
 	});
@@ -195,20 +180,12 @@ describe('playerList rows', () => {
 describe('playerList on a One Piece Card Game Event', () => {
 	// The name and Nickname each in its own column, the name blank until given (ADR-0077), and no record or match history.
 	it.each([
-		[
-			{ name: '', nickname: 'linlin_88' },
-			'-',
-		],
-		[
-			{ name: 'Big Mom', nickname: 'linlin_88' },
-			'Big Mom',
-		],
+		[{ name: '', nickname: 'linlin_88' }, '-'],
+		[{ name: 'Big Mom', nickname: 'linlin_88' }, 'Big Mom'],
 	])('shows %j as %s, beside their Nickname', (identity, shown) => {
 		const wrapper = mount(PlayerList, {
 			props: {
-				players: [
-					createMockPlayer({ id: 7, ...identity }) as never,
-				],
+				players: [createMockPlayer({ id: 7, ...identity }) as never],
 				game: 'op',
 			},
 			global: {
@@ -222,7 +199,7 @@ describe('playerList on a One Piece Card Game Event', () => {
 		expect(wrapper.find('[data-column="record"]').exists()).toBe(false);
 	});
 
-	it('edits a Player\'s Deck List from the row menu', async () => {
+	it("edits a Player's Deck List from the row menu", async () => {
 		const player = createMockPlayer({ id: 7, name: '', nickname: 'linlin_88' });
 		const wrapper = mount(PlayerList, {
 			props: {
@@ -235,10 +212,11 @@ describe('playerList on a One Piece Card Game Event', () => {
 		});
 
 		await wrapper.get('[aria-label="Player actions"]').trigger('click');
-		await wrapper.findAll('[role="menuitem"]').find(item => item.text() === 'Edit Deck List')!.trigger('click');
+		await wrapper
+			.findAll('[role="menuitem"]')
+			.find((item) => item.text() === 'Edit Deck List')!
+			.trigger('click');
 
-		expect(wrapper.emitted('editDeckList')).toEqual([
-			[player],
-		]);
+		expect(wrapper.emitted('editDeckList')).toEqual([[player]]);
 	});
 });

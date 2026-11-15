@@ -28,7 +28,11 @@
  */
 
 /** The transport failures that mean no verdict was produced. */
-export const RETRYABLE_TRANSPORT_CODES: readonly string[] = ['EPIPE', 'ECONNRESET', 'UND_ERR_SOCKET'];
+export const RETRYABLE_TRANSPORT_CODES: readonly string[] = [
+	'EPIPE',
+	'ECONNRESET',
+	'UND_ERR_SOCKET',
+];
 
 /**
  * Whether this failure is the socket's rather than the server's.
@@ -52,10 +56,8 @@ export function isRetryableTransportFailure(error: unknown): boolean {
 export async function throughOneTransportFailure<T>(request: () => Promise<T>): Promise<T> {
 	try {
 		return await request();
-	}
-	catch (error) {
-		if (!isRetryableTransportFailure(error))
-			throw error;
+	} catch (error) {
+		if (!isRetryableTransportFailure(error)) throw error;
 		return await request();
 	}
 }

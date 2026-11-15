@@ -11,9 +11,7 @@
 	// Cloudflare account, so wrangler keeps this custom domain attached on
 	// every deploy; it was previously attached only in the dashboard, which
 	// left the repo unable to name its own installation (#189).
-	"routes": [
-		{ "pattern": "stream.keepr.digital", "custom_domain": true }
-	],
+	"routes": [{ "pattern": "stream.keepr.digital", "custom_domain": true }],
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -30,9 +28,7 @@
 	"vars": {
 		"NUXT_BANDAI_KEEPR_API_URL": "https://op-api.keepr.digital"
 	},
-	"kv_namespaces": [
-		{ "binding": "KV", "id": "a15cf281b12d43e4b5479baf8b69b587" }
-	],
+	"kv_namespaces": [{ "binding": "KV", "id": "a15cf281b12d43e4b5479baf8b69b587" }],
 	"r2_buckets": [
 		{
 			"binding": "GRAPHICS_ASSET_STAGING",

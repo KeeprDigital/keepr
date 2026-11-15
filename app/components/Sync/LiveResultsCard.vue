@@ -16,44 +16,47 @@ const { runRequest } = useRequestFeedback();
 const enabled = computed(() => !!eventStore.event?.meleeLiveResultsEnabled);
 const stopReason = computed(() => eventStore.event?.meleeLiveResultsStopReason ?? null);
 const state = computed<'on' | 'off' | 'stopped'>(() => {
-	if (enabled.value)
-		return 'on';
-	return stopReason.value
-		? 'stopped'
-		: 'off';
+	if (enabled.value) return 'on';
+	return stopReason.value ? 'stopped' : 'off';
 });
 const liveResultsError = computed(() => eventStore.event?.meleeLiveResultsError ?? null);
 
 const currentRoundLabel = computed(() => {
 	const round = meleeStore.liveResultsStatus?.currentRound;
-	if (!round)
-		return 'None paired yet';
-	return round.phaseName
-		? `${round.phaseName} - ${round.name}`
-		: round.name;
+	if (!round) return 'None paired yet';
+	return round.phaseName ? `${round.phaseName} - ${round.name}` : round.name;
 });
 
 /** The later of the status read and the Event's own field: either may be the fresher. */
 const lastCheckedAt = computed(() => {
-	const times = [meleeStore.liveResultsStatus?.lastCheckedAt, eventStore.event?.meleeLiveResultsLastCheckedAt]
-		.filter(time => time != null)
-		.map(time => new Date(time).getTime());
-	return times.length > 0
-		? Math.max(...times)
-		: null;
+	const times = [
+		meleeStore.liveResultsStatus?.lastCheckedAt,
+		eventStore.event?.meleeLiveResultsLastCheckedAt,
+	]
+		.filter((time) => time != null)
+		.map((time) => new Date(time).getTime());
+	return times.length > 0 ? Math.max(...times) : null;
 });
 const lastCheckedAgo = useTimeAgo(() => lastCheckedAt.value ?? Date.now());
 
-const { pause, resume } = useIntervalFn(() => meleeStore.loadLiveResultsStatus(), STATUS_REFRESH_MS, { immediate: false });
+const { pause, resume } = useIntervalFn(
+	() => meleeStore.loadLiveResultsStatus(),
+	STATUS_REFRESH_MS,
+	{ immediate: false },
+);
 
-watch(enabled, (on) => {
-	if (!on) {
-		pause();
-		return;
-	}
-	void meleeStore.loadLiveResultsStatus();
-	resume();
-}, { immediate: true });
+watch(
+	enabled,
+	(on) => {
+		if (!on) {
+			pause();
+			return;
+		}
+		void meleeStore.loadLiveResultsStatus();
+		resume();
+	},
+	{ immediate: true },
+);
 
 async function handleToggle(value: boolean | 'indeterminate') {
 	await runRequest(() => meleeStore.setLiveResults(value === true), {
@@ -81,9 +84,7 @@ async function handleToggle(value: boolean | 'indeterminate') {
 
 		<div v-if="state === 'on'" class="flex flex-col gap-3">
 			<div class="flex items-start justify-between gap-4">
-				<div class="text-sm text-muted">
-					Current Round
-				</div>
+				<div class="text-sm text-muted">Current Round</div>
 				<div class="text-sm font-medium text-right">
 					{{ currentRoundLabel }}
 				</div>
@@ -109,8 +110,6 @@ async function handleToggle(value: boolean | 'indeterminate') {
 			:title="STOP_COPY[stopReason]"
 		/>
 
-		<p v-else class="text-sm text-muted">
-			Off. Use Update from Melee to refresh results by hand.
-		</p>
+		<p v-else class="text-sm text-muted">Off. Use Update from Melee to refresh results by hand.</p>
 	</UCard>
 </template>

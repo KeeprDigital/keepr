@@ -22,7 +22,7 @@ const {
 } = useFeatureMatchNoteEditor({
 	note: () => props.note,
 	noteKey: () => props.noteKey,
-	save: note => props.save(note),
+	save: (note) => props.save(note),
 });
 </script>
 

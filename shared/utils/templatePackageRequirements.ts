@@ -1,8 +1,9 @@
-import type { BroadcastGraphicConfig, GraphicGroupChildConfig, GraphicItemConfig } from '../types/graphics';
 import type {
-	BroadcastGraphicsModeConfig,
-	FeatureMatchLayoutConfig,
-} from '../types/screenConfig';
+	BroadcastGraphicConfig,
+	GraphicGroupChildConfig,
+	GraphicItemConfig,
+} from '../types/graphics';
+import type { BroadcastGraphicsModeConfig, FeatureMatchLayoutConfig } from '../types/screenConfig';
 import type {
 	TemplatePackageAssetRequirement,
 	TemplatePackageCapabilityRequirement,
@@ -62,16 +63,15 @@ function appendApplicationFontCapabilities(
 	path: string,
 	depth = 0,
 ): void {
-	if (depth > 32 || typeof value !== 'object' || value === null)
-		return;
+	if (depth > 32 || typeof value !== 'object' || value === null) return;
 	if (Array.isArray(value)) {
-		value.forEach((item, index) => appendApplicationFontCapabilities(capabilities, item, `${path}[${index}]`, depth + 1));
+		value.forEach((item, index) =>
+			appendApplicationFontCapabilities(capabilities, item, `${path}[${index}]`, depth + 1),
+		);
 		return;
 	}
 	for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
-		const nestedPath = path
-			? `${path}.${key}`
-			: key;
+		const nestedPath = path ? `${path}.${key}` : key;
 		if (key === 'font' && isApplicationFontSelection(nested)) {
 			capabilities.push({
 				slot: nestedPath,
@@ -84,13 +84,16 @@ function appendApplicationFontCapabilities(
 	}
 }
 
-function isApplicationFontSelection(value: unknown): value is { kind: 'application'; fontId: string } {
-	if (typeof value !== 'object' || value === null)
-		return false;
+function isApplicationFontSelection(
+	value: unknown,
+): value is { kind: 'application'; fontId: string } {
+	if (typeof value !== 'object' || value === null) return false;
 	const selection = value as { kind?: unknown; fontId?: unknown };
-	return selection.kind === 'application'
-		&& typeof selection.fontId === 'string'
-		&& selection.fontId.length > 0;
+	return (
+		selection.kind === 'application' &&
+		typeof selection.fontId === 'string' &&
+		selection.fontId.length > 0
+	);
 }
 
 function appendBroadcastGraphicItemCapabilities(
@@ -105,8 +108,7 @@ function appendBroadcastGraphicItemCapabilities(
 		identity: definition.kind,
 		configurationVersion: definition.configurationVersion,
 	});
-	if (item.type !== 'group')
-		return;
+	if (item.type !== 'group') return;
 	// A Graphic Group's children are Graphic Items in their own right, so their
 	// Definitions have to be declared too or a receiver could accept a package
 	// holding a kind it cannot render.
@@ -138,14 +140,13 @@ export function broadcastGraphicTemplatePackageRequirements(
 	const graphicSlotPrefix = `graphics.${graphic.id}.`;
 	const assets = broadcastGraphicsGraphicAssetReferences({
 		graphics: [graphic],
-	} as BroadcastGraphicsModeConfig)
-		.map(discovered => ({
-			slot: discovered.ownerSlot.startsWith(graphicSlotPrefix)
-				? discovered.ownerSlot.slice(graphicSlotPrefix.length)
-				: discovered.ownerSlot,
-			reference: discovered.reference,
-			expectedKind: discovered.kind,
-		}));
+	} as BroadcastGraphicsModeConfig).map((discovered) => ({
+		slot: discovered.ownerSlot.startsWith(graphicSlotPrefix)
+			? discovered.ownerSlot.slice(graphicSlotPrefix.length)
+			: discovered.ownerSlot,
+		reference: discovered.reference,
+		expectedKind: discovered.kind,
+	}));
 	return { assets, capabilities };
 }
 
@@ -178,15 +179,13 @@ function appendFeatureMatchTokenCapabilities(
 	slotPrefix: string,
 ): void {
 	function append(item: GraphicItemConfig | GraphicGroupChildConfig, slot: string) {
-		if (item.type !== 'text')
-			return;
+		if (item.type !== 'text') return;
 		const keys = new Set([
 			...graphicTextTemplateInputKeys(item.text),
 			...Object.keys(item.placeholderStyles ?? {}),
 		]);
 		for (const key of keys) {
-			if (!isFeatureMatchTokenKey(key))
-				continue;
+			if (!isFeatureMatchTokenKey(key)) continue;
 			capabilities.push({
 				slot: `${slot}.text`,
 				capability: 'host-vocabulary',
@@ -199,10 +198,8 @@ function appendFeatureMatchTokenCapabilities(
 	for (const item of items) {
 		const slot = `${slotPrefix}.${item.id}`;
 		append(item, slot);
-		if (item.type !== 'group')
-			continue;
-		for (const child of item.children)
-			append(child, `${slot}.children.${child.id}`);
+		if (item.type !== 'group') continue;
+		for (const child of item.children) append(child, `${slot}.children.${child.id}`);
 	}
 }
 
@@ -223,7 +220,7 @@ function appendFeatureMatchTokenCapabilities(
 export function featureMatchLayoutTemplatePackageRequirements(
 	layout: FeatureMatchLayoutConfig,
 ): TemplatePackageRequirements {
-	const assets = featureMatchLayoutGraphicAssetReferences(layout).map(discovered => ({
+	const assets = featureMatchLayoutGraphicAssetReferences(layout).map((discovered) => ({
 		slot: discovered.ownerSlot.replace(/^layout\./, ''),
 		reference: discovered.reference,
 		expectedKind: discovered.kind,

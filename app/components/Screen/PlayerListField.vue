@@ -8,16 +8,19 @@ import { useConsumedEventData } from '~/modules/event-data/resync';
  * Reconnect Resync (#610), and emits the list's id, or the `null` that deletes
  * the reference (ADR-0041).
  */
-const props = withDefaults(defineProps<{
-	modelValue?: number | null;
-	eventId: number;
-	label?: string;
-	description?: string;
-	nullLabel?: string;
-}>(), {
-	label: 'Player List',
-	nullLabel: 'Select a list…',
-});
+const props = withDefaults(
+	defineProps<{
+		modelValue?: number | null;
+		eventId: number;
+		label?: string;
+		description?: string;
+		nullLabel?: string;
+	}>(),
+	{
+		label: 'Player List',
+		nullLabel: 'Select a list…',
+	},
+);
 
 const emit = defineEmits<{
 	'update:modelValue': [playerListId: number | null];
@@ -25,10 +28,12 @@ const emit = defineEmits<{
 
 const playerListStore = usePlayerListStore();
 
-const items = computed(() => playerListStore.lists.map(list => ({
-	label: `${list.name} (${list.memberCount})`,
-	value: list.id,
-})));
+const items = computed(() =>
+	playerListStore.lists.map((list) => ({
+		label: `${list.name} (${list.memberCount})`,
+		value: list.id,
+	})),
+);
 
 useConsumedEventData(['playerLists']);
 

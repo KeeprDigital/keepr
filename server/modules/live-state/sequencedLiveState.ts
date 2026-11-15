@@ -36,7 +36,13 @@ export interface SequencedLiveStateProjectionInput<TAggregate, TReduction> {
  * merged onto a newer state, and how its projection is written. The sequencing
  * protocol built on top of it lives entirely in `createSequencedLiveState`.
  */
-export interface SequencedLiveStatePort<TRef, TAggregate, TCommand extends SequencedCommand, TReduction, TResult> {
+export interface SequencedLiveStatePort<
+	TRef,
+	TAggregate,
+	TCommand extends SequencedCommand,
+	TReduction,
+	TResult,
+> {
 	/** Namespaces this family of aggregates within the shared receipt store. */
 	readonly aggregateKind: string;
 	/** How the aggregate is named in conflict and not-found errors. */
@@ -95,10 +101,15 @@ export interface SequencedLiveStatePort<TRef, TAggregate, TCommand extends Seque
 	 * absence of a row. The module composes this with the command receipt into one
 	 * atomic batch; the feature never gets to write the projection on its own.
 	 */
-	projection: (input: SequencedLiveStateProjectionInput<TAggregate, TReduction>) => BatchItem<'sqlite'>;
+	projection: (
+		input: SequencedLiveStateProjectionInput<TAggregate, TReduction>,
+	) => BatchItem<'sqlite'>;
 	toResult: (aggregate: TAggregate, commandType: string) => TResult;
 	/** Post-commit realtime notification. */
-	publish?: (result: TResult, publication: SequencedLiveStatePublication<TAggregate>) => Promise<void>;
+	publish?: (
+		result: TResult,
+		publication: SequencedLiveStatePublication<TAggregate>,
+	) => Promise<void>;
 }
 
 /** What a post-commit notification knows beyond the result it is announcing. */
@@ -124,7 +135,11 @@ export interface SequencedLiveStatePublication<TAggregate> {
  */
 export interface SequencedLiveState<TRef, TAggregate, TCommand, TResult> {
 	load: (ref: TRef) => Promise<TAggregate | undefined>;
-	execute: (ref: TRef, command: TCommand, options?: SequencedLiveStateExecuteOptions) => Promise<TResult>;
+	execute: (
+		ref: TRef,
+		command: TCommand,
+		options?: SequencedLiveStateExecuteOptions,
+	) => Promise<TResult>;
 }
 
 /**
@@ -139,15 +154,23 @@ export interface SequencedLiveState<TRef, TAggregate, TCommand, TResult> {
  * post-commit publication. Domain reducers, admission rules, and merge policy
  * stay with the feature that supplied the port.
  */
-export function createSequencedLiveState<TRef, TAggregate, TCommand extends SequencedCommand, TReduction, TResult>(
+export function createSequencedLiveState<
+	TRef,
+	TAggregate,
+	TCommand extends SequencedCommand,
+	TReduction,
+	TResult,
+>(
 	port: SequencedLiveStatePort<TRef, TAggregate, TCommand, TReduction, TResult>,
 ): SequencedLiveState<TRef, TAggregate, TCommand, TResult> {
 	function rejectMismatchedReplay(
 		receipt: { commandType: string; contentKey: string },
 		command: TCommand,
 	): void {
-		if (receipt.commandType === command.type
-			&& receipt.contentKey === commandContentKey(command.type, command.payload)) {
+		if (
+			receipt.commandType === command.type &&
+			receipt.contentKey === commandContentKey(command.type, command.payload)
+		) {
 			return;
 		}
 		throw createError({
@@ -192,9 +215,7 @@ export function createSequencedLiveState<TRef, TAggregate, TCommand extends Sequ
 	 */
 	async function currentSnapshot(ref: TRef, commandType: string): Promise<TResult | undefined> {
 		const latest = await port.load(ref);
-		return latest
-			? port.toResult(latest, commandType)
-			: undefined;
+		return latest ? port.toResult(latest, commandType) : undefined;
 	}
 
 	/**
@@ -243,24 +264,25 @@ export function createSequencedLiveState<TRef, TAggregate, TCommand extends Sequ
 			// The projection is the last statement; no returned row means the guard
 			// did not hold and another writer won.
 			const committed = (results.at(-1) as TAggregate[] | undefined)?.[0];
-			if (!committed)
-				throw new StateConflictError(port.aggregateLabel, port.aggregateIdOf(ref));
+			if (!committed) throw new StateConflictError(port.aggregateLabel, port.aggregateIdOf(ref));
 
 			return {
 				result: port.toResult(committed, command.type),
 				previous: aggregate,
 			};
-		}
-		catch (error) {
+		} catch (error) {
 			// A concurrent writer may have committed this very command ID between the
 			// pre-flight receipt check and this write; the unique receipt index is
 			// what turned that race into a failure here. Honour it as a replay.
-			const raced = await findCommandReceipt(port.aggregateKind, port.aggregateIdOf(ref), command.commandId);
+			const raced = await findCommandReceipt(
+				port.aggregateKind,
+				port.aggregateIdOf(ref),
+				command.commandId,
+			);
 			if (raced) {
 				rejectMismatchedReplay(raced, command);
 				const replayed = await currentSnapshot(ref, raced.commandType);
-				if (replayed)
-					return { result: replayed };
+				if (replayed) return { result: replayed };
 			}
 			throw error;
 		}
@@ -271,12 +293,15 @@ export function createSequencedLiveState<TRef, TAggregate, TCommand extends Sequ
 		command: TCommand,
 		options: SequencedLiveStateExecuteOptions = {},
 	): Promise<TResult> {
-		const receipt = await findCommandReceipt(port.aggregateKind, port.aggregateIdOf(ref), command.commandId);
+		const receipt = await findCommandReceipt(
+			port.aggregateKind,
+			port.aggregateIdOf(ref),
+			command.commandId,
+		);
 		if (receipt) {
 			rejectMismatchedReplay(receipt, command);
 			const replayed = await currentSnapshot(ref, receipt.commandType);
-			if (!replayed)
-				notFound();
+			if (!replayed) notFound();
 			// Deliberately announced without a `previous`: the snapshot answering this
 			// replay may be newer than the command being replayed, so there is no state
 			// it was reduced onto for a difference to be measured from.
@@ -284,25 +309,21 @@ export function createSequencedLiveState<TRef, TAggregate, TCommand extends Sequ
 		}
 
 		const aggregate = await port.load(ref);
-		if (!aggregate)
-			notFound();
+		if (!aggregate) notFound();
 
 		port.admit(aggregate, command);
 
 		let committed: { result: TResult; previous?: TAggregate };
 		try {
 			committed = await commitOnce(ref, aggregate, command);
-		}
-		catch (error) {
-			if (!port.isMergeable(command))
-				throw error;
+		} catch (error) {
+			if (!port.isMergeable(command)) throw error;
 
 			// A mergeable command is one a writer who got in first does not
 			// invalidate — a relative intent, or an absolute one scoped to its own
 			// field. Re-reduce it onto the newer aggregate exactly once.
 			const latest = await port.load(ref);
-			if (!latest || port.sequenceOf(latest) === port.sequenceOf(aggregate))
-				throw error;
+			if (!latest || port.sequenceOf(latest) === port.sequenceOf(aggregate)) throw error;
 
 			// Admission is asked again, against the state this attempt will actually
 			// commit onto. Asking only once would enforce a state-dependent rule on the

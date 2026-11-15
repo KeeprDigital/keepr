@@ -12,9 +12,14 @@ const UModalStub = defineComponent({
 
 const UButtonStub = defineComponent({
 	setup(_, { attrs, slots }) {
-		return () => h('button', {
-			onClick: attrs.onClick as ((event: MouseEvent) => void) | undefined,
-		}, slots.default?.());
+		return () =>
+			h(
+				'button',
+				{
+					onClick: attrs.onClick as ((event: MouseEvent) => void) | undefined,
+				},
+				slots.default?.(),
+			);
 	},
 });
 
@@ -23,7 +28,8 @@ const UCheckboxStub = defineComponent({
 		modelValue: { type: Boolean, required: false },
 	},
 	emits: ['update:modelValue'],
-	template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)">',
+	template:
+		'<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)">',
 });
 
 function fireEnter() {
@@ -54,14 +60,8 @@ describe('feature match game win modal', () => {
 
 		fireEnter();
 
-		expect(wrapper.emitted('confirm')).toEqual([
-			[
-				{ resetLife: true, resetCounters: true },
-			],
-		]);
-		expect(wrapper.emitted('update:open')).toEqual([
-			[false],
-		]);
+		expect(wrapper.emitted('confirm')).toEqual([[{ resetLife: true, resetCounters: true }]]);
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 		wrapper.unmount();
 	});
 

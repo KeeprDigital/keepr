@@ -24,12 +24,14 @@ const emit = defineEmits<{
 	(e: 'jumpToDeck', deckId: number): void;
 }>();
 
-const jumpOptions = computed(() => props.entries.map(entry => ({
-	label: entry.player.name,
-	value: entry.deck.id,
-	deckName: entry.displayName,
-	reviewed: isReviewedPlayerDeck(entry.deck),
-})));
+const jumpOptions = computed(() =>
+	props.entries.map((entry) => ({
+		label: entry.player.name,
+		value: entry.deck.id,
+		deckName: entry.displayName,
+		reviewed: isReviewedPlayerDeck(entry.deck),
+	})),
+);
 
 const selectedJumpDeckId = computed(() => props.selectedDeckId ?? undefined);
 </script>
@@ -109,7 +111,9 @@ const selectedJumpDeckId = computed(() => props.selectedDeckId ?? undefined);
 									{{ item.reviewed ? 'Reviewed' : 'Unreviewed' }}
 								</UBadge>
 							</div>
-							<span v-if="item.deckName" class="truncate text-xs text-muted">{{ item.deckName }}</span>
+							<span v-if="item.deckName" class="truncate text-xs text-muted">{{
+								item.deckName
+							}}</span>
 						</div>
 					</template>
 				</USelectMenu>
@@ -123,7 +127,9 @@ const selectedJumpDeckId = computed(() => props.selectedDeckId ?? undefined);
 				<USeparator orientation="vertical" class="h-4" />
 
 				<span class="text-sm text-muted">Deck</span>
-				<span class="text-sm tabular-nums" data-deck-position>{{ currentIndex >= 0 ? currentIndex + 1 : '–' }} of {{ filteredCount }}</span>
+				<span class="text-sm tabular-nums" data-deck-position
+					>{{ currentIndex >= 0 ? currentIndex + 1 : '–' }} of {{ filteredCount }}</span
+				>
 			</div>
 		</template>
 	</UDashboardToolbar>

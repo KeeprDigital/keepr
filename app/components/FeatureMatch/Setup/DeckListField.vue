@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { PlayerSide } from '~~/shared/types/enums';
-import type { FeatureMatchDeckListReference, FeatureMatchDeckListView } from '~~/shared/types/featureMatchDeckList';
+import type {
+	FeatureMatchDeckListReference,
+	FeatureMatchDeckListView,
+} from '~~/shared/types/featureMatchDeckList';
 
 /**
  * A Slot side's Feature Match Deck List (ADR-0057): pasted as
@@ -32,9 +35,9 @@ const previewing = ref(false);
 const saving = ref(false);
 const previewError = ref<string | null>(null);
 
-const canSave = computed(() => available.value
-	&& preview.value !== null
-	&& previewedText.value === text.value);
+const canSave = computed(
+	() => available.value && preview.value !== null && previewedText.value === text.value,
+);
 
 async function openPaste() {
 	text.value = '';
@@ -44,53 +47,42 @@ async function openPaste() {
 	available.value = true;
 	open.value = true;
 	const eventId = eventStore.eventId;
-	if (!eventId || !props.deckList)
-		return;
-	const saved = await runRequest(
-		() => repository.read(eventId, props.slotId, props.deckList!.id),
-		{ error: false },
-	);
-	if (saved && !text.value)
-		text.value = saved.sourceText;
+	if (!eventId || !props.deckList) return;
+	const saved = await runRequest(() => repository.read(eventId, props.slotId, props.deckList!.id), {
+		error: false,
+	});
+	if (saved && !text.value) text.value = saved.sourceText;
 }
 
 async function runPreview() {
 	const eventId = eventStore.eventId;
-	if (!eventId)
-		return;
+	if (!eventId) return;
 	const submitted = text.value;
-	const answer = await runRequest(
-		() => repository.preview(eventId, props.slotId, submitted),
-		{ loadingRef: previewing, errorRef: previewError, error: false },
-	);
-	if (!answer)
-		return;
+	const answer = await runRequest(() => repository.preview(eventId, props.slotId, submitted), {
+		loadingRef: previewing,
+		errorRef: previewError,
+		error: false,
+	});
+	if (!answer) return;
 	available.value = answer.available;
-	preview.value = answer.available
-		? answer.deckList
-		: null;
+	preview.value = answer.available ? answer.deckList : null;
 	previewedText.value = submitted;
 }
 
 async function save() {
 	const eventId = eventStore.eventId;
-	if (!eventId || !canSave.value)
-		return;
+	if (!eventId || !canSave.value) return;
 	const submitted = text.value;
-	await runRequest(
-		() => repository.save(eventId, props.slotId, props.side, submitted),
-		{
-			loadingRef: saving,
-			isSuccess: answer => answer.available,
-			success: { title: 'Deck List saved', color: 'success' },
-			error: { title: 'Failed to save the Deck List', color: 'error' },
-			onSuccess: (answer) => {
-				if (answer.available)
-					featureMatchStore.applySavedSlot(answer.featureMatch);
-				open.value = false;
-			},
+	await runRequest(() => repository.save(eventId, props.slotId, props.side, submitted), {
+		loadingRef: saving,
+		isSuccess: (answer) => answer.available,
+		success: { title: 'Deck List saved', color: 'success' },
+		error: { title: 'Failed to save the Deck List', color: 'error' },
+		onSuccess: (answer) => {
+			if (answer.available) featureMatchStore.applySavedSlot(answer.featureMatch);
+			open.value = false;
 		},
-	);
+	});
 }
 </script>
 
@@ -106,9 +98,7 @@ async function save() {
 				>
 					{{ deckList.mainboardCount }} Mainboard cards
 				</p>
-				<p v-else class="flex-1 text-sm text-muted">
-					No Deck List
-				</p>
+				<p v-else class="flex-1 text-sm text-muted">No Deck List</p>
 				<UButton
 					:label="deckList ? 'Replace' : 'Paste'"
 					icon="i-lucide-clipboard-paste"
@@ -126,7 +116,11 @@ async function save() {
 		</div>
 	</UFormField>
 
-	<UModal v-model:open="open" title="Paste Deck List" description="One card per line: N[x] CARDNUMBER [name]. Headings and blank lines are ignored.">
+	<UModal
+		v-model:open="open"
+		title="Paste Deck List"
+		description="One card per line: N[x] CARDNUMBER [name]. Headings and blank lines are ignored."
+	>
 		<template #body>
 			<div class="flex flex-col gap-3">
 				<UTextarea
@@ -155,9 +149,7 @@ async function save() {
 							/>
 						</li>
 					</ul>
-					<p class="text-sm text-muted">
-						{{ preview.mainboardCount }} Mainboard cards
-					</p>
+					<p class="text-sm text-muted">{{ preview.mainboardCount }} Mainboard cards</p>
 					<ul class="flex max-h-72 flex-col gap-1 overflow-y-auto" aria-label="Deck List cards">
 						<li
 							v-for="entry in preview.entries"
@@ -171,7 +163,9 @@ async function save() {
 							<span class="w-20 text-muted">{{ entry.number }}</span>
 							<span class="min-w-0 flex-1 truncate">
 								{{ entry.card?.name ?? 'Unknown card' }}
-								<span v-if="entry.number === preview.leaderNumber" class="text-muted">(Leader)</span>
+								<span v-if="entry.number === preview.leaderNumber" class="text-muted"
+									>(Leader)</span
+								>
 							</span>
 							<OpColorDisplay v-if="entry.card" :colors="entry.card.colors" size="sm" />
 						</li>

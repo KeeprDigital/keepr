@@ -91,14 +91,8 @@ describe('screenModesArchetypeSpotlightDisplay', () => {
 			convertedCount: 1,
 			conversionRate: 50,
 		};
-		pageData.value = [
-			pilot(11, 'Nadia Rivers', 1),
-			pilot(12, 'Oskar Lind', null),
-		];
-		topCards.value = [
-			card(1, 'Lightning Bolt', 100),
-			card(2, 'Skewer the Critics', 66.67),
-		];
+		pageData.value = [pilot(11, 'Nadia Rivers', 1), pilot(12, 'Oskar Lind', null)];
+		topCards.value = [card(1, 'Lightning Bolt', 100), card(2, 'Skewer the Critics', 66.67)];
 		totalPages.value = 1;
 		currentPage.value = 1;
 		game.value = 'mtg';
@@ -115,13 +109,12 @@ describe('screenModesArchetypeSpotlightDisplay', () => {
 		expect(hidden.find('.spotlight-pilots').exists()).toBe(true);
 	});
 
-	it('shows the Archetype\'s pilot count, meta share and Conversion Rate for its target', async () => {
+	it("shows the Archetype's pilot count, meta share and Conversion Rate for its target", async () => {
 		const stats = (await mountComponent()).findAll('.spotlight-stat');
 
-		expect(stats.map(stat => [
-			stat.get('.stat-label').text(),
-			stat.get('.stat-value').text(),
-		])).toEqual([
+		expect(
+			stats.map((stat) => [stat.get('.stat-label').text(), stat.get('.stat-value').text()]),
+		).toEqual([
 			['Pilots', '2'],
 			['Meta Share', '25%'],
 			['Conversion (Top 8)', '50% (1/2)'],
@@ -142,11 +135,13 @@ describe('screenModesArchetypeSpotlightDisplay', () => {
 
 		const rows = (await mountComponent()).findAll('.pilot-row');
 
-		expect(rows.map(row => [
-			row.get('.pilot-position').text(),
-			row.get('.pilot-name').text(),
-			row.get('.pilot-record').text(),
-		])).toEqual([
+		expect(
+			rows.map((row) => [
+				row.get('.pilot-position').text(),
+				row.get('.pilot-name').text(),
+				row.get('.pilot-record').text(),
+			]),
+		).toEqual([
 			['1', 'Nadia Rivers', '7-0-1'],
 			['-', 'Oskar Lind', '3-3'],
 		]);
@@ -155,8 +150,14 @@ describe('screenModesArchetypeSpotlightDisplay', () => {
 	it('shows the top included cards with their inclusion rate, most included first', async () => {
 		const cards = (await mountComponent()).findAll('[data-testid="top-cards-item"]');
 
-		expect(cards.map(item => item.get('[data-testid="top-cards-name"]').text())).toEqual(['Lightning Bolt', 'Skewer the Critics']);
-		expect(cards.map(item => item.get('[data-testid="top-cards-stat-badge"]').text())).toEqual(['100%', '66.67%']);
+		expect(cards.map((item) => item.get('[data-testid="top-cards-name"]').text())).toEqual([
+			'Lightning Bolt',
+			'Skewer the Critics',
+		]);
+		expect(cards.map((item) => item.get('[data-testid="top-cards-stat-badge"]').text())).toEqual([
+			'100%',
+			'66.67%',
+		]);
 	});
 
 	it('leaves the cards out when the Archetype has none to show', async () => {
@@ -174,7 +175,7 @@ describe('screenModesArchetypeSpotlightDisplay', () => {
 	});
 
 	// An OP Metagame reads participation only (ADR-0074).
-	it('on a One Piece Event, shows no Conversion, place or record, and the Leader\'s colours as pips', async () => {
+	it("on a One Piece Event, shows no Conversion, place or record, and the Leader's colours as pips", async () => {
 		game.value = 'op';
 		readsStandings.value = false;
 		spotlight.value = {
@@ -184,10 +185,20 @@ describe('screenModesArchetypeSpotlightDisplay', () => {
 
 		const wrapper = await mountComponent();
 
-		expect(wrapper.findAll('.spotlight-stat .stat-label').map(label => label.text())).toEqual(['Pilots', 'Meta Share']);
-		expect(wrapper.findAll('.pilot-row').map(row => row.text())).toEqual(['Nadia Rivers', 'Oskar Lind']);
+		expect(wrapper.findAll('.spotlight-stat .stat-label').map((label) => label.text())).toEqual([
+			'Pilots',
+			'Meta Share',
+		]);
+		expect(wrapper.findAll('.pilot-row').map((row) => row.text())).toEqual([
+			'Nadia Rivers',
+			'Oskar Lind',
+		]);
 		expect(wrapper.find('.pilot-grid').text()).toBe('Pilot');
-		expect(wrapper.findAll('.spotlight-summary [data-op-color]').map(pip => pip.attributes('data-op-color'))).toEqual(['Red', 'Green']);
+		expect(
+			wrapper
+				.findAll('.spotlight-summary [data-op-color]')
+				.map((pip) => pip.attributes('data-op-color')),
+		).toEqual(['Red', 'Green']);
 	});
 
 	it('renders nothing while the mode is empty', async () => {

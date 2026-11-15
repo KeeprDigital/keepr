@@ -31,7 +31,7 @@ mockNuxtImport('useServerTime', () => () => ({
 /** Ana's one Commander, as the Commander Damage it deals is counted. */
 const ATRAXA = { seat: 'player1', commander: 1 } as const;
 
-describe('commander Damage in a Seat\'s batch', () => {
+describe("commander Damage in a Seat's batch", () => {
 	let store: ReturnType<typeof useFeatureMatchStateStore>;
 	// Ana (Atraxa), Ben (Tymna), Cleo (Tymna and Kraum), Dara (Atraxa).
 	const snapshot = commanderSnapshot();
@@ -39,7 +39,7 @@ describe('commander Damage in a Seat\'s batch', () => {
 
 	const held = () => store.featureMatchStates.get(MATCH_ID)!;
 	const sent = (method: 'adjustCommanderDamage' | 'updatePlayerFeatureMatchState') =>
-		sessionClient[method].mock.calls.map(call => call.slice(2));
+		sessionClient[method].mock.calls.map((call) => call.slice(2));
 
 	/** Lets the window close and every command of its flush answer. */
 	async function flush() {
@@ -77,23 +77,10 @@ describe('commander Damage in a Seat\'s batch', () => {
 		await flush();
 
 		expect(sent('adjustCommanderDamage')).toEqual([
-			[
-				'player1',
-				expect.objectContaining(tymna),
-				2,
-			],
-			[
-				'player1',
-				expect.objectContaining(kraum),
-				1,
-			],
+			['player1', expect.objectContaining(tymna), 2],
+			['player1', expect.objectContaining(kraum), 1],
 		]);
-		expect(sent('updatePlayerFeatureMatchState')).toEqual([
-			[
-				'player1',
-				{ lifeDelta: -2 },
-			],
-		]);
+		expect(sent('updatePlayerFeatureMatchState')).toEqual([['player1', { lifeDelta: -2 }]]);
 	});
 
 	// A life typed in is what the operator saw: the damage goes first, then the life they left it at.
@@ -120,14 +107,10 @@ describe('commander Damage in a Seat\'s batch', () => {
 		expect(held().player2.lifeTotal).toBe(life);
 		await flush();
 
-		expect(sent('updatePlayerFeatureMatchState')).toEqual([
-			[
-				'player2',
-				{ lifeTotal: life },
-			],
-		]);
-		expect(sessionClient.adjustCommanderDamage.mock.invocationCallOrder[0])
-			.toBeLessThan(sessionClient.updatePlayerFeatureMatchState.mock.invocationCallOrder[0]!);
+		expect(sent('updatePlayerFeatureMatchState')).toEqual([['player2', { lifeTotal: life }]]);
+		expect(sessionClient.adjustCommanderDamage.mock.invocationCallOrder[0]).toBeLessThan(
+			sessionClient.updatePlayerFeatureMatchState.mock.invocationCallOrder[0]!,
+		);
 	});
 
 	it('sends nothing for Commander Damage entered and taken back within one window', async () => {

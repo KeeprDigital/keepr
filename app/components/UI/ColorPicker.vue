@@ -5,40 +5,45 @@ import { formatEditableColor, parseEditableColor } from '~/utils/editableColor';
 // popover root renders no element of its own to carry them.
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<{
-	modelValue?: string;
-	placeholder?: string;
-	allowRawValue?: boolean;
-	/** Shows Clear, which emits `undefined`: the field falls back to whatever it inherits. */
-	clearable?: boolean;
-	/**
-	 * `live` emits every change, a drag included. `close` emits once, when the
-	 * popover closes, for a field whose every write reaches the outputs.
-	 */
-	commit?: 'live' | 'close';
-	disabled?: boolean;
-	size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
-} & (
-	| {
-		/**
-		 * Edits the colour's own alpha: a slider and a % field, and Transparent
-		 * (alpha 0, the hue kept). Off where an opacity control sits beside the colour.
-		 */
-		alpha: true;
-		hexOnly?: false;
-	}
-	| {
-		alpha?: false;
-		/**
-		 * For values that must always be a hex colour: no alpha, and a typed value
-		 * is emitted only once it is a complete `#rrggbb`.
-		 */
-		hexOnly?: boolean;
-	}
-)>(), {
-	size: 'sm',
-	commit: 'live',
-});
+const props = withDefaults(
+	defineProps<
+		{
+			modelValue?: string;
+			placeholder?: string;
+			allowRawValue?: boolean;
+			/** Shows Clear, which emits `undefined`: the field falls back to whatever it inherits. */
+			clearable?: boolean;
+			/**
+			 * `live` emits every change, a drag included. `close` emits once, when the
+			 * popover closes, for a field whose every write reaches the outputs.
+			 */
+			commit?: 'live' | 'close';
+			disabled?: boolean;
+			size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+		} & (
+			| {
+					/**
+					 * Edits the colour's own alpha: a slider and a % field, and Transparent
+					 * (alpha 0, the hue kept). Off where an opacity control sits beside the colour.
+					 */
+					alpha: true;
+					hexOnly?: false;
+			  }
+			| {
+					alpha?: false;
+					/**
+					 * For values that must always be a hex colour: no alpha, and a typed value
+					 * is emitted only once it is a complete `#rrggbb`.
+					 */
+					hexOnly?: boolean;
+			  }
+		)
+	>(),
+	{
+		size: 'sm',
+		commit: 'live',
+	},
+);
 
 const emit = defineEmits<{
 	(e: 'update:modelValue', value: string | undefined): void;
@@ -55,71 +60,61 @@ const open = ref(false);
  */
 const draft = ref<{ value: string | undefined } | null>(null);
 
-const value = computed(() => (props.commit === 'close' && draft.value
-	? draft.value.value
-	: props.modelValue)?.trim() || undefined);
-const parsed = computed(() => value.value === undefined
-	? null
-	: parseEditableColor(value.value));
+const value = computed(
+	() =>
+		(props.commit === 'close' && draft.value ? draft.value.value : props.modelValue)?.trim() ||
+		undefined,
+);
+const parsed = computed(() => (value.value === undefined ? null : parseEditableColor(value.value)));
 const alphaPercent = computed(() => Math.round((parsed.value?.alpha ?? 1) * 100));
 
 const swatchState = computed(() => {
-	if (value.value === undefined)
-		return 'unset';
-	return parsed.value
-		? 'colour'
-		: 'raw';
+	if (value.value === undefined) return 'unset';
+	return parsed.value ? 'colour' : 'raw';
 });
 
 function commitDraft() {
 	const edit = draft.value;
 	draft.value = null;
-	if (edit && edit.value !== props.modelValue)
-		emit('update:modelValue', edit.value);
+	if (edit && edit.value !== props.modelValue) emit('update:modelValue', edit.value);
 }
 
 watch(open, (isOpen) => {
-	if (!isOpen)
-		commitDraft();
+	if (!isOpen) commitDraft();
 });
 // A picker unmounted while open (a selection change) still commits its edit.
 onBeforeUnmount(commitDraft);
 
 function apply(next: string | undefined) {
-	if (props.commit === 'close')
-		draft.value = { value: next };
-	else
-		emit('update:modelValue', next);
+	if (props.commit === 'close') draft.value = { value: next };
+	else emit('update:modelValue', next);
 }
 
 function pickHue(hex: string | undefined) {
 	// The colour area re-emits the hue it is given; that is no edit.
-	if (!hex || hex.toLowerCase() === parsed.value?.hex)
-		return;
-	apply(formatEditableColor({
-		hex,
-		alpha: props.hexOnly
-			? 1
-			: parsed.value?.alpha ?? 1,
-	}));
+	if (!hex || hex.toLowerCase() === parsed.value?.hex) return;
+	apply(
+		formatEditableColor({
+			hex,
+			alpha: props.hexOnly ? 1 : (parsed.value?.alpha ?? 1),
+		}),
+	);
 }
 
 function setAlpha(percent: number | null | undefined) {
-	if (!parsed.value || typeof percent !== 'number' || Number.isNaN(percent))
-		return;
+	if (!parsed.value || typeof percent !== 'number' || Number.isNaN(percent)) return;
 	apply(formatEditableColor({ hex: parsed.value.hex, alpha: percent / 100 }));
 }
 
 // The text field shows the hex beside the alpha field, or the whole value. It
 // follows the colour except while it is being typed into.
-const textShown = computed(() => props.alpha && parsed.value
-	? parsed.value.hex
-	: value.value ?? '');
+const textShown = computed(() =>
+	props.alpha && parsed.value ? parsed.value.hex : (value.value ?? ''),
+);
 const typed = ref(textShown.value);
 const typing = ref(false);
 watch(textShown, (text) => {
-	if (!typing.value)
-		typed.value = text;
+	if (!typing.value) typed.value = text;
 });
 
 function endTyping() {
@@ -131,27 +126,27 @@ function handleTypedValue(text: string | number | null | undefined) {
 	typed.value = String(text ?? '');
 	const entered = typed.value.trim();
 	if (!entered) {
-		if (props.clearable)
-			apply(undefined);
+		if (props.clearable) apply(undefined);
 		return;
 	}
 	if (props.hexOnly) {
-		if (HEX_COLOR_RE.test(entered))
-			apply(entered.toLowerCase());
+		if (HEX_COLOR_RE.test(entered)) apply(entered.toLowerCase());
 		return;
 	}
 	const color = parseEditableColor(entered);
 	if (color) {
-		apply(formatEditableColor({
-			hex: color.hex,
-			alpha: props.alpha && parsed.value && HUE_ONLY_RE.test(entered)
-				? parsed.value.alpha
-				: color.alpha,
-		}));
+		apply(
+			formatEditableColor({
+				hex: color.hex,
+				alpha:
+					props.alpha && parsed.value && HUE_ONLY_RE.test(entered)
+						? parsed.value.alpha
+						: color.alpha,
+			}),
+		);
 		return;
 	}
-	if (props.allowRawValue)
-		apply(entered);
+	if (props.allowRawValue) apply(entered);
 }
 
 function setTransparent() {
@@ -164,9 +159,11 @@ function clear() {
 	open.value = false;
 }
 
-const textPlaceholder = computed(() => props.placeholder || (props.allowRawValue
-	? 'transparent, #ffffff, linear-gradient(...)'
-	: '#ffffff'));
+const textPlaceholder = computed(
+	() =>
+		props.placeholder ||
+		(props.allowRawValue ? 'transparent, #ffffff, linear-gradient(...)' : '#ffffff'),
+);
 
 /** The alpha track runs from clear to the opaque colour, over the checkerboard. */
 const alphaTrackStyle = computed(() => {
@@ -293,8 +290,10 @@ const alphaTrackStyle = computed(() => {
 <style scoped>
 .checkerboard {
 	background-image:
-		linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%),
-		linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%);
+		linear-gradient(45deg, #ccc 25%, transparent 25%),
+		linear-gradient(-45deg, #ccc 25%, transparent 25%),
+		linear-gradient(45deg, transparent 75%, #ccc 75%),
+		linear-gradient(-45deg, transparent 75%, #ccc 75%);
 	background-size: 8px 8px;
 	background-position:
 		0 0,

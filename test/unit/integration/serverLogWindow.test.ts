@@ -28,13 +28,16 @@ afterEach(() => {
 		rmSync(directory, { recursive: true, force: true });
 });
 
-describe('the integration suite\'s server log window', () => {
+describe("the integration suite's server log window", () => {
 	it('reads only what the server wrote after the test began', () => {
 		const path = logFile('booted\n{"message":"api_request_failed","path":"/api/earlier"}\n');
 		const window = createServerLogWindow(path);
 
 		window.mark();
-		appendFileSync(path, '{"message":"graphics_object_store_unavailable","operation":"uploadPart"}\n\n');
+		appendFileSync(
+			path,
+			'{"message":"graphics_object_store_unavailable","operation":"uploadPart"}\n\n',
+		);
 		appendFileSync(path, '{"message":"api_request_failed","statusCode":503}\n');
 
 		expect(window.since()).toEqual([

@@ -9,18 +9,9 @@ describe('metagameQuerySchema scope', () => {
 	const schema = metagameQuerySchema;
 
 	it.each([
-		[
-			'topN',
-			{ topN: 8 },
-		],
-		[
-			'playerList',
-			{ playerListId: 42 },
-		],
-		[
-			'minPoints',
-			{ minPoints: 9 },
-		],
+		['topN', { topN: 8 }],
+		['playerList', { playerListId: 42 }],
+		['minPoints', { minPoints: 9 }],
 	])('requires %s to name its parameter', (scope, parameter) => {
 		expect(schema.safeParse({ scope, ...parameter }).success).toBe(true);
 		expect(schema.safeParse({ scope }).success).toBe(false);
@@ -48,43 +39,21 @@ describe('metagameQuerySchema scope', () => {
 
 describe('metagameArchetypesQuerySchema', () => {
 	it.each([
-		[
-			'a topN target',
-			{ conversionMetric: 'topN', conversionThreshold: '8' },
-			true,
-		],
-		[
-			'a minPoints target',
-			{ conversionMetric: 'minPoints', conversionThreshold: 0 },
-			true,
-		],
-		[
-			'the maximum threshold',
-			{ conversionMetric: 'topN', conversionThreshold: 999 },
-			true,
-		],
+		['a topN target', { conversionMetric: 'topN', conversionThreshold: '8' }, true],
+		['a minPoints target', { conversionMetric: 'minPoints', conversionThreshold: 0 }, true],
+		['the maximum threshold', { conversionMetric: 'topN', conversionThreshold: 999 }, true],
 		[
 			'a threshold above the maximum',
 			{ conversionMetric: 'topN', conversionThreshold: 1000 },
 			false,
 		],
-		[
-			'a metric without a threshold',
-			{ conversionMetric: 'topN' },
-			false,
-		],
-		[
-			'a threshold without a metric',
-			{ conversionThreshold: 8 },
-			false,
-		],
-		[
-			'an unknown metric',
-			{ conversionMetric: 'wins', conversionThreshold: 3 },
-			false,
-		],
+		['a metric without a threshold', { conversionMetric: 'topN' }, false],
+		['a threshold without a metric', { conversionThreshold: 8 }, false],
+		['an unknown metric', { conversionMetric: 'wins', conversionThreshold: 3 }, false],
 	])('takes a conversion target of %s → %s', (_case, target, accepted) => {
-		expect(metagameArchetypesQuerySchema.safeParse({ scope: 'all', ...target }).success).toBe(accepted);
+		expect(metagameArchetypesQuerySchema.safeParse({ scope: 'all', ...target }).success).toBe(
+			accepted,
+		);
 	});
 });
 
@@ -107,16 +76,12 @@ describe('metagameCardsQuerySchema', () => {
 
 	// Either Card Game's types: OP's are its categories past the Leader (ADR-0074).
 	it.each([
-		[
-			'Land,Other',
-			['Land', 'Other'],
-		],
-		[
-			'Character,Stage',
-			['Character', 'Stage'],
-		],
+		['Land,Other', ['Land', 'Other']],
+		['Character,Stage', ['Character', 'Stage']],
 	])('parses comma-separated excludeTypes %j into card-type buckets', (excludeTypes, buckets) => {
-		expect(metagameCardsQuerySchema.parse({ scope: 'all', excludeTypes }).excludeTypes).toEqual(buckets);
+		expect(metagameCardsQuerySchema.parse({ scope: 'all', excludeTypes }).excludeTypes).toEqual(
+			buckets,
+		);
 	});
 
 	it.each(['Land,Tribal', 'Leader', ''])('refuses excludeTypes %j', (excludeTypes) => {
@@ -127,7 +92,9 @@ describe('metagameCardsQuerySchema', () => {
 		['true', true],
 		['false', false],
 	])('reads pointedOnly %j as %j', (pointedOnly, expected) => {
-		expect(metagameCardsQuerySchema.parse({ scope: 'all', pointedOnly }).pointedOnly).toBe(expected);
+		expect(metagameCardsQuerySchema.parse({ scope: 'all', pointedOnly }).pointedOnly).toBe(
+			expected,
+		);
 	});
 
 	it.each(['yes', '1', ''])('refuses pointedOnly %j', (pointedOnly) => {

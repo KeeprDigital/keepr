@@ -20,18 +20,24 @@ const archetypeStore = reactive({
 	removeEmptyArchetypes: vi.fn(),
 });
 mockNuxtImport('useArchetypeStore', () => () => archetypeStore);
-mockNuxtImport('usePlayerDeckStore', () => () => reactive({
-	decks: [
-		{ id: 10, playerId: 1, archetypeId: 1 },
-	],
-	isLoaded: true,
-	loadByEventId: vi.fn(),
-}));
-mockNuxtImport('usePlayerStore', () => () => reactive({
-	players: [],
-	isLoaded: true,
-	loadPlayersByEventId: vi.fn(),
-}));
+mockNuxtImport(
+	'usePlayerDeckStore',
+	() => () =>
+		reactive({
+			decks: [{ id: 10, playerId: 1, archetypeId: 1 }],
+			isLoaded: true,
+			loadByEventId: vi.fn(),
+		}),
+);
+mockNuxtImport(
+	'usePlayerStore',
+	() => () =>
+		reactive({
+			players: [],
+			isLoaded: true,
+			loadPlayersByEventId: vi.fn(),
+		}),
+);
 
 const HELD = createMockUiArchetype({ id: 1, name: 'Burn' });
 
@@ -59,7 +65,7 @@ beforeEach(() => {
 	archetypeStore.removeEmptyArchetypes.mockResolvedValue([]);
 });
 
-describe('the Metagame page\'s list of Empty Archetypes', () => {
+describe("the Metagame page's list of Empty Archetypes", () => {
 	it('is not shown while every Archetype holds a deck', () => {
 		expect(mountList([]).find('[data-empty-archetypes]').exists()).toBe(false);
 	});
@@ -68,10 +74,7 @@ describe('the Metagame page\'s list of Empty Archetypes', () => {
 		const wrapper = mountList(['Dredge', 'Storm']);
 
 		expect(wrapper.get('[data-empty-archetypes]').text()).toContain('2 empty archetypes');
-		expect(wrapper.findAll('a').map(link => [
-			link.text(),
-			link.attributes('href'),
-		])).toEqual([
+		expect(wrapper.findAll('a').map((link) => [link.text(), link.attributes('href')])).toEqual([
 			['Dredge', '/event/9/metagame/archetype/2'],
 			['Storm', '/event/9/metagame/archetype/3'],
 		]);

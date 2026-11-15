@@ -16,12 +16,13 @@ export function opCardCatalogueModule() {
 	const catalogue = opCardCatalogueService();
 
 	/** Each number's card, or `null` for one bandai-keepr does not know. */
-	async function resolve(configured: () => BandaiKeeprConfig | null, numbers: readonly string[]): Promise<Map<string, OpCatalogueCard | null>> {
-		const distinct = [
-			...new Set(numbers),
-		];
+	async function resolve(
+		configured: () => BandaiKeeprConfig | null,
+		numbers: readonly string[],
+	): Promise<Map<string, OpCatalogueCard | null>> {
+		const distinct = [...new Set(numbers)];
 		const held = await catalogue.findByNumbers(distinct);
-		const missing = distinct.filter(number => !held.has(number));
+		const missing = distinct.filter((number) => !held.has(number));
 		if (missing.length > 0) {
 			const config = configured();
 			if (!config)
@@ -29,10 +30,12 @@ export function opCardCatalogueModule() {
 			const answer = await lookUpOpCards(config, missing);
 			await catalogue.add(answer.cards);
 			// Read back, so a row another write added meanwhile is the one answered.
-			for (const [number, card] of await catalogue.findByNumbers(answer.cards.map(card => card.number)))
+			for (const [number, card] of await catalogue.findByNumbers(
+				answer.cards.map((card) => card.number),
+			))
 				held.set(number, card);
 		}
-		return new Map(distinct.map(number => [number, held.get(number) ?? null]));
+		return new Map(distinct.map((number) => [number, held.get(number) ?? null]));
 	}
 
 	return { resolve };

@@ -42,13 +42,21 @@ describe('a four-Seat Template Package, end to end', () => {
 		return screen.modeConfigs!['feature-match-overlay']!.layout as FeatureMatchLayoutConfig;
 	}
 
-	async function place({ eventId, screenId }: { eventId: number; screenId: number }, templateId: string) {
-		const { stateVersion } = await $fetch<ScreenResponse>(`/api/events/${eventId}/screens/${screenId}`);
-		return await fetch(`/api/events/${eventId}/screens/${screenId}/feature-match-overlay/layout-placements`, {
-			method: 'POST',
-			headers: { 'cookie': cookie, 'content-type': 'application/json' },
-			body: JSON.stringify({ templateId, stateVersion }),
-		});
+	async function place(
+		{ eventId, screenId }: { eventId: number; screenId: number },
+		templateId: string,
+	) {
+		const { stateVersion } = await $fetch<ScreenResponse>(
+			`/api/events/${eventId}/screens/${screenId}`,
+		);
+		return await fetch(
+			`/api/events/${eventId}/screens/${screenId}/feature-match-overlay/layout-placements`,
+			{
+				method: 'POST',
+				headers: { cookie: cookie, 'content-type': 'application/json' },
+				body: JSON.stringify({ templateId, stateVersion }),
+			},
+		);
 	}
 
 	beforeAll(async () => {
@@ -62,8 +70,7 @@ describe('a four-Seat Template Package, end to end', () => {
 		for (const { eventId } of [commander, twoPlayer]) {
 			try {
 				await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-			}
-			catch {}
+			} catch {}
 		}
 	});
 
@@ -78,23 +85,29 @@ describe('a four-Seat Template Package, end to end', () => {
 		await expectResponseStatus(exported, 200);
 		const archive = await collectStream(exported.body!);
 
-		const initiated = await $fetch<GraphicsIngestionOperation>('/api/graphics-assets/ingestion-operations', {
-			method: 'POST',
-			headers: { cookie },
-			body: {
-				idempotencyKey: `commander-template-package-${runId}`,
-				source: 'template-package',
-				sourceFileName: 'commander-table.sklayout',
-				declaredByteLength: archive.byteLength,
+		const initiated = await $fetch<GraphicsIngestionOperation>(
+			'/api/graphics-assets/ingestion-operations',
+			{
+				method: 'POST',
+				headers: { cookie },
+				body: {
+					idempotencyKey: `commander-template-package-${runId}`,
+					source: 'template-package',
+					sourceFileName: 'commander-table.sklayout',
+					declaredByteLength: archive.byteLength,
+				},
 			},
-		});
-		const uploaded = await fetch(`/api/graphics-assets/ingestion-operations/${initiated.id}/content`, {
-			method: 'PUT',
-			headers: { cookie },
-			body: archive,
-		});
+		);
+		const uploaded = await fetch(
+			`/api/graphics-assets/ingestion-operations/${initiated.id}/content`,
+			{
+				method: 'PUT',
+				headers: { cookie },
+				body: archive,
+			},
+		);
 		await expectResponseStatus(uploaded, 200);
-		const received = await uploaded.json() as GraphicsIngestionOperation;
+		const received = (await uploaded.json()) as GraphicsIngestionOperation;
 		expect(received.stage).toBe('awaiting-installation');
 
 		const completed = await $fetch<GraphicsIngestionOperation>(
@@ -113,7 +126,9 @@ describe('a four-Seat Template Package, end to end', () => {
 				headers: { cookie },
 			},
 		);
-		expect(templates.find(template => template.id === installedTemplateId)).toMatchObject({ fourSeat: true });
+		expect(templates.find((template) => template.id === installedTemplateId)).toMatchObject({
+			fourSeat: true,
+		});
 
 		const refused = await place(twoPlayer, installedTemplateId);
 		expect(refused.status).toBe(409);

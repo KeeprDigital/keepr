@@ -6,15 +6,10 @@ import type {
 import type { FeatureMatch } from '~/types';
 
 function isHttpStatus(err: unknown, statusCode: number): boolean {
-	if (typeof err !== 'object' || err === null)
-		return false;
+	if (typeof err !== 'object' || err === null) return false;
 
-	const statusCodeValue = 'statusCode' in err
-		? err.statusCode
-		: undefined;
-	const statusValue = 'status' in err
-		? err.status
-		: undefined;
+	const statusCodeValue = 'statusCode' in err ? err.statusCode : undefined;
+	const statusValue = 'status' in err ? err.status : undefined;
 	return statusCodeValue === statusCode || statusValue === statusCode;
 }
 
@@ -28,18 +23,11 @@ function isHttpStatus(err: unknown, statusCode: number): boolean {
 export function useFeatureMatchStateRepository() {
 	const apiHeaders = useApiHeaders();
 
-	const getSlot = async (
-		eventId: number,
-		slotId: number,
-	): Promise<FeatureMatch | null> => {
+	const getSlot = async (eventId: number, slotId: number): Promise<FeatureMatch | null> => {
 		try {
-			return await $fetch<FeatureMatch>(
-				`/api/events/${eventId}/feature-match-slots/${slotId}`,
-			);
-		}
-		catch (err: unknown) {
-			if (isHttpStatus(err, 404))
-				return null;
+			return await $fetch<FeatureMatch>(`/api/events/${eventId}/feature-match-slots/${slotId}`);
+		} catch (err: unknown) {
+			if (isHttpStatus(err, 404)) return null;
 			throw err;
 		}
 	};

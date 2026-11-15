@@ -37,9 +37,14 @@ vi.mock('~~/server/utils/auth', () => ({
 
 const mockGetRequestURL = vi.fn();
 
-vi.stubGlobal('defineEventHandler', vi.fn(handler => handler));
+vi.stubGlobal(
+	'defineEventHandler',
+	vi.fn((handler) => handler),
+);
 vi.stubGlobal('getRequestURL', mockGetRequestURL);
-vi.stubGlobal('createError', (input: { statusCode: number; message: string }) => Object.assign(new Error(input.message), input));
+vi.stubGlobal('createError', (input: { statusCode: number; message: string }) =>
+	Object.assign(new Error(input.message), input),
+);
 
 const handler = (await import('~~/server/middleware/api-session')).default;
 
@@ -79,7 +84,11 @@ describe('the API boundary middleware', () => {
 		mockRequestUserSession.mockResolvedValue(null);
 
 		const refusals = [];
-		for (const path of ['/api/events/1/screens/2/command', '/api/graphics-assets', '/api/_test/ordinary-mutation'])
+		for (const path of [
+			'/api/events/1/screens/2/command',
+			'/api/graphics-assets',
+			'/api/_test/ordinary-mutation',
+		])
 			refusals.push(await handler(request(path)).catch((error: Error) => error.message));
 
 		expect(new Set(refusals)).toEqual(new Set(['Authentication is required']));
@@ -119,24 +128,28 @@ describe('the API boundary middleware', () => {
 	// browser source or a script POSTs it with no `Origin`, and no Session is read.
 	it.each([
 		['naming no origin', {}],
-		[
-			'from its own page',
-			{ 'sec-fetch-site': 'same-origin', 'origin': 'https://stream.example' },
-		],
+		['from its own page', { 'sec-fetch-site': 'same-origin', origin: 'https://stream.example' }],
 		[
 			'from another site',
-			{ 'sec-fetch-site': 'cross-site', 'origin': 'https://not-this-installation.example' },
+			{ 'sec-fetch-site': 'cross-site', origin: 'https://not-this-installation.example' },
 		],
-	])('admits a Screen Output Link exchange %s without asking about a session', async (_from, headers) => {
-		mockRequestUserSession.mockResolvedValue(SESSION);
+	])(
+		'admits a Screen Output Link exchange %s without asking about a session',
+		async (_from, headers) => {
+			mockRequestUserSession.mockResolvedValue(SESSION);
 
-		await expect(handler(request('/api/screen-output/link', 'POST', {
-			'content-type': 'application/json',
-			...headers,
-		}))).resolves.toBeUndefined();
+			await expect(
+				handler(
+					request('/api/screen-output/link', 'POST', {
+						'content-type': 'application/json',
+						...headers,
+					}),
+				),
+			).resolves.toBeUndefined();
 
-		expect(mockRequestUserSession).not.toHaveBeenCalled();
-	});
+			expect(mockRequestUserSession).not.toHaveBeenCalled();
+		},
+	);
 
 	// Wiring for `requestIsCrossSiteMutation`: a signed-in browser made to POST
 	// by another site is refused before a handler runs; its own page, and a
@@ -145,7 +158,7 @@ describe('the API boundary middleware', () => {
 		[
 			'its own page',
 			'admitted',
-			{ 'sec-fetch-site': 'same-origin', 'origin': 'https://stream.example' },
+			{ 'sec-fetch-site': 'same-origin', origin: 'https://stream.example' },
 		],
 		[
 			'its own page, in a browser without Sec-Fetch-Site',
@@ -153,15 +166,11 @@ describe('the API boundary middleware', () => {
 			{ origin: 'https://stream.example' },
 		],
 		['a script or test that names no origin', 'admitted', {}],
-		[
-			'a sibling subdomain',
-			403,
-			{ 'sec-fetch-site': 'same-site', 'origin': 'https://evil.example' },
-		],
+		['a sibling subdomain', 403, { 'sec-fetch-site': 'same-site', origin: 'https://evil.example' }],
 		[
 			'another site',
 			403,
-			{ 'sec-fetch-site': 'cross-site', 'origin': 'https://not-this-installation.example' },
+			{ 'sec-fetch-site': 'cross-site', origin: 'https://not-this-installation.example' },
 		],
 		[
 			'another site, in a browser without Sec-Fetch-Site',
@@ -171,7 +180,9 @@ describe('the API boundary middleware', () => {
 	] as const)('answers a signed-in POST from %s: %s', async (_from, outcome, headers) => {
 		mockRequestUserSession.mockResolvedValue(SESSION);
 
-		const answered = await Promise.resolve(handler(request('/api/events/1/screens/2/command', 'POST', headers))).then(
+		const answered = await Promise.resolve(
+			handler(request('/api/events/1/screens/2/command', 'POST', headers)),
+		).then(
 			() => 'admitted',
 			(refusal: { statusCode: number }) => refusal.statusCode,
 		);
@@ -182,7 +193,9 @@ describe('the API boundary middleware', () => {
 	it('refuses a cross-site POST as Forbidden, in words that say why', async () => {
 		mockRequestUserSession.mockResolvedValue(SESSION);
 
-		await expect(handler(request('/api/events', 'POST', { 'sec-fetch-site': 'cross-site' }))).rejects.toMatchObject({
+		await expect(
+			handler(request('/api/events', 'POST', { 'sec-fetch-site': 'cross-site' })),
+		).rejects.toMatchObject({
 			statusCode: 403,
 			statusMessage: 'Forbidden',
 			message: 'Cross-site request refused',
@@ -193,17 +206,25 @@ describe('the API boundary middleware', () => {
 		['a cross-site read of a private route', '/api/events', 'GET'],
 		// These carry their own credential and no Session cookie decides them:
 		// Better Auth checks its own origin, the rest present a token or a bearer.
-		['a cross-site POST to Better Auth\'s router', '/api/auth/sign-in/email', 'POST'],
-		['a cross-site POST to the capability surface', '/api/screen-output/screens/7/asset-capability-session', 'POST'],
+		["a cross-site POST to Better Auth's router", '/api/auth/sign-in/email', 'POST'],
+		[
+			'a cross-site POST to the capability surface',
+			'/api/screen-output/screens/7/asset-capability-session',
+			'POST',
+		],
 		['a cross-site POST to the Graphics Administrator surface', '/api/admin/users', 'POST'],
 		['a cross-site POST to the first-admin bootstrap', '/api/bootstrap/ensure-admin', 'POST'],
 	])('leaves %s to its own guard', async (_case, path, method) => {
 		mockRequestUserSession.mockResolvedValue(SESSION);
 
-		await expect(handler(request(path, method, {
-			'sec-fetch-site': 'cross-site',
-			'origin': 'https://not-this-installation.example',
-		}))).resolves.toBeUndefined();
+		await expect(
+			handler(
+				request(path, method, {
+					'sec-fetch-site': 'cross-site',
+					origin: 'https://not-this-installation.example',
+				}),
+			),
+		).resolves.toBeUndefined();
 	});
 
 	it('sorts ahead of every other middleware, which is the order Nitro composes them in', () => {
@@ -220,7 +241,7 @@ describe('the API boundary middleware', () => {
 		//
 		// Read off the directory, so a middleware added tomorrow with an earlier
 		// name fails here rather than silently running in front of the boundary.
-		const names = serverMiddlewareFiles().map(file => file.slice(file.lastIndexOf('/') + 1));
+		const names = serverMiddlewareFiles().map((file) => file.slice(file.lastIndexOf('/') + 1));
 
 		expect(names[0]).toBe('api-session.ts');
 		expect([...names].sort()).toEqual(names);
@@ -231,6 +252,8 @@ describe('the API boundary middleware', () => {
 			new ServiceConfigurationError('NUXT_BETTER_AUTH_SECRET', 'is not configured'),
 		);
 
-		await expect(handler(request('/api/events/1/players'))).rejects.toThrow(/NUXT_BETTER_AUTH_SECRET/);
+		await expect(handler(request('/api/events/1/players'))).rejects.toThrow(
+			/NUXT_BETTER_AUTH_SECRET/,
+		);
 	});
 });

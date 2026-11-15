@@ -44,19 +44,26 @@ export default defineEventHandler(async (event) => {
 
 	// A stored fragment may lack `layout`; the Screen then renders the default
 	// layout, so that is the layout it saves.
-	const document = structuredClone(resolveScreenModeConfig(screen.modeConfigs, 'feature-match-overlay').layout);
-	await assertFeatureMatchLayoutTemplateReferencesSelectable(graphicsAssetLibraryForEvent(event), document);
-
-	const template = await featureMatchLayoutTemplateService().create({
-		id: randomUuid(),
-		name: body.name ?? screen.name,
-		description: body.description ?? null,
+	const document = structuredClone(
+		resolveScreenModeConfig(screen.modeConfigs, 'feature-match-overlay').layout,
+	);
+	await assertFeatureMatchLayoutTemplateReferencesSelectable(
+		graphicsAssetLibraryForEvent(event),
 		document,
-	}).catch((error: unknown) => {
-		if (error instanceof FeatureMatchLayoutTemplateReferenceConflict)
-			throw graphicsTemplateReferenceConflict('Feature Match Layout Template');
-		throw error;
-	});
+	);
+
+	const template = await featureMatchLayoutTemplateService()
+		.create({
+			id: randomUuid(),
+			name: body.name ?? screen.name,
+			description: body.description ?? null,
+			document,
+		})
+		.catch((error: unknown) => {
+			if (error instanceof FeatureMatchLayoutTemplateReferenceConflict)
+				throw graphicsTemplateReferenceConflict('Feature Match Layout Template');
+			throw error;
+		});
 
 	setResponseStatus(event, 201);
 	return mapFeatureMatchLayoutTemplateToResponse(template);

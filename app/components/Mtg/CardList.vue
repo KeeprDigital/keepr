@@ -1,14 +1,17 @@
 <script lang="ts" setup>
 import type { MtgCard } from '~/types/card/mtg';
 
-const props = withDefaults(defineProps<{
-	cards: MtgCard[];
-	quantities?: Record<string, number>;
-	points?: Record<string, number>;
-	gap?: string;
-}>(), {
-	gap: '1.5rem',
-});
+const props = withDefaults(
+	defineProps<{
+		cards: MtgCard[];
+		quantities?: Record<string, number>;
+		points?: Record<string, number>;
+		gap?: string;
+	}>(),
+	{
+		gap: '1.5rem',
+	},
+);
 
 const emit = defineEmits<{
 	(e: 'selected', card: MtgCard, turnedOver: boolean): void;
@@ -33,16 +36,10 @@ function onCardSelected(card: MtgCard, turnedOver: boolean) {
 					display-mode="list"
 					@selected="onCardSelected(card, $event)"
 				/>
-				<div
-					v-if="props.quantities?.[card.id] != null"
-					class="card-quantity"
-				>
+				<div v-if="props.quantities?.[card.id] != null" class="card-quantity">
 					{{ props.quantities[card.id] }}x
 				</div>
-				<div
-					v-if="props.points?.[card.id] != null"
-					class="card-points"
-				>
+				<div v-if="props.points?.[card.id] != null" class="card-points">
 					{{ props.points[card.id] }}
 				</div>
 			</div>

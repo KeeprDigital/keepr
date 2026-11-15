@@ -8,9 +8,10 @@ export function hasExactNoteDiscardConfirmation(
 	assignment: DbFeatureMatchAssignment,
 	confirmations: FeatureMatchNoteDiscardConfirmation[],
 ): boolean {
-	return confirmations.some(confirmation =>
-		confirmation.assignmentId === assignment.id
-		&& confirmation.updatedAt.getTime() === assignment.updatedAt.getTime(),
+	return confirmations.some(
+		(confirmation) =>
+			confirmation.assignmentId === assignment.id &&
+			confirmation.updatedAt.getTime() === assignment.updatedAt.getTime(),
 	);
 }
 
@@ -19,8 +20,7 @@ export async function throwFeatureMatchNoteDiscardRequired(
 	assignment: DbFeatureMatchAssignment,
 ): Promise<never> {
 	const match = await matchService().findById(assignment.matchId, eventId);
-	if (!match)
-		throw createError({ statusCode: 500, message: 'Failed to retrieve displaced Match' });
+	if (!match) throw createError({ statusCode: 500, message: 'Failed to retrieve displaced Match' });
 
 	throw createError({
 		statusCode: 409,

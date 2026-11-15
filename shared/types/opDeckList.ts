@@ -26,13 +26,13 @@ export interface OpDeckListEntry {
 	card: OpCatalogueCard | null;
 }
 
-export type OpDeckListWarning
-	= | { code: 'MAINBOARD_COUNT'; message: string; count: number }
-		| { code: 'TOO_MANY_COPIES'; message: string; number: string; quantity: number }
-		| { code: 'NO_LEADER'; message: string }
-		| { code: 'MULTIPLE_LEADERS'; message: string; numbers: string[] }
-		| { code: 'OFF_COLOR'; message: string; numbers: string[] }
-		| { code: 'UNKNOWN_CARD'; message: string; numbers: string[] };
+export type OpDeckListWarning =
+	| { code: 'MAINBOARD_COUNT'; message: string; count: number }
+	| { code: 'TOO_MANY_COPIES'; message: string; number: string; quantity: number }
+	| { code: 'NO_LEADER'; message: string }
+	| { code: 'MULTIPLE_LEADERS'; message: string; numbers: string[] }
+	| { code: 'OFF_COLOR'; message: string; numbers: string[] }
+	| { code: 'UNKNOWN_CARD'; message: string; numbers: string[] };
 
 /** A Deck List as a preview, or a saved one, shows it. */
 export interface OpDeckListView {

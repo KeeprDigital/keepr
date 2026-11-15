@@ -6,7 +6,10 @@ import { deferred } from '~~/test/helpers/deferred';
 import { createMockScreen } from '~~/test/helpers/fixtures';
 import { createAttachSignal, createContinuitySignal } from '~~/test/helpers/realtime-mock';
 import { ScreenLookupUnavailable } from '~/composables/repositories/useScreenRepository';
-import { SCREEN_OUTPUT_LOAD_RETRY_MS, useScreenDisplaySession } from '~/modules/screen/displaySession';
+import {
+	SCREEN_OUTPUT_LOAD_RETRY_MS,
+	useScreenDisplaySession,
+} from '~/modules/screen/displaySession';
 
 /** The channel a live rendering of the `main` Screen follows: its Screen's own. */
 const MAIN_SCREEN_CHANNEL = 'screen:42:7';
@@ -16,7 +19,7 @@ const SECOND_SCREEN_CHANNEL = 'screen:42:8';
 const EVENT_CHANNEL = 'event:42';
 
 function flushPromises() {
-	return new Promise(resolve => setTimeout(resolve, 0));
+	return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function createRoute(query: Record<string, unknown> = {}, hash = '') {
@@ -37,18 +40,20 @@ function sizedElement(width: number, height: number) {
 	return element;
 }
 
-function createHarness(options: {
-	route?: ReturnType<typeof createRoute>;
-	eventId?: number | null;
-	query?: Record<string, unknown>;
-	screens?: Record<string, ReturnType<typeof createMockScreen>>;
-	exportElementPng?: ReturnType<typeof vi.fn>;
-	setupSession?: (session: ScreenDisplaySession) => void;
-	/** What the Event context read carries beyond its id and name. */
-	outputEvent?: Record<string, unknown>;
-	/** Failures the Screen lookup throws, one per attempt, before it answers. */
-	lookupFailures?: unknown[];
-} = {}) {
+function createHarness(
+	options: {
+		route?: ReturnType<typeof createRoute>;
+		eventId?: number | null;
+		query?: Record<string, unknown>;
+		screens?: Record<string, ReturnType<typeof createMockScreen>>;
+		exportElementPng?: ReturnType<typeof vi.fn>;
+		setupSession?: (session: ScreenDisplaySession) => void;
+		/** What the Event context read carries beyond its id and name. */
+		outputEvent?: Record<string, unknown>;
+		/** Failures the Screen lookup throws, one per attempt, before it answers. */
+		lookupFailures?: unknown[];
+	} = {},
+) {
 	const route = options.route ?? createRoute(options.query);
 	const screens = options.screens ?? {
 		main: createMockScreen({ id: 7, slug: 'main' }),
@@ -60,11 +65,9 @@ function createHarness(options: {
 		loadScreenBySlug: vi.fn(async (_eventId: number, slug: string) => {
 			order.push(`load:${slug}`);
 			screenStore.activeScreen = null;
-			if (options.lookupFailures?.length)
-				throw options.lookupFailures.shift();
+			if (options.lookupFailures?.length) throw options.lookupFailures.shift();
 			const screen = screens[slug];
-			if (!screen)
-				throw new Error('Screen not found');
+			if (!screen) throw new Error('Screen not found');
 			screenStore.activeScreen = screen;
 			return screen;
 		}),
@@ -74,9 +77,8 @@ function createHarness(options: {
 		// program (#705).
 		refreshActiveScreen: vi.fn(async (_eventId: number, screenId: number) => {
 			order.push(`refresh:${screenId}`);
-			const screen = Object.values(screens).find(candidate => candidate.id === screenId);
-			if (!screen)
-				return null;
+			const screen = Object.values(screens).find((candidate) => candidate.id === screenId);
+			if (!screen) return null;
 			screenStore.activeScreen = screen;
 			return screen;
 		}),
@@ -92,12 +94,13 @@ function createHarness(options: {
 	});
 	// The store's method as the session calls it, so a test asserts the context alone.
 	const sessionEventStore = new Proxy(eventStore, {
-		get: (target, key, receiver) => key === 'setOutputEvent'
-			? (outputEvent: unknown, role: { preview?: boolean } = {}) => {
-					target.heldAsPreview = role.preview ?? false;
-					target.setOutputEvent(outputEvent);
-				}
-			: Reflect.get(target, key, receiver),
+		get: (target, key, receiver) =>
+			key === 'setOutputEvent'
+				? (outputEvent: unknown, role: { preview?: boolean } = {}) => {
+						target.heldAsPreview = role.preview ?? false;
+						target.setOutputEvent(outputEvent);
+					}
+				: Reflect.get(target, key, receiver),
 	});
 	// The Event context an output reads through its Screen (#604), never the
 	// operator's private Event read.
@@ -117,25 +120,28 @@ function createHarness(options: {
 		tokenError: null as Error | null,
 		onContinuityLost,
 		onceAttached,
-		onChannel: vi.fn((channel: string, type: string, handler: (message: Record<string, unknown>) => void) => {
-			const key = `${channel}|${type}`;
-			if (!channelHandlers.has(key))
-				channelHandlers.set(key, new Set());
-			channelHandlers.get(key)!.add(handler);
-			return () => channelHandlers.get(key)!.delete(handler);
-		}),
+		onChannel: vi.fn(
+			(channel: string, type: string, handler: (message: Record<string, unknown>) => void) => {
+				const key = `${channel}|${type}`;
+				if (!channelHandlers.has(key)) channelHandlers.set(key, new Set());
+				channelHandlers.get(key)!.add(handler);
+				return () => channelHandlers.get(key)!.delete(handler);
+			},
+		),
 	});
 	/** A peer's message of `type` as `channel` delivers it. */
 	function deliver(channel: string, type: string, payload: Record<string, unknown> = {}) {
-		for (const handler of [
-			...channelHandlers.get(`${channel}|${type}`) ?? [],
-		])
+		for (const handler of [...(channelHandlers.get(`${channel}|${type}`) ?? [])])
 			handler({ eventId: 42, ...payload });
 	}
 	/** The channels a message handler listens on now. */
 	function messageChannels() {
 		return [
-			...new Set([...channelHandlers].filter(([, handlers]) => handlers.size > 0).map(([key]) => key.split('|')[0]!)),
+			...new Set(
+				[...channelHandlers]
+					.filter(([, handlers]) => handlers.size > 0)
+					.map(([key]) => key.split('|')[0]!),
+			),
 		].sort();
 	}
 	const realtimeCallbacks: any[] = [];
@@ -166,7 +172,8 @@ function createHarness(options: {
 				},
 				exportAdapter: {
 					exportElementPng: exportElementPng as any,
-					buildFilename: params => `file-${params.screenSlug}-${params.output}-${params.width}x${params.height}.png`,
+					buildFilename: (params) =>
+						`file-${params.screenSlug}-${params.output}-${params.width}x${params.height}.png`,
 					closeWindow,
 				},
 			});
@@ -233,8 +240,11 @@ describe('useScreenDisplaySession', () => {
 		});
 		await flushPromises();
 
-		expect(harness.screenStore.loadScreenBySlug)
-			.toHaveBeenCalledWith(42, 'main', 'a-screen-output-capability-token');
+		expect(harness.screenStore.loadScreenBySlug).toHaveBeenCalledWith(
+			42,
+			'main',
+			'a-screen-output-capability-token',
+		);
 	});
 
 	it('loads its Event context through the Screen it looked up, with the same capability', async () => {
@@ -250,7 +260,10 @@ describe('useScreenDisplaySession', () => {
 			screenId: 7,
 			assetCapability: 'a-screen-output-capability-token',
 		});
-		expect(harness.eventStore.setOutputEvent).toHaveBeenCalledWith({ id: 42, name: 'Output Event' });
+		expect(harness.eventStore.setOutputEvent).toHaveBeenCalledWith({
+			id: 42,
+			name: 'Output Event',
+		});
 		expect(harness.session.error.value).toBeNull();
 	});
 
@@ -264,7 +277,9 @@ describe('useScreenDisplaySession', () => {
 		expect(harness.outputReads.event).toHaveBeenCalled();
 		expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalled();
 		expect(harness.session.error.value).toBe('Event details unavailable');
-		expect(harness.session.errorDetail.value).toBe('The screen "main" was found, but its event details could not be loaded. Retrying automatically.');
+		expect(harness.session.errorDetail.value).toBe(
+			'The screen "main" was found, but its event details could not be loaded. Retrying automatically.',
+		);
 		expect(harness.realtimeSession.start).not.toHaveBeenCalled();
 	});
 
@@ -274,20 +289,22 @@ describe('useScreenDisplaySession', () => {
 
 		expect(harness.outputReads.event).not.toHaveBeenCalled();
 		expect(harness.session.error.value).toBe('Screen not found');
-		expect(harness.session.errorDetail.value).toBe('The screen "main" could not be found for this event.');
+		expect(harness.session.errorDetail.value).toBe(
+			'The screen "main" could not be found for this event.',
+		);
 	});
 
 	it('says a Screen lookup that could not be answered is unavailable, and retries it until the load finishes', async () => {
 		// An output that loads during a brief outage has no reconnect to wake it.
 		vi.useFakeTimers();
 		const harness = createHarness({
-			lookupFailures: [
-				new ScreenLookupUnavailable(new Error('503')),
-			],
+			lookupFailures: [new ScreenLookupUnavailable(new Error('503'))],
 		});
 		await vi.advanceTimersByTimeAsync(0);
 		expect(harness.session.error.value).toBe('Screen unavailable');
-		expect(harness.session.errorDetail.value).toBe('The screen "main" could not be loaded. Retrying automatically.');
+		expect(harness.session.errorDetail.value).toBe(
+			'The screen "main" could not be loaded. Retrying automatically.',
+		);
 
 		await vi.advanceTimersByTimeAsync(SCREEN_OUTPUT_LOAD_RETRY_MS);
 
@@ -316,7 +333,7 @@ describe('useScreenDisplaySession', () => {
 		expect(harness.outputReads.event).toHaveBeenCalledTimes(3);
 	});
 
-	it('keeps retrying when its retry\'s Screen re-read answers nothing, since the Screen was found', async () => {
+	it("keeps retrying when its retry's Screen re-read answers nothing, since the Screen was found", async () => {
 		// The Screen reads answer nothing for a failed read as for a missing Screen;
 		// a transient failure here must not end the retries under "Screen not found".
 		vi.useFakeTimers();
@@ -428,14 +445,8 @@ describe('useScreenDisplaySession', () => {
 	// Presence is not needed to render: with HTTP fine and realtime unable to connect,
 	// the presence enter stays queued for minutes, and program must not wait on it (#1025).
 	it.each([
-		[
-			'is still entering presence',
-			() => new Promise<void>(() => {}),
-		],
-		[
-			'fails to start',
-			() => Promise.reject(new Error('realtime refused')),
-		],
+		['is still entering presence', () => new Promise<void>(() => {})],
+		['fails to start', () => Promise.reject(new Error('realtime refused'))],
 	])('finishes its load while realtime %s', async (_case, start) => {
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const harness = createHarness();
@@ -584,8 +595,7 @@ describe('useScreenDisplaySession', () => {
 		const harness = createHarness({ route });
 		await flushPromises();
 
-		expect(harness.session.screenContext.assetCapability?.value)
-			.toBe('opaque_fragment_capability');
+		expect(harness.session.screenContext.assetCapability?.value).toBe('opaque_fragment_capability');
 	});
 
 	it('stops the previous realtime session before loading and starting the new slug', async () => {
@@ -605,12 +615,13 @@ describe('useScreenDisplaySession', () => {
 		await flushPromises();
 		const obsoleteLoad = deferred<ReturnType<typeof createMockScreen>>();
 		const latestScreen = createMockScreen({ id: 8, slug: 'second' });
-		harness.screenStore.loadScreenBySlug.mockImplementation(async (_eventId: number, slug: string) => {
-			if (slug === 'obsolete')
-				return await obsoleteLoad.promise;
-			harness.screenStore.activeScreen = latestScreen;
-			return latestScreen;
-		});
+		harness.screenStore.loadScreenBySlug.mockImplementation(
+			async (_eventId: number, slug: string) => {
+				if (slug === 'obsolete') return await obsoleteLoad.promise;
+				harness.screenStore.activeScreen = latestScreen;
+				return latestScreen;
+			},
+		);
 
 		harness.route.params.screenSlug = 'obsolete';
 		await nextTick();
@@ -677,10 +688,13 @@ describe('useScreenDisplaySession', () => {
 		const harness = createHarness({
 			query: { download: '1', output: 'key' },
 			setupSession: (session) => {
-				watch(session.loading, (loading) => {
-					if (!loading)
-						session.screenContext.overlayContainer.value = container;
-				}, { flush: 'post' });
+				watch(
+					session.loading,
+					(loading) => {
+						if (!loading) session.screenContext.overlayContainer.value = container;
+					},
+					{ flush: 'post' },
+				);
 			},
 		});
 		await flushPromises();
@@ -836,7 +850,10 @@ describe('useScreenDisplaySession', () => {
 			await flushPromises();
 
 			expect(harness.outputReads.event).toHaveBeenCalledTimes(3);
-			expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({ id: 42, name: 'Answered before or after it' });
+			expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({
+				id: 42,
+				name: 'Answered before or after it',
+			});
 			expect(harness.eventStore.outputEvent).toEqual({ id: 42, name: 'Output Event' });
 		});
 
@@ -870,8 +887,14 @@ describe('useScreenDisplaySession', () => {
 			lostRead.resolve({ id: 42, name: 'Lost read' });
 			await flushPromises();
 
-			expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({ id: 42, name: 'Lost read' });
-			expect(harness.eventStore.setOutputEvent).toHaveBeenCalledWith({ id: 42, name: 'Output Event' });
+			expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({
+				id: 42,
+				name: 'Lost read',
+			});
+			expect(harness.eventStore.setOutputEvent).toHaveBeenCalledWith({
+				id: 42,
+				name: 'Output Event',
+			});
 			expect(harness.realtimeSession.start).toHaveBeenCalledOnce();
 			expect(harness.session.loading.value).toBe(false);
 			expect(harness.session.error.value).toBeNull();
@@ -916,8 +939,14 @@ describe('useScreenDisplaySession', () => {
 			lateContext.resolve({ id: 42, name: 'Read for the old Screen' });
 			await flushPromises();
 
-			expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({ id: 42, name: 'Read for the old Screen' });
-			expect(harness.eventStore.setOutputEvent).toHaveBeenLastCalledWith({ id: 42, name: 'Output Event' });
+			expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({
+				id: 42,
+				name: 'Read for the old Screen',
+			});
+			expect(harness.eventStore.setOutputEvent).toHaveBeenLastCalledWith({
+				id: 42,
+				name: 'Output Event',
+			});
 			expect(harness.realtimeSession.start).toHaveBeenLastCalledWith(42, 8);
 		});
 
@@ -952,7 +981,10 @@ describe('useScreenDisplaySession', () => {
 					screenId: 7,
 					assetCapability: 'a-screen-output-capability-token',
 				});
-				expect(harness.eventStore.setOutputEvent).toHaveBeenCalledWith({ id: 42, name: 'Output Event' });
+				expect(harness.eventStore.setOutputEvent).toHaveBeenCalledWith({
+					id: 42,
+					name: 'Output Event',
+				});
 				expect(harness.session.error.value).toBeNull();
 				expect(harness.session.loading.value).toBe(false);
 				expect(harness.realtimeSession.start).toHaveBeenCalledWith(42, 7);
@@ -989,7 +1021,7 @@ describe('useScreenDisplaySession', () => {
 				expect(harness.order).toEqual(['refresh:7']);
 			});
 
-			it('finishes a Program monitor\'s load without entering presence', async () => {
+			it("finishes a Program monitor's load without entering presence", async () => {
 				const harness = await failedLoad({
 					query: { embed: 'monitor' },
 				});
@@ -1001,7 +1033,7 @@ describe('useScreenDisplaySession', () => {
 				expect(harness.realtimeSession.start).not.toHaveBeenCalled();
 			});
 
-			it('finishes a preview\'s load without entering presence', async () => {
+			it("finishes a preview's load without entering presence", async () => {
 				const harness = await failedLoad({
 					query: { embed: 'preview' },
 				});
@@ -1024,7 +1056,10 @@ describe('useScreenDisplaySession', () => {
 				lateContext.resolve({ id: 42, name: 'Read for the old Screen' });
 				await flushPromises();
 
-				expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({ id: 42, name: 'Read for the old Screen' });
+				expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({
+					id: 42,
+					name: 'Read for the old Screen',
+				});
 				expect(harness.realtimeSession.start).toHaveBeenCalledTimes(1);
 				expect(harness.realtimeSession.start).toHaveBeenLastCalledWith(42, 8);
 				expect(harness.session.error.value).toBeNull();
@@ -1087,7 +1122,10 @@ describe('useScreenDisplaySession', () => {
 			expect(harness.session.loading.value).toBe(false);
 			expect(harness.order).toEqual(['start:7', 'refresh:7']);
 			expect(harness.outputReads.event).toHaveBeenCalledTimes(2);
-			expect(harness.eventStore.setOutputEvent).toHaveBeenLastCalledWith({ id: 42, name: 'Output Event' });
+			expect(harness.eventStore.setOutputEvent).toHaveBeenLastCalledWith({
+				id: 42,
+				name: 'Output Event',
+			});
 		});
 
 		it('re-reads only once, not on every later attach', async () => {
@@ -1105,7 +1143,7 @@ describe('useScreenDisplaySession', () => {
 			expect(harness.order).toEqual([]);
 		});
 
-		it('does not re-read a preview\'s load whose Event channel was already attached', async () => {
+		it("does not re-read a preview's load whose Event channel was already attached", async () => {
 			// A Screen change within one Event: the channel listened throughout, so
 			// nothing published during the reads went unheard.
 			const harness = createHarness({
@@ -1127,7 +1165,7 @@ describe('useScreenDisplaySession', () => {
 		});
 
 		// A live rendering's channel is its Screen's own, so another Screen is another first attach.
-		it('re-reads a Screen change once the new Screen\'s channel first attaches, and not for the Screen it left', async () => {
+		it("re-reads a Screen change once the new Screen's channel first attaches, and not for the Screen it left", async () => {
 			const harness = createHarness();
 			await flushPromises();
 			harness.attach(MAIN_SCREEN_CHANNEL);
@@ -1222,23 +1260,26 @@ describe('useScreenDisplaySession', () => {
 				deaf: MAIN_SCREEN_CHANNEL,
 				preview: true,
 			},
-		])('$rendering hears messages on $messages and resyncs off $resyncs alone', async ({ query, messages, resyncs, deaf, preview }) => {
-			const harness = createHarness({ query });
-			await flushPromises();
-			harness.order.splice(0);
+		])(
+			'$rendering hears messages on $messages and resyncs off $resyncs alone',
+			async ({ query, messages, resyncs, deaf, preview }) => {
+				const harness = createHarness({ query });
+				await flushPromises();
+				harness.order.splice(0);
 
-			expect(harness.messageChannels()).toEqual(messages);
-			expect(harness.eventStore.heldAsPreview).toBe(preview);
+				expect(harness.messageChannels()).toEqual(messages);
+				expect(harness.eventStore.heldAsPreview).toBe(preview);
 
-			harness.reattach(deaf);
-			harness.attach(deaf);
-			await flushPromises();
-			expect(harness.order).toEqual([]);
+				harness.reattach(deaf);
+				harness.attach(deaf);
+				await flushPromises();
+				expect(harness.order).toEqual([]);
 
-			harness.reattach(resyncs);
-			await flushPromises();
-			expect(harness.order).toEqual(['refresh:7']);
-		});
+				harness.reattach(resyncs);
+				await flushPromises();
+				expect(harness.order).toEqual(['refresh:7']);
+			},
+		);
 
 		it('stops hearing the Screen it leaves', async () => {
 			const harness = createHarness();
@@ -1333,7 +1374,7 @@ describe('useScreenDisplaySession', () => {
 			expect(harness.eventStore.outputEvent).toEqual(changed);
 		});
 
-		it('is not heard by a preview, which its Event\'s room keeps current', async () => {
+		it("is not heard by a preview, which its Event's room keeps current", async () => {
 			const harness = createHarness({
 				query: { embed: 'preview' },
 			});
@@ -1384,7 +1425,10 @@ describe('useScreenDisplaySession', () => {
 			expect(harness.session.loading.value).toBe(false);
 			expect(harness.order).toEqual(['start:8', 'refresh:8']);
 			expect(harness.outputReads.event).toHaveBeenCalledTimes(contextReads + 1);
-			expect(harness.eventStore.setOutputEvent).toHaveBeenLastCalledWith({ id: 42, name: 'Output Event' });
+			expect(harness.eventStore.setOutputEvent).toHaveBeenLastCalledWith({
+				id: 42,
+				name: 'Output Event',
+			});
 		});
 
 		it('recovers once, however many losses and attaches land during one load', async () => {
@@ -1420,7 +1464,7 @@ describe('useScreenDisplaySession', () => {
 			expect(harness.order).toEqual(['refresh:7']);
 		});
 
-		it('recovers once when a loaded rendering\'s first attach reports a loss as well', async () => {
+		it("recovers once when a loaded rendering's first attach reports a loss as well", async () => {
 			const harness = createHarness();
 			await flushPromises();
 			harness.order.splice(0);
@@ -1444,7 +1488,10 @@ describe('useScreenDisplaySession', () => {
 			await flushPromises();
 
 			expect(harness.order).toEqual(['stop', 'load:main', 'start:7']);
-			expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({ id: 42, name: 'Read for the left Screen' });
+			expect(harness.eventStore.setOutputEvent).not.toHaveBeenCalledWith({
+				id: 42,
+				name: 'Read for the left Screen',
+			});
 		});
 
 		it('drops a loss heard during a load that then failed, and its retry, whose reads follow the loss, re-reads nothing more', async () => {

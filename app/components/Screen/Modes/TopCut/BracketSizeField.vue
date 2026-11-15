@@ -21,7 +21,7 @@ const emit = defineEmits<{
 
 const sizeOptions = [
 	{ label: 'From the first Round', value: null },
-	...TOP_CUT_BRACKET_SIZES.map(size => ({ label: `Top ${size}`, value: size })),
+	...TOP_CUT_BRACKET_SIZES.map((size) => ({ label: `Top ${size}`, value: size })),
 ];
 </script>
 

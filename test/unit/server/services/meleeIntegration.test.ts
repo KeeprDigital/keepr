@@ -4,7 +4,12 @@ import { requireMeleeIntegration, requireMeleeService } from '~~/server/services
 import { MeleeCredentialCryptoError } from '~~/server/utils/meleeCredentialCrypto';
 
 // Mock services
-const { mockFetchMeleeEvent, mockMeleeService, mockRevealMeleeClientSecret, mockRewrapMeleeClientSecret } = vi.hoisted(() => {
+const {
+	mockFetchMeleeEvent,
+	mockMeleeService,
+	mockRevealMeleeClientSecret,
+	mockRewrapMeleeClientSecret,
+} = vi.hoisted(() => {
 	const fetchMeleeEvent = vi.fn();
 	return {
 		mockFetchMeleeEvent: fetchMeleeEvent,
@@ -26,8 +31,8 @@ vi.mock('~~/server/services/meleeCredentialRotation', () => ({
 
 // Mock Nitro auto-import
 vi.stubGlobal('createError', (opts: any) => {
-	const err = new Error(opts.message)
-	;(err as any).statusCode = opts.statusCode;
+	const err = new Error(opts.message);
+	(err as any).statusCode = opts.statusCode;
 	return err;
 });
 
@@ -90,21 +95,25 @@ describe('requireMeleeIntegration', () => {
 		mockRewrapMeleeClientSecret.mockRejectedValue(new Error(`D1 failed for ${secret}`));
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-		await expect(requireMeleeIntegration({
-			id: 42,
-			meleeEnabled: true,
-			meleeEventId: 'evt-1',
-			meleeClientId: 'client-1',
-			meleeClientSecret: 'stored-envelope',
-		})).resolves.toEqual({
+		await expect(
+			requireMeleeIntegration({
+				id: 42,
+				meleeEnabled: true,
+				meleeEventId: 'evt-1',
+				meleeClientId: 'client-1',
+				meleeClientSecret: 'stored-envelope',
+			}),
+		).resolves.toEqual({
 			clientId: 'client-1',
 			clientSecret: secret,
 			eventId: 'evt-1',
 		});
-		expect(warn).toHaveBeenCalledWith(JSON.stringify({
-			message: 'melee_credential_rewrap_failed',
-			eventId: 42,
-		}));
+		expect(warn).toHaveBeenCalledWith(
+			JSON.stringify({
+				message: 'melee_credential_rewrap_failed',
+				eventId: 42,
+			}),
+		);
 		expect(JSON.stringify(warn.mock.calls)).not.toContain(secret);
 		warn.mockRestore();
 	});
@@ -143,10 +152,12 @@ describe('requireMeleeService', () => {
 
 	it('surfaces missing-key failures without passing ciphertext to the adapter', async () => {
 		const storedValue = 'encrypted-envelope-never-log';
-		mockRevealMeleeClientSecret.mockRejectedValue(new MeleeCredentialCryptoError(
-			'MELEE_CREDENTIAL_KEY_MISSING',
-			'Melee credential encryption key version "retired" is not configured',
-		));
+		mockRevealMeleeClientSecret.mockRejectedValue(
+			new MeleeCredentialCryptoError(
+				'MELEE_CREDENTIAL_KEY_MISSING',
+				'Melee credential encryption key version "retired" is not configured',
+			),
+		);
 		const result = requireMeleeService({
 			meleeEnabled: true,
 			meleeEventId: 'evt-1',

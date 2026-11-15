@@ -46,14 +46,15 @@ describe('the author session the acceptance browser is given', () => {
 	 * cause.
 	 */
 	it('mirrors the attributes the installation issued it with', () => {
-		expect(browserCookie('https://stream.example.workers.dev/_acceptance/x.html', COOKIE))
-			.toMatchObject({
-				url: 'https://stream.example.workers.dev/_acceptance/x.html',
-				path: '/',
-				httpOnly: true,
-				sameSite: 'Strict',
-				secure: true,
-			});
+		expect(
+			browserCookie('https://stream.example.workers.dev/_acceptance/x.html', COOKIE),
+		).toMatchObject({
+			url: 'https://stream.example.workers.dev/_acceptance/x.html',
+			path: '/',
+			httpOnly: true,
+			sameSite: 'Strict',
+			secure: true,
+		});
 		expect(browserCookie('http://127.0.0.1:8787/_acceptance/x.html', COOKIE).secure).toBe(false);
 	});
 
@@ -64,8 +65,9 @@ describe('the author session the acceptance browser is given', () => {
 	 * loopback because it treats loopback as a secure origin.
 	 */
 	it('installs a __Secure- prefixed cookie as Secure even on loopback http', () => {
-		expect(browserCookie('http://127.0.0.1:8787/_acceptance/x.html', `__Secure-${COOKIE}`))
-			.toMatchObject({ name: `__Secure-${COOKIE_NAME}`, secure: true });
+		expect(
+			browserCookie('http://127.0.0.1:8787/_acceptance/x.html', `__Secure-${COOKIE}`),
+		).toMatchObject({ name: `__Secure-${COOKIE_NAME}`, secure: true });
 	});
 
 	it('refuses something that is not a name=value pair rather than setting a nameless cookie', () => {
@@ -82,14 +84,11 @@ function recordingPage(answers: Record<string, unknown> = {}) {
 	return {
 		commands,
 		methods: () => commands.map(({ method }) => method),
-		paramsFor: (method: string) => commands.find(command => command.method === method)?.params,
+		paramsFor: (method: string) => commands.find((command) => command.method === method)?.params,
 		async command(method: string, params?: object) {
 			commands.push({ method, params });
-			if (method in answers)
-				return answers[method];
-			return method === 'Network.setCookie'
-				? { success: true }
-				: {};
+			if (method in answers) return answers[method];
+			return method === 'Network.setCookie' ? { success: true } : {};
 		},
 	};
 }
@@ -121,11 +120,11 @@ describe('opening the acceptance page as the author that staged the ingestion', 
 		// Both of them, because a page carrying one of the two is the failure this
 		// list exists to prevent — and it is the kind that reads as a working page
 		// right up to the request that needs the other.
-		expect(page.commands.filter(({ method }) => method === 'Network.setCookie').map(({ params }) => params))
-			.toEqual([
-				browserCookie(PAGE_URL, SESSION_COOKIE),
-				browserCookie(PAGE_URL, COOKIE),
-			]);
+		expect(
+			page.commands
+				.filter(({ method }) => method === 'Network.setCookie')
+				.map(({ params }) => params),
+		).toEqual([browserCookie(PAGE_URL, SESSION_COOKIE), browserCookie(PAGE_URL, COOKIE)]);
 		expect(page.paramsFor('Page.navigate')).toEqual({ url: PAGE_URL });
 	});
 
@@ -169,11 +168,13 @@ describe('opening the acceptance page as the author that staged the ingestion', 
 	 * it (#340) — the docblock claimed this before the code did.
 	 */
 	describe('verdictFailureCode', () => {
-		it('prints the page\'s own word for the failure when the registry publishes it', () => {
-			expect(verdictFailureCode({ outcome: 'failed', code: 'font-glyph-not-rendered' }))
-				.toBe('font-glyph-not-rendered');
-			expect(verdictFailureCode({ outcome: 'failed', code: 'font-refused-face-loaded' }))
-				.toBe('font-refused-face-loaded');
+		it("prints the page's own word for the failure when the registry publishes it", () => {
+			expect(verdictFailureCode({ outcome: 'failed', code: 'font-glyph-not-rendered' })).toBe(
+				'font-glyph-not-rendered',
+			);
+			expect(verdictFailureCode({ outcome: 'failed', code: 'font-refused-face-loaded' })).toBe(
+				'font-refused-face-loaded',
+			);
 		});
 
 		// Every code a shipped page authors must survive the lookup. The pages are read, not
@@ -204,7 +205,7 @@ describe('opening the acceptance page as the author that staged the ingestion', 
 		 * whose refusal path (`evidence-unknown-code`) exists for a harness that
 		 * builds a code itself, not for page text.
 		 */
-		it('refuses a code the registry does not publish, including the formatter\'s own words', () => {
+		it("refuses a code the registry does not publish, including the formatter's own words", () => {
 			for (const code of [
 				'totally-made-up',
 				'evidence-unknown-code',
@@ -224,10 +225,12 @@ describe('opening the acceptance page as the author that staged the ingestion', 
 		 * keep their own codes whatever the dataset says.
 		 */
 		it('never lets a page name an outcome it was not present for', () => {
-			expect(verdictFailureCode({ outcome: 'unavailable', code: 'font-glyph-not-rendered' }))
-				.toBe('browser-driver-unavailable');
-			expect(verdictFailureCode({ outcome: 'timed-out', code: 'font-glyph-not-rendered' }))
-				.toBe('browser-acceptance-timed-out');
+			expect(verdictFailureCode({ outcome: 'unavailable', code: 'font-glyph-not-rendered' })).toBe(
+				'browser-driver-unavailable',
+			);
+			expect(verdictFailureCode({ outcome: 'timed-out', code: 'font-glyph-not-rendered' })).toBe(
+				'browser-acceptance-timed-out',
+			);
 		});
 	});
 });
@@ -259,9 +262,7 @@ describe('the page diagnostics a run keeps', () => {
 		});
 		page.emit('Runtime.consoleAPICalled', {
 			type: 'error',
-			args: [
-				{ type: 'object', description: 'Error: shader failed' },
-			],
+			args: [{ type: 'object', description: 'Error: shader failed' }],
 		});
 		page.emit('Runtime.exceptionThrown', {
 			exceptionDetails: {
@@ -283,9 +284,7 @@ describe('the page diagnostics a run keeps', () => {
 		for (let index = 0; index < 50; index += 1) {
 			page.emit('Runtime.consoleAPICalled', {
 				type: 'log',
-				args: [
-					{ type: 'number', value: index },
-				],
+				args: [{ type: 'number', value: index }],
 			});
 		}
 

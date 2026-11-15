@@ -3,7 +3,12 @@ import type { FeatureMatchOverlayModeConfig } from '~~/shared/types/screenConfig
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, ref } from 'vue';
-import { addGraphicGroupChild, addGraphicItem, findGraphicItem, patchGraphicItem } from '~~/shared/modules/graphics';
+import {
+	addGraphicGroupChild,
+	addGraphicItem,
+	findGraphicItem,
+	patchGraphicItem,
+} from '~~/shared/modules/graphics';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
 import LayerList from '~/components/Screen/Modes/FeatureMatchOverlay/LayerList.vue';
 import { useGraphicsEditor } from '~/composables/useGraphicsEditor';
@@ -21,7 +26,8 @@ const UButtonStub = defineComponent({
 		disabled: { type: Boolean, required: false },
 	},
 	emits: ['click'],
-	template: '<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
+	template:
+		'<button type="button" :disabled="disabled" @click="$emit(\'click\')"><slot /></button>',
 });
 
 /** Every menu entry, a submenu's included, as a plain button, so the menu needs no opening. */
@@ -52,7 +58,11 @@ function configWithItems(): FeatureMatchOverlayModeConfig {
 	let composition: BroadcastGraphicConfig = { ...config.layout.composition, items: [] };
 	composition = addGraphicItem(composition, { kind: 'shape', id: 'back', ...CANVAS }).graphic;
 	composition = addGraphicItem(composition, { kind: 'group', id: 'cluster', ...CANVAS }).graphic;
-	composition = addGraphicGroupChild(composition, { kind: 'text', groupId: 'cluster', id: 'child' }).graphic;
+	composition = addGraphicGroupChild(composition, {
+		kind: 'text',
+		groupId: 'cluster',
+		id: 'child',
+	}).graphic;
 	return {
 		...config,
 		layout: { ...config.layout, composition },
@@ -67,13 +77,15 @@ async function mountList({ writable = true } = {}) {
 			...patch,
 		};
 	};
-	const editor = useGraphicsEditor(featureMatchLayoutEditorHost({
-		config,
-		updateConfig,
-		canvasWidth: 1920,
-		canvasHeight: 1080,
-		writable,
-	}));
+	const editor = useGraphicsEditor(
+		featureMatchLayoutEditorHost({
+			config,
+			updateConfig,
+			canvasWidth: 1920,
+			canvasHeight: 1080,
+			writable,
+		}),
+	);
 	const wrapper = mount(LayerList, {
 		props: {
 			layout: config.value.layout,
@@ -96,25 +108,24 @@ async function mountList({ writable = true } = {}) {
 }
 
 function rowKeys(wrapper: Awaited<ReturnType<typeof mountList>>['wrapper']) {
-	return wrapper.findAll('[data-testid="layer-row"]').map(row => row.attributes('data-layer-key'));
+	return wrapper
+		.findAll('[data-testid="layer-row"]')
+		.map((row) => row.attributes('data-layer-key'));
 }
 
 describe('featureMatchOverlayLayerList', () => {
-	it('lists Graphic Items front to back with each group\'s children beneath it, then the Sources, then the canvas', async () => {
+	it("lists Graphic Items front to back with each group's children beneath it, then the Sources, then the canvas", async () => {
 		const { wrapper, config } = await mountList();
 
-		const sources = [...config.value.layout.sources].reverse().map(item => `source:${item.id}`);
-		expect(rowKeys(wrapper)).toEqual([
-			'item:cluster',
-			'item:child',
-			'item:back',
-			...sources,
-		]);
+		const sources = [...config.value.layout.sources].reverse().map((item) => `source:${item.id}`);
+		expect(rowKeys(wrapper)).toEqual(['item:cluster', 'item:child', 'item:back', ...sources]);
 		expect(wrapper.find('[data-testid="layer-canvas"]').exists()).toBe(true);
 	});
 
 	function selectedKeys(wrapper: Awaited<ReturnType<typeof mountList>>['wrapper']) {
-		return wrapper.findAll('[data-testid="layer-row"][aria-selected="true"]').map(row => row.attributes('data-layer-key'));
+		return wrapper
+			.findAll('[data-testid="layer-row"][aria-selected="true"]')
+			.map((row) => row.attributes('data-layer-key'));
 	}
 
 	it('marks the selected rows, and the canvas only while no layer is selected', async () => {
@@ -125,7 +136,9 @@ describe('featureMatchOverlayLayerList', () => {
 		await wrapper.get('[data-layer-key="item:back"] [data-testid="layer-select"]').trigger('click');
 
 		expect(selectedKeys(wrapper)).toEqual(['item:back']);
-		expect(wrapper.findAll('[data-testid="layer-row"][aria-selected="false"]').length).toBeGreaterThan(0);
+		expect(
+			wrapper.findAll('[data-testid="layer-row"][aria-selected="false"]').length,
+		).toBeGreaterThan(0);
 		expect(wrapper.get('[data-testid="layer-canvas"]').attributes('aria-current')).toBeUndefined();
 	});
 
@@ -135,10 +148,7 @@ describe('featureMatchOverlayLayerList', () => {
 			'⌘-click adds a row',
 			[
 				['item:back', {}],
-				[
-					'source:main-source',
-					{ metaKey: true },
-				],
+				['source:main-source', { metaKey: true }],
 			],
 			() => ['item:back', 'source:main-source'],
 		],
@@ -146,10 +156,7 @@ describe('featureMatchOverlayLayerList', () => {
 			'Ctrl-click adds a row',
 			[
 				['item:back', {}],
-				[
-					'item:cluster',
-					{ ctrlKey: true },
-				],
+				['item:cluster', { ctrlKey: true }],
 			],
 			() => ['item:cluster', 'item:back'],
 		],
@@ -157,12 +164,9 @@ describe('featureMatchOverlayLayerList', () => {
 			'Shift-click selects every row from the last one chosen',
 			[
 				['item:child', {}],
-				[
-					'source:main-source',
-					{ shiftKey: true },
-				],
+				['source:main-source', { shiftKey: true }],
 			],
-			sources => [
+			(sources) => [
 				'item:child',
 				'item:back',
 				...sources.slice(0, sources.indexOf('source:main-source') + 1),
@@ -172,10 +176,7 @@ describe('featureMatchOverlayLayerList', () => {
 			'a plain click selects that row alone',
 			[
 				['item:back', {}],
-				[
-					'item:cluster',
-					{ metaKey: true },
-				],
+				['item:cluster', { metaKey: true }],
 				['item:child', {}],
 			],
 			() => ['item:child'],
@@ -184,9 +185,11 @@ describe('featureMatchOverlayLayerList', () => {
 		const { wrapper, config } = await mountList();
 
 		for (const [key, modifiers] of clicks)
-			await wrapper.get(`[data-layer-key="${key}"] [data-testid="layer-select"]`).trigger('click', modifiers);
+			await wrapper
+				.get(`[data-layer-key="${key}"] [data-testid="layer-select"]`)
+				.trigger('click', modifiers);
 
-		const sources = [...config.value.layout.sources].reverse().map(item => `source:${item.id}`);
+		const sources = [...config.value.layout.sources].reverse().map((item) => `source:${item.id}`);
 		expect(selectedKeys(wrapper)).toEqual(expected(sources));
 	});
 
@@ -195,119 +198,113 @@ describe('featureMatchOverlayLayerList', () => {
 		[
 			'Delete in its menu',
 			'[data-menu-entry="Delete"]',
-			rows => rows.filter(key => key !== 'item:back' && key !== 'source:main-source'),
+			(rows) => rows.filter((key) => key !== 'item:back' && key !== 'source:main-source'),
 			0,
 			[undefined, undefined],
 		],
-		[
-			'Duplicate in its menu',
-			'[data-menu-entry="Duplicate"]',
-			rows => rows,
-			2,
-			[true, true],
-		],
-		[
-			'its eye',
-			'[data-testid="layer-visibility"]',
-			rows => rows,
-			0,
-			[false, false],
-		],
+		['Duplicate in its menu', '[data-menu-entry="Duplicate"]', (rows) => rows, 2, [true, true]],
+		['its eye', '[data-testid="layer-visibility"]', (rows) => rows, 0, [false, false]],
 	])('%s acts on every selected layer', async (_, control, kept, added, visible) => {
 		const { wrapper, config, sync } = await mountList();
 		const before = rowKeys(wrapper) as string[];
 		await wrapper.get('[data-layer-key="item:back"] [data-testid="layer-select"]').trigger('click');
-		await wrapper.get('[data-layer-key="source:main-source"] [data-testid="layer-select"]').trigger('click', { metaKey: true });
+		await wrapper
+			.get('[data-layer-key="source:main-source"] [data-testid="layer-select"]')
+			.trigger('click', { metaKey: true });
 
 		await wrapper.get(`[data-layer-key="item:back"] ${control}`).trigger('click');
 		await sync();
 
 		expect(rowKeys(wrapper)).toEqual(expect.arrayContaining(kept(before)));
 		expect(rowKeys(wrapper)).toHaveLength(kept(before).length + added);
-		expect(selectedKeys(wrapper).filter(key => !before.includes(key!))).toHaveLength(added);
+		expect(selectedKeys(wrapper).filter((key) => !before.includes(key!))).toHaveLength(added);
 		expect([
-			config.value.layout.composition.items.find(item => item.id === 'back')?.visible,
-			config.value.layout.sources.find(item => item.id === 'main-source')?.visible,
+			config.value.layout.composition.items.find((item) => item.id === 'back')?.visible,
+			config.value.layout.sources.find((item) => item.id === 'main-source')?.visible,
 		]).toEqual(visible);
 	});
 
 	// #920: a selected row's menu groups the selection, saying why it cannot, and a group's row ungroups it.
 	it.each<[string, string, string | undefined, string[]]>([
-		[
-			'groups two Graphic Items',
-			'item:front',
-			undefined,
-			['cluster', 'Group 2'],
-		],
+		['groups two Graphic Items', 'item:front', undefined, ['cluster', 'Group 2']],
 		[
 			'says why a Source Item keeps the selection from grouping',
 			'source:main-source',
-			'Source Items can\'t be grouped',
+			"Source Items can't be grouped",
 			['back', 'cluster', 'front'],
 		],
-	])('%s from a selected row\'s menu', async (_, second, refusal, topLevel) => {
+	])("%s from a selected row's menu", async (_, second, refusal, topLevel) => {
 		const { wrapper, config, sync } = await mountList();
-		const composition = addGraphicItem(config.value.layout.composition, { kind: 'shape', id: 'front', ...CANVAS }).graphic;
+		const composition = addGraphicItem(config.value.layout.composition, {
+			kind: 'shape',
+			id: 'front',
+			...CANVAS,
+		}).graphic;
 		config.value = {
 			...config.value,
 			layout: { ...config.value.layout, composition },
 		};
 		await sync();
 		await wrapper.get('[data-layer-key="item:back"] [data-testid="layer-select"]').trigger('click');
-		await wrapper.get(`[data-layer-key="${second}"] [data-testid="layer-select"]`).trigger('click', { metaKey: true });
+		await wrapper
+			.get(`[data-layer-key="${second}"] [data-testid="layer-select"]`)
+			.trigger('click', { metaKey: true });
 		const entry = wrapper.get('[data-layer-key="item:back"] [data-menu-entry="Group selection"]');
 
 		await entry.trigger('click');
 		await sync();
 
 		expect(entry.attributes('data-menu-description')).toBe(refusal);
-		expect(config.value.layout.composition.items.map(item => item.type === 'group' && item.id !== 'cluster'
-			? item.label
-			: item.id)).toEqual(topLevel);
+		expect(
+			config.value.layout.composition.items.map((item) =>
+				item.type === 'group' && item.id !== 'cluster' ? item.label : item.id,
+			),
+		).toEqual(topLevel);
 	});
 
-	it('ungroups a Graphic Group from its row\'s menu', async () => {
+	it("ungroups a Graphic Group from its row's menu", async () => {
 		const { wrapper, config, sync } = await mountList();
 
-		await wrapper.get('[data-layer-key="item:cluster"] [data-menu-entry="Ungroup"]').trigger('click');
+		await wrapper
+			.get('[data-layer-key="item:cluster"] [data-menu-entry="Ungroup"]')
+			.trigger('click');
 		await sync();
 
-		expect(config.value.layout.composition.items.map(item => item.id)).toEqual(['back', 'child']);
+		expect(config.value.layout.composition.items.map((item) => item.id)).toEqual(['back', 'child']);
 	});
 
 	// Each action once: a row reorders from its menu, its drag and ⌘] / ⌘[, and carries no arrows.
 	it.each<[string, string, string, string[]]>([
-		[
-			'Bring forward',
-			'item:back',
-			'Send backward',
-			['cluster', 'back'],
-		],
-		[
-			'Send backward',
-			'item:cluster',
-			'Bring forward',
-			['cluster', 'back'],
-		],
-	])('%s in a row\'s menu moves it one step, and the step off the end is disabled', async (entry, row, disabled, order) => {
-		const { wrapper, config, sync } = await mountList();
-		const found = wrapper.get(`[data-layer-key="${row}"]`);
+		['Bring forward', 'item:back', 'Send backward', ['cluster', 'back']],
+		['Send backward', 'item:cluster', 'Bring forward', ['cluster', 'back']],
+	])(
+		"%s in a row's menu moves it one step, and the step off the end is disabled",
+		async (entry, row, disabled, order) => {
+			const { wrapper, config, sync } = await mountList();
+			const found = wrapper.get(`[data-layer-key="${row}"]`);
 
-		expect(found.get(`[data-menu-entry="${disabled}"]`).attributes('disabled')).toBeDefined();
-		await found.get(`[data-menu-entry="${entry}"]`).trigger('click');
-		await sync();
+			expect(found.get(`[data-menu-entry="${disabled}"]`).attributes('disabled')).toBeDefined();
+			await found.get(`[data-menu-entry="${entry}"]`).trigger('click');
+			await sync();
 
-		expect(config.value.layout.composition.items.map(item => item.id)).toEqual(order);
-	});
+			expect(config.value.layout.composition.items.map((item) => item.id)).toEqual(order);
+		},
+	);
 
 	// Each action once: arrows are gone from the row, and alignment lives in the geometry section.
 	it('offers a row no arrow buttons, and its menu no alignment', async () => {
 		const { wrapper } = await mountList();
 		for (const key of ['source:player1-source', 'source:main-source', 'source:player2-source'])
-			await wrapper.get(`[data-layer-key="${key}"] [data-testid="layer-select"]`).trigger('click', { metaKey: true });
-		const entries = wrapper.findAll('[data-layer-key="source:main-source"] [data-menu-entry]').map(entry => entry.attributes('data-menu-entry'));
+			await wrapper
+				.get(`[data-layer-key="${key}"] [data-testid="layer-select"]`)
+				.trigger('click', { metaKey: true });
+		const entries = wrapper
+			.findAll('[data-layer-key="source:main-source"] [data-menu-entry]')
+			.map((entry) => entry.attributes('data-menu-entry'));
 
-		expect(wrapper.findAll('[data-testid="layer-forward"], [data-testid="layer-backward"]')).toHaveLength(0);
+		expect(
+			wrapper.findAll('[data-testid="layer-forward"], [data-testid="layer-backward"]'),
+		).toHaveLength(0);
 		expect(entries).toEqual([
 			'Duplicate',
 			'Group selection',
@@ -322,24 +319,25 @@ describe('featureMatchOverlayLayerList', () => {
 	it('hides and shows a layer from its row', async () => {
 		const { wrapper, config } = await mountList();
 
-		await wrapper.get('[data-layer-key="item:back"] [data-testid="layer-visibility"]').trigger('click');
+		await wrapper
+			.get('[data-layer-key="item:back"] [data-testid="layer-visibility"]')
+			.trigger('click');
 
-		expect(config.value.layout.composition.items.find(item => item.id === 'back')?.visible).toBe(false);
+		expect(config.value.layout.composition.items.find((item) => item.id === 'back')?.visible).toBe(
+			false,
+		);
 	});
 
 	// #747: a group's lock holds its children, whose own toggles then cannot free them.
 	it('locks a layer from its row, a group locking its children, and unlocks it again', async () => {
 		const { wrapper, editor } = await mountList();
-		const lock = (key: string) => wrapper.get(`[data-layer-key="${key}"] [data-testid="layer-lock"]`);
-		const states = () => [
-			'item:back',
-			'item:cluster',
-			'item:child',
-			'source:main-source',
-		].map(key => [
-			lock(key).attributes('aria-pressed'),
-			lock(key).attributes('disabled') !== undefined,
-		]);
+		const lock = (key: string) =>
+			wrapper.get(`[data-layer-key="${key}"] [data-testid="layer-lock"]`);
+		const states = () =>
+			['item:back', 'item:cluster', 'item:child', 'source:main-source'].map((key) => [
+				lock(key).attributes('aria-pressed'),
+				lock(key).attributes('disabled') !== undefined,
+			]);
 
 		await lock('item:cluster').trigger('click');
 		expect(states()).toEqual([
@@ -361,7 +359,10 @@ describe('featureMatchOverlayLayerList', () => {
 		await wrapper.get('[data-menu-entry="Source Item"]').trigger('click');
 
 		expect(config.value.layout.sources).toHaveLength(before + 1);
-		expect(editor.selection.value).toEqual({ type: 'source', itemId: config.value.layout.sources.at(-1)!.id });
+		expect(editor.selection.value).toEqual({
+			type: 'source',
+			itemId: config.value.layout.sources.at(-1)!.id,
+		});
 	});
 
 	it('offers to add into the Graphic Group the selection sits in', async () => {
@@ -375,20 +376,22 @@ describe('featureMatchOverlayLayerList', () => {
 
 		await textEntries()[1]!.trigger('click');
 
-		const cluster = config.value.layout.composition.items.find(item => item.id === 'cluster');
+		const cluster = config.value.layout.composition.items.find((item) => item.id === 'cluster');
 		expect(cluster?.type === 'group' && cluster.children).toHaveLength(2);
 	});
 
 	describe('renaming a layer inline', () => {
 		function itemLabel(config: Awaited<ReturnType<typeof mountList>>['config'], id: string) {
-			return config.value.layout.composition.items.find(item => item.id === id)?.label;
+			return config.value.layout.composition.items.find((item) => item.id === id)?.label;
 		}
 
 		it('renames a Graphic Item on double-click, trimmed, as one undo step', async () => {
 			const { wrapper, config, editor, sync } = await mountList();
 			const before = itemLabel(config, 'back');
 
-			await wrapper.get('[data-layer-key="item:back"] [data-testid="layer-select"]').trigger('dblclick');
+			await wrapper
+				.get('[data-layer-key="item:back"] [data-testid="layer-select"]')
+				.trigger('dblclick');
 			const input = wrapper.get('[data-layer-key="item:back"] [data-testid="layer-rename"]');
 			expect((input.element as HTMLInputElement).value).toBe(before);
 			await input.setValue('  Lower third  ');
@@ -421,11 +424,13 @@ describe('featureMatchOverlayLayerList', () => {
 			expect(editor.canUndo.value).toBe(false);
 		});
 
-		it('waits out an input method\'s composition before Enter commits', async () => {
+		it("waits out an input method's composition before Enter commits", async () => {
 			const { wrapper, config } = await mountList();
 			const before = itemLabel(config, 'back');
 
-			await wrapper.get('[data-layer-key="item:back"] [data-testid="layer-select"]').trigger('dblclick');
+			await wrapper
+				.get('[data-layer-key="item:back"] [data-testid="layer-select"]')
+				.trigger('dblclick');
 			const input = wrapper.get('[data-testid="layer-rename"]');
 			await input.setValue('ロゴ');
 			await input.trigger('keydown', { key: 'Enter', isComposing: true });
@@ -437,14 +442,18 @@ describe('featureMatchOverlayLayerList', () => {
 		it('drops a rename whose row leaves the list, so the row comes back as a button', async () => {
 			const { wrapper, editor, sync } = await mountList();
 
-			await wrapper.get('[data-layer-key="item:back"] [data-testid="layer-select"]').trigger('dblclick');
+			await wrapper
+				.get('[data-layer-key="item:back"] [data-testid="layer-select"]')
+				.trigger('dblclick');
 			editor.remove({ type: 'item', itemId: 'back' });
 			await sync();
 			editor.undo();
 			await sync();
 
 			expect(wrapper.find('[data-testid="layer-rename"]').exists()).toBe(false);
-			expect(wrapper.find('[data-layer-key="item:back"] [data-testid="layer-select"]').exists()).toBe(true);
+			expect(
+				wrapper.find('[data-layer-key="item:back"] [data-testid="layer-select"]').exists(),
+			).toBe(true);
 		});
 
 		it('selects on Enter, and renames on Enter once the row is selected', async () => {
@@ -458,7 +467,9 @@ describe('featureMatchOverlayLayerList', () => {
 
 			await button().trigger('keydown', { key: 'Enter' });
 
-			expect(wrapper.find('[data-layer-key="item:back"] [data-testid="layer-rename"]').exists()).toBe(true);
+			expect(
+				wrapper.find('[data-layer-key="item:back"] [data-testid="layer-rename"]').exists(),
+			).toBe(true);
 		});
 
 		it('keeps the old name when the rename is cancelled with Escape or left blank', async () => {
@@ -480,12 +491,16 @@ describe('featureMatchOverlayLayerList', () => {
 			expect(editor.canUndo.value).toBe(false);
 		});
 
-		it('keeps the keys typed into the name away from the editor\'s shortcuts', async () => {
+		it("keeps the keys typed into the name away from the editor's shortcuts", async () => {
 			const { wrapper } = await mountList();
 			const reachedEditor: string[] = [];
-			wrapper.element.addEventListener('keydown', (event: KeyboardEvent) => reachedEditor.push(event.key));
+			wrapper.element.addEventListener('keydown', (event: KeyboardEvent) =>
+				reachedEditor.push(event.key),
+			);
 
-			await wrapper.get('[data-layer-key="item:back"] [data-testid="layer-select"]').trigger('dblclick');
+			await wrapper
+				.get('[data-layer-key="item:back"] [data-testid="layer-select"]')
+				.trigger('dblclick');
 			const input = wrapper.get('[data-testid="layer-rename"]');
 			await input.trigger('keydown', { key: 'Backspace' });
 			await input.trigger('keydown', { key: 'z', metaKey: true });
@@ -506,7 +521,8 @@ describe('featureMatchOverlayLayerList', () => {
 		async function dragOn(wrapper: Wrapper, type: string, key: string, fraction = 0) {
 			const element = rowElement(wrapper, key);
 			// Layout is the boundary: each row is 20px tall at the top of the viewport.
-			element.getBoundingClientRect = () => DOMRect.fromRect({ x: 0, y: 0, width: 200, height: 20 });
+			element.getBoundingClientRect = () =>
+				DOMRect.fromRect({ x: 0, y: 0, width: 200, height: 20 });
 			const event = new DragEvent(type, {
 				bubbles: true,
 				cancelable: true,
@@ -520,17 +536,17 @@ describe('featureMatchOverlayLayerList', () => {
 		}
 
 		function dropEdges(wrapper: Wrapper) {
-			return Object.fromEntries(wrapper.findAll('[data-testid="layer-row"][data-drop-edge]')
-				.map(row => [
-					row.attributes('data-layer-key'),
-					row.attributes('data-drop-edge'),
-				]));
+			return Object.fromEntries(
+				wrapper
+					.findAll('[data-testid="layer-row"][data-drop-edge]')
+					.map((row) => [row.attributes('data-layer-key'), row.attributes('data-drop-edge')]),
+			);
 		}
 
 		type Config = Awaited<ReturnType<typeof mountList>>['config'];
 
 		function itemIds(config: Config) {
-			return config.value.layout.composition.items.map(item => item.id);
+			return config.value.layout.composition.items.map((item) => item.id);
 		}
 
 		function parentOf(config: Config, id: string) {
@@ -538,7 +554,9 @@ describe('featureMatchOverlayLayerList', () => {
 		}
 
 		function rotateBack(config: Config) {
-			const composition = patchGraphicItem(config.value.layout.composition, 'back', { rotation: 15 });
+			const composition = patchGraphicItem(config.value.layout.composition, 'back', {
+				rotation: 15,
+			});
 			config.value = {
 				...config.value,
 				layout: { ...config.value.layout, composition },
@@ -562,25 +580,30 @@ describe('featureMatchOverlayLayerList', () => {
 				['item:cluster', 'item:back', 'item:child'],
 				'cluster',
 			],
-		])('drops a row %s, showing where it lands, as one undo step', async (_case, fraction, edge, items, rows, parent) => {
-			const { wrapper, config, editor, sync } = await mountList();
+		])(
+			'drops a row %s, showing where it lands, as one undo step',
+			async (_case, fraction, edge, items, rows, parent) => {
+				const { wrapper, config, editor, sync } = await mountList();
 
-			await dragOn(wrapper, 'dragstart', 'item:back');
-			expect(wrapper.get('[data-layer-key="item:back"]').attributes('data-dragging')).toBe('true');
-			expect(await dragOn(wrapper, 'dragover', 'item:cluster', fraction)).toBe(true);
-			expect(dropEdges(wrapper)).toEqual({ 'item:cluster': edge });
-			await dragOn(wrapper, 'drop', 'item:cluster', fraction);
-			await sync();
+				await dragOn(wrapper, 'dragstart', 'item:back');
+				expect(wrapper.get('[data-layer-key="item:back"]').attributes('data-dragging')).toBe(
+					'true',
+				);
+				expect(await dragOn(wrapper, 'dragover', 'item:cluster', fraction)).toBe(true);
+				expect(dropEdges(wrapper)).toEqual({ 'item:cluster': edge });
+				await dragOn(wrapper, 'drop', 'item:cluster', fraction);
+				await sync();
 
-			expect(itemIds(config)).toEqual(items);
-			expect(parentOf(config, 'back')).toBe(parent);
-			expect(rowKeys(wrapper).slice(0, 3)).toEqual(rows);
-			expect(dropEdges(wrapper)).toEqual({});
-			expect(editor.selection.value).toEqual({ type: 'item', itemId: 'back' });
-			editor.undo();
-			expect(itemIds(config)).toEqual(['back', 'cluster']);
-			expect(editor.canUndo.value).toBe(false);
-		});
+				expect(itemIds(config)).toEqual(items);
+				expect(parentOf(config, 'back')).toBe(parent);
+				expect(rowKeys(wrapper).slice(0, 3)).toEqual(rows);
+				expect(dropEdges(wrapper)).toEqual({});
+				expect(editor.selection.value).toEqual({ type: 'item', itemId: 'back' });
+				editor.undo();
+				expect(itemIds(config)).toEqual(['back', 'cluster']);
+				expect(editor.canUndo.value).toBe(false);
+			},
+		);
 
 		// #747: a lock keeps a layer from canvas edits only.
 		it('drags a locked row, which stays locked', async () => {
@@ -620,7 +643,9 @@ describe('featureMatchOverlayLayerList', () => {
 
 			await dragOn(wrapper, 'dragstart', 'item:back');
 			expect(await dragOn(wrapper, 'dragover', 'item:cluster', 0.6)).toBe(false);
-			expect(wrapper.get('[data-layer-key="item:cluster"]').attributes('data-drop-refused')).toBe('true');
+			expect(wrapper.get('[data-layer-key="item:cluster"]').attributes('data-drop-refused')).toBe(
+				'true',
+			);
 			expect(wrapper.get('[data-testid="layer-drop-refusal"]').text()).toContain('rotated');
 			await dragOn(wrapper, 'drop', 'item:cluster', 0.6);
 
@@ -667,11 +692,15 @@ describe('featureMatchOverlayLayerList', () => {
 		it('moves a Graphic Item into a group and out again from its row menu, one undo step each', async () => {
 			const { wrapper, config, editor, sync } = await mountList();
 
-			await wrapper.get('[data-layer-key="item:back"] [data-menu-entry="Group 1"]').trigger('click');
+			await wrapper
+				.get('[data-layer-key="item:back"] [data-menu-entry="Group 1"]')
+				.trigger('click');
 			await sync();
 			expect(parentOf(config, 'back')).toBe('cluster');
 
-			await wrapper.get('[data-layer-key="item:back"] [data-menu-entry="Out of Group 1"]').trigger('click');
+			await wrapper
+				.get('[data-layer-key="item:back"] [data-menu-entry="Out of Group 1"]')
+				.trigger('click');
 			await sync();
 			expect(itemIds(config)).toEqual(['cluster', 'back']);
 
@@ -701,8 +730,11 @@ describe('featureMatchOverlayLayerList', () => {
 
 		expect(editor.selection.value).toEqual({ type: 'item', itemId: 'back' });
 		expect(wrapper.find('[data-testid="layer-rename"]').exists()).toBe(false);
-		expect(wrapper.findAll('[data-testid="layer-list"] button:not([disabled])')
-			.map(button => button.attributes('data-testid'))
-			.filter(id => id !== 'layer-select' && id !== 'layer-canvas')).toEqual([]);
+		expect(
+			wrapper
+				.findAll('[data-testid="layer-list"] button:not([disabled])')
+				.map((button) => button.attributes('data-testid'))
+				.filter((id) => id !== 'layer-select' && id !== 'layer-canvas'),
+		).toEqual([]);
 	});
 });

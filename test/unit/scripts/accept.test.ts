@@ -13,29 +13,35 @@ const repositoryRoot = join(import.meta.dirname, '../../..');
  */
 describe('pnpm accept', () => {
 	it('points every harness at a runner that exists', async () => {
-		for (const { script: [file] } of Object.values(HARNESSES))
+		for (const {
+			script: [file],
+		} of Object.values(HARNESSES))
 			await expect(access(join(repositoryRoot, 'scripts', file!))).resolves.toBeUndefined();
 	});
 
 	it('lists every run-* runner, so none is reachable only by path', async () => {
-		const runners = (await readdir(join(repositoryRoot, 'scripts'))).filter(file => /^run-.+\.mjs$/u.test(file));
+		const runners = (await readdir(join(repositoryRoot, 'scripts'))).filter((file) =>
+			/^run-.+\.mjs$/u.test(file),
+		);
 		const listed = new Set(Object.values(HARNESSES).map(({ script: [file] }) => file));
 
-		expect(runners.filter(file => !listed.has(file))).toEqual([]);
+		expect(runners.filter((file) => !listed.has(file))).toEqual([]);
 	});
 
 	it('runs only harnesses with a deployed mode on deploy day', () => {
 		expect(DEPLOY_DAY.length).toBeGreaterThan(0);
-		expect(DEPLOY_DAY.filter(name => !(name in HARNESSES) || HARNESSES[name]?.deployed === false)).toEqual([]);
+		expect(
+			DEPLOY_DAY.filter((name) => !(name in HARNESSES) || HARNESSES[name]?.deployed === false),
+		).toEqual([]);
 	});
 
 	it('names only known harnesses in verify gates', () => {
 		const accepted = Object.values(GATES)
-			.filter(gate => gate.command[1] === 'accept')
-			.map(gate => gate.command[2]!);
+			.filter((gate) => gate.command[1] === 'accept')
+			.map((gate) => gate.command[2]!);
 
 		expect(accepted.length).toBeGreaterThan(0);
-		expect(accepted.filter(name => !(name in HARNESSES))).toEqual([]);
+		expect(accepted.filter((name) => !(name in HARNESSES))).toEqual([]);
 	});
 
 	it('routes browser-page harnesses to pages the runner knows', () => {
@@ -47,15 +53,21 @@ describe('pnpm accept', () => {
 	});
 
 	it('refuses an unknown browser page rather than running nothing', async () => {
-		await expect(runBrowserPage(['node', 'run-browser-page-acceptance.mjs', 'nope'])).rejects.toThrow(/expected one of/u);
+		await expect(
+			runBrowserPage(['node', 'run-browser-page-acceptance.mjs', 'nope']),
+		).rejects.toThrow(/expected one of/u);
 	});
 
 	it('leaves no package script calling a runner directly', async () => {
-		const packageJson = JSON.parse(await readFile(join(repositoryRoot, 'package.json'), 'utf8')) as {
+		const packageJson = JSON.parse(
+			await readFile(join(repositoryRoot, 'package.json'), 'utf8'),
+		) as {
 			scripts: Record<string, string>;
 		};
 
-		expect(Object.values(packageJson.scripts).filter(command => /scripts\/run-/u.test(command))).toEqual([]);
+		expect(
+			Object.values(packageJson.scripts).filter((command) => /scripts\/run-/u.test(command)),
+		).toEqual([]);
 	});
 
 	it('refuses an unknown harness and a deployed run of a local-only one', async () => {
@@ -66,15 +78,9 @@ describe('pnpm accept', () => {
 			await main(['node', 'accept.mjs', 'nope']);
 			expect(process.exitCode).toBe(2);
 			process.exitCode = undefined;
-			await main([
-				'node',
-				'accept.mjs',
-				'animation-effects',
-				'--deployed',
-			]);
+			await main(['node', 'accept.mjs', 'animation-effects', '--deployed']);
 			expect(process.exitCode).toBe(2);
-		}
-		finally {
+		} finally {
 			process.exitCode = exitCode;
 			vi.restoreAllMocks();
 		}
@@ -104,8 +110,7 @@ describe('pnpm accept', () => {
 					runHarness,
 					stderr: written.join(''),
 				};
-			}
-			finally {
+			} finally {
 				process.exitCode = exitCode;
 				vi.restoreAllMocks();
 			}
@@ -115,19 +120,29 @@ describe('pnpm accept', () => {
 			// #619: the validator gate used to stage fixtures in production and only
 			// then would graphics-delivery stop for want of an operator.
 			for (const missing of Object.keys(complete)) {
-				const { exitCode, runHarness, stderr } = await deployDay({ ...complete, [missing]: undefined });
+				const { exitCode, runHarness, stderr } = await deployDay({
+					...complete,
+					[missing]: undefined,
+				});
 
 				expect(runHarness).not.toHaveBeenCalled();
 				expect(exitCode).toBe(1);
-				expect(stderr).toMatch(/^accept-deployed (?:harness-precondition-unmet|harness-operator-unavailable) /mu);
+				expect(stderr).toMatch(
+					/^accept-deployed (?:harness-precondition-unmet|harness-operator-unavailable) /mu,
+				);
 			}
 		});
 
 		it('runs no gate against an alternate URL the committed configs do not serve', async () => {
-			const { runHarness, stderr } = await deployDay({ ...complete, STREAM_KEEPR_BROWSER_ACCEPTANCE_URL: 'https://staging.keepr.digital' });
+			const { runHarness, stderr } = await deployDay({
+				...complete,
+				STREAM_KEEPR_BROWSER_ACCEPTANCE_URL: 'https://staging.keepr.digital',
+			});
 
 			expect(runHarness).not.toHaveBeenCalled();
-			expect(stderr).toContain('accept-deployed harness-target-inconsistent reason=origin-not-installation');
+			expect(stderr).toContain(
+				'accept-deployed harness-target-inconsistent reason=origin-not-installation',
+			);
 		});
 
 		it('cannot start a real runner from an imported main, even for a complete target', async () => {
@@ -136,19 +151,13 @@ describe('pnpm accept', () => {
 			vi.spyOn(process.stdout, 'write').mockReturnValue(true);
 			vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 			try {
-				await expect(main(['node', 'accept.mjs', 'deployed'], { env: complete }))
-					.rejects
-					.toThrow(/without a runHarness/u);
-				await expect(main([
-					'node',
-					'accept.mjs',
-					'silent-video-validator',
-					'--deployed',
-				]))
-					.rejects
-					.toThrow(/without a runHarness/u);
-			}
-			finally {
+				await expect(main(['node', 'accept.mjs', 'deployed'], { env: complete })).rejects.toThrow(
+					/without a runHarness/u,
+				);
+				await expect(
+					main(['node', 'accept.mjs', 'silent-video-validator', '--deployed']),
+				).rejects.toThrow(/without a runHarness/u);
+			} finally {
 				vi.restoreAllMocks();
 			}
 		});
@@ -160,8 +169,7 @@ describe('pnpm accept', () => {
 			try {
 				await main(['node', 'accept.mjs', 'deployed'], { env: {} });
 				expect(process.exitCode).toBe(1);
-			}
-			finally {
+			} finally {
 				process.exitCode = exitCode;
 				vi.restoreAllMocks();
 			}
@@ -171,10 +179,7 @@ describe('pnpm accept', () => {
 			const { exitCode, runHarness } = await deployDay(complete);
 
 			expect(exitCode).toBeUndefined();
-			expect(runHarness.mock.calls).toEqual(DEPLOY_DAY.map(name => [
-				name,
-				['--deployed'],
-			]));
+			expect(runHarness.mock.calls).toEqual(DEPLOY_DAY.map((name) => [name, ['--deployed']]));
 		});
 	});
 });

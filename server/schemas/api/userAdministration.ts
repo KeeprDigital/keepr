@@ -14,33 +14,39 @@ import { z } from 'zod';
  * field.
  */
 
-export const createUserAccountSchema = z.object({
-	email: z.email().max(320),
-	/**
-	 * Required, unlike the bootstrap's, where the email stands in when it is
-	 * absent. That route is a curl typed under time pressure; this one is a form
-	 * with a labelled field, and the name is what the Evidence Ledger resolves an
-	 * actor to at read time — an account named after its own email address is a
-	 * record nobody can read.
-	 */
-	name: z.string().min(1).max(200),
-}).strict();
+export const createUserAccountSchema = z
+	.object({
+		email: z.email().max(320),
+		/**
+		 * Required, unlike the bootstrap's, where the email stands in when it is
+		 * absent. That route is a curl typed under time pressure; this one is a form
+		 * with a labelled field, and the name is what the Evidence Ledger resolves an
+		 * actor to at read time — an account named after its own email address is a
+		 * record nobody can read.
+		 */
+		name: z.string().min(1).max(200),
+	})
+	.strict();
 
 export type CreateUserAccountInput = z.infer<typeof createUserAccountSchema>;
 
-export const setUserPasswordSchema = z.object({
-	password: z.string(),
-}).strict();
+export const setUserPasswordSchema = z
+	.object({
+		password: z.string(),
+	})
+	.strict();
 
 export type SetUserPasswordInput = z.infer<typeof setUserPasswordSchema>;
 
-export const banUserAccountSchema = z.object({
-	/**
-	 * Optional, because a ban is sometimes obvious and typing a reason should
-	 * never be what stands between an administrator and ending a compromised
-	 * session. Bounded because it is displayed back on the listing.
-	 */
-	reason: z.string().max(500).optional(),
-}).strict();
+export const banUserAccountSchema = z
+	.object({
+		/**
+		 * Optional, because a ban is sometimes obvious and typing a reason should
+		 * never be what stands between an administrator and ending a compromised
+		 * session. Bounded because it is displayed back on the listing.
+		 */
+		reason: z.string().max(500).optional(),
+	})
+	.strict();
 
 export type BanUserAccountInput = z.infer<typeof banUserAccountSchema>;

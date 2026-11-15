@@ -13,7 +13,8 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  */
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -25,8 +26,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 	publishScreenCommand: async () => {},
 	getOriginConnectionId: () => undefined,
 }));
-vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	refreshBroadcastGraphicsBindings: async () => {},
 }));
 
@@ -40,7 +41,8 @@ afterAll(async () => {
 });
 
 async function stageMeleePlayers() {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Manual edits', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning();
 	const eventId = event!.id;
@@ -58,7 +60,7 @@ async function stageMeleePlayers() {
 			pronouns: 'he/him',
 		},
 	]);
-	const byExternalId = new Map(players.map(player => [player.externalId, player.id]));
+	const byExternalId = new Map(players.map((player) => [player.externalId, player.id]));
 	return {
 		eventId,
 		miaId: byExternalId.get('mia')!,
@@ -101,12 +103,16 @@ describe('melee Sync and a Player field an operator edited', () => {
 		});
 		await resyncPlayers(eventId);
 
-		expect(await playerById(miaId)).toMatchObject({ name: 'Mia K.', pronouns: 'she/her', lgs: 'Northgate Games' });
+		expect(await playerById(miaId)).toMatchObject({
+			name: 'Mia K.',
+			pronouns: 'she/her',
+			lgs: 'Northgate Games',
+		});
 		// Rei was never edited, so Melee still owns both fields.
 		expect(await playerById(reiId)).toMatchObject({ name: 'Rei Melee', pronouns: 'they/them' });
 	});
 
-	it('keeps pronouns an operator cleared, rather than taking Melee\'s', async () => {
+	it("keeps pronouns an operator cleared, rather than taking Melee's", async () => {
 		const { eventId, reiId } = await stageMeleePlayers();
 
 		await playerUpdateModule().updatePlayer({
@@ -145,7 +151,7 @@ describe('melee Sync and a Player field an operator edited', () => {
 		expect(await playerById(miaId)).toMatchObject({ name: 'Mia Melee', pronouns: 'she/her' });
 	});
 
-	it('keeps an edit made in a Slot\'s setup through a Deck List sync', async () => {
+	it("keeps an edit made in a Slot's setup through a Deck List sync", async () => {
 		const { eventId, miaId } = await stageMeleePlayers();
 		const slot = await featureMatchService().create(eventId, { player1Id: miaId });
 		const seated = await featureMatchService().findById(slot.id, eventId);

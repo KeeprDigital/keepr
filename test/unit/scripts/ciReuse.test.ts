@@ -24,7 +24,7 @@ const generateKeyPair = () => generateKeyPairSync('rsa', { modulusLength: 2048 }
 /** A key pair is made by the first case that signs or verifies with it, and made once. */
 function keyPair() {
 	let pair: ReturnType<typeof generateKeyPair> | undefined;
-	return () => pair ??= generateKeyPair();
+	return () => (pair ??= generateKeyPair());
 }
 
 const github = keyPair();
@@ -49,25 +49,30 @@ function base64url(value: string | Buffer) {
 }
 
 /** A token as GitHub's OIDC provider would sign it, for a job of a full PR run of CI. */
-function token(claims: Record<string, unknown> = {}, { key = github().privateKey, kid = 'github-key', alg = 'RS256' } = {}) {
+function token(
+	claims: Record<string, unknown> = {},
+	{ key = github().privateKey, kid = 'github-key', alg = 'RS256' } = {},
+) {
 	const header = base64url(JSON.stringify({ alg, typ: 'JWT', kid }));
-	const payload = base64url(JSON.stringify({
-		iss: 'https://token.actions.githubusercontent.com',
-		aud: 'stream-keepr:ci-verified-tree',
-		repository: REPOSITORY,
-		repository_id: REPOSITORY_ID,
-		event_name: 'pull_request',
-		ref: 'refs/pull/680/merge',
-		sha: MERGE_COMMIT,
-		workflow_sha: MERGE_COMMIT,
-		workflow_ref: `${REPOSITORY}/.github/workflows/ci.yml@refs/pull/680/merge`,
-		runner_environment: 'github-hosted',
-		run_id: String(RUN_ID),
-		run_attempt: '1',
-		iat: 1_790_000_000,
-		exp: 1_790_000_300,
-		...claims,
-	}));
+	const payload = base64url(
+		JSON.stringify({
+			iss: 'https://token.actions.githubusercontent.com',
+			aud: 'stream-keepr:ci-verified-tree',
+			repository: REPOSITORY,
+			repository_id: REPOSITORY_ID,
+			event_name: 'pull_request',
+			ref: 'refs/pull/680/merge',
+			sha: MERGE_COMMIT,
+			workflow_sha: MERGE_COMMIT,
+			workflow_ref: `${REPOSITORY}/.github/workflows/ci.yml@refs/pull/680/merge`,
+			runner_environment: 'github-hosted',
+			run_id: String(RUN_ID),
+			run_attempt: '1',
+			iat: 1_790_000_000,
+			exp: 1_790_000_300,
+			...claims,
+		}),
+	);
 	const signature = createSign('RSA-SHA256').update(`${header}.${payload}`).sign(key);
 	return `${header}.${payload}.${base64url(signature)}`;
 }
@@ -84,7 +89,13 @@ const JOBS = [
 ];
 
 interface World {
-	artifacts: { id: number; name: string; expired: boolean; size_in_bytes: number; workflow_run: { id: number } }[];
+	artifacts: {
+		id: number;
+		name: string;
+		expired: boolean;
+		size_in_bytes: number;
+		workflow_run: { id: number };
+	}[];
 	record: string;
 	jwks: unknown;
 	run: Record<string, unknown>;
@@ -119,7 +130,7 @@ function world(overrides: Partial<World> = {}): World {
 		record: token(),
 		jwks: githubJwks(),
 		run: RUN,
-		jobs: JOBS.map(name => ({ name, status: 'completed', conclusion: 'success' })),
+		jobs: JOBS.map((name) => ({ name, status: 'completed', conclusion: 'success' })),
 		trees: { [MERGE_COMMIT]: GROUP_TREE },
 		...overrides,
 	};
@@ -127,15 +138,14 @@ function world(overrides: Partial<World> = {}): World {
 
 function io(state: World) {
 	return {
-		artifacts: async (name: string) => state.artifacts.filter(artifact => artifact.name === name),
+		artifacts: async (name: string) => state.artifacts.filter((artifact) => artifact.name === name),
 		record: async (_runId: number, _name: string) => state.record,
 		jwks: async () => state.jwks,
 		run: async (_runId: number) => state.run,
 		jobs: async (_runId: number) => state.jobs,
 		commitTree: async (sha: string) => {
 			const tree = state.trees[sha];
-			if (!tree)
-				throw new Error(`no commit ${sha}`);
+			if (!tree) throw new Error(`no commit ${sha}`);
 			return tree;
 		},
 		wait: async () => {},
@@ -154,8 +164,8 @@ function find(state: World, overrides: Partial<ReturnType<typeof io>> = {}) {
 	});
 }
 
-describe('a merge group reuses a PR run\'s verification only for the exact tree it verified', () => {
-	it('reuses a full, green PR run of CI whose merge commit has the group\'s tree', async () => {
+describe("a merge group reuses a PR run's verification only for the exact tree it verified", () => {
+	it("reuses a full, green PR run of CI whose merge commit has the group's tree", async () => {
 		await expect(find(world())).resolves.toMatchObject({
 			run: { id: RUN_ID },
 		});
@@ -183,24 +193,21 @@ describe('which records it considers', () => {
 	});
 
 	it('an expired record cannot be read', async () => {
-		await expectFullRun(world({
-			artifacts: [
-				recorded(RUN_ID, true),
-			],
-		}), /no .*record/i);
+		await expectFullRun(
+			world({
+				artifacts: [recorded(RUN_ID, true)],
+			}),
+			/no .*record/i,
+		);
 	});
 
 	it('a forged record beside a genuine one does not hide the genuine one', async () => {
 		const state = world({
-			artifacts: [
-				recorded(666),
-				recorded(RUN_ID),
-			],
+			artifacts: [recorded(666), recorded(RUN_ID)],
 		});
 		const result = await find(state, {
-			record: async (runId: number) => runId === RUN_ID
-				? token()
-				: token({ run_id: '666' }, { key: attacker().privateKey }),
+			record: async (runId: number) =>
+				runId === RUN_ID ? token() : token({ run_id: '666' }, { key: attacker().privateKey }),
 		});
 
 		expect(result.run).toMatchObject({ id: RUN_ID });
@@ -253,43 +260,31 @@ describe('which records it considers', () => {
 	});
 });
 
-describe('only GitHub\'s signature makes a record: a PR\'s own workflow code can write any artifact', () => {
+describe("only GitHub's signature makes a record: a PR's own workflow code can write any artifact", () => {
 	// Each record is built by its own case, so collecting the file signs nothing.
 	it.each<[string, () => string]>([
-		[
-			'signed by a key that is not GitHub\'s',
-			() => token({}, { key: attacker().privateKey }),
-		],
-		[
-			'signed under a key id GitHub does not publish',
-			() => token({}, { kid: 'attacker-key' }),
-		],
+		["signed by a key that is not GitHub's", () => token({}, { key: attacker().privateKey })],
+		['signed under a key id GitHub does not publish', () => token({}, { kid: 'attacker-key' })],
 		[
 			'claiming no signature at all',
-			() => `${base64url(JSON.stringify({ alg: 'none', typ: 'JWT', kid: 'github-key' }))}.${token().split('.')[1]}.`,
+			() =>
+				`${base64url(JSON.stringify({ alg: 'none', typ: 'JWT', kid: 'github-key' }))}.${token().split('.')[1]}.`,
 		],
-		[
-			'claiming another algorithm',
-			() => token({}, { alg: 'HS256' }),
-		],
+		['claiming another algorithm', () => token({}, { alg: 'HS256' })],
 		[
 			'with its claims edited after signing',
 			() => {
 				const [header, payload, signature] = token().split('.');
-				return `${header}.${base64url(JSON.stringify({
-					...JSON.parse(Buffer.from(payload!, 'base64url').toString()),
-					sha: 'd'.repeat(40),
-				}))}.${signature}`;
+				return `${header}.${base64url(
+					JSON.stringify({
+						...JSON.parse(Buffer.from(payload!, 'base64url').toString()),
+						sha: 'd'.repeat(40),
+					}),
+				)}.${signature}`;
 			},
 		],
-		[
-			'not a token',
-			() => 'not-a-token',
-		],
-		[
-			'empty',
-			() => '',
-		],
+		['not a token', () => 'not-a-token'],
+		['empty', () => ''],
 	])('a token %s', async (_case, forge) => {
 		const record = forge();
 
@@ -297,36 +292,30 @@ describe('only GitHub\'s signature makes a record: a PR\'s own workflow code can
 	});
 
 	it('a key set that cannot be read', async () => {
-		await expectFullRun(world({
-			jwks: { keys: 'nope' },
-		}), /signature|token/i);
+		await expectFullRun(
+			world({
+				jwks: { keys: 'nope' },
+			}),
+			/signature|token/i,
+		);
 	});
 });
 
-describe('a genuine token counts only from a job of this repository\'s own CI workflow, run on a PR', () => {
+describe("a genuine token counts only from a job of this repository's own CI workflow, run on a PR", () => {
 	it.each<[string, Record<string, unknown>]>([
-		[
-			'another issuer',
-			{ iss: 'https://token.example.invalid' },
-		],
-		[
-			'an audience meant for something else',
-			{ aud: 'sts.amazonaws.com' },
-		],
+		['another issuer', { iss: 'https://token.example.invalid' }],
+		['an audience meant for something else', { aud: 'sts.amazonaws.com' }],
 		[
 			'another repository, such as a fork',
-			{ repository: 'someone/stream-keepr', workflow_ref: `someone/stream-keepr/.github/workflows/ci.yml@refs/pull/680/merge` },
+			{
+				repository: 'someone/stream-keepr',
+				workflow_ref: `someone/stream-keepr/.github/workflows/ci.yml@refs/pull/680/merge`,
+			},
 		],
+		['a repository that took this name after a rename', { repository_id: '999' }],
+		['a merge-group run', { event_name: 'merge_group' }],
 		[
-			'a repository that took this name after a rename',
-			{ repository_id: '999' },
-		],
-		[
-			'a merge-group run',
-			{ event_name: 'merge_group' },
-		],
-		[
-			'a pull_request_target run, which runs the base\'s code',
+			"a pull_request_target run, which runs the base's code",
 			{ event_name: 'pull_request_target' },
 		],
 		[
@@ -343,34 +332,31 @@ describe('a genuine token counts only from a job of this repository\'s own CI wo
 				workflow_sha: 'd'.repeat(40),
 			},
 		],
-		[
-			'no commit id',
-			{ sha: 'main' },
-		],
-		[
-			'a self-hosted runner',
-			{ runner_environment: 'self-hosted' },
-		],
-		[
-			'another run than the one that uploaded it',
-			{ run_id: '1' },
-		],
+		['no commit id', { sha: 'main' }],
+		['a self-hosted runner', { runner_environment: 'self-hosted' }],
+		['another run than the one that uploaded it', { run_id: '1' }],
 	])('not from %s', async (_case, claims) => {
-		await expectFullRun(world({
-			record: token(claims),
-		}), /token/i);
+		await expectFullRun(
+			world({
+				record: token(claims),
+			}),
+			/token/i,
+		);
 	});
 });
 
-describe('the commit the token names must have exactly the group\'s tree: the artifact\'s name is only an index', () => {
+describe("the commit the token names must have exactly the group's tree: the artifact's name is only an index", () => {
 	it('main moved since the PR run, or the group holds more than this PR', async () => {
 		// The PR run tested its merge with an older main, or the group carries
 		// other PRs: either way, a different tree.
-		await expectFullRun(world({
-			trees: {
-				[MERGE_COMMIT]: 'e'.repeat(40),
-			},
-		}), /tree/i);
+		await expectFullRun(
+			world({
+				trees: {
+					[MERGE_COMMIT]: 'e'.repeat(40),
+				},
+			}),
+			/tree/i,
+		);
 	});
 
 	it('a commit GitHub cannot show', async () => {
@@ -379,13 +365,12 @@ describe('the commit the token names must have exactly the group\'s tree: the ar
 });
 
 describe('the run, as GitHub records it, must show every one of its jobs ran and passed', () => {
-	const jobs = (name: string, conclusion: string) => JOBS.map(job => ({
-		name: job,
-		status: 'completed',
-		conclusion: job === name
-			? conclusion
-			: 'success',
-	}));
+	const jobs = (name: string, conclusion: string) =>
+		JOBS.map((job) => ({
+			name: job,
+			status: 'completed',
+			conclusion: job === name ? conclusion : 'success',
+		}));
 
 	it.each<[string, Partial<World>]>([
 		[
@@ -398,7 +383,7 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 			},
 		],
 		[
-			'the run is another workflow\'s',
+			"the run is another workflow's",
 			{
 				run: {
 					...RUN,
@@ -416,7 +401,7 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 			},
 		],
 		[
-			'the run is another repository\'s',
+			"the run is another repository's",
 			{
 				run: {
 					...RUN,
@@ -433,12 +418,10 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 		[
 			'the scope skipped the gates, as for a docs-only change',
 			{
-				jobs: JOBS.map(name => ({
+				jobs: JOBS.map((name) => ({
 					name,
 					status: 'completed',
-					conclusion: /Decide|Record|CI passed/.test(name)
-						? 'success'
-						: 'skipped',
+					conclusion: /Decide|Record|CI passed/.test(name) ? 'success' : 'skipped',
 				})),
 			},
 		],
@@ -448,20 +431,14 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 				jobs: jobs('Integration suite (2/2)', 'cancelled'),
 			},
 		],
-		[
-			'GitHub lists no jobs',
-			{ jobs: [] },
-		],
+		['GitHub lists no jobs', { jobs: [] }],
 	])('not when %s', async (_case, overrides) => {
 		await expectFullRun(world(overrides), /run|job/i);
 	});
 
 	it('waits for a run whose last job passed a moment ago to conclude', async () => {
 		const state = world();
-		const runs = [
-			{ ...state.run, status: 'in_progress', conclusion: null },
-			state.run,
-		];
+		const runs = [{ ...state.run, status: 'in_progress', conclusion: null }, state.run];
 		const result = await find(state, {
 			run: async () => runs.shift() ?? state.run,
 		});
@@ -470,13 +447,16 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
 	});
 
 	it('runs everything when the run never concludes', async () => {
-		await expectFullRun(world({
-			run: {
-				...RUN,
-				status: 'in_progress',
-				conclusion: null,
-			},
-		}), /run/i);
+		await expectFullRun(
+			world({
+				run: {
+					...RUN,
+					status: 'in_progress',
+					conclusion: null,
+				},
+			}),
+			/run/i,
+		);
 	});
 });
 
@@ -485,7 +465,7 @@ describe('the run, as GitHub records it, must show every one of its jobs ran and
  * and a real git checkout, which it only reads, so the cases share one.
  * Nothing remote.
  */
-describe('the record job\'s command line', () => {
+describe("the record job's command line", () => {
 	let workspace: string;
 	let checkout: { directory: string; tree: string };
 
@@ -496,19 +476,27 @@ describe('the record job\'s command line', () => {
 		execFileSync('git', ['init', '-q', directory], { env });
 		writeFileSync(join(directory, 'README.md'), 'the merge commit\n');
 		execFileSync('git', ['add', '.'], { cwd: directory, env });
-		execFileSync('git', [
-			'-c',
-			'user.name=test',
-			'-c',
-			'user.email=test@example.invalid',
-			'commit',
-			'-q',
-			'-m',
-			'merge',
-		], { cwd: directory, env });
+		execFileSync(
+			'git',
+			[
+				'-c',
+				'user.name=test',
+				'-c',
+				'user.email=test@example.invalid',
+				'commit',
+				'-q',
+				'-m',
+				'merge',
+			],
+			{ cwd: directory, env },
+		);
 		checkout = {
 			directory,
-			tree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { cwd: directory, env, encoding: 'utf8' }).trim(),
+			tree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], {
+				cwd: directory,
+				env,
+				encoding: 'utf8',
+			}).trim(),
 		};
 	});
 
@@ -524,59 +512,72 @@ describe('the record job\'s command line', () => {
 		mkdirSync(runnerTemp);
 		writeFileSync(output, '');
 		return new Promise<{ status: number | null; stdout: string; output: string }>((resolve) => {
-			const child = spawn(process.execPath, [
-				join(repositoryRoot, 'scripts/ci-reuse.mjs'),
-				'record',
-			], {
-				cwd: checkout.directory,
-				env: {
-					...process.env,
-					ACTIONS_ID_TOKEN_REQUEST_URL: '',
-					ACTIONS_ID_TOKEN_REQUEST_TOKEN: '',
-					...env,
-					GITHUB_OUTPUT: output,
-					RUNNER_TEMP: runnerTemp,
-					GIT_CONFIG_GLOBAL: '/dev/null',
-					GIT_CONFIG_NOSYSTEM: '1',
+			const child = spawn(
+				process.execPath,
+				[join(repositoryRoot, 'scripts/ci-reuse.mjs'), 'record'],
+				{
+					cwd: checkout.directory,
+					env: {
+						...process.env,
+						ACTIONS_ID_TOKEN_REQUEST_URL: '',
+						ACTIONS_ID_TOKEN_REQUEST_TOKEN: '',
+						...env,
+						GITHUB_OUTPUT: output,
+						RUNNER_TEMP: runnerTemp,
+						GIT_CONFIG_GLOBAL: '/dev/null',
+						GIT_CONFIG_NOSYSTEM: '1',
+					},
 				},
-			});
+			);
 			let stdout = '';
 			child.stdout.on('data', (chunk) => {
 				stdout += chunk;
 			});
-			child.on('close', status => resolve({
-				status,
-				stdout,
-				output: readFileSync(output, 'utf8'),
-			}));
+			child.on('close', (status) =>
+				resolve({
+					status,
+					stdout,
+					output: readFileSync(output, 'utf8'),
+				}),
+			);
 		});
 	}
 
-	it('records the token GitHub mints for this job, under the checked-out tree\'s name', async () => {
+	it("records the token GitHub mints for this job, under the checked-out tree's name", async () => {
 		const requests: { url: string; authorization?: string }[] = [];
 		const server = createServer((request, response) => {
 			requests.push({ url: request.url ?? '', authorization: request.headers.authorization });
 			response.end(JSON.stringify({ value: 'header.payload.signature' }));
 		});
-		await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+		await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
 		const { port } = server.address() as AddressInfo;
 		try {
-			const result = await record({ ACTIONS_ID_TOKEN_REQUEST_URL: `http://127.0.0.1:${port}/token?api-version=2.0`, ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner-token' });
+			const result = await record({
+				ACTIONS_ID_TOKEN_REQUEST_URL: `http://127.0.0.1:${port}/token?api-version=2.0`,
+				ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner-token',
+			});
 
 			expect(result.status).toBe(0);
 			expect(requests).toEqual([
-				{ url: `/token?api-version=2.0&audience=${encodeURIComponent('stream-keepr:ci-verified-tree')}`, authorization: 'bearer runner-token' },
+				{
+					url: `/token?api-version=2.0&audience=${encodeURIComponent('stream-keepr:ci-verified-tree')}`,
+					authorization: 'bearer runner-token',
+				},
 			]);
-			const recorded = Object.fromEntries(result.output.trim().split('\n').map(line => line.split('=', 2) as [string, string]));
+			const recorded = Object.fromEntries(
+				result.output
+					.trim()
+					.split('\n')
+					.map((line) => line.split('=', 2) as [string, string]),
+			);
 			expect(recorded.name).toBe(`ci-verified-tree-${checkout.tree}`);
 			expect(readFileSync(recorded.path!, 'utf8')).toBe('header.payload.signature');
-		}
-		finally {
+		} finally {
 			server.close();
 		}
 	});
 
-	it('records nothing, and fails nothing, when the job has no OIDC token: a fork\'s PR', async () => {
+	it("records nothing, and fails nothing, when the job has no OIDC token: a fork's PR", async () => {
 		const result = await record({});
 
 		expect(result.status).toBe(0);

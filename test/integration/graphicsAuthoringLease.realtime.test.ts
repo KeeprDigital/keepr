@@ -21,8 +21,7 @@ describe('graphics Authoring Leases and Screen commands', () => {
 		options: { body: unknown; cookie?: string },
 	): Promise<{ status: number; data: any }> {
 		const headers: Record<string, string> = { 'content-type': 'application/json' };
-		if (options.cookie)
-			headers.cookie = options.cookie;
+		if (options.cookie) headers.cookie = options.cookie;
 
 		const response = await fetch(path, {
 			method: 'POST',
@@ -32,9 +31,7 @@ describe('graphics Authoring Leases and Screen commands', () => {
 		const text = await response.text();
 		return {
 			status: response.status,
-			data: text
-				? JSON.parse(text)
-				: null,
+			data: text ? JSON.parse(text) : null,
 		};
 	}
 
@@ -66,32 +63,47 @@ describe('graphics Authoring Leases and Screen commands', () => {
 	afterAll(async () => {
 		try {
 			await $fetch(`/api/events/${eventId}`, { method: 'DELETE' });
-		}
-		catch {}
+		} catch {}
 	});
 
 	// A Screen command *is* a realtime publish — the route has nothing else to do — so
 	// it can only answer 200 where a real Ably key is.
-	it.skipIf(!integrationRealtimeConfigured)('never restricts a Screen command while the Edit workspace is leased', async () => {
-		// The route's only work is the publish, so a rejected Ably key would read as a
-		// lease regression without the diagnosis as the failure message.
+	it.skipIf(!integrationRealtimeConfigured)(
+		'never restricts a Screen command while the Edit workspace is leased',
+		async () => {
+			// The route's only work is the publish, so a rejected Ably key would read as a
+			// lease regression without the diagnosis as the failure message.
 
-		// The lease holder is session A; every live action below is another operator.
-		const held = await request(`/api/events/${eventId}/screens/${screenId}/graphics-authoring-lease`, {
-			body: {},
-			cookie: browserA,
-		});
-		expect(held.data.outcome).toBe('grant');
+			// The lease holder is session A; every live action below is another operator.
+			const held = await request(
+				`/api/events/${eventId}/screens/${screenId}/graphics-authoring-lease`,
+				{
+					body: {},
+					cookie: browserA,
+				},
+			);
+			expect(held.data.outcome).toBe('grant');
 
-		const command = await request(`/api/events/${eventId}/screens/${screenId}/command`, {
-			body: { command: 'refresh' },
-			cookie: browserB,
-		});
-		expect(command.status, diagnoseRealtimePublishFailure(command.status, command.data, SCREEN_COMMAND_ROUTE_REFUSALS)).toBe(200);
+			const command = await request(`/api/events/${eventId}/screens/${screenId}/command`, {
+				body: { command: 'refresh' },
+				cookie: browserB,
+			});
+			expect(
+				command.status,
+				diagnoseRealtimePublishFailure(command.status, command.data, SCREEN_COMMAND_ROUTE_REFUSALS),
+			).toBe(200);
 
-		const anonymousCommand = await request(`/api/events/${eventId}/screens/${screenId}/command`, {
-			body: { command: 'refresh' },
-		});
-		expect(anonymousCommand.status, diagnoseRealtimePublishFailure(anonymousCommand.status, anonymousCommand.data, SCREEN_COMMAND_ROUTE_REFUSALS)).toBe(200);
-	});
+			const anonymousCommand = await request(`/api/events/${eventId}/screens/${screenId}/command`, {
+				body: { command: 'refresh' },
+			});
+			expect(
+				anonymousCommand.status,
+				diagnoseRealtimePublishFailure(
+					anonymousCommand.status,
+					anonymousCommand.data,
+					SCREEN_COMMAND_ROUTE_REFUSALS,
+				),
+			).toBe(200);
+		},
+	);
 });

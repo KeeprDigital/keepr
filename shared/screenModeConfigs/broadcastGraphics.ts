@@ -24,11 +24,13 @@ export const MAX_GRAPHIC_CHANNELS_PER_SCREEN = 25;
  * policy is the only way that default stays true of a channel nobody has configured
  * as well as of one whose author chose it.
  */
-const graphicChannelConfigSchema = z.object({
-	id: z.string().min(1).max(100),
-	name: z.string().min(1).max(100),
-	handoff: z.enum(GRAPHIC_CHANNEL_HANDOFF_POLICY_VALUES).optional(),
-}).strict();
+const graphicChannelConfigSchema = z
+	.object({
+		id: z.string().min(1).max(100),
+		name: z.string().min(1).max(100),
+		handoff: z.enum(GRAPHIC_CHANNEL_HANDOFF_POLICY_VALUES).optional(),
+	})
+	.strict();
 
 /**
  * The Broadcast Graphics Screen Mode's config contract.
@@ -46,42 +48,52 @@ const graphicChannelConfigSchema = z.object({
  * Screen's own width and height, and playout, inputs, and animation are live
  * state rather than authored configuration.
  */
-export const broadcastGraphicsModeConfigContract = defineScreenModeConfigContract({
-	graphics: serverValidatedField<BroadcastGraphicConfig[]>({
-		label: 'Broadcast Graphics',
-		card: 'content',
-		slot: 'broadcast-graphics',
-	}),
-	/** Absent declares no Graphic Channels, so every graphic runs concurrently. */
-	channels: editorField(z.array(graphicChannelConfigSchema)
-		.max(
-			MAX_GRAPHIC_CHANNELS_PER_SCREEN,
-			`A Broadcast Graphics Screen must not declare more than ${MAX_GRAPHIC_CHANNELS_PER_SCREEN} Graphic Channels`,
-		)
-		// A Broadcast Graphic joins a channel by id alone, so two channels sharing one id
-		// would leave which policy governs the handoff undecided. On the field, as every
-		// other mode-configuration rule is, so it reaches the PATCH path.
-		.refine(
-			channels => new Set(channels.map(channel => channel.id)).size === channels.length,
-			'Graphic Channel ids must be unique within one Broadcast Graphics Screen',
-		)
-		.optional(), { label: 'Graphic Channels', card: 'content', slot: 'graphic-channels' }),
-	/**
-	 * The Screen's Broadcast Graphics Background: one Animation Effect the stack
-	 * composes over, shown or not, at an opacity. Absent is no background, which is
-	 * what every Screen ships as and what keeps an Overlay Output transparent behind
-	 * its graphics. The schema is the catalogue's, so an effect this build does not
-	 * ship is refused rather than stored and silently rendering nothing.
-	 */
-	background: editorField(broadcastGraphicsBackgroundConfigSchema.optional(), {
-		label: 'Broadcast Graphics Background',
-		card: 'background-placement',
-		slot: 'broadcast-graphics-background',
-	}),
-}, {
-	graphics: [],
-}, {
-	authoredStacks: ['graphics'],
-});
+export const broadcastGraphicsModeConfigContract = defineScreenModeConfigContract(
+	{
+		graphics: serverValidatedField<BroadcastGraphicConfig[]>({
+			label: 'Broadcast Graphics',
+			card: 'content',
+			slot: 'broadcast-graphics',
+		}),
+		/** Absent declares no Graphic Channels, so every graphic runs concurrently. */
+		channels: editorField(
+			z
+				.array(graphicChannelConfigSchema)
+				.max(
+					MAX_GRAPHIC_CHANNELS_PER_SCREEN,
+					`A Broadcast Graphics Screen must not declare more than ${MAX_GRAPHIC_CHANNELS_PER_SCREEN} Graphic Channels`,
+				)
+				// A Broadcast Graphic joins a channel by id alone, so two channels sharing one id
+				// would leave which policy governs the handoff undecided. On the field, as every
+				// other mode-configuration rule is, so it reaches the PATCH path.
+				.refine(
+					(channels) => new Set(channels.map((channel) => channel.id)).size === channels.length,
+					'Graphic Channel ids must be unique within one Broadcast Graphics Screen',
+				)
+				.optional(),
+			{ label: 'Graphic Channels', card: 'content', slot: 'graphic-channels' },
+		),
+		/**
+		 * The Screen's Broadcast Graphics Background: one Animation Effect the stack
+		 * composes over, shown or not, at an opacity. Absent is no background, which is
+		 * what every Screen ships as and what keeps an Overlay Output transparent behind
+		 * its graphics. The schema is the catalogue's, so an effect this build does not
+		 * ship is refused rather than stored and silently rendering nothing.
+		 */
+		background: editorField(broadcastGraphicsBackgroundConfigSchema.optional(), {
+			label: 'Broadcast Graphics Background',
+			card: 'background-placement',
+			slot: 'broadcast-graphics-background',
+		}),
+	},
+	{
+		graphics: [],
+	},
+	{
+		authoredStacks: ['graphics'],
+	},
+);
 
-export type BroadcastGraphicsModeConfig = ScreenModeConfigOf<typeof broadcastGraphicsModeConfigContract>;
+export type BroadcastGraphicsModeConfig = ScreenModeConfigOf<
+	typeof broadcastGraphicsModeConfigContract
+>;

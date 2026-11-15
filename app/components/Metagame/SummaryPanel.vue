@@ -10,30 +10,28 @@ const metagameStore = useMetagameStore();
 const playerListStore = usePlayerListStore();
 
 const scopeLabel = computed(() => {
-	if (metagameStore.scope === 'topN')
-		return `Top ${metagameStore.topN}`;
+	if (metagameStore.scope === 'topN') return `Top ${metagameStore.topN}`;
 
-	if (metagameStore.scope === 'minPoints')
-		return `${metagameStore.minPoints}+ Points`;
+	if (metagameStore.scope === 'minPoints') return `${metagameStore.minPoints}+ Points`;
 
 	if (metagameStore.scope === 'playerList' && metagameStore.playerListId != null) {
-		const list = playerListStore.lists.find(entry => entry.id === metagameStore.playerListId);
-		return list
-			? `Player List: ${list.name}`
-			: `Player List #${metagameStore.playerListId}`;
+		const list = playerListStore.lists.find((entry) => entry.id === metagameStore.playerListId);
+		return list ? `Player List: ${list.name}` : `Player List #${metagameStore.playerListId}`;
 	}
 
 	return 'All Players';
 });
 
 const stats = computed(() => {
-	if (!props.summary)
-		return [];
+	if (!props.summary) return [];
 
 	// Every Card Game's Players hold Deck Lists: an OP Player's comes from a TCG+ Import (ADR-0074).
 	return [
 		{ label: 'Players', value: props.summary.totalPlayers },
-		{ label: 'Classified', value: `${props.summary.classifiedPlayers} / ${props.summary.totalPlayers}` },
+		{
+			label: 'Classified',
+			value: `${props.summary.classifiedPlayers} / ${props.summary.totalPlayers}`,
+		},
 		{ label: 'Decklists', value: `${props.summary.totalDecks} / ${props.summary.totalPlayers}` },
 		{ label: 'Archetypes', value: props.summary.scopedArchetypeCount },
 	] satisfies Array<{ label: string; value: string | number | null }>;
@@ -45,12 +43,8 @@ const stats = computed(() => {
 		<template #header>
 			<div class="flex items-center justify-between gap-3 flex-wrap">
 				<div>
-					<h2 class="text-base font-semibold">
-						Metagame Overview
-					</h2>
-					<p class="text-sm text-muted mt-1">
-						Current scope totals.
-					</p>
+					<h2 class="text-base font-semibold">Metagame Overview</h2>
+					<p class="text-sm text-muted mt-1">Current scope totals.</p>
 				</div>
 				<UBadge variant="subtle" color="neutral">
 					{{ scopeLabel }}

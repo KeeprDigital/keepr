@@ -75,12 +75,10 @@ export interface PlaceBroadcastGraphicTemplateOptions {
 
 /** The next unused `<name> (n)` among names a Screen already carries. */
 function distinctName(name: string, existing: readonly BroadcastGraphicConfig[]): string {
-	const taken = new Set(existing.map(entry => entry.name));
-	if (!taken.has(name))
-		return name;
+	const taken = new Set(existing.map((entry) => entry.name));
+	if (!taken.has(name)) return name;
 	let copy = 2;
-	while (taken.has(`${name} (${copy})`))
-		copy += 1;
+	while (taken.has(`${name} (${copy})`)) copy += 1;
 	return `${name} (${copy})`;
 }
 
@@ -107,7 +105,7 @@ function withFreshItemId<T extends GraphicItemConfig | GraphicGroupChildConfig>(
 	copied.id = generateId();
 	idMap.set(item.id, copied.id);
 	if (copied.type === 'group')
-		copied.children = copied.children.map(child => withFreshItemId(child, generateId, idMap));
+		copied.children = copied.children.map((child) => withFreshItemId(child, generateId, idMap));
 	return copied;
 }
 
@@ -130,19 +128,16 @@ function withRemappedStagger<T extends GraphicContainerAnimation>(
 	animation: T | undefined,
 	idMap: Map<string, string>,
 ): T | undefined {
-	if (!animation?.stagger)
-		return animation;
+	if (!animation?.stagger) return animation;
 
 	const stagger: NonNullable<GraphicContainerAnimation['stagger']> = {};
 	for (const phase of GRAPHIC_ANIMATION_PHASE_VALUES) {
 		const entry = animation.stagger[phase];
-		if (!entry)
-			continue;
+		if (!entry) continue;
 		const itemIds = entry.itemIds
-			.map(id => idMap.get(id))
+			.map((id) => idMap.get(id))
 			.filter((id): id is string => id !== undefined);
-		if (itemIds.length === 0)
-			continue;
+		if (itemIds.length === 0) continue;
 		stagger[phase] = { ...entry, itemIds };
 	}
 
@@ -158,9 +153,11 @@ function withRemappedStagger<T extends GraphicContainerAnimation>(
  * present to every in-memory comparison — which is exactly the kind of difference
  * that makes a copy compare unequal to the design it came from.
  */
-function withRemappedGroupStagger(item: GraphicItemConfig, idMap: Map<string, string>): GraphicItemConfig {
-	if (item.type !== 'group' || !item.animation)
-		return item;
+function withRemappedGroupStagger(
+	item: GraphicItemConfig,
+	idMap: Map<string, string>,
+): GraphicItemConfig {
+	if (item.type !== 'group' || !item.animation) return item;
 
 	const animation = withRemappedStagger(item.animation, idMap);
 	if (!animation) {
@@ -249,21 +246,20 @@ export function placeBroadcastGraphicTemplate(
 	const idMap = options.idMap ?? new Map<string, string>();
 	// Every id is known before any stagger is rewritten: a container's subset may
 	// name items later in its own list than itself.
-	const items = document.items.map(item => withFreshItemId(item, options.generateId, idMap));
+	const items = document.items.map((item) => withFreshItemId(item, options.generateId, idMap));
 
 	const placed: BroadcastGraphicConfig = {
 		...structuredClone(document),
 		id: graphicId,
 		name: distinctName(template.name, options.existing),
-		items: items.map(item => withRemappedGroupStagger(item, idMap)),
-		socialProfileProjections: document.socialProfileProjections?.map(projection => ({
+		items: items.map((item) => withRemappedGroupStagger(item, idMap)),
+		socialProfileProjections: document.socialProfileProjections?.map((projection) => ({
 			...structuredClone(projection),
-			presentationGroupId: idMap.get(projection.presentationGroupId)
-				?? projection.presentationGroupId,
+			presentationGroupId:
+				idMap.get(projection.presentationGroupId) ?? projection.presentationGroupId,
 		})),
 	};
-	if (!document.socialProfileProjections)
-		delete placed.socialProfileProjections;
+	if (!document.socialProfileProjections) delete placed.socialProfileProjections;
 
 	// A Graphic Channel is per-placement, not per-design: the id names a lane on one
 	// Screen. A saved template drops it, but an imported or hand-built document may
@@ -274,10 +270,8 @@ export function placeBroadcastGraphicTemplate(
 	// `placed.animation` is already this copy's own clone, so rewriting its staggers
 	// cannot reach the template's own recipes.
 	const animation = withRemappedStagger(placed.animation, idMap);
-	if (animation)
-		placed.animation = animation;
-	else
-		delete placed.animation;
+	if (animation) placed.animation = animation;
+	else delete placed.animation;
 
 	return placed;
 }

@@ -17,9 +17,7 @@ const mockMetagameStore = reactive({
 });
 
 const mockPlayerListStore = reactive({
-	lists: [
-		{ id: 7, name: 'Feature Table', memberCount: 4 },
-	],
+	lists: [{ id: 7, name: 'Feature Table', memberCount: 4 }],
 });
 
 mockNuxtImport('useEventStore', () => () => mockEventStore);
@@ -42,7 +40,8 @@ const StatStripStub = defineComponent({
 	props: {
 		stats: { type: Array, required: true },
 	},
-	template: '<div><div v-for="stat in stats" :key="stat.label">{{ stat.label }}:{{ stat.value }}</div></div>',
+	template:
+		'<div><div v-for="stat in stats" :key="stat.label">{{ stat.label }}:{{ stat.value }}</div></div>',
 });
 
 function makeSummary(): MetagameSummaryResponse {
@@ -65,15 +64,31 @@ function makeSummary(): MetagameSummaryResponse {
 				kind: 'cardSplit',
 				key: 'mostPlayedCards',
 				title: 'Most Played Cards',
-				mainboard: { label: 'Mainboard', value: 'Lightning Bolt', detail: '30 copies across 10 decks · 62.5% of decks' },
-				sideboard: { label: 'Sideboard', value: 'Negate', detail: '8 copies across 6 decks · 37.5% of decks' },
+				mainboard: {
+					label: 'Mainboard',
+					value: 'Lightning Bolt',
+					detail: '30 copies across 10 decks · 62.5% of decks',
+				},
+				sideboard: {
+					label: 'Sideboard',
+					value: 'Negate',
+					detail: '8 copies across 6 decks · 37.5% of decks',
+				},
 			},
 			{
 				kind: 'cardSplit',
 				key: 'highestAvgCopiesCards',
 				title: 'Highest Avg Copies (5+ decks)',
-				mainboard: { label: 'Mainboard', value: 'Sunfall', detail: '3.2 avg copies across 5 decks · 31.3% of decks' },
-				sideboard: { label: 'Sideboard', value: 'Disdainful Stroke', detail: '2.1 avg copies across 5 decks · 31.3% of decks' },
+				mainboard: {
+					label: 'Mainboard',
+					value: 'Sunfall',
+					detail: '3.2 avg copies across 5 decks · 31.3% of decks',
+				},
+				sideboard: {
+					label: 'Sideboard',
+					value: 'Disdainful Stroke',
+					detail: '2.1 avg copies across 5 decks · 31.3% of decks',
+				},
 			},
 		],
 		topArchetypes: [],
@@ -104,9 +119,7 @@ describe('metagameSummaryPanel', () => {
 		mockMetagameStore.scope = 'all';
 		mockMetagameStore.topN = 8;
 		mockMetagameStore.playerListId = undefined;
-		mockPlayerListStore.lists = [
-			{ id: 7, name: 'Feature Table', memberCount: 4 },
-		];
+		mockPlayerListStore.lists = [{ id: 7, name: 'Feature Table', memberCount: 4 }];
 	});
 
 	it('renders scope and stats for MTG without factual callouts', async () => {

@@ -64,7 +64,8 @@ const props = defineProps<{
 	 * A phase's recipe, or a motion token's, which may leave out its delay and
 	 * its on-screen defaults.
 	 */
-	recipe: Omit<GraphicAnimationRecipe, 'delay'> & Partial<Pick<GraphicOnScreenAnimationRecipe, 'delay' | 'pause' | 'repeat'>>;
+	recipe: Omit<GraphicAnimationRecipe, 'delay'> &
+		Partial<Pick<GraphicOnScreenAnimationRecipe, 'delay' | 'pause' | 'repeat'>>;
 	cycling?: boolean;
 	disabled?: boolean;
 	/**
@@ -77,17 +78,24 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	update: [patch: Partial<Pick<GraphicOnScreenAnimationRecipe, 'duration' | 'easing' | 'delay' | 'pause' | 'repeat'>>];
+	update: [
+		patch: Partial<
+			Pick<GraphicOnScreenAnimationRecipe, 'duration' | 'easing' | 'delay' | 'pause' | 'repeat'>
+		>,
+	];
 	channel: GraphicAnimationChannelEdit;
 }>();
 
 /** A channel and a patch of that same channel, or null to remove it. */
 type GraphicAnimationChannelEdit = {
-	[K in GraphicAnimationChannelKey]: [channel: K, patch: Partial<GraphicAnimationChannels[K]> | null];
+	[K in GraphicAnimationChannelKey]: [
+		channel: K,
+		patch: Partial<GraphicAnimationChannels[K]> | null,
+	];
 }[GraphicAnimationChannelKey];
 
 const EASING_LABELS: Record<GraphicAnimationEasing, string> = {
-	'linear': 'Linear',
+	linear: 'Linear',
 	'ease-in': 'Ease in',
 	'ease-out': 'Ease out',
 	'ease-in-out': 'Ease in-out',
@@ -96,7 +104,7 @@ const EASING_LABELS: Record<GraphicAnimationEasing, string> = {
 	'back-in-out': 'Back in-out',
 };
 const DISTANCE_MODE_LABELS: Record<GraphicSlideDistanceMode, string> = {
-	'fixed': 'Fixed',
+	fixed: 'Fixed',
 	'clear-parent': 'Clear parent',
 };
 const REVEAL_EDGE_LABELS: Record<GraphicRevealEdge, string> = {
@@ -106,10 +114,22 @@ const REVEAL_EDGE_LABELS: Record<GraphicRevealEdge, string> = {
 	bottom: 'Bottom',
 };
 
-const EASING_OPTIONS = GRAPHIC_ANIMATION_EASING_VALUES.map(value => ({ label: EASING_LABELS[value], value }));
-const DIRECTION_OPTIONS = GRAPHIC_SLIDE_DIRECTIONS.map(entry => ({ label: entry.label, value: entry.value }));
-const DISTANCE_MODE_OPTIONS = GRAPHIC_SLIDE_DISTANCE_MODE_VALUES.map(value => ({ label: DISTANCE_MODE_LABELS[value], value }));
-const REVEAL_EDGE_OPTIONS = GRAPHIC_REVEAL_EDGE_VALUES.map(value => ({ label: REVEAL_EDGE_LABELS[value], value }));
+const EASING_OPTIONS = GRAPHIC_ANIMATION_EASING_VALUES.map((value) => ({
+	label: EASING_LABELS[value],
+	value,
+}));
+const DIRECTION_OPTIONS = GRAPHIC_SLIDE_DIRECTIONS.map((entry) => ({
+	label: entry.label,
+	value: entry.value,
+}));
+const DISTANCE_MODE_OPTIONS = GRAPHIC_SLIDE_DISTANCE_MODE_VALUES.map((value) => ({
+	label: DISTANCE_MODE_LABELS[value],
+	value,
+}));
+const REVEAL_EDGE_OPTIONS = GRAPHIC_REVEAL_EDGE_VALUES.map((value) => ({
+	label: REVEAL_EDGE_LABELS[value],
+	value,
+}));
 
 const CHANNELS: readonly { key: GraphicAnimationChannelKey; label: string }[] = [
 	{ key: 'fade', label: 'Fade' },
@@ -118,13 +138,15 @@ const CHANNELS: readonly { key: GraphicAnimationChannelKey; label: string }[] = 
 	{ key: 'reveal', label: 'Reveal' },
 ];
 
-const repeatsIndefinitely = computed(() => props.recipe.repeat === GRAPHIC_ANIMATION_REPEAT_INDEFINITE);
+const repeatsIndefinitely = computed(
+	() => props.recipe.repeat === GRAPHIC_ANIMATION_REPEAT_INDEFINITE,
+);
 
 const geometryUnit = useGeometryUnit();
 
 const SLIDE_DIMENSION_LABELS: Record<GraphicSlideDistanceDimension, string> = {
-	'width': 'width',
-	'height': 'height',
+	width: 'width',
+	height: 'height',
 	'shorter-side': 'shorter side',
 };
 
@@ -132,16 +154,13 @@ const SLIDE_DIMENSION_LABELS: Record<GraphicSlideDistanceDimension, string> = {
 const slideReference = computed(() => {
 	const parent = props.slideParent;
 	const slide = props.recipe.slide;
-	if (!parent || !slide)
-		return null;
+	if (!parent || !slide) return null;
 	const reference = graphicSlideDistanceReference(parent, slide.direction);
-	return reference.span > 0
-		? { ...reference, name: parent.name }
-		: null;
+	return reference.span > 0 ? { ...reference, name: parent.name } : null;
 });
 
 /** Pixels whenever there is no parent to measure a relative unit against. */
-const slideUnit = computed<GeometryUnit>(() => slideReference.value ? geometryUnit.value : 'px');
+const slideUnit = computed<GeometryUnit>(() => (slideReference.value ? geometryUnit.value : 'px'));
 
 function shownSlideDistance(pixels: number) {
 	return displayGeometryValue(pixels, slideReference.value?.span ?? 0, slideUnit.value);
@@ -153,12 +172,9 @@ const slideDistanceStep = computed(() => geometryUnitInputStep(slideUnit.value))
 /** Names what a relative unit is measured against; pixels need no reference. */
 const slideDistanceHelp = computed(() => {
 	const reference = slideReference.value;
-	if (!reference || slideUnit.value === 'px')
-		return undefined;
+	if (!reference || slideUnit.value === 'px') return undefined;
 	const measured = `${reference.name} ${SLIDE_DIMENSION_LABELS[reference.dimension]}`;
-	return slideUnit.value === 'percent'
-		? `% of ${measured}`
-		: `32-unit grid across ${measured}`;
+	return slideUnit.value === 'percent' ? `% of ${measured}` : `32-unit grid across ${measured}`;
 });
 
 function updateSlideDistance(value: number | null | undefined) {
@@ -184,7 +200,9 @@ function testId(field: string) {
 				:max="MAX_GRAPHIC_ANIMATION_DURATION_MS"
 				:disabled="disabled"
 				:data-testid="testId('duration')"
-				@update:model-value="value => emit('update', { duration: value ?? MIN_GRAPHIC_ANIMATION_DURATION_MS })"
+				@update:model-value="
+					(value) => emit('update', { duration: value ?? MIN_GRAPHIC_ANIMATION_DURATION_MS })
+				"
 			/>
 			<GraphicsNumberField
 				label="Delay (ms)"
@@ -194,7 +212,7 @@ function testId(field: string) {
 				:max="MAX_GRAPHIC_ANIMATION_DELAY_MS"
 				:disabled="disabled"
 				:data-testid="testId('delay')"
-				@update:model-value="value => emit('update', { delay: value ?? 0 })"
+				@update:model-value="(value) => emit('update', { delay: value ?? 0 })"
 			/>
 		</div>
 
@@ -207,7 +225,7 @@ function testId(field: string) {
 				class="w-full"
 				:disabled="disabled"
 				:data-testid="testId('easing')"
-				@update:model-value="value => emit('update', { easing: value })"
+				@update:model-value="(value) => emit('update', { easing: value })"
 			/>
 		</UFormField>
 
@@ -221,18 +239,25 @@ function testId(field: string) {
 					:max="MAX_GRAPHIC_ANIMATION_PAUSE_MS"
 					:disabled="disabled"
 					:data-testid="testId('pause')"
-					@update:model-value="value => emit('update', { pause: value ?? 0 })"
+					@update:model-value="(value) => emit('update', { pause: value ?? 0 })"
 				/>
 				<GraphicsNumberField
 					label="Repeat"
 					size="xs"
-					:model-value="repeatsIndefinitely ? undefined : Number(recipe.repeat ?? MIN_GRAPHIC_ANIMATION_REPEAT)"
+					:model-value="
+						repeatsIndefinitely ? undefined : Number(recipe.repeat ?? MIN_GRAPHIC_ANIMATION_REPEAT)
+					"
 					:min="MIN_GRAPHIC_ANIMATION_REPEAT"
 					:max="MAX_GRAPHIC_ANIMATION_REPEAT"
 					:disabled="disabled || repeatsIndefinitely"
 					:data-testid="testId('repeat')"
 					:step="1"
-					@update:model-value="value => emit('update', { repeat: value == null ? MIN_GRAPHIC_ANIMATION_REPEAT : Math.round(value) })"
+					@update:model-value="
+						(value) =>
+							emit('update', {
+								repeat: value == null ? MIN_GRAPHIC_ANIMATION_REPEAT : Math.round(value),
+							})
+					"
 				/>
 			</div>
 			<UFormField label="Repeat indefinitely" size="xs" class="flex items-center gap-2">
@@ -241,9 +266,15 @@ function testId(field: string) {
 					size="sm"
 					:disabled="disabled"
 					:data-testid="testId('repeat-indefinite')"
-					@update:model-value="value => emit('update', {
-						repeat: value === true ? GRAPHIC_ANIMATION_REPEAT_INDEFINITE : MIN_GRAPHIC_ANIMATION_REPEAT,
-					})"
+					@update:model-value="
+						(value) =>
+							emit('update', {
+								repeat:
+									value === true
+										? GRAPHIC_ANIMATION_REPEAT_INDEFINITE
+										: MIN_GRAPHIC_ANIMATION_REPEAT,
+							})
+					"
 				/>
 			</UFormField>
 		</template>
@@ -263,7 +294,7 @@ function testId(field: string) {
 					:disabled="disabled"
 					:aria-label="`${channel.label} channel`"
 					:data-testid="testId(`${channel.key}-enabled`)"
-					@update:model-value="value => emit('channel', channel.key, value === true ? {} : null)"
+					@update:model-value="(value) => emit('channel', channel.key, value === true ? {} : null)"
 				/>
 			</div>
 
@@ -274,7 +305,7 @@ function testId(field: string) {
 					:model-value="recipe.fade.opacity"
 					:disabled="disabled"
 					:data-testid="testId('fade-opacity')"
-					@update:model-value="value => emit('channel', 'fade', { opacity: value ?? 0 })"
+					@update:model-value="(value) => emit('channel', 'fade', { opacity: value ?? 0 })"
 				/>
 			</div>
 
@@ -288,7 +319,7 @@ function testId(field: string) {
 						class="w-full"
 						:disabled="disabled"
 						:data-testid="testId('slide-direction')"
-						@update:model-value="value => emit('channel', 'slide', { direction: value })"
+						@update:model-value="(value) => emit('channel', 'slide', { direction: value })"
 					/>
 				</UFormField>
 				<UFormField label="Distance" size="xs">
@@ -300,7 +331,7 @@ function testId(field: string) {
 						class="w-full"
 						:disabled="disabled"
 						:data-testid="testId('slide-mode')"
-						@update:model-value="value => emit('channel', 'slide', { distanceMode: value })"
+						@update:model-value="(value) => emit('channel', 'slide', { distanceMode: value })"
 					/>
 				</UFormField>
 				<!-- The fixed distance: the one place the slide's length is entered. -->
@@ -319,10 +350,7 @@ function testId(field: string) {
 							:data-testid="testId('slide-distance')"
 							@update:model-value="updateSlideDistance"
 						/>
-						<GraphicsGeometryUnitPicker
-							v-if="slideReference"
-							v-model="geometryUnit"
-						/>
+						<GraphicsGeometryUnitPicker v-if="slideReference" v-model="geometryUnit" />
 					</div>
 					<ScreenSettingsHint v-if="slideDistanceHelp" :data-testid="testId('slide-distance-help')">
 						{{ slideDistanceHelp }}
@@ -340,7 +368,7 @@ function testId(field: string) {
 					:step="0.05"
 					:disabled="disabled"
 					:data-testid="testId('scale-factor')"
-					@update:model-value="value => emit('channel', 'scale', { factor: value ?? 1 })"
+					@update:model-value="(value) => emit('channel', 'scale', { factor: value ?? 1 })"
 				/>
 				<UFormField label="Origin" size="xs">
 					<UINinePointPicker
@@ -348,7 +376,7 @@ function testId(field: string) {
 						aria-label="Scale origin"
 						:disabled="disabled"
 						:data-testid="testId('scale-origin')"
-						@update:model-value="value => emit('channel', 'scale', { origin: value })"
+						@update:model-value="(value) => emit('channel', 'scale', { origin: value })"
 					/>
 				</UFormField>
 			</div>
@@ -363,7 +391,7 @@ function testId(field: string) {
 						class="w-full"
 						:disabled="disabled"
 						:data-testid="testId('reveal-edge')"
-						@update:model-value="value => emit('channel', 'reveal', { edge: value })"
+						@update:model-value="(value) => emit('channel', 'reveal', { edge: value })"
 					/>
 				</UFormField>
 			</div>

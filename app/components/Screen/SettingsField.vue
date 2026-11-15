@@ -10,21 +10,29 @@
  * as short as its label, a switch. Every other attribute (`error`, `data-*`)
  * lands on the form field.
  */
-withDefaults(defineProps<{
-	label: string;
-	description?: string;
-	stacked?: boolean;
-	align?: 'start' | 'center';
-}>(), { align: 'start' });
+withDefaults(
+	defineProps<{
+		label: string;
+		description?: string;
+		stacked?: boolean;
+		align?: 'start' | 'center';
+	}>(),
+	{ align: 'start' },
+);
 </script>
 
 <template>
 	<UFormField
 		:label="label"
 		:description="description"
-		:class="stacked
-			? undefined
-			: ['flex max-sm:flex-col justify-between gap-4', align === 'center' ? 'items-center' : 'items-start']"
+		:class="
+			stacked
+				? undefined
+				: [
+						'flex max-sm:flex-col justify-between gap-4',
+						align === 'center' ? 'items-center' : 'items-start',
+					]
+		"
 	>
 		<slot />
 	</UFormField>

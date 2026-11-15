@@ -14,12 +14,16 @@ import { useRotationConfigWrites } from '~/modules/screen-mode/rotationWrites';
 const mockIsSynced = ref(true);
 let mockServerNow = 1_000_000.25; // deliberately fractional, like a real sync
 
-mockNuxtImport('useServerTime', async () => (await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
-	isSynced: mockIsSynced,
-	getServerTime: () => mockServerNow,
-})));
+mockNuxtImport('useServerTime', async () =>
+	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+		isSynced: mockIsSynced,
+		getServerTime: () => mockServerNow,
+	})),
+);
 
-function harness(overrides: { autoPageEnabled?: boolean; rotationAnchor?: number; currentPage?: number } = {}) {
+function harness(
+	overrides: { autoPageEnabled?: boolean; rotationAnchor?: number; currentPage?: number } = {},
+) {
 	const saveConfig = vi.fn();
 	const rowCount = ref(20); // 4 pages of 5
 	const state = reactive({
@@ -64,14 +68,17 @@ describe('useRotationConfigWrites', () => {
 	it('occasion 2 — a rotation-shape edit re-anchors while rotating, and not otherwise', () => {
 		const rotating = harness({ currentPage: 3 });
 		rotating.writes.updateConfig({ autoPageIntervalMs: 5_000 });
-		expect(rotating.saveConfig).toHaveBeenCalledWith({ autoPageIntervalMs: 5_000, rotationAnchor: 1_000_000 });
+		expect(rotating.saveConfig).toHaveBeenCalledWith({
+			autoPageIntervalMs: 5_000,
+			rotationAnchor: 1_000_000,
+		});
 
 		const manual = harness({ autoPageEnabled: false, currentPage: 3 });
 		manual.writes.updateConfig({ autoPageIntervalMs: 5_000 });
 		expect(manual.saveConfig).toHaveBeenCalledWith({ autoPageIntervalMs: 5_000 });
 	});
 
-	it('a Standings page size edit resets the selected page to 1, as Metagame\'s does', () => {
+	it("a Standings page size edit resets the selected page to 1, as Metagame's does", () => {
 		const { writes, saveConfig } = harness({ autoPageEnabled: false, currentPage: 3 });
 
 		writes.updateConfig({ rowsPerPage: 8 });
@@ -79,7 +86,7 @@ describe('useRotationConfigWrites', () => {
 		expect(saveConfig).toHaveBeenCalledWith({ rowsPerPage: 8, currentPage: 1 });
 	});
 
-	it('writes an edit that leaves the rotation\'s shape alone as it is', () => {
+	it("writes an edit that leaves the rotation's shape alone as it is", () => {
 		const { writes, saveConfig } = harness({ currentPage: 3 });
 
 		writes.updateConfig({ headerText: 'Top 8' });
@@ -123,14 +130,7 @@ describe('useRotationConfigWrites', () => {
 		writes.adminSetPage(9);
 		writes.adminSetPage(0);
 
-		expect(saveConfig.mock.calls).toEqual([
-			[
-				{ currentPage: 4 },
-			],
-			[
-				{ currentPage: 1 },
-			],
-		]);
+		expect(saveConfig.mock.calls).toEqual([[{ currentPage: 4 }], [{ currentPage: 1 }]]);
 	});
 
 	it('a manual selection while rotating anchors at most the real last page', () => {

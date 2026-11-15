@@ -31,6 +31,6 @@ export function useScreenOutputAssetAccess(
 
 	return computed(() => {
 		const members = screenStore.screenPresence.get(toValue(screenId))?.members ?? [];
-		return members.filter(member => member.data?.assetAccess === 'absent').length;
+		return members.filter((member) => member.data?.assetAccess === 'absent').length;
 	});
 }

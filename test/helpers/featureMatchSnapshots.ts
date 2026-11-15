@@ -1,5 +1,9 @@
 import type { ClockType } from '~~/shared/types/enums';
-import type { FeatureMatchSnapshotPlayer, FeatureMatchSnapshotPlayerData, FeatureMatchSourceSnapshot } from '~~/shared/types/featureMatchSession';
+import type {
+	FeatureMatchSnapshotPlayer,
+	FeatureMatchSnapshotPlayerData,
+	FeatureMatchSourceSnapshot,
+} from '~~/shared/types/featureMatchSession';
 import type { Commander } from '~~/shared/types/game';
 import { getMatchFormatDefaults } from '~~/shared/config/games';
 import { commanderDeckIdentity } from '~~/shared/utils/commander';
@@ -8,7 +12,10 @@ import { ATRAXA, KRAUM, TYMNA } from './commanders';
 /** Source snapshots of Feature Match Sessions, as each kind of Event's Slot opens one (ADR-0087). */
 
 /** A typed Seat as a Commander Slot stores it: a name and its Commanders. */
-export function seatedPlayer(name: string, commanders: Commander[] = []): FeatureMatchSnapshotPlayerData {
+export function seatedPlayer(
+	name: string,
+	commanders: Commander[] = [],
+): FeatureMatchSnapshotPlayerData {
 	return {
 		name,
 		...(commanders.length > 0
@@ -41,7 +48,9 @@ interface CommanderSnapshotOptions {
  * A Commander Slot's snapshot with four Seats filled: Ana (Atraxa), Ben (Tymna),
  * Cleo (Tymna and Kraum, a pair) and Dara (Atraxa), at 40 life and untimed.
  */
-export function commanderSnapshot(options: CommanderSnapshotOptions = {}): FeatureMatchSourceSnapshot {
+export function commanderSnapshot(
+	options: CommanderSnapshotOptions = {},
+): FeatureMatchSourceSnapshot {
 	const defaults = getMatchFormatDefaults('mtg-commander');
 	const seated = {
 		player1: seatedPlayer('Ana', [ATRAXA]),
@@ -75,7 +84,9 @@ export function commanderSnapshot(options: CommanderSnapshotOptions = {}): Featu
 }
 
 /** A Two-Player Magic: The Gathering Slot's snapshot, as every Session held before Commander. */
-export function twoPlayerSnapshot(overrides: Partial<FeatureMatchSourceSnapshot> = {}): FeatureMatchSourceSnapshot {
+export function twoPlayerSnapshot(
+	overrides: Partial<FeatureMatchSourceSnapshot> = {},
+): FeatureMatchSourceSnapshot {
 	return {
 		eventId: 1,
 		slotId: 1,

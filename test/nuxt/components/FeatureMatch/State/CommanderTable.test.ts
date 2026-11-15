@@ -44,16 +44,18 @@ const stateStore = reactive({
 	startOvertime: vi.fn(),
 });
 
-mockNuxtImport('useEventStore', () => () => reactive({
-	eventId: EVENT_ID,
-	event: computed(() => event.value),
-	displayEvent: computed(() => event.value),
-}));
+mockNuxtImport(
+	'useEventStore',
+	() => () =>
+		reactive({
+			eventId: EVENT_ID,
+			event: computed(() => event.value),
+			displayEvent: computed(() => event.value),
+		}),
+);
 mockNuxtImport('useFeatureMatchStateStore', () => () => stateStore);
 mockNuxtImport('useFeatureMatchStore', () => () => ({
-	featureMatches: [
-		createMockFeatureMatch({ id: SLOT_ID }),
-	],
+	featureMatches: [createMockFeatureMatch({ id: SLOT_ID })],
 }));
 mockNuxtImport('usePlayerStore', () => () => ({ players: [] }));
 mockNuxtImport('useOverlay', () => () => ({
@@ -74,7 +76,8 @@ const NumericCounterStub = defineComponent({
 });
 const CounterListStub = defineComponent({
 	props: ['player', 'counters'],
-	template: '<div data-match-state-part="counters" :data-player="player" :data-counters="JSON.stringify(counters)" />',
+	template:
+		'<div data-match-state-part="counters" :data-player="player" :data-counters="JSON.stringify(counters)" />',
 });
 
 const TRACKING: Partial<DbEvent> = {
@@ -84,7 +87,10 @@ const TRACKING: Partial<DbEvent> = {
 };
 
 /** The Slot's Session held with `overrides` on its opening state, and its Controls mounted. */
-function mountTable(overrides: Partial<FeatureMatchState> = {}, props: { config?: PlayerDisplayConfig } = {}) {
+function mountTable(
+	overrides: Partial<FeatureMatchState> = {},
+	props: { config?: PlayerDisplayConfig } = {},
+) {
 	event.value = createMockEvent({
 		game: 'mtg',
 		variant: 'commander',
@@ -97,15 +103,9 @@ function mountTable(overrides: Partial<FeatureMatchState> = {}, props: { config?
 		...overrides,
 	};
 	const session = createSession(state, { slotId: SLOT_ID, sourceSnapshot: snapshot });
-	stateStore.featureMatchStates = new Map([
-		[SLOT_ID, state],
-	]);
-	stateStore.featureMatchSessions = new Map([
-		[session.id, session],
-	]);
-	stateStore.sessionIdBySlotId = new Map([
-		[SLOT_ID, session.id],
-	]);
+	stateStore.featureMatchStates = new Map([[SLOT_ID, state]]);
+	stateStore.featureMatchSessions = new Map([[session.id, session]]);
+	stateStore.sessionIdBySlotId = new Map([[SLOT_ID, session.id]]);
 	const wrapper = mount(CommanderTable, {
 		props: { matchId: SLOT_ID, ...props },
 		global: {
@@ -123,10 +123,14 @@ function mountTable(overrides: Partial<FeatureMatchState> = {}, props: { config?
 type Table = ReturnType<typeof mountTable>['wrapper'];
 const seat = (wrapper: Table, key: string) => wrapper.get(`[data-seat="${key}"]`);
 function button(scope: { findAll: Table['findAll'] }, label: string) {
-	return scope.findAll('button').find(candidate => candidate.text() === label || candidate.attributes('aria-label') === label)!;
+	return scope
+		.findAll('button')
+		.find(
+			(candidate) => candidate.text() === label || candidate.attributes('aria-label') === label,
+		)!;
 }
 
-describe('a Commander Slot\'s Controls', () => {
+describe("a Commander Slot's Controls", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
@@ -134,20 +138,23 @@ describe('a Commander Slot\'s Controls', () => {
 	it('shows the four Seats clockwise from the top left, an empty one as empty', () => {
 		const { wrapper } = mountTable();
 
-		expect(SEAT_VALUES.map(key => seat(wrapper, key).attributes('data-table-position')))
-			.toEqual([
-				'top-left',
-				'top-right',
-				'bottom-right',
-				'bottom-left',
-			]);
-		expect(SEAT_VALUES.map(key => seat(wrapper, key).attributes('data-seat-empty')))
-			.toEqual(['false', 'false', 'false', 'true']);
+		expect(SEAT_VALUES.map((key) => seat(wrapper, key).attributes('data-table-position'))).toEqual([
+			'top-left',
+			'top-right',
+			'bottom-right',
+			'bottom-left',
+		]);
+		expect(SEAT_VALUES.map((key) => seat(wrapper, key).attributes('data-seat-empty'))).toEqual([
+			'false',
+			'false',
+			'false',
+			'true',
+		]);
 		expect(seat(wrapper, 'player3').text()).toContain('Cleo');
 		expect(seat(wrapper, 'player4').find('[data-counter]').exists()).toBe(false);
 	});
 
-	it('shows a Seat\'s life and adjusts that Seat', async () => {
+	it("shows a Seat's life and adjusts that Seat", async () => {
 		const opened = createInitialFeatureMatchSessionStateFromSnapshot(snapshot);
 		const { wrapper } = mountTable({
 			player3: { ...opened.player3!, lifeTotal: 31 },
@@ -165,64 +172,64 @@ describe('a Commander Slot\'s Controls', () => {
 		const { wrapper } = mountTable({
 			player2: {
 				...opened.player2,
-				commanderDamage: [
-					{ seat: 'player3', commander: 2, damage: 7 },
-				],
+				commanderDamage: [{ seat: 'player3', commander: 2, damage: 7 }],
 			},
 		});
 		const steppers = seat(wrapper, 'player2').findAll('[data-commander-damage]');
 
 		// Ana's one Commander and each of Cleo's pair; none of its own, none for the empty Seat.
-		expect(steppers.map(stepper => [
-			stepper.attributes('data-commander-damage'),
-			stepper.get('[data-counter]').attributes('data-value'),
-		]))
-			.toEqual([
-				['player1:1', '0'],
-				['player3:1', '0'],
-				['player3:2', '7'],
-			]);
+		expect(
+			steppers.map((stepper) => [
+				stepper.attributes('data-commander-damage'),
+				stepper.get('[data-counter]').attributes('data-value'),
+			]),
+		).toEqual([
+			['player1:1', '0'],
+			['player3:1', '0'],
+			['player3:2', '7'],
+		]);
 		expect(steppers[2]!.text()).toContain('Kraum');
 
 		await steppers[2]!.get('[data-step="up"]').trigger('click');
 
-		expect(stateStore.adjustCommanderDamage).toHaveBeenCalledWith(EVENT_ID, SLOT_ID, 'player2', { seat: 'player3', commander: 2 }, 1);
+		expect(stateStore.adjustCommanderDamage).toHaveBeenCalledWith(
+			EVENT_ID,
+			SLOT_ID,
+			'player2',
+			{ seat: 'player3', commander: 2 },
+			1,
+		);
 	});
 
 	// Two Seats may play the same Commander, so each stepper names whose it is.
 	it('names each Commander Damage stepper by the Seat whose Commander dealt it', () => {
 		const { wrapper } = mountTable();
 
-		expect(seat(wrapper, 'player1').findAll('[data-commander-damage] [data-counter]').map(counter => counter.attributes('data-label')))
-			.toEqual([
-				'Ana Commander Damage from Ben\'s Tymna the Weaver',
-				'Ana Commander Damage from Cleo\'s Tymna the Weaver',
-				'Ana Commander Damage from Cleo\'s Kraum, Ludevic\'s Opus',
-			]);
+		expect(
+			seat(wrapper, 'player1')
+				.findAll('[data-commander-damage] [data-counter]')
+				.map((counter) => counter.attributes('data-label')),
+		).toEqual([
+			"Ana Commander Damage from Ben's Tymna the Weaver",
+			"Ana Commander Damage from Cleo's Tymna the Weaver",
+			"Ana Commander Damage from Cleo's Kraum, Ludevic's Opus",
+		]);
 	});
 
-	it('hands each Seat\'s counters to its counter list', () => {
+	it("hands each Seat's counters to its counter list", () => {
 		const opened = createInitialFeatureMatchSessionStateFromSnapshot(snapshot);
 		const { wrapper } = mountTable({
 			player1: {
 				...opened.player1,
-				counters: [
-					{ type: 'poison', value: 3 },
-				],
+				counters: [{ type: 'poison', value: 3 }],
 			},
 		});
 
 		const counters = seat(wrapper, 'player1').get('[data-match-state-part="counters"]');
-		expect([
-			counters.attributes('data-player'),
-			counters.attributes('data-counters'),
-		])
-			.toEqual([
-				'player1',
-				JSON.stringify([
-					{ type: 'poison', value: 3 },
-				]),
-			]);
+		expect([counters.attributes('data-player'), counters.attributes('data-counters')]).toEqual([
+			'player1',
+			JSON.stringify([{ type: 'poison', value: 3 }]),
+		]);
 	});
 
 	it('counts the cards a Seat keeps while mulligans are taken', async () => {
@@ -241,7 +248,12 @@ describe('a Commander Slot\'s Controls', () => {
 			player1: { ...opened.player1, eliminated: true },
 		});
 
-		expect(SEAT_VALUES.map(key => seat(wrapper, key).attributes('data-eliminated'))).toEqual(['true', 'false', 'false', 'false']);
+		expect(SEAT_VALUES.map((key) => seat(wrapper, key).attributes('data-eliminated'))).toEqual([
+			'true',
+			'false',
+			'false',
+			'false',
+		]);
 		const toggle = seat(wrapper, 'player2').get('[role="switch"]');
 		expect(toggle.text()).toBe('Eliminated');
 		await toggle.trigger('click');
@@ -255,11 +267,7 @@ describe('a Commander Slot\'s Controls', () => {
 			(wrapper: Table) => button(seat(wrapper, 'player2'), 'Declare Ben the winner'),
 			{ winner: 'player2' },
 		],
-		[
-			'a draw',
-			(wrapper: Table) => button(wrapper, 'Declare Draw'),
-			{ winner: null },
-		],
+		['a draw', (wrapper: Table) => button(wrapper, 'Declare Draw'), { winner: null }],
 	] as const)('declares %s', async (_case, control, outcome) => {
 		const { wrapper } = mountTable();
 
@@ -285,18 +293,38 @@ describe('a Commander Slot\'s Controls', () => {
 	it('asks which Seat goes first, of the filled ones, and starts the turn there', async () => {
 		const { wrapper } = mountTable({ turnNumber: 0 });
 
-		expect(SEAT_VALUES.map(key => !!button(seat(wrapper, key), 'Goes First'))).toEqual([true, true, true, false]);
+		expect(SEAT_VALUES.map((key) => !!button(seat(wrapper, key), 'Goes First'))).toEqual([
+			true,
+			true,
+			true,
+			false,
+		]);
 		await button(seat(wrapper, 'player3'), 'Goes First').trigger('click');
 
-		await vi.waitFor(() => expect(stateStore.selectFirstPlayer).toHaveBeenCalledWith(EVENT_ID, SLOT_ID, 'player3'));
+		await vi.waitFor(() =>
+			expect(stateStore.selectFirstPlayer).toHaveBeenCalledWith(EVENT_ID, SLOT_ID, 'player3'),
+		);
 		// The hands not yet counted are kept at full, for the filled Seats alone.
-		expect(stateStore.setCardsKept.mock.calls.map(call => call[2])).toEqual(['player1', 'player2', 'player3']);
+		expect(stateStore.setCardsKept.mock.calls.map((call) => call[2])).toEqual([
+			'player1',
+			'player2',
+			'player3',
+		]);
 	});
 
 	it('marks the Seat whose turn it is and steps the turn on', async () => {
-		const { wrapper } = mountTable({ firstPlayer: 'player2', activePlayer: 'player3', turnNumber: 4 });
+		const { wrapper } = mountTable({
+			firstPlayer: 'player2',
+			activePlayer: 'player3',
+			turnNumber: 4,
+		});
 
-		expect(SEAT_VALUES.map(key => seat(wrapper, key).attributes('data-active'))).toEqual(['false', 'false', 'true', 'false']);
+		expect(SEAT_VALUES.map((key) => seat(wrapper, key).attributes('data-active'))).toEqual([
+			'false',
+			'false',
+			'true',
+			'false',
+		]);
 		expect(wrapper.text()).toContain('Turn 4');
 		await button(wrapper, 'Next step').trigger('click');
 
@@ -306,33 +334,44 @@ describe('a Commander Slot\'s Controls', () => {
 	// A Controls Screen may show the game without letting its viewer change it.
 	it.each([
 		[undefined, 'false', false],
-		[
-			{ allowLifeControls: false },
-			'true',
-			true,
-		],
-	])('with config %j, has life and Commander Damage read-only: %s, and Eliminated locked: %s', (config, readonly, locked) => {
-		const { wrapper } = mountTable({}, { config });
+		[{ allowLifeControls: false }, 'true', true],
+	])(
+		'with config %j, has life and Commander Damage read-only: %s, and Eliminated locked: %s',
+		(config, readonly, locked) => {
+			const { wrapper } = mountTable({}, { config });
 
-		expect(new Set(wrapper.findAll('[data-counter]').map(counter => counter.attributes('data-readonly')))).toEqual(new Set([readonly]));
-		expect(seat(wrapper, 'player1').get('[role="switch"]').attributes('disabled') !== undefined).toBe(locked);
-	});
+			expect(
+				new Set(
+					wrapper.findAll('[data-counter]').map((counter) => counter.attributes('data-readonly')),
+				),
+			).toEqual(new Set([readonly]));
+			expect(
+				seat(wrapper, 'player1').get('[role="switch"]').attributes('disabled') !== undefined,
+			).toBe(locked);
+		},
+	);
 
 	it('offers no control over the outcome where game win controls are off, and still shows it', () => {
-		const playing = mountTable({}, {
-			config: { allowGameWinControls: false },
-		}).wrapper;
+		const playing = mountTable(
+			{},
+			{
+				config: { allowGameWinControls: false },
+			},
+		).wrapper;
 		expect([
 			button(playing, 'Declare Draw'),
 			button(seat(playing, 'player2'), 'Declare Ben the winner'),
 		]).toEqual([undefined, undefined]);
 
-		const decided = mountTable({
-			isComplete: true,
-			outcome: { winner: null },
-		}, {
-			config: { allowGameWinControls: false },
-		}).wrapper;
+		const decided = mountTable(
+			{
+				isComplete: true,
+				outcome: { winner: null },
+			},
+			{
+				config: { allowGameWinControls: false },
+			},
+		).wrapper;
 		expect(decided.get('[data-outcome]').text()).toContain('Draw');
 		expect(button(decided, 'Undo')).toBeUndefined();
 	});

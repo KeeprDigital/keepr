@@ -3,7 +3,14 @@ import type { FeatureMatchResponse, ManualPlayerSlotData, PlayerResponse } from 
 import type { OpCatalogueCard } from '~~/shared/types/card/op';
 import type { PlayerSide } from '~~/shared/types/enums';
 import type { SavedFeatureMatchDeckList } from '~~/shared/types/featureMatchDeckList';
-import type { OpDeckListEntry, OpDeckListLine, OpDeckListLines, OpDeckListView, SavedOpPlayerDeckList, WriteOpPlayerDeckListAnswer } from '~~/shared/types/opDeckList';
+import type {
+	OpDeckListEntry,
+	OpDeckListLine,
+	OpDeckListLines,
+	OpDeckListView,
+	SavedOpPlayerDeckList,
+	WriteOpPlayerDeckListAnswer,
+} from '~~/shared/types/opDeckList';
 import type { LeaderArchetype } from './archetypes';
 import { and, eq } from 'drizzle-orm';
 import { db } from '~~/server/db';
@@ -23,7 +30,12 @@ import { requireOpEvent } from '~~/server/utils/routeGuards';
 import { catalogueOpLeader } from '~~/shared/utils/card/op';
 import { SLOT_SIDE_DATA_KEY, SLOT_SIDE_PLAYER_KEY } from '~~/shared/utils/featureMatchSidePlayer';
 import { getOpGameData } from '~~/shared/utils/gameData';
-import { announceDerivedArchetypes, deriveLeaderArchetype, releaseEmptiedLeaderArchetypes, removeEmptiedLeaderArchetypes } from './archetypes';
+import {
+	announceDerivedArchetypes,
+	deriveLeaderArchetype,
+	releaseEmptiedLeaderArchetypes,
+	removeEmptiedLeaderArchetypes,
+} from './archetypes';
 import { opDeckListLeaderCard, opDeckListText, opDeckListView, parseOpDeckListText } from './paste';
 
 /**
@@ -48,16 +60,16 @@ import { opDeckListLeaderCard, opDeckListText, opDeckListView, parseOpDeckListTe
  * setup write, which corrects its Session and announces the Slot.
  */
 
-export type OpDeckListOwner
-	= | { kind: 'player'; playerId: number }
-		/** A Slot side, in the Slot's own order: a swap is the Session's, never the Slot's. */
-		| { kind: 'slotSide'; slotId: number; side: PlayerSide };
+export type OpDeckListOwner =
+	| { kind: 'player'; playerId: number }
+	/** A Slot side, in the Slot's own order: a swap is the Session's, never the Slot's. */
+	| { kind: 'slotSide'; slotId: number; side: PlayerSide };
 
-export type OpDeckListInput
+export type OpDeckListInput =
 	/** Paste text. A Leader line sets the Leader; with none, `leaderNumber` is the Leader picked. */
-	= | { text: string; leaderNumber?: string | null }
-		/** Entries, a number given twice added together, with the Leader marked, as a TCG+ export does. */
-		| OpDeckListLines;
+	| { text: string; leaderNumber?: string | null }
+	/** Entries, a number given twice added together, with the Leader marked, as a TCG+ export does. */
+	| OpDeckListLines;
 
 /**
  * Where a write came from: a TCG+ Import, an operator's hand (which a later
@@ -79,7 +91,9 @@ export interface SlotSideDeckListAnswer {
 	featureMatch: FeatureMatchResponse;
 }
 
-export type OpDeckListWriteAnswer<TOwner extends OpDeckListOwner> = TOwner extends { kind: 'player' }
+export type OpDeckListWriteAnswer<TOwner extends OpDeckListOwner> = TOwner extends {
+	kind: 'player';
+}
 	? WriteOpPlayerDeckListAnswer<PlayerResponse>
 	: SlotSideDeckListAnswer;
 
@@ -87,30 +101,28 @@ export type OpDeckListWriteAnswer<TOwner extends OpDeckListOwner> = TOwner exten
  * The input's lines, each number the Event resolved read as the card it
  * names, and a number given twice, as given or once resolved, added together.
  */
-function inputLines(input: OpDeckListInput, resolutions: ReadonlyMap<string, string>): OpDeckListLine[] {
-	const given = 'text' in input
-		? parseOpDeckListText(input.text)
-		: input.entries;
+function inputLines(
+	input: OpDeckListInput,
+	resolutions: ReadonlyMap<string, string>,
+): OpDeckListLine[] {
+	const given = 'text' in input ? parseOpDeckListText(input.text) : input.entries;
 	const byNumber = new Map<string, OpDeckListLine>();
 	for (const line of given) {
 		const number = resolutions.get(line.number) ?? line.number;
 		const held = byNumber.get(number);
-		if (held)
-			held.quantity += line.quantity;
-		else
-			byNumber.set(number, { number, quantity: line.quantity });
+		if (held) held.quantity += line.quantity;
+		else byNumber.set(number, { number, quantity: line.quantity });
 	}
-	return [
-		...byNumber.values(),
-	];
+	return [...byNumber.values()];
 }
 
 /** The Leader the input picks or marks, read as the card the Event resolved it to. */
-function givenLeader(input: OpDeckListInput, resolutions: ReadonlyMap<string, string>): string | null {
+function givenLeader(
+	input: OpDeckListInput,
+	resolutions: ReadonlyMap<string, string>,
+): string | null {
 	const given = input.leaderNumber ?? null;
-	return given === null
-		? null
-		: resolutions.get(given) ?? given;
+	return given === null ? null : (resolutions.get(given) ?? given);
 }
 
 interface ResolvedInput {
@@ -120,21 +132,22 @@ interface ResolvedInput {
 }
 
 function inputNumbers(lines: readonly OpDeckListLine[], given: string | null): string[] {
-	return [
-		...lines.map(line => line.number),
-		...(given === null
-			? []
-			: [given]),
-	];
+	return [...lines.map((line) => line.number), ...(given === null ? [] : [given])];
 }
 
 /** The input's entries with the cards resolved for them. */
-function withCards(input: OpDeckListInput, lines: readonly OpDeckListLine[], given: string | null, cards: ReadonlyMap<string, OpCatalogueCard | null>): ResolvedInput {
-	const entries = lines.map(line => ({ ...line, card: cards.get(line.number) ?? null }));
+function withCards(
+	input: OpDeckListInput,
+	lines: readonly OpDeckListLine[],
+	given: string | null,
+	cards: ReadonlyMap<string, OpCatalogueCard | null>,
+): ResolvedInput {
+	const entries = lines.map((line) => ({ ...line, card: cards.get(line.number) ?? null }));
 	// ADR-0057: a pasted Leader line sets the Leader, and only a paste with none keeps the one picked.
-	const pastedLeader = 'text' in input && entries.some(entry => entry.card?.category === 'leader');
+	const pastedLeader =
+		'text' in input && entries.some((entry) => entry.card?.category === 'leader');
 	const marked = pastedLeader ? null : given;
-	if (marked !== null && !entries.some(entry => entry.number === marked))
+	if (marked !== null && !entries.some((entry) => entry.number === marked))
 		entries.unshift({ number: marked, quantity: 1, card: cards.get(marked) ?? null });
 	return { entries, marked };
 }
@@ -145,9 +158,12 @@ function withCards(input: OpDeckListInput, lines: readonly OpDeckListLine[], giv
  * it names before the lookup, so an import or paste still holding it saves
  * that card and no Unresolved Deck Card.
  */
-async function resolveInputs(eventId: number, inputs: readonly OpDeckListInput[]): Promise<ResolvedInput[]> {
+async function resolveInputs(
+	eventId: number,
+	inputs: readonly OpDeckListInput[],
+): Promise<ResolvedInput[]> {
 	const resolutions = await opCardNumberResolutionService().findByEvent(eventId);
-	const read = inputs.map(input => ({
+	const read = inputs.map((input) => ({
 		input,
 		lines: inputLines(input, resolutions),
 		leader: givenLeader(input, resolutions),
@@ -173,48 +189,60 @@ export function opDeckListWriteModule() {
 			where: and(eq(players.id, playerId), eq(players.eventId, eventId)),
 			columns: { id: true, archetypeId: true },
 		});
-		if (!player)
-			throw createError({ statusCode: 404, message: 'Player not found' });
+		if (!player) throw createError({ statusCode: 404, message: 'Player not found' });
 		return player;
 	}
 
 	/** Whether each write's Deck List is hand-edited once written: a resolution keeps the flag the Deck List holds. */
-	async function handEditedFlags(eventId: number, writes: ReadonlyArray<{ playerId: number; source: OpDeckListWriteSource }>): Promise<boolean[]> {
-		const resolved = writes.filter(({ source }) => source === 'resolution').map(({ playerId }) => playerId);
-		const held = resolved.length === 0
-			? []
-			: await db.select({ playerId: playerDecks.playerId })
-					.from(playerDecks)
-					.where(and(
-						eq(playerDecks.eventId, eventId),
-						eq(playerDecks.isPrimary, true),
-						eq(playerDecks.handEdited, true),
-						inJsonArray(playerDecks.playerId, resolved),
-					));
+	async function handEditedFlags(
+		eventId: number,
+		writes: ReadonlyArray<{ playerId: number; source: OpDeckListWriteSource }>,
+	): Promise<boolean[]> {
+		const resolved = writes
+			.filter(({ source }) => source === 'resolution')
+			.map(({ playerId }) => playerId);
+		const held =
+			resolved.length === 0
+				? []
+				: await db
+						.select({ playerId: playerDecks.playerId })
+						.from(playerDecks)
+						.where(
+							and(
+								eq(playerDecks.eventId, eventId),
+								eq(playerDecks.isPrimary, true),
+								eq(playerDecks.handEdited, true),
+								inJsonArray(playerDecks.playerId, resolved),
+							),
+						);
 		const handEdited = new Set(held.map(({ playerId }) => playerId));
-		return writes.map(({ playerId, source }) => source === 'resolution'
-			? handEdited.has(playerId)
-			: source === 'hand');
+		return writes.map(({ playerId, source }) =>
+			source === 'resolution' ? handEdited.has(playerId) : source === 'hand',
+		);
 	}
 
 	// Announced with no origin: the writing client applied none of it, so it follows the messages too.
-	async function writePlayer(
-		{ eventId, owner, input, source }: WriteParams<{ kind: 'player'; playerId: number }>,
-	): Promise<WriteOpPlayerDeckListAnswer<PlayerResponse>> {
+	async function writePlayer({
+		eventId,
+		owner,
+		input,
+		source,
+	}: WriteParams<{ kind: 'player'; playerId: number }>): Promise<
+		WriteOpPlayerDeckListAnswer<PlayerResponse>
+	> {
 		const { playerId } = owner;
 		await requirePlayer(eventId, playerId);
 		const { entries, marked } = await resolveInput(eventId, input);
 		const view = opDeckListView(entries, marked);
 
 		const leader = opDeckListLeaderCard(view);
-		const derived = leader && view.leaderNumber !== null
-			? await deriveLeaderArchetype(eventId, view.leaderNumber, leader)
-			: null;
+		const derived =
+			leader && view.leaderNumber !== null
+				? await deriveLeaderArchetype(eventId, view.leaderNumber, leader)
+				: null;
 		// Read after the lookup, so the Archetype the cleanup checks is the one this write replaces.
 		const previous = await requirePlayer(eventId, playerId);
-		const created = derived?.created
-			? [derived.created.id]
-			: [];
+		const created = derived?.created ? [derived.created.id] : [];
 		let written: DbPlayer | null;
 		try {
 			written = await playerDeckLists.replace({
@@ -222,12 +250,9 @@ export function opDeckListWriteModule() {
 				playerId,
 				view,
 				archetypeId: derived?.archetype.id ?? null,
-				handEdited: (await handEditedFlags(eventId, [
-					{ playerId, source },
-				]))[0]!,
+				handEdited: (await handEditedFlags(eventId, [{ playerId, source }]))[0]!,
 			});
-		}
-		catch (error) {
+		} catch (error) {
 			await runCompensation(error, () => removeEmptiedLeaderArchetypes(eventId, created));
 			throw error;
 		}
@@ -237,52 +262,69 @@ export function opDeckListWriteModule() {
 		}
 
 		// The Archetypes go out first, so a client applying the Player knows its Archetype.
-		await announceDerivedArchetypes(eventId, derived
-			? [derived]
-			: []);
+		await announceDerivedArchetypes(eventId, derived ? [derived] : []);
 		const player = await publication.playerUpdated({ eventId, entity: written });
 		await playerUpdateModule().publishPlayerSnapshotUpdates({
 			eventId,
 			playerIds: [playerId],
 		});
 
-		await releaseEmptiedLeaderArchetypes(eventId, previous.archetypeId !== null && previous.archetypeId !== written.archetypeId
-			? [previous.archetypeId]
-			: []);
+		await releaseEmptiedLeaderArchetypes(
+			eventId,
+			previous.archetypeId !== null && previous.archetypeId !== written.archetypeId
+				? [previous.archetypeId]
+				: [],
+		);
 
 		const deckList = await playerDeckLists.findByPlayer(eventId, playerId);
 		if (!deckList)
-			throw createError({ statusCode: 409, message: 'The Deck List was replaced while it was saved' });
+			throw createError({
+				statusCode: 409,
+				message: 'The Deck List was replaced while it was saved',
+			});
 		return { deckList, player };
 	}
 
-	async function writeSlotSide(
-		{ eventId, owner, input, originConnectionId }: WriteParams<{ kind: 'slotSide'; slotId: number; side: PlayerSide }>,
-	): Promise<SlotSideDeckListAnswer> {
+	async function writeSlotSide({
+		eventId,
+		owner,
+		input,
+		originConnectionId,
+	}: WriteParams<{
+		kind: 'slotSide';
+		slotId: number;
+		side: PlayerSide;
+	}>): Promise<SlotSideDeckListAnswer> {
 		const { slotId, side } = owner;
 		const slots = featureMatchService();
 		const deckLists = featureMatchDeckListService();
 		const held = await slots.findById(slotId, eventId);
-		if (!held)
-			throw createError({ statusCode: 404, message: 'Feature match slot not found' });
+		if (!held) throw createError({ statusCode: 404, message: 'Feature match slot not found' });
 		// A linked side shows its Player's Deck List, edited as the Player's (ADR-0074).
 		if (held[SLOT_SIDE_PLAYER_KEY[side]] != null)
-			throw createError({ statusCode: 409, message: 'This side shows its Player\'s Deck List: edit the Player\'s Deck List instead' });
+			throw createError({
+				statusCode: 409,
+				message: "This side shows its Player's Deck List: edit the Player's Deck List instead",
+			});
 
-		const { entries } = await resolveInput(eventId, 'text' in input
-			? { text: input.text }
-			: { entries: input.entries, leaderNumber: null });
+		const { entries } = await resolveInput(
+			eventId,
+			'text' in input ? { text: input.text } : { entries: input.entries, leaderNumber: null },
+		);
 		const view = opDeckListView(entries);
-		const sourceText = 'text' in input
-			? input.text
-			: opDeckListText(view.entries, view.leaderNumber);
+		const sourceText =
+			'text' in input ? input.text : opDeckListText(view.entries, view.leaderNumber);
 		const deckListId = await deckLists.create(eventId, slotId, sourceText, view);
 
 		// Read after the lookup, so an edit to the side made meanwhile is kept.
 		const slot = await slots.findById(slotId, eventId);
 		const key = SLOT_SIDE_DATA_KEY[side];
 		// Provenance is never written by an operator save; an OP Slot carries none.
-		const { externalId: _externalId, externalSource: _externalSource, ...current } = slot?.[key] ?? {};
+		const {
+			externalId: _externalId,
+			externalSource: _externalSource,
+			...current
+		} = slot?.[key] ?? {};
 		const currentGameData = getOpGameData(current.gameData);
 		const leader = opDeckListLeaderCard(view);
 		const sideData: ManualPlayerSlotData = {
@@ -290,9 +332,10 @@ export function opDeckListWriteModule() {
 			gameData: {
 				...currentGameData,
 				// ADR-0057: a paste with no Leader keeps the side's.
-				leader: leader && view.leaderNumber !== null
-					? catalogueOpLeader(view.leaderNumber, leader)
-					: currentGameData.leader,
+				leader:
+					leader && view.leaderNumber !== null
+						? catalogueOpLeader(view.leaderNumber, leader)
+						: currentGameData.leader,
 				featureMatchDeckList: { id: deckListId, mainboardCount: view.mainboardCount },
 			},
 		};
@@ -305,32 +348,46 @@ export function opDeckListWriteModule() {
 				input: { [key]: sideData },
 				originConnectionId,
 			});
-		}
-		catch (error) {
+		} catch (error) {
 			await runCompensation(error, () => deckLists.remove(slotId, [deckListId]));
 			throw error;
 		}
 		// A save of the same side that started first but landed later leaves its Deck List held by nothing.
-		await deckLists.removeUnheldBefore(slotId, deckListId, [featureMatch.player1Data, featureMatch.player2Data]);
+		await deckLists.removeUnheldBefore(slotId, deckListId, [
+			featureMatch.player1Data,
+			featureMatch.player2Data,
+		]);
 
 		const saved = await deckLists.findById(deckListId, slotId, eventId);
 		if (!saved)
-			throw createError({ statusCode: 409, message: 'The Deck List was replaced while it was saved' });
+			throw createError({
+				statusCode: 409,
+				message: 'The Deck List was replaced while it was saved',
+			});
 		return { deckList: saved, featureMatch };
 	}
 
 	/** Writes a Deck List for its owner, or nothing when a lookup fails. */
-	async function write<TOwner extends OpDeckListOwner>(params: WriteParams<TOwner>): Promise<OpDeckListWriteAnswer<TOwner>> {
+	async function write<TOwner extends OpDeckListOwner>(
+		params: WriteParams<TOwner>,
+	): Promise<OpDeckListWriteAnswer<TOwner>> {
 		await requireOpEvent(params.eventId);
 		const { owner } = params;
-		const answer = owner.kind === 'player'
-			? await writePlayer({ ...params, owner })
-			: await writeSlotSide({ ...params, owner });
+		const answer =
+			owner.kind === 'player'
+				? await writePlayer({ ...params, owner })
+				: await writeSlotSide({ ...params, owner });
 		return answer as OpDeckListWriteAnswer<TOwner>;
 	}
 
 	/** A Player's Deck List as saved, or `null` for a Player with none. */
-	async function readPlayer({ eventId, playerId }: { eventId: number; playerId: number }): Promise<SavedOpPlayerDeckList | null> {
+	async function readPlayer({
+		eventId,
+		playerId,
+	}: {
+		eventId: number;
+		playerId: number;
+	}): Promise<SavedOpPlayerDeckList | null> {
 		await requireOpEvent(eventId);
 		await requirePlayer(eventId, playerId);
 		return await playerDeckLists.findByPlayer(eventId, playerId);
@@ -341,7 +398,13 @@ export function opDeckListWriteModule() {
 	 * resolved in one bulk lookup for them all. It saves no Deck List, though
 	 * the lookup fills the card catalogue, whose rows are never wrong.
 	 */
-	async function previewMany({ eventId, inputs }: { eventId: number; inputs: readonly OpDeckListInput[] }): Promise<OpDeckListView[]> {
+	async function previewMany({
+		eventId,
+		inputs,
+	}: {
+		eventId: number;
+		inputs: readonly OpDeckListInput[];
+	}): Promise<OpDeckListView[]> {
 		await requireOpEvent(eventId);
 		const resolved = await resolveInputs(eventId, inputs);
 		return resolved.map(({ entries, marked }) => opDeckListView(entries, marked));
@@ -356,62 +419,78 @@ export function opDeckListWriteModule() {
 	 * asks, so a caller leaving it out announces them as a count. Answers the
 	 * Players as written.
 	 */
-	async function writeMany({ eventId, writes, announcePlayers = false }: {
+	async function writeMany({
+		eventId,
+		writes,
+		announcePlayers = false,
+	}: {
 		eventId: number;
-		writes: ReadonlyArray<{ playerId: number; deckList: OpDeckListView; source: OpDeckListWriteSource }>;
+		writes: ReadonlyArray<{
+			playerId: number;
+			deckList: OpDeckListView;
+			source: OpDeckListWriteSource;
+		}>;
 		announcePlayers?: boolean;
 	}): Promise<DbPlayer[]> {
-		if (writes.length === 0)
-			return [];
+		if (writes.length === 0) return [];
 		await requireOpEvent(eventId);
 		const derived = new Map<string, LeaderArchetype>();
 		for (const { deckList } of writes) {
 			const leader = opDeckListLeaderCard(deckList);
 			if (leader && deckList.leaderNumber !== null && !derived.has(deckList.leaderNumber))
-				derived.set(deckList.leaderNumber, await deriveLeaderArchetype(eventId, deckList.leaderNumber, leader));
+				derived.set(
+					deckList.leaderNumber,
+					await deriveLeaderArchetype(eventId, deckList.leaderNumber, leader),
+				);
 		}
-		const created = [
-			...derived.values(),
-		].flatMap(({ created }) => created ?? []);
+		const created = [...derived.values()].flatMap(({ created }) => created ?? []);
 		const playerIds = writes.map(({ playerId }) => playerId);
-		const previous = await db.select({ archetypeId: players.archetypeId })
+		const previous = await db
+			.select({ archetypeId: players.archetypeId })
 			.from(players)
 			.where(and(eq(players.eventId, eventId), inJsonArray(players.id, playerIds)));
 
 		const handEdited = await handEditedFlags(eventId, writes);
 		let written: DbPlayer[];
 		try {
-			written = await playerDeckLists.replaceMany(eventId, writes.map(({ playerId, deckList }, index) => ({
+			written = await playerDeckLists.replaceMany(
 				eventId,
-				playerId,
-				view: deckList,
-				archetypeId: deckList.leaderNumber === null
-					? null
-					: derived.get(deckList.leaderNumber)?.archetype.id ?? null,
-				handEdited: handEdited[index]!,
-			})));
-		}
-		catch (error) {
-			await runCompensation(error, () => removeEmptiedLeaderArchetypes(eventId, created.map(archetype => archetype.id)));
+				writes.map(({ playerId, deckList }, index) => ({
+					eventId,
+					playerId,
+					view: deckList,
+					archetypeId:
+						deckList.leaderNumber === null
+							? null
+							: (derived.get(deckList.leaderNumber)?.archetype.id ?? null),
+					handEdited: handEdited[index]!,
+				})),
+			);
+		} catch (error) {
+			await runCompensation(error, () =>
+				removeEmptiedLeaderArchetypes(
+					eventId,
+					created.map((archetype) => archetype.id),
+				),
+			);
 			throw error;
 		}
 
 		// The Archetypes go out first, so a client applying a Player knows its Archetype.
-		await announceDerivedArchetypes(eventId, [
-			...derived.values(),
-		]);
-		if (announcePlayers)
-			await publication.playersUpdated({ eventId, entities: written });
+		await announceDerivedArchetypes(eventId, [...derived.values()]);
+		if (announcePlayers) await publication.playersUpdated({ eventId, entities: written });
 		await playerUpdateModule().publishPlayerSnapshotUpdates({
 			eventId,
-			playerIds: written.map(player => player.id),
+			playerIds: written.map((player) => player.id),
 		});
 
-		const held = new Set(written.map(player => player.archetypeId));
+		const held = new Set(written.map((player) => player.archetypeId));
 		await releaseEmptiedLeaderArchetypes(eventId, [
-			...new Set(previous.flatMap(({ archetypeId }) => archetypeId !== null && !held.has(archetypeId)
-				? [archetypeId]
-				: [])),
+			...new Set(
+				previous.flatMap(({ archetypeId }) =>
+					archetypeId !== null && !held.has(archetypeId) ? [archetypeId] : [],
+				),
+			),
 		]);
 		return written;
 	}

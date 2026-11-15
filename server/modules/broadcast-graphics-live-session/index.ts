@@ -7,17 +7,11 @@ import type {
 	BroadcastGraphicsCommandResult,
 	BroadcastGraphicsLiveSessionResponse,
 } from '~~/shared/types/broadcastGraphicsLiveSession';
-import type {
-	BroadcastGraphicConfig,
-	GraphicInputDeclaration,
-} from '~~/shared/types/graphics';
+import type { BroadcastGraphicConfig, GraphicInputDeclaration } from '~~/shared/types/graphics';
 import type { BroadcastGraphicsModeConfig } from '~~/shared/types/screenConfig';
 import type { ScreenGraphicAssetReference } from '~~/shared/utils/graphicsAssetReferences';
 import { mapBroadcastGraphicsLiveSessionToResponse } from '~~/server/mappers/broadcastGraphicsLiveSession';
-import {
-	graphicAssetId,
-	graphicAssetRevisionId,
-} from '~~/server/modules/graphics-asset-library';
+import { graphicAssetId, graphicAssetRevisionId } from '~~/server/modules/graphics-asset-library';
 import {
 	clearOrphanedBroadcastGraphicsLiveSessionGraphicAssetReferences,
 	updateBroadcastGraphicsLiveSessionGraphicAssetReferences,
@@ -116,10 +110,12 @@ export function broadcastGraphicsLiveSessionModule() {
 	 * Broadcast Graphics mode, so asking about playout on any other Screen is a
 	 * conflict rather than an empty answer.
 	 */
-	const requireBroadcastGraphicsScreen = async (eventId: number, screenId: number): Promise<DbScreen> => {
+	const requireBroadcastGraphicsScreen = async (
+		eventId: number,
+		screenId: number,
+	): Promise<DbScreen> => {
 		const screen = await screens.findById(screenId, eventId);
-		if (!screen)
-			throw createError({ statusCode: 404, message: 'Screen not found' });
+		if (!screen) throw createError({ statusCode: 404, message: 'Screen not found' });
 		if (screen.currentMode !== 'broadcast-graphics') {
 			throw createError({
 				statusCode: 409,
@@ -143,8 +139,11 @@ export function broadcastGraphicsLiveSessionModule() {
 	}
 
 	/** The placed Broadcast Graphic a command addresses. */
-	function findAuthoredGraphic(screen: DbScreen, graphicId: string): BroadcastGraphicConfig | undefined {
-		return authoredStack(screen).graphics.find(graphic => graphic.id === graphicId);
+	function findAuthoredGraphic(
+		screen: DbScreen,
+		graphicId: string,
+	): BroadcastGraphicConfig | undefined {
+		return authoredStack(screen).graphics.find((graphic) => graphic.id === graphicId);
 	}
 
 	/**
@@ -182,8 +181,7 @@ export function broadcastGraphicsLiveSessionModule() {
 		references: readonly ScreenGraphicAssetReference[],
 		graphicsAssets: ApplyCommandParams['graphicsAssets'],
 	): Promise<void> => {
-		if (references.length === 0)
-			return;
+		if (references.length === 0) return;
 
 		const library = graphicsAssets();
 
@@ -192,17 +190,18 @@ export function broadcastGraphicsLiveSessionModule() {
 				assetId: graphicAssetId(item.reference.assetId),
 				revisionId: graphicAssetRevisionId(item.reference.revisionId),
 			});
-			if (status.outcome === 'available')
-				continue;
-			throw broadcastGraphicsRejectionError(status.outcome === 'missing'
-				? new BroadcastGraphicsCommandRejection(
-						'missing-asset-reference',
-						`Graphic Asset Reference at ${item.ownerSlot} is missing, so this Broadcast Graphic cannot be taken on air`,
-					)
-				: new BroadcastGraphicsCommandRejection(
-						'unavailable-asset-content',
-						`Graphic Asset Content at ${item.ownerSlot} is temporarily unavailable, so this Broadcast Graphic cannot be taken on air`,
-					));
+			if (status.outcome === 'available') continue;
+			throw broadcastGraphicsRejectionError(
+				status.outcome === 'missing'
+					? new BroadcastGraphicsCommandRejection(
+							'missing-asset-reference',
+							`Graphic Asset Reference at ${item.ownerSlot} is missing, so this Broadcast Graphic cannot be taken on air`,
+						)
+					: new BroadcastGraphicsCommandRejection(
+							'unavailable-asset-content',
+							`Graphic Asset Content at ${item.ownerSlot} is temporarily unavailable, so this Broadcast Graphic cannot be taken on air`,
+						),
+			);
 		}
 	};
 
@@ -228,34 +227,33 @@ export function broadcastGraphicsLiveSessionModule() {
 		command: BroadcastGraphicsCommand,
 		graphicsAssets: ApplyCommandParams['graphicsAssets'],
 	): Promise<BroadcastGraphicsCommand> => {
-		if (command.type !== 'Set Input' && command.type !== 'Set Override')
-			return command;
+		if (command.type !== 'Set Input' && command.type !== 'Set Override') return command;
 		const value = command.payload.value;
-		if (!isMediaGraphicInputValue(value))
-			return command;
+		if (!isMediaGraphicInputValue(value)) return command;
 		const declaration: GraphicInputDeclaration | undefined = findGraphicInputDeclaration(
 			graphic.inputs ?? [],
 			command.payload.inputKey,
 		);
-		if (declaration?.type !== 'media')
-			return command;
+		if (declaration?.type !== 'media') return command;
 
 		const status = await graphicsAssets().inspectGraphicAssetRevision({
 			assetId: graphicAssetId(value.assetId),
 			revisionId: graphicAssetRevisionId(value.revisionId),
 		});
 		if (status.outcome !== 'available') {
-			throw broadcastGraphicsRejectionError(status.outcome === 'missing'
-				? new BroadcastGraphicsCommandRejection(
-						'missing-asset-reference',
-						`Graphic Asset Reference for Graphic Input ${command.payload.inputKey} is missing`,
-						[command.payload.inputKey],
-					)
-				: new BroadcastGraphicsCommandRejection(
-						'unavailable-asset-content',
-						`Graphic Asset Content for Graphic Input ${command.payload.inputKey} is temporarily unavailable`,
-						[command.payload.inputKey],
-					));
+			throw broadcastGraphicsRejectionError(
+				status.outcome === 'missing'
+					? new BroadcastGraphicsCommandRejection(
+							'missing-asset-reference',
+							`Graphic Asset Reference for Graphic Input ${command.payload.inputKey} is missing`,
+							[command.payload.inputKey],
+						)
+					: new BroadcastGraphicsCommandRejection(
+							'unavailable-asset-content',
+							`Graphic Asset Content for Graphic Input ${command.payload.inputKey} is temporarily unavailable`,
+							[command.payload.inputKey],
+						),
+			);
 		}
 
 		return {
@@ -293,10 +291,12 @@ export function broadcastGraphicsLiveSessionModule() {
 	): Promise<void> => {
 		try {
 			const stack = authoredStack(screen);
-			const references = broadcastGraphicsLiveSessionGraphicAssetReferences(stack, result.currentState);
+			const references = broadcastGraphicsLiveSessionGraphicAssetReferences(
+				stack,
+				result.currentState,
+			);
 			const previous = broadcastGraphicsLiveSessionGraphicAssetReferences(stack, before);
-			if (sameScreenGraphicAssetReferences(previous, references))
-				return;
+			if (sameScreenGraphicAssetReferences(previous, references)) return;
 
 			const outcome = await updateBroadcastGraphicsLiveSessionGraphicAssetReferences({
 				screenId: screen.id,
@@ -306,27 +306,29 @@ export function broadcastGraphicsLiveSessionModule() {
 				references,
 				previousReferences: previous,
 			});
-			if (outcome.indexed === outcome.expected)
-				return;
+			if (outcome.indexed === outcome.expected) return;
 			// Every accepted value was proved resolvable when it was selected, so a
 			// reference that will not index now lost a race with the library — the
 			// revision was retired, replaced, or purged in between. The graphic keeps
 			// what it accepted; its output cannot fetch this one, which is worth saying
 			// out loud rather than leaving to be discovered on air.
-			console.error(JSON.stringify({
-				message: 'broadcast_graphics_live_reference_index_incomplete',
-				screenId: screen.id,
-				sessionId: result.sessionId,
-				expected: outcome.expected,
-				indexed: outcome.indexed,
-			}));
-		}
-		catch {
-			console.error(JSON.stringify({
-				message: 'broadcast_graphics_live_reference_index_failed',
-				screenId: screen.id,
-				sessionId: result.sessionId,
-			}));
+			console.error(
+				JSON.stringify({
+					message: 'broadcast_graphics_live_reference_index_incomplete',
+					screenId: screen.id,
+					sessionId: result.sessionId,
+					expected: outcome.expected,
+					indexed: outcome.indexed,
+				}),
+			);
+		} catch {
+			console.error(
+				JSON.stringify({
+					message: 'broadcast_graphics_live_reference_index_failed',
+					screenId: screen.id,
+					sessionId: result.sessionId,
+				}),
+			);
 		}
 	};
 
@@ -381,8 +383,7 @@ export function broadcastGraphicsLiveSessionModule() {
 					return;
 				}
 				const screen = await screens.findById(input.screenId, input.eventId);
-				if (!screen)
-					return;
+				if (!screen) return;
 
 				const stack = authoredStack(screen);
 				await updateBroadcastGraphicsLiveSessionGraphicAssetReferences({
@@ -390,33 +391,41 @@ export function broadcastGraphicsLiveSessionModule() {
 					eventId: input.eventId,
 					sessionId: session.id,
 					sequence: session.sequence,
-					references: broadcastGraphicsLiveSessionGraphicAssetReferences(stack, session.currentState),
+					references: broadcastGraphicsLiveSessionGraphicAssetReferences(
+						stack,
+						session.currentState,
+					),
 					previousReferences: input.previousStack
 						? broadcastGraphicsLiveSessionGraphicAssetReferences(
-								resolveScreenModeConfig({ 'broadcast-graphics': input.previousStack }, 'broadcast-graphics'),
+								resolveScreenModeConfig(
+									{ 'broadcast-graphics': input.previousStack },
+									'broadcast-graphics',
+								),
 								session.currentState,
 							)
 						: undefined,
 				});
 
 				const settled = await state.findActiveSessionByScreen(input.screenId, input.eventId);
-				if (settled?.sequence === session.sequence)
-					return;
+				if (settled?.sequence === session.sequence) return;
 			}
 
 			// Both passes lost the race, so neither applied. What the Screen no longer
 			// declares is still published, and stays published until the next acceptance
 			// that moves the media set, an epoch ending, or a reset.
-			console.error(JSON.stringify({
-				message: 'broadcast_graphics_live_reference_republish_incomplete',
-				screenId: input.screenId,
-			}));
-		}
-		catch {
-			console.error(JSON.stringify({
-				message: 'broadcast_graphics_live_reference_republish_failed',
-				screenId: input.screenId,
-			}));
+			console.error(
+				JSON.stringify({
+					message: 'broadcast_graphics_live_reference_republish_incomplete',
+					screenId: input.screenId,
+				}),
+			);
+		} catch {
+			console.error(
+				JSON.stringify({
+					message: 'broadcast_graphics_live_reference_republish_failed',
+					screenId: input.screenId,
+				}),
+			);
 		}
 	};
 
@@ -443,9 +452,10 @@ export function broadcastGraphicsLiveSessionModule() {
 		command: BroadcastGraphicsCommand,
 	) => {
 		const accepted = broadcastGraphicSourceSelections(currentState, graphic.id);
-		const candidate = command.type === 'Select Source' && command.payload.selectionId !== null
-			? { ...accepted, [command.payload.sourceKey]: command.payload.selectionId }
-			: accepted;
+		const candidate =
+			command.type === 'Select Source' && command.payload.selectionId !== null
+				? { ...accepted, [command.payload.sourceKey]: command.payload.selectionId }
+				: accepted;
 		const data = await bindingData.load(eventId, graphic.sources ?? [], candidate);
 
 		return {
@@ -596,17 +606,20 @@ export function broadcastGraphicsLiveSessionModule() {
 		}
 
 		if (command.type === 'Take') {
-			await requireResolvableGraphicAssets([
-				...broadcastGraphicsGraphicAssetReferences({
-					graphics: [graphic],
-				}),
-				...broadcastGraphicsLiveSessionGraphicAssetReferences(
-					{
+			await requireResolvableGraphicAssets(
+				[
+					...broadcastGraphicsGraphicAssetReferences({
 						graphics: [graphic],
-					},
-					session.currentState,
-				),
-			], graphicsAssets);
+					}),
+					...broadcastGraphicsLiveSessionGraphicAssetReferences(
+						{
+							graphics: [graphic],
+						},
+						session.currentState,
+					),
+				],
+				graphicsAssets,
+			);
 		}
 
 		const admitted = await admitMediaSelection(graphic, command, graphicsAssets);
@@ -633,9 +646,17 @@ export function broadcastGraphicsLiveSessionModule() {
 	 * Projection cannot change program through re-resolution, so it never costs a query.
 	 */
 	function hasLiveEventData(graphic: BroadcastGraphicConfig): boolean {
-		return (graphic.bindings ?? []).some(binding => (graphic.inputs ?? []).some(
-			declaration => declaration.key === binding.inputKey && declaration.updatePolicy === 'live',
-		)) || (graphic.socialProfileProjections ?? []).some(projection => projection.updatePolicy === 'live');
+		return (
+			(graphic.bindings ?? []).some((binding) =>
+				(graphic.inputs ?? []).some(
+					(declaration) =>
+						declaration.key === binding.inputKey && declaration.updatePolicy === 'live',
+				),
+			) ||
+			(graphic.socialProfileProjections ?? []).some(
+				(projection) => projection.updatePolicy === 'live',
+			)
+		);
 	}
 
 	/**
@@ -698,19 +719,18 @@ export function broadcastGraphicsLiveSessionModule() {
 	 */
 	const refreshLiveBindings = async ({ eventId }: { eventId: number }): Promise<void> => {
 		const sessions = await state.findActiveSessionsByEvent(eventId);
-		if (sessions.length === 0)
-			return;
+		if (sessions.length === 0) return;
 
-		const screensById = new Map((await screens.findByEventId(eventId)).map(screen => [screen.id, screen]));
+		const screensById = new Map(
+			(await screens.findByEventId(eventId)).map((screen) => [screen.id, screen]),
+		);
 
 		for (const session of sessions) {
 			const screen = screensById.get(session.screenId);
-			if (!screen || screen.currentMode !== 'broadcast-graphics')
-				continue;
+			if (!screen || screen.currentMode !== 'broadcast-graphics') continue;
 
 			for (const graphic of authoredStack(screen).graphics) {
-				if (!hasLiveEventData(graphic))
-					continue;
+				if (!hasLiveEventData(graphic)) continue;
 
 				try {
 					const command: BroadcastGraphicsCommand = {
@@ -734,7 +754,13 @@ export function broadcastGraphicsLiveSessionModule() {
 					// staleness check out here could only ever be a fourth guard, checked
 					// before the write and therefore able to go stale in the gap the other
 					// three close.
-					const context = await reductionContextFor(eventId, screen, graphic, session.currentState, command);
+					const context = await reductionContextFor(
+						eventId,
+						screen,
+						graphic,
+						session.currentState,
+						command,
+					);
 					const due = broadcastGraphicsResolveBindingsDue(
 						recoveredBroadcastGraphicsLiveState(session.currentState),
 						graphic.id,
@@ -743,8 +769,7 @@ export function broadcastGraphicsLiveSessionModule() {
 							acceptedAt: Date.now(),
 						},
 					);
-					if (!due)
-						continue;
+					if (!due) continue;
 
 					const result = await state.applyCommand(
 						session.id,
@@ -758,14 +783,15 @@ export function broadcastGraphicsLiveSessionModule() {
 					// published like any other. It skips itself when the media values did not
 					// move, which for a binding sweep is every time but the exceptional one.
 					await reconcileLiveSessionReferences(screen, result, session.currentState);
-				}
-				catch {
-					console.error(JSON.stringify({
-						message: 'broadcast_graphics_binding_refresh_failed',
-						eventId,
-						screenId: screen.id,
-						graphicId: graphic.id,
-					}));
+				} catch {
+					console.error(
+						JSON.stringify({
+							message: 'broadcast_graphics_binding_refresh_failed',
+							eventId,
+							screenId: screen.id,
+							graphicId: graphic.id,
+						}),
+					);
 				}
 			}
 		}
@@ -777,22 +803,21 @@ export function broadcastGraphicsLiveSessionModule() {
 	 * open epoch. Read on this server's clock, each against its own phase durations.
 	 */
 	const onAirGraphicIds = async (screen: DbScreen): Promise<string[]> => {
-		if (screen.currentMode !== 'broadcast-graphics')
-			return [];
+		if (screen.currentMode !== 'broadcast-graphics') return [];
 		const session = await state.findActiveSessionByScreen(screen.id, screen.eventId);
-		if (!session)
-			return [];
+		if (!session) return [];
 		const stack = authoredStack(screen);
 		const contexts = broadcastGraphicChannelContexts(stack);
 		const now = Date.now();
 		return onAirBroadcastGraphicIds(
 			recoveredBroadcastGraphicsLiveState(session.currentState),
 			stack.graphics,
-			graphic => broadcastGraphicPhaseTiming(
-				stack.graphics.find(entry => entry.id === graphic.id)!,
-				now,
-				contexts[graphic.id],
-			),
+			(graphic) =>
+				broadcastGraphicPhaseTiming(
+					stack.graphics.find((entry) => entry.id === graphic.id)!,
+					now,
+					contexts[graphic.id],
+				),
 		);
 	};
 
@@ -822,8 +847,9 @@ export function broadcastGraphicsLiveSessionModule() {
 export async function refreshBroadcastGraphicsBindings(eventId: number): Promise<void> {
 	try {
 		await broadcastGraphicsLiveSessionModule().refreshLiveBindings({ eventId });
-	}
-	catch {
-		console.error(JSON.stringify({ message: 'broadcast_graphics_binding_refresh_failed', eventId }));
+	} catch {
+		console.error(
+			JSON.stringify({ message: 'broadcast_graphics_binding_refresh_failed', eventId }),
+		);
 	}
 }

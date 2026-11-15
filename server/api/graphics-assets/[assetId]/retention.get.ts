@@ -20,8 +20,7 @@ export default defineEventHandler(async (event) => {
 		return await graphicsAssetLibraryForEvent(event).inspectGraphicAssetRetention({
 			assetId: graphicAssetId(getRouterParam(event, 'assetId') ?? ''),
 		});
-	}
-	catch (error) {
+	} catch (error) {
 		return rethrowGraphicsAssetApiError(error, event);
 	}
 });

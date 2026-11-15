@@ -20,47 +20,56 @@ const STARTED_AT = new Date('2026-11-04T10:00:00.000Z');
 
 /** An Event with Melee Rounds 1 and 2, Round 1 paired and timed; Round 2 unpaired. */
 async function seed() {
-	const [event, otherEvent] = await db.insert(schema.events).values([
-		{ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-		{ name: 'Other Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
-	]).returning({ id: schema.events.id });
+	const [event, otherEvent] = await db
+		.insert(schema.events)
+		.values([
+			{ name: 'Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+			{ name: 'Other Event', game: 'mtg', featureMatchOrientation: 'horizontal' },
+		])
+		.returning({ id: schema.events.id });
 	const eventId = event!.id;
-	const [phase, foreignPhase] = await db.insert(schema.phases).values([
-		{
-			eventId,
-			name: 'Swiss',
-			externalId: '1',
-			externalSource: 'melee',
-		},
-		{ eventId: otherEvent!.id, name: 'Swiss' },
-	]).returning({ id: schema.phases.id });
-	const [round1, round2, foreign] = await db.insert(schema.rounds).values([
-		{
-			eventId,
-			phaseId: phase!.id,
-			name: 'Round 1',
-			roundNumber: 1,
-			externalId: '11',
-			externalSource: 'melee',
-			startedAt: STARTED_AT,
-			durationMinutes: 50,
-		},
-		{
-			eventId,
-			phaseId: phase!.id,
-			name: 'Round 2',
-			roundNumber: 2,
-			externalId: '12',
-			externalSource: 'melee',
-			durationMinutes: 50,
-		},
-		{
-			eventId: otherEvent!.id,
-			phaseId: foreignPhase!.id,
-			name: 'Round 1',
-			roundNumber: 1,
-		},
-	]).returning({ id: schema.rounds.id });
+	const [phase, foreignPhase] = await db
+		.insert(schema.phases)
+		.values([
+			{
+				eventId,
+				name: 'Swiss',
+				externalId: '1',
+				externalSource: 'melee',
+			},
+			{ eventId: otherEvent!.id, name: 'Swiss' },
+		])
+		.returning({ id: schema.phases.id });
+	const [round1, round2, foreign] = await db
+		.insert(schema.rounds)
+		.values([
+			{
+				eventId,
+				phaseId: phase!.id,
+				name: 'Round 1',
+				roundNumber: 1,
+				externalId: '11',
+				externalSource: 'melee',
+				startedAt: STARTED_AT,
+				durationMinutes: 50,
+			},
+			{
+				eventId,
+				phaseId: phase!.id,
+				name: 'Round 2',
+				roundNumber: 2,
+				externalId: '12',
+				externalSource: 'melee',
+				durationMinutes: 50,
+			},
+			{
+				eventId: otherEvent!.id,
+				phaseId: foreignPhase!.id,
+				name: 'Round 1',
+				roundNumber: 1,
+			},
+		])
+		.returning({ id: schema.rounds.id });
 	await db.insert(schema.matches).values({
 		eventId,
 		roundId: round1!.id,
@@ -105,13 +114,17 @@ describe('findRoundClockRound', () => {
 
 	it.each([
 		[
-			'another Event\'s Round',
-			async (records: Awaited<ReturnType<typeof seed>>) => [records.eventId, records.foreign] as const,
+			"another Event's Round",
+			async (records: Awaited<ReturnType<typeof seed>>) =>
+				[records.eventId, records.foreign] as const,
 		],
 		[
 			'no Round picked, before any Round is paired',
 			async () => {
-				const [fresh] = await db.insert(schema.events).values({ name: 'Fresh', game: 'mtg', featureMatchOrientation: 'horizontal' }).returning({ id: schema.events.id });
+				const [fresh] = await db
+					.insert(schema.events)
+					.values({ name: 'Fresh', game: 'mtg', featureMatchOrientation: 'horizontal' })
+					.returning({ id: schema.events.id });
 				return [fresh!.id, undefined] as const;
 			},
 		],

@@ -10,8 +10,11 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  * a Player chosen stays (ADR-0074). Any other Magic Deck List Screen keeps its Player source.
  */
 
-vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; statusMessage?: string }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode?: number; message?: string; statusMessage?: string }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -30,26 +33,38 @@ let screens = 0;
 /** Each Screen's own capability: its digest is unique. */
 const capability = {
 	prepare: async () => ({
-		persisted: { assetCapabilitySeed: 'seed', assetCapabilityVersion: 1, assetCapabilityDigest: `digest-${screens}` },
+		persisted: {
+			assetCapabilitySeed: 'seed',
+			assetCapabilityVersion: 1,
+			assetCapabilityDigest: `digest-${screens}`,
+		},
 	}),
 };
 
 /** Each Event, by what it plays and how many Slots it has; the first Slot by sort order is the second inserted. */
-const events: Record<'mtg' | 'commander' | 'op' | 'opNoSlots', { id: number; firstSlotId: number | null; otherSlotId: number | null }> = {} as never;
+const events: Record<
+	'mtg' | 'commander' | 'op' | 'opNoSlots',
+	{ id: number; firstSlotId: number | null; otherSlotId: number | null }
+> = {} as never;
 
 async function seedEvent(game: Game, slots: boolean, variant: Variant | null = null) {
-	const [event] = await db.insert(schema.events).values({
-		name: `${game} Event`,
-		game,
-		variant,
-		featureMatchOrientation: 'horizontal',
-	}).returning({ id: schema.events.id });
-	if (!slots)
-		return { id: event!.id, firstSlotId: null, otherSlotId: null };
-	const [other, first] = await db.insert(schema.featureMatchSlots).values([
-		{ eventId: event!.id, sortOrder: 1 },
-		{ eventId: event!.id, sortOrder: 0 },
-	]).returning({ id: schema.featureMatchSlots.id });
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: `${game} Event`,
+			game,
+			variant,
+			featureMatchOrientation: 'horizontal',
+		})
+		.returning({ id: schema.events.id });
+	if (!slots) return { id: event!.id, firstSlotId: null, otherSlotId: null };
+	const [other, first] = await db
+		.insert(schema.featureMatchSlots)
+		.values([
+			{ eventId: event!.id, sortOrder: 1 },
+			{ eventId: event!.id, sortOrder: 0 },
+		])
+		.returning({ id: schema.featureMatchSlots.id });
 	return { id: event!.id, firstSlotId: first!.id, otherSlotId: other!.id };
 }
 
@@ -62,7 +77,11 @@ beforeAll(async () => {
 
 afterAll(async () => await harness.close());
 
-function createScreen(event: keyof typeof events, currentMode: ScreenMode, modeConfigs: Record<string, unknown> | null = null) {
+function createScreen(
+	event: keyof typeof events,
+	currentMode: ScreenMode,
+	modeConfigs: Record<string, unknown> | null = null,
+) {
 	screens += 1;
 	return screenWriteModule().createScreen({
 		eventId: events[event].id,
@@ -76,9 +95,13 @@ function createScreen(event: keyof typeof events, currentMode: ScreenMode, modeC
 	});
 }
 
-const firstSlotLeft = (event: keyof typeof events) => ({ type: 'featureMatchSlot', slotId: events[event].firstSlotId, side: 'player1' });
+const firstSlotLeft = (event: keyof typeof events) => ({
+	type: 'featureMatchSlot',
+	slotId: events[event].firstSlotId,
+	side: 'player1',
+});
 
-describe('a new Deck List Screen\'s Deck Source', () => {
+describe("a new Deck List Screen's Deck Source", () => {
 	it.each([
 		{
 			event: 'op',
@@ -122,21 +145,24 @@ describe('a new Deck List Screen\'s Deck Source', () => {
 	});
 
 	// A Deck List Screen already on air moves only when the operator moves it.
-	it('leaves an existing Deck List Screen\'s source alone on any other save', async () => {
-		const [stored] = await db.insert(schema.screens).values({
-			eventId: events.op.id,
-			name: 'Older Deck',
-			slug: 'older-deck',
-			currentMode: 'deck',
-			modeConfigs: {
-				deck: {
-					deckSource: { type: 'player', playerId: null },
+	it("leaves an existing Deck List Screen's source alone on any other save", async () => {
+		const [stored] = await db
+			.insert(schema.screens)
+			.values({
+				eventId: events.op.id,
+				name: 'Older Deck',
+				slug: 'older-deck',
+				currentMode: 'deck',
+				modeConfigs: {
+					deck: {
+						deckSource: { type: 'player', playerId: null },
+					},
 				},
-			},
-			assetCapabilitySeed: 'seed',
-			assetCapabilityVersion: 1,
-			assetCapabilityDigest: 'older-deck-digest',
-		}).returning();
+				assetCapabilitySeed: 'seed',
+				assetCapabilityVersion: 1,
+				assetCapabilityDigest: 'older-deck-digest',
+			})
+			.returning();
 
 		const renamed = await screenWriteModule().updateScreen({
 			authoringSessionId: undefined,
@@ -151,9 +177,10 @@ describe('a new Deck List Screen\'s Deck Source', () => {
 	it.each([
 		{
 			name: 'on a new Screen',
-			save: async (deckSource: unknown) => await createScreen('op', 'deck', {
-				deck: { deckSource },
-			}),
+			save: async (deckSource: unknown) =>
+				await createScreen('op', 'deck', {
+					deck: { deckSource },
+				}),
 		},
 		{
 			name: 'when an existing Screen switches to Deck',
@@ -170,7 +197,10 @@ describe('a new Deck List Screen\'s Deck Source', () => {
 			},
 		},
 	])('keeps a Player the operator chose $name', async ({ save }) => {
-		const [player] = await db.insert(schema.players).values({ eventId: events.op.id, name: '', nickname: 'ana' }).returning({ id: schema.players.id });
+		const [player] = await db
+			.insert(schema.players)
+			.values({ eventId: events.op.id, name: '', nickname: 'ana' })
+			.returning({ id: schema.players.id });
 		const chosen = { type: 'player', playerId: player!.id };
 
 		const screen = await save(chosen);
@@ -189,8 +219,12 @@ describe('a new Deck List Screen\'s Deck Source', () => {
 	});
 
 	// ADR-0087: a Deck Source's Seat is one of four, and Seats 3 and 4 are a Commander Slot's alone.
-	it('takes Seat 4 of a Commander Event\'s Slot', async () => {
-		const chosen = { type: 'featureMatchSlot', slotId: events.commander.firstSlotId, side: 'player4' };
+	it("takes Seat 4 of a Commander Event's Slot", async () => {
+		const chosen = {
+			type: 'featureMatchSlot',
+			slotId: events.commander.firstSlotId,
+			side: 'player4',
+		};
 
 		const screen = await createScreen('commander', 'deck', {
 			deck: { deckSource: chosen },
@@ -202,8 +236,10 @@ describe('a new Deck List Screen\'s Deck Source', () => {
 	it('refuses Seat 3 of a Slot on any other Event', async () => {
 		const chosen = { type: 'featureMatchSlot', slotId: events.mtg.firstSlotId, side: 'player3' };
 
-		await expect(createScreen('mtg', 'deck', {
-			deck: { deckSource: chosen },
-		})).rejects.toMatchObject({ statusCode: 400 });
+		await expect(
+			createScreen('mtg', 'deck', {
+				deck: { deckSource: chosen },
+			}),
+		).rejects.toMatchObject({ statusCode: 400 });
 	});
 });

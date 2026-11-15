@@ -35,11 +35,14 @@ const THIRD_PASSWORD = 'user-admin-399-third-password';
 
 const ADMIN_HEADERS = { 'x-graphics-admin-token': INTEGRATION_GRAPHICS_ADMIN_TOKEN };
 
-function administer(path: string, options: {
-	method?: string;
-	body?: unknown;
-	headers?: Record<string, string>;
-} = {}) {
+function administer(
+	path: string,
+	options: {
+		method?: string;
+		body?: unknown;
+		headers?: Record<string, string>;
+	} = {},
+) {
 	return fetch(`/api/admin/users${path}`, {
 		method: options.method ?? 'GET',
 		headers: {
@@ -67,7 +70,7 @@ function authFetch(path: string, body: unknown) {
 		method: 'POST',
 		headers: {
 			'content-type': 'application/json',
-			'origin': url('/'),
+			origin: url('/'),
 		},
 		body: JSON.stringify(body),
 	});
@@ -88,9 +91,10 @@ function redeem(link: string, newPassword: string) {
 }
 
 function cookieFrom(response: Response) {
-	return response.headers.getSetCookie()
-		.map(value => value.split(';', 1)[0] ?? '')
-		.filter(pair => pair.includes('='))
+	return response.headers
+		.getSetCookie()
+		.map((value) => value.split(';', 1)[0] ?? '')
+		.filter((pair) => pair.includes('='))
 		.join('; ');
 }
 
@@ -99,8 +103,7 @@ async function sessionStillLive(cookie: string) {
 	const response = await fetch('/api/auth/get-session', {
 		headers: { cookie },
 	});
-	if (!response.ok)
-		return false;
+	if (!response.ok) return false;
 
 	// A revoked session answers 200 with an empty body rather than a refusal,
 	// which is exactly the shape a naive `response.ok` would read as "still
@@ -111,11 +114,11 @@ async function sessionStillLive(cookie: string) {
 async function listAccounts() {
 	const response = await administer('');
 	expect(response.status).toBe(200);
-	return await response.json() as AdministeredUserList;
+	return (await response.json()) as AdministeredUserList;
 }
 
 async function findAccount(email: string) {
-	return (await listAccounts()).users.find(user => user.email === email);
+	return (await listAccounts()).users.find((user) => user.email === email);
 }
 
 describe('user administration', () => {
@@ -149,9 +152,7 @@ describe('user administration', () => {
 				const response = await administer(path, {
 					method,
 					headers: {},
-					...(method === 'GET'
-						? {}
-						: { body: {} }),
+					...(method === 'GET' ? {} : { body: {} }),
 				});
 				expect(response.status, `${method} ${path} was not refused`).toBe(403);
 			}
@@ -166,8 +167,12 @@ describe('user administration', () => {
 			});
 
 			expect(response.status).toBe(200);
-			const created = await response.json() as CreatedUserAccount;
-			expect(created.user).toMatchObject({ email: INVITED_EMAIL, name: 'An Invited Operator', banned: false });
+			const created = (await response.json()) as CreatedUserAccount;
+			expect(created.user).toMatchObject({
+				email: INVITED_EMAIL,
+				name: 'An Invited Operator',
+				banned: false,
+			});
 			invitedUserId = created.user.id;
 
 			// The link points at this installation, on the origin the request
@@ -185,9 +190,9 @@ describe('user administration', () => {
 
 			// Single-use: the row is consumed on redemption, so the copy still
 			// sitting in a chat window is dead.
-			expect((await redeem(created.passwordResetLink.url, 'a-third-password')).status)
-				.not
-				.toBe(200);
+			expect((await redeem(created.passwordResetLink.url, 'a-third-password')).status).not.toBe(
+				200,
+			);
 		});
 	});
 
@@ -201,9 +206,11 @@ describe('user administration', () => {
 			const cookie = cookieFrom(await signIn(INVITED_EMAIL, FIRST_PASSWORD));
 			expect(await sessionStillLive(cookie)).toBe(true);
 
-			const response = await administer(`/${invitedUserId}/password-reset-link`, { method: 'POST' });
+			const response = await administer(`/${invitedUserId}/password-reset-link`, {
+				method: 'POST',
+			});
 			expect(response.status).toBe(200);
-			const issued = await response.json() as IssuedPasswordResetLink;
+			const issued = (await response.json()) as IssuedPasswordResetLink;
 			expect(await sessionStillLive(cookie)).toBe(true);
 
 			expect((await redeem(issued.passwordResetLink.url, SECOND_PASSWORD)).status).toBe(200);
@@ -232,10 +239,9 @@ describe('user administration', () => {
 			const response = await administer(`/${invitedUserId}/sessions`, { method: 'DELETE' });
 
 			expect(response.status).toBe(200);
-			expect(await response.json() as RevokedUserSessions)
-				.toMatchObject({
-					revokedSessionCount: expect.any(Number),
-				});
+			expect((await response.json()) as RevokedUserSessions).toMatchObject({
+				revokedSessionCount: expect.any(Number),
+			});
 			expect(await sessionStillLive(cookie)).toBe(false);
 			// The laptop left open in the production office: they sign straight back
 			// in on their own machine.
@@ -255,8 +261,10 @@ describe('user administration', () => {
 			// revocation the banned operator keeps working for up to seven days.
 			expect(await sessionStillLive(cookie)).toBe(false);
 			expect((await signIn(INVITED_EMAIL, THIRD_PASSWORD)).status).toBe(403);
-			expect(await findAccount(INVITED_EMAIL))
-				.toMatchObject({ banned: true, banReason: 'Left the production office' });
+			expect(await findAccount(INVITED_EMAIL)).toMatchObject({
+				banned: true,
+				banReason: 'Left the production office',
+			});
 		});
 
 		it('lets a lifted ban sign in again with the same password', async () => {

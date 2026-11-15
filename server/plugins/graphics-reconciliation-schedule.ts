@@ -20,27 +20,23 @@ type GraphicsBindings = Parameters<typeof graphicsAssetLibraryForBindings>[0];
 export default defineNitroPlugin((nitroApp) => {
 	nitroApp.hooks.hook('cloudflare:scheduled', async ({ controller, env }) => {
 		// Every handler runs on every trigger; this one keeps to the hourly cron.
-		if (controller.cron !== GRAPHICS_CRON)
-			return;
+		if (controller.cron !== GRAPHICS_CRON) return;
 		try {
 			// Everything a successful pass observed is already in the durable
 			// Evidence ledger and the discrepancy queue, so only failures need a
 			// log line.
 			// Nitro types the scheduled payload's bindings as `unknown`.
-			await graphicsAssetLibraryForBindings(
-				env as GraphicsBindings,
-			).runGraphicsReconciliation();
-		}
-		catch (error) {
+			await graphicsAssetLibraryForBindings(env as GraphicsBindings).runGraphicsReconciliation();
+		} catch (error) {
 			// A failed pass must never take down the Worker: the next scheduled run
 			// re-observes the same catalogue and byte store.
-			console.error(JSON.stringify({
-				message: 'graphics_reconciliation_sweep_failed',
-				cron: controller.cron,
-				errorName: error instanceof Error
-					? error.name
-					: null,
-			}));
+			console.error(
+				JSON.stringify({
+					message: 'graphics_reconciliation_sweep_failed',
+					cron: controller.cron,
+					errorName: error instanceof Error ? error.name : null,
+				}),
+			);
 		}
 	});
 });

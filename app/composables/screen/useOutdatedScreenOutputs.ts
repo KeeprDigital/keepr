@@ -11,13 +11,12 @@ import { SCREEN_CHANNEL_PROTOCOL } from '~/modules/screen/renderingChannel';
  * channel until it is reloaded. Unlike the other self-reports, a silence is
  * counted here: saying nothing is exactly what such an output does.
  */
-export function useOutdatedScreenOutputs(
-	screenId: MaybeRefOrGetter<number>,
-): ComputedRef<number> {
+export function useOutdatedScreenOutputs(screenId: MaybeRefOrGetter<number>): ComputedRef<number> {
 	const screenStore = useScreenStore();
 
 	return computed(() => {
 		const members = screenStore.screenPresence.get(toValue(screenId))?.members ?? [];
-		return members.filter(member => !((member.data?.protocol ?? 0) >= SCREEN_CHANNEL_PROTOCOL)).length;
+		return members.filter((member) => !((member.data?.protocol ?? 0) >= SCREEN_CHANNEL_PROTOCOL))
+			.length;
 	});
 }

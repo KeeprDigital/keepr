@@ -30,7 +30,10 @@ export interface SequencedLiveEpochPort<TScope, TOpening, TAggregate> {
 	 * Tell peers about epochs that ended or opened. Called only when the commit
 	 * changed something and the caller did not opt out.
 	 */
-	announce?: (change: SequencedLiveEpochChange<TAggregate>, options: { originConnectionId?: string }) => Promise<void>;
+	announce?: (
+		change: SequencedLiveEpochChange<TAggregate>,
+		options: { originConnectionId?: string },
+	) => Promise<void>;
 }
 
 /** What a committed transition changed, compared with what was active before it. */
@@ -65,7 +68,9 @@ export interface SequencedLiveEpochTransition<TAggregate> {
 	 * actually changed and announces it. Never run for a batch that failed: an
 	 * announcement is a claim that an epoch changed.
 	 */
-	settle: (options?: SequencedLiveEpochSettleOptions) => Promise<SequencedLiveEpochChange<TAggregate>>;
+	settle: (
+		options?: SequencedLiveEpochSettleOptions,
+	) => Promise<SequencedLiveEpochChange<TAggregate>>;
 }
 
 export interface SequencedLiveEpochs<TScope, TOpening, TAggregate> {
@@ -116,8 +121,7 @@ export function createSequencedLiveEpochs<TScope, TOpening, TAggregate>(
 		statements: BatchItem<'sqlite'>[],
 	): Promise<SequencedLiveEpochTransition<TAggregate>> {
 		const [first, ...rest] = statements;
-		if (!first)
-			throw new Error('An epoch transition has no statements');
+		if (!first) throw new Error('An epoch transition has no statements');
 
 		const before = await port.findActive(scope);
 
@@ -128,8 +132,8 @@ export function createSequencedLiveEpochs<TScope, TOpening, TAggregate>(
 				const afterIds = new Set(after.map(port.idOf));
 				const beforeIds = new Set(before.map(port.idOf));
 				const change: SequencedLiveEpochChange<TAggregate> = {
-					ended: before.filter(epoch => !afterIds.has(port.idOf(epoch))),
-					opened: after.filter(epoch => !beforeIds.has(port.idOf(epoch))),
+					ended: before.filter((epoch) => !afterIds.has(port.idOf(epoch))),
+					opened: after.filter((epoch) => !beforeIds.has(port.idOf(epoch))),
 				};
 
 				if (announce && port.announce && (change.ended.length > 0 || change.opened.length > 0))
@@ -140,15 +144,14 @@ export function createSequencedLiveEpochs<TScope, TOpening, TAggregate>(
 	}
 
 	return {
-		close: async scope => await transition(scope, [
-			...port.close(scope),
-			forgetClosedReceipts(scope),
-		]),
-		replace: async (scope, opening) => await transition(scope, [
-			...port.close(scope),
-			forgetClosedReceipts(scope),
-			...port.open(scope, opening),
-		]),
+		close: async (scope) =>
+			await transition(scope, [...port.close(scope), forgetClosedReceipts(scope)]),
+		replace: async (scope, opening) =>
+			await transition(scope, [
+				...port.close(scope),
+				forgetClosedReceipts(scope),
+				...port.open(scope, opening),
+			]),
 		open: async (scope, opening) => await transition(scope, port.open(scope, opening)),
 		commit: async (pending, options) => {
 			await db.batch(pending.statements);

@@ -16,7 +16,10 @@ type NullToUndefined<T> = {
 export type PlayerData = NullToUndefined<PlayerSlotData>;
 
 /** FeatureMatchData with player data fields typed as PlayerData for form use. */
-export type FeatureMatchFormData = Omit<FeatureMatchData, 'player1Data' | 'player2Data' | 'player3Data' | 'player4Data'> & {
+export type FeatureMatchFormData = Omit<
+	FeatureMatchData,
+	'player1Data' | 'player2Data' | 'player3Data' | 'player4Data'
+> & {
 	player1Data: PlayerData | null;
 	player2Data: PlayerData | null;
 	/** Seats 3 and 4, which only a Commander Slot's form holds (ADR-0087). */
@@ -47,26 +50,14 @@ export const DEFAULT_PLAYER_DATA: PlayerData = {
 export function toPlayerData(input: PlayerSlotData): PlayerData {
 	return {
 		...DEFAULT_PLAYER_DATA,
-		...Object.fromEntries(
-			Object.entries(input).map(([k, v]) => [
-				k,
-				v === null
-					? undefined
-					: v,
-			]),
-		),
+		...Object.fromEntries(Object.entries(input).map(([k, v]) => [k, v === null ? undefined : v])),
 	} as PlayerData;
 }
 
 /** Convert feature-match form data (undefined) back to slot metadata shape (null). */
 export function toPlayerSlotData(data: PlayerData): PlayerSlotData {
 	return Object.fromEntries(
-		Object.entries(data).map(([k, v]) => [
-			k,
-			v === undefined
-				? null
-				: v,
-		]),
+		Object.entries(data).map(([k, v]) => [k, v === undefined ? null : v]),
 	) as unknown as PlayerSlotData;
 }
 
@@ -76,6 +67,10 @@ export function toPlayerSlotData(data: PlayerData): PlayerSlotData {
  * strip it here regardless of what the form happened to carry.
  */
 export function toCreatePlayerInput(data: PlayerData): CreatePlayerInput {
-	const { externalId: _externalId, externalSource: _externalSource, ...rest } = toPlayerSlotData(data);
+	const {
+		externalId: _externalId,
+		externalSource: _externalSource,
+		...rest
+	} = toPlayerSlotData(data);
 	return rest as CreatePlayerInput;
 }

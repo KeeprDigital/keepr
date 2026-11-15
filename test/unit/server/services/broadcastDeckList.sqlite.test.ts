@@ -6,7 +6,8 @@ import * as schema from '~~/server/db/schema';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 vi.stubGlobal('createError', (input: { statusCode?: number; message?: string; data?: unknown }) =>
-	Object.assign(new Error(input.message ?? 'error'), input));
+	Object.assign(new Error(input.message ?? 'error'), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -69,7 +70,8 @@ function document(name = 'Lightning Bolt'): BroadcastDeckListCanonicalDocument {
 }
 
 beforeAll(async () => {
-	const [event] = await db.insert(schema.events)
+	const [event] = await db
+		.insert(schema.events)
 		.values({ name: 'Coverage Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 		.returning({ id: schema.events.id });
 	eventId = event!.id;
@@ -79,23 +81,32 @@ afterAll(async () => await harness.close());
 
 describe('broadcastDeckListService', () => {
 	it('applies the Event flag default and owns no foreign key beyond its Event/list cascade', async () => {
-		const [event] = await db.select({ enabled: schema.events.broadcastDeckListsEnabled })
+		const [event] = await db
+			.select({ enabled: schema.events.broadcastDeckListsEnabled })
 			.from(schema.events)
 			.where(eq(schema.events.id, eventId));
 		expect(event?.enabled).toBe(false);
 
-		const listForeignKeys = await harness.client.execute('PRAGMA foreign_key_list(broadcast_deck_lists)');
-		const entryForeignKeys = await harness.client.execute('PRAGMA foreign_key_list(broadcast_deck_list_entries)');
-		expect(listForeignKeys.rows.map(row => row.table)).toEqual(['events']);
-		expect(entryForeignKeys.rows.map(row => row.table)).toEqual(['broadcast_deck_lists']);
+		const listForeignKeys = await harness.client.execute(
+			'PRAGMA foreign_key_list(broadcast_deck_lists)',
+		);
+		const entryForeignKeys = await harness.client.execute(
+			'PRAGMA foreign_key_list(broadcast_deck_list_entries)',
+		);
+		expect(listForeignKeys.rows.map((row) => row.table)).toEqual(['events']);
+		expect(entryForeignKeys.rows.map((row) => row.table)).toEqual(['broadcast_deck_lists']);
 	});
 
 	it('creates one authoritative document and lists only quantity summaries', async () => {
-		const created = await broadcastDeckListService().create(eventId, {
-			name: '  Burn  ',
-			archetypeLabel: 'Aggro',
-			colors: 'RW',
-		}, document());
+		const created = await broadcastDeckListService().create(
+			eventId,
+			{
+				name: '  Burn  ',
+				archetypeLabel: 'Aggro',
+				colors: 'RW',
+			},
+			document(),
+		);
 
 		expect(created).toMatchObject({
 			eventId,
@@ -108,7 +119,9 @@ describe('broadcastDeckListService', () => {
 			hasCompanion: true,
 			sourceText: document().sourceText,
 		});
-		expect(created.entries.map(entry => [entry.compartment, entry.quantity, entry.canonicalName])).toEqual([
+		expect(
+			created.entries.map((entry) => [entry.compartment, entry.quantity, entry.canonicalName]),
+		).toEqual([
 			['mainboard', 4, 'Lightning Bolt'],
 			['sideboard', 2, 'Pyroblast'],
 			['companion', 1, 'Jegantha, the Wellspring'],
@@ -151,7 +164,8 @@ describe('broadcastDeckListService', () => {
 
 	it('returns the created revision snapshot when a peer writes immediately after its batch', async () => {
 		const service = broadcastDeckListService();
-		const [createEvent] = await db.insert(schema.events)
+		const [createEvent] = await db
+			.insert(schema.events)
 			.values({ name: 'Create Response Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 			.returning({ id: schema.events.id });
 		const originalBatch = harness.database.batch.bind(harness.database);
@@ -161,23 +175,32 @@ describe('broadcastDeckListService', () => {
 			if (intercept) {
 				intercept = false;
 				const id = Number(results[0]?.meta.last_row_id);
-				await db.update(schema.broadcastDeckLists)
+				await db
+					.update(schema.broadcastDeckLists)
 					.set({ name: 'Peer revision', normalizedName: 'peer revision', revision: 2 })
 					.where(eq(schema.broadcastDeckLists.id, id));
 			}
 			return results;
 		});
 
-		const created = await service.create(createEvent!.id, { name: 'Created revision' }, document('Consider'));
+		const created = await service.create(
+			createEvent!.id,
+			{ name: 'Created revision' },
+			document('Consider'),
+		);
 
 		expect(created).toMatchObject({ name: 'Created revision', revision: 1 });
-		expect(await service.findById(created.id, createEvent!.id)).toMatchObject({ name: 'Peer revision', revision: 2 });
+		expect(await service.findById(created.id, createEvent!.id)).toMatchObject({
+			name: 'Peer revision',
+			revision: 2,
+		});
 		batch.mockRestore();
 	});
 
 	it('enforces case-insensitive names per Event and orders collections by normalized name then id', async () => {
 		const service = broadcastDeckListService();
-		const [otherEvent] = await db.insert(schema.events)
+		const [otherEvent] = await db
+			.insert(schema.events)
 			.values({ name: 'Other Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 			.returning({ id: schema.events.id });
 		await service.create(otherEvent!.id, { name: 'zoo' }, document('Forest'));
@@ -188,25 +211,40 @@ describe('broadcastDeckListService', () => {
 			name: 'BroadcastDeckListNameConflict',
 			message: 'A Broadcast Deck List with this name already exists in this Event',
 		});
-		expect((await service.findByEventId(otherEvent!.id)).map(list => list.name)).toEqual(['Alpha', 'zoo']);
+		expect((await service.findByEventId(otherEvent!.id)).map((list) => list.name)).toEqual([
+			'Alpha',
+			'zoo',
+		]);
 
 		// The same normalized name belongs to a different Event and is valid there.
-		await expect(service.create(eventId, { name: 'zoo' }, document('Plains'))).resolves.toMatchObject({ name: 'zoo' });
+		await expect(
+			service.create(eventId, { name: 'zoo' }, document('Plains')),
+		).resolves.toMatchObject({ name: 'zoo' });
 	});
 
 	it('atomically replaces source and entries once, while stale updates preserve the winner', async () => {
 		const service = broadcastDeckListService();
-		const [raceEvent] = await db.insert(schema.events)
+		const [raceEvent] = await db
+			.insert(schema.events)
 			.values({ name: 'Race Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 			.returning({ id: schema.events.id });
-		const created = await service.create(raceEvent!.id, { name: 'Control' }, document('Counterspell'));
+		const created = await service.create(
+			raceEvent!.id,
+			{ name: 'Control' },
+			document('Counterspell'),
+		);
 		const replacement = document('Brainstorm');
 
-		const winner = await service.update(created.id, raceEvent!.id, {
-			expectedRevision: 1,
-			name: 'Blue Control',
-			sourceText: replacement.sourceText,
-		}, replacement);
+		const winner = await service.update(
+			created.id,
+			raceEvent!.id,
+			{
+				expectedRevision: 1,
+				name: 'Blue Control',
+				sourceText: replacement.sourceText,
+			},
+			replacement,
+		);
 		expect(winner).toMatchObject({
 			status: 'updated',
 			item: {
@@ -221,21 +259,29 @@ describe('broadcastDeckListService', () => {
 			},
 		});
 
-		const stale = await service.update(created.id, raceEvent!.id, {
-			expectedRevision: 1,
-			name: 'Stale Rename',
-			sourceText: document('Ancestral Recall').sourceText,
-		}, document('Ancestral Recall'));
+		const stale = await service.update(
+			created.id,
+			raceEvent!.id,
+			{
+				expectedRevision: 1,
+				name: 'Stale Rename',
+				sourceText: document('Ancestral Recall').sourceText,
+			},
+			document('Ancestral Recall'),
+		);
 		expect(stale).toMatchObject({
 			status: 'conflict',
 			current: { revision: 2, name: 'Blue Control', sourceText: replacement.sourceText },
 		});
-		expect((await service.findById(created.id, raceEvent!.id))?.entries[0]?.canonicalName).toBe('Brainstorm');
+		expect((await service.findById(created.id, raceEvent!.id))?.entries[0]?.canonicalName).toBe(
+			'Brainstorm',
+		);
 	});
 
 	it('accepts exactly one of two concurrent compare-and-swap edits', async () => {
 		const service = broadcastDeckListService();
-		const [raceEvent] = await db.insert(schema.events)
+		const [raceEvent] = await db
+			.insert(schema.events)
 			.values({ name: 'Concurrent Race Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 			.returning({ id: schema.events.id });
 		const created = await service.create(raceEvent!.id, { name: 'Race Deck' }, document('Opt'));
@@ -245,15 +291,20 @@ describe('broadcastDeckListService', () => {
 			service.update(created.id, raceEvent!.id, { expectedRevision: 1, name: 'Second contender' }),
 		]);
 
-		expect(outcomes.filter(outcome => outcome.status === 'updated')).toHaveLength(1);
-		expect(outcomes.filter(outcome => outcome.status === 'conflict')).toHaveLength(1);
+		expect(outcomes.filter((outcome) => outcome.status === 'updated')).toHaveLength(1);
+		expect(outcomes.filter((outcome) => outcome.status === 'conflict')).toHaveLength(1);
 		expect((await service.findById(created.id, raceEvent!.id))?.revision).toBe(2);
 	});
 
 	it('returns the accepted revision snapshot when a peer writes immediately after its CAS batch', async () => {
 		const service = broadcastDeckListService();
-		const [raceEvent] = await db.insert(schema.events)
-			.values({ name: 'Response Snapshot Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
+		const [raceEvent] = await db
+			.insert(schema.events)
+			.values({
+				name: 'Response Snapshot Event',
+				game: 'mtg',
+				featureMatchOrientation: 'horizontal',
+			})
 			.returning({ id: schema.events.id });
 		const created = await service.create(raceEvent!.id, { name: 'Response Race' }, document('Opt'));
 		const originalBatch = harness.database.batch.bind(harness.database);
@@ -262,7 +313,8 @@ describe('broadcastDeckListService', () => {
 			const results = await originalBatch(statements);
 			if (intercept) {
 				intercept = false;
-				await db.update(schema.broadcastDeckLists)
+				await db
+					.update(schema.broadcastDeckLists)
 					.set({ name: 'Peer revision', normalizedName: 'peer revision', revision: 3 })
 					.where(eq(schema.broadcastDeckLists.id, created.id));
 			}
@@ -278,16 +330,28 @@ describe('broadcastDeckListService', () => {
 			status: 'updated',
 			item: { name: 'Accepted revision', revision: 2 },
 		});
-		expect(await service.findById(created.id, raceEvent!.id)).toMatchObject({ name: 'Peer revision', revision: 3 });
+		expect(await service.findById(created.id, raceEvent!.id)).toMatchObject({
+			name: 'Peer revision',
+			revision: 3,
+		});
 		batch.mockRestore();
 	});
 
 	it('scopes reads and revisioned deletes to the Event and cascades entries', async () => {
 		const service = broadcastDeckListService();
-		const [owner, stranger] = await db.insert(schema.events)
+		const [owner, stranger] = await db
+			.insert(schema.events)
 			.values([
-				{ name: 'Owner Event', game: 'mtg' as const, featureMatchOrientation: 'horizontal' as const },
-				{ name: 'Stranger Event', game: 'mtg' as const, featureMatchOrientation: 'horizontal' as const },
+				{
+					name: 'Owner Event',
+					game: 'mtg' as const,
+					featureMatchOrientation: 'horizontal' as const,
+				},
+				{
+					name: 'Stranger Event',
+					game: 'mtg' as const,
+					featureMatchOrientation: 'horizontal' as const,
+				},
 			])
 			.returning({ id: schema.events.id });
 		const created = await service.create(owner!.id, { name: 'Scoped' }, document());
@@ -299,12 +363,18 @@ describe('broadcastDeckListService', () => {
 			current: { revision: 1, name: 'Scoped' },
 		});
 		expect(await service.remove(created.id, owner!.id, 1)).toEqual({ status: 'deleted' });
-		expect(await db.select().from(schema.broadcastDeckListEntries).where(eq(schema.broadcastDeckListEntries.listId, created.id))).toEqual([]);
+		expect(
+			await db
+				.select()
+				.from(schema.broadcastDeckListEntries)
+				.where(eq(schema.broadcastDeckListEntries.listId, created.id)),
+		).toEqual([]);
 	});
 
 	it('deleting an Event cascades its lists and entries', async () => {
 		const service = broadcastDeckListService();
-		const [owner] = await db.insert(schema.events)
+		const [owner] = await db
+			.insert(schema.events)
 			.values({ name: 'Disposable Event', game: 'mtg', featureMatchOrientation: 'horizontal' })
 			.returning({ id: schema.events.id });
 		const created = await service.create(owner!.id, { name: 'Disposable' }, document());
@@ -312,6 +382,11 @@ describe('broadcastDeckListService', () => {
 		await db.delete(schema.events).where(eq(schema.events.id, owner!.id));
 
 		expect(await service.findById(created.id, owner!.id)).toBeUndefined();
-		expect(await db.select().from(schema.broadcastDeckListEntries).where(eq(schema.broadcastDeckListEntries.listId, created.id))).toEqual([]);
+		expect(
+			await db
+				.select()
+				.from(schema.broadcastDeckListEntries)
+				.where(eq(schema.broadcastDeckListEntries.listId, created.id)),
+		).toEqual([]);
 	});
 });

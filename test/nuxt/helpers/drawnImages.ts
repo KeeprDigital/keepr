@@ -6,6 +6,5 @@ import type { DOMWrapper, VueWrapper } from '@vue/test-utils';
  * listens for it, so a rendering waiting on that load would wait for ever.
  */
 export function loadDrawnImages(rendering: VueWrapper | DOMWrapper<Element>) {
-	for (const image of rendering.findAll('img'))
-		image.element.dispatchEvent(new Event('load'));
+	for (const image of rendering.findAll('img')) image.element.dispatchEvent(new Event('load'));
 }

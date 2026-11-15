@@ -77,7 +77,13 @@ const mockFeatureMatchStore = {
 };
 const mockPlayerStore = reactive({
 	isLoaded: true,
-	players: [] as { id: number; name?: string | null; nickname?: string | null; externalSource?: 'tcgplus'; externalId?: string }[],
+	players: [] as {
+		id: number;
+		name?: string | null;
+		nickname?: string | null;
+		externalSource?: 'tcgplus';
+		externalId?: string;
+	}[],
 	loadPlayersByEventId: vi.fn(),
 });
 const mockMatchStore = {
@@ -147,12 +153,8 @@ describe('useGraphicBindingData', () => {
 					maxLength: 100,
 				},
 			],
-			sources: [
-				{ key: 'talent', label: 'Talent', kind: 'talent' as const },
-			],
-			bindings: [
-				{ inputKey: 'profile', sourceKey: 'talent', fieldId: 'talent.twitchProfileUrl' },
-			],
+			sources: [{ key: 'talent', label: 'Talent', kind: 'talent' as const }],
+			bindings: [{ inputKey: 'profile', sourceKey: 'talent', fieldId: 'talent.twitchProfileUrl' }],
 		};
 
 		expect(resolveGraphicInputBindings(graphic, { talent: 8 }, dataSet.value)).toEqual({
@@ -174,7 +176,7 @@ describe('useGraphicBindingData', () => {
 		});
 	});
 
-	it('reads a Feature Match Slot\'s live scalars from the realtime state store', () => {
+	it("reads a Feature Match Slot's live scalars from the realtime state store", () => {
 		mockFeatureMatchStateStore.sessionIdBySlotId.set(5, 90);
 		mockFeatureMatchStateStore.featureMatchSessions.set(90, LOADED_SESSION);
 		// The operator has taken this player to 12 since the page loaded.
@@ -199,7 +201,7 @@ describe('useGraphicBindingData', () => {
 	});
 
 	// A Commander Slot's third Seat reaches a binding as its pair does (ADR-0087).
-	it('reaches a Commander Slot\'s third Seat with no Session held', () => {
+	it("reaches a Commander Slot's third Seat with no Session held", () => {
 		mockFeatureMatchStore.featureMatches = [
 			{
 				...SLOT_ROW,
@@ -230,9 +232,7 @@ describe('useGraphicBindingData', () => {
 						from: { sourceKey: 'slot', relation: 'player3' },
 					},
 				],
-				bindings: [
-					{ inputKey: 'name', sourceKey: 'seat', fieldId: 'player.name' },
-				],
+				bindings: [{ inputKey: 'name', sourceKey: 'seat', fieldId: 'player.name' }],
 			},
 			{ slot: 5 },
 			dataSet.value,
@@ -267,9 +267,7 @@ describe('useGraphicBindingData', () => {
 						from: { sourceKey: 'slot', relation: 'player1' },
 					},
 				],
-				bindings: [
-					{ inputKey: 'name', sourceKey: 'p1', fieldId: 'player.name' },
-				],
+				bindings: [{ inputKey: 'name', sourceKey: 'p1', fieldId: 'player.name' }],
 			},
 			{ slot: 5 },
 			dataSet.value,
@@ -342,14 +340,11 @@ describe('useGraphicBindingData', () => {
 	});
 
 	it('names a Feature Match Slot by its id when no Round has been promoted into it', () => {
-		mockFeatureMatchStore.featureMatches = [
-			{ ...SLOT_ROW, id: 6, roundName: null },
-		];
+		mockFeatureMatchStore.featureMatches = [{ ...SLOT_ROW, id: 6, roundName: null }];
 
-		expect(useGraphicBindingData().selectionOptions('feature-match-slot'))
-			.toEqual([
-				{ label: 'Slot 6', value: 6 },
-			]);
+		expect(useGraphicBindingData().selectionOptions('feature-match-slot')).toEqual([
+			{ label: 'Slot 6', value: 6 },
+		]);
 	});
 
 	it('names a Player by their id when Event Data carries no name for them', () => {
@@ -365,26 +360,10 @@ describe('useGraphicBindingData', () => {
 	});
 
 	it.each([
-		[
-			'name',
-			'ava',
-			[3],
-		],
-		[
-			'Nickname',
-			'luffy',
-			[4],
-		],
-		[
-			'Bandai member number',
-			'0042',
-			[4],
-		],
-		[
-			'nothing',
-			'',
-			[3, 4],
-		],
+		['name', 'ava', [3]],
+		['Nickname', 'luffy', [4]],
+		['Bandai member number', '0042', [4]],
+		['nothing', '', [3, 4]],
 	])('finds a Player by %s', (_by, search, found) => {
 		mockPlayerStore.players = [
 			{ id: 3, name: 'Ava R.' },
@@ -397,7 +376,11 @@ describe('useGraphicBindingData', () => {
 			},
 		];
 
-		expect(useGraphicBindingData().selectionOptions('player', search).map(option => option.value)).toEqual(found);
+		expect(
+			useGraphicBindingData()
+				.selectionOptions('player', search)
+				.map((option) => option.value),
+		).toEqual(found);
 	});
 
 	it('re-resolves from Event Data re-read on Reconnect Resync, including a Player deleted meanwhile (#610)', async () => {
@@ -406,9 +389,7 @@ describe('useGraphicBindingData', () => {
 			{ id: 4, name: 'Ben K.' },
 		];
 		mockPlayerStore.loadPlayersByEventId.mockImplementation(async () => {
-			mockPlayerStore.players = [
-				{ id: 3, name: 'Ava Reyes' },
-			];
+			mockPlayerStore.players = [{ id: 3, name: 'Ava Reyes' }];
 		});
 		const liveControl = effectScope();
 		const { selectionOptions } = liveControl.run(() => useGraphicBindingData())!;
@@ -417,9 +398,7 @@ describe('useGraphicBindingData', () => {
 		await eventDataResync.resync();
 
 		expect(mockPlayerStore.loadPlayersByEventId).toHaveBeenCalledWith(1);
-		expect(selectionOptions('player')).toEqual([
-			{ label: 'Ava Reyes', value: 3 },
-		]);
+		expect(selectionOptions('player')).toEqual([{ label: 'Ava Reyes', value: 3 }]);
 		liveControl.stop();
 	});
 });

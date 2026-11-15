@@ -22,13 +22,15 @@ chmodSync(STUBBORN_CHROME, 0o755);
 
 async function startupFailure(...launch: Parameters<typeof launchChromium>): Promise<string> {
 	const error = await launchChromium(...launch).then(
-		() => { throw new Error('the stand-in launched'); },
+		() => {
+			throw new Error('the stand-in launched');
+		},
 		(failure: Error) => failure,
 	);
 	return error.message;
 }
 
-describe('the acceptance browser\'s startup', () => {
+describe("the acceptance browser's startup", () => {
 	it('says what a browser that never announced itself printed, and how it was stopped', async () => {
 		// In this process, and heard from as it is spawned: before either bound starts.
 		const chrome = fakeChrome({
@@ -52,15 +54,20 @@ describe('the acceptance browser\'s startup', () => {
 	});
 
 	it('says how a browser that left before announcing itself exited, and what it printed', async () => {
-		const message = await startupFailure(STUBBORN_CHROME, ['--say=FATAL:zygote_host_impl_linux.cc(127)] No usable sandbox!', '--exit=0']);
+		const message = await startupFailure(STUBBORN_CHROME, [
+			'--say=FATAL:zygote_host_impl_linux.cc(127)] No usable sandbox!',
+			'--exit=0',
+		]);
 
-		expect(message).toMatch(/^Chromium exited with code 0 before announcing its DevTools endpoint\./);
+		expect(message).toMatch(
+			/^Chromium exited with code 0 before announcing its DevTools endpoint\./,
+		);
 		expect(message).toContain('FATAL:zygote_host_impl_linux.cc(127)] No usable sandbox!');
 		expect(message).toContain('already exited');
 	});
 });
 
-describe('the acceptance browser\'s DevTools endpoint', () => {
+describe("the acceptance browser's DevTools endpoint", () => {
 	it.each([
 		{
 			chunks: ['DevTools listening on ws://127.0.0.1:9/devtools/browser/whole\n'],
@@ -77,7 +84,7 @@ describe('the acceptance browser\'s DevTools endpoint', () => {
 		await chrome.started();
 		for (const chunk of chunks) {
 			chrome.say(chunk);
-			await new Promise(resolve => setImmediate(resolve));
+			await new Promise((resolve) => setImmediate(resolve));
 		}
 
 		const browser = await launching;
@@ -91,22 +98,22 @@ describe('the acceptance browser\'s DevTools endpoint', () => {
 describe('warming the acceptance browser', () => {
 	const chromeBin = process.env.CHROME_BIN;
 	afterEach(() => {
-		if (chromeBin === undefined)
-			delete process.env.CHROME_BIN;
-		else
-			process.env.CHROME_BIN = chromeBin;
+		if (chromeBin === undefined) delete process.env.CHROME_BIN;
+		else process.env.CHROME_BIN = chromeBin;
 	});
 
 	it('starts the first available browser once and leaves nothing running', async () => {
 		const tag = `--stand-in=${process.pid}-${Date.now()}`;
 		process.env.CHROME_BIN = STUBBORN_CHROME;
 
-		await expect(warmChromium({
-			extraArgs: [tag],
-			terminateGraceMs: 200,
-		})).resolves.toBe(STUBBORN_CHROME);
+		await expect(
+			warmChromium({
+				extraArgs: [tag],
+				terminateGraceMs: 200,
+			}),
+		).resolves.toBe(STUBBORN_CHROME);
 
 		const ps = execFileSync('ps', ['-axo', 'pid=,command='], { encoding: 'utf8' });
-		expect(ps.split('\n').filter(line => line.includes(tag))).toEqual([]);
+		expect(ps.split('\n').filter((line) => line.includes(tag))).toEqual([]);
 	});
 });

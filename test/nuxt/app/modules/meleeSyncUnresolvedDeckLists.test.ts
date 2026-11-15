@@ -25,7 +25,10 @@ const mockMetagameStore = {
 /** The toast the workflow asked for once its last request succeeded. */
 let successToast: unknown;
 /** A request that succeeds unless its action fails, showing the success toast it was given. */
-async function runAndShow(action: () => Promise<unknown>, options?: { success?: (result: any) => unknown }) {
+async function runAndShow(
+	action: () => Promise<unknown>,
+	options?: { success?: (result: any) => unknown },
+) {
 	const result = await action();
 	successToast = options?.success?.(result);
 	return result;
@@ -41,7 +44,9 @@ mockNuxtImport('usePlayerStore', () => () => mockPlayerStore);
 mockNuxtImport('useMetagameStore', () => () => mockMetagameStore);
 mockNuxtImport('useRequestFeedback', () => () => ({ runRequest: mockRunRequest }));
 
-function unresolved(overrides: Partial<MeleeUnresolvedDeckCardResponse> = {}): MeleeUnresolvedDeckCardResponse {
+function unresolved(
+	overrides: Partial<MeleeUnresolvedDeckCardResponse> = {},
+): MeleeUnresolvedDeckCardResponse {
 	return {
 		id: 1,
 		eventId: 1,
@@ -74,7 +79,10 @@ describe('melee Sync unresolved Deck List module', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockEventRepo.listUnresolvedDeckCards.mockResolvedValue([]);
-		mockEventRepo.resolveUnresolvedDeckCard.mockResolvedValue({ success: true, message: 'Resolved card' });
+		mockEventRepo.resolveUnresolvedDeckCard.mockResolvedValue({
+			success: true,
+			message: 'Resolved card',
+		});
 		mockPlayerStore.loadPlayersByEventId.mockResolvedValue(undefined);
 		mockRunRequest.mockImplementation(runAndShow);
 		successToast = undefined;
@@ -110,13 +118,11 @@ describe('melee Sync unresolved Deck List module', () => {
 			affectedPlayerCount: 2,
 			affectedDeckCount: 2,
 		});
-		expect(groups[0]!.entries.map(entry => entry.playerName)).toEqual(['Alice', 'Zed']);
+		expect(groups[0]!.entries.map((entry) => entry.playerName)).toEqual(['Alice', 'Zed']);
 	});
 
 	it('loads unresolved entries and selects the first group', async () => {
-		const entries = [
-			unresolved(),
-		];
+		const entries = [unresolved()];
 		mockEventRepo.listUnresolvedDeckCards.mockResolvedValue(entries);
 
 		const workflow = useMeleeSyncUnresolvedDeckListResolution({
@@ -135,9 +141,7 @@ describe('melee Sync unresolved Deck List module', () => {
 		const firstLoad = deferred<MeleeUnresolvedDeckCardResponse[]>();
 		const secondLoad = deferred<MeleeUnresolvedDeckCardResponse[]>();
 		mockEventRepo.listUnresolvedDeckCards.mockImplementation((eventId: number) =>
-			eventId === 1
-				? firstLoad.promise
-				: secondLoad.promise,
+			eventId === 1 ? firstLoad.promise : secondLoad.promise,
 		);
 		const eventId = ref(1);
 		const workflow = useMeleeSyncUnresolvedDeckListResolution({
@@ -148,23 +152,21 @@ describe('melee Sync unresolved Deck List module', () => {
 
 		eventId.value = 2;
 		await flushAsyncWork();
-		const currentEntries = [
-			unresolved({ id: 2, eventId: 2, originalName: 'Current Card' }),
-		];
+		const currentEntries = [unresolved({ id: 2, eventId: 2, originalName: 'Current Card' })];
 		secondLoad.resolve(currentEntries);
 		await flushAsyncWork();
 		expect(workflow.unresolvedDeckCards.value).toEqual(currentEntries);
 
-		firstLoad.resolve([
-			unresolved({ id: 1, eventId: 1, originalName: 'Stale Card' }),
-		]);
+		firstLoad.resolve([unresolved({ id: 1, eventId: 1, originalName: 'Stale Card' })]);
 		await flushAsyncWork();
 		expect(workflow.unresolvedDeckCards.value).toEqual(currentEntries);
 		expect(workflow.unresolvedDeckCardsLoading.value).toBe(false);
 	});
 
 	it('exposes an unresolved-card load error instead of reporting an empty resolved list', async () => {
-		mockEventRepo.listUnresolvedDeckCards.mockRejectedValueOnce(new Error('Unresolved endpoint unavailable'));
+		mockEventRepo.listUnresolvedDeckCards.mockRejectedValueOnce(
+			new Error('Unresolved endpoint unavailable'),
+		);
 		const workflow = useMeleeSyncUnresolvedDeckListResolution({
 			eventId: ref(1),
 			isSetupComplete: ref(true),
@@ -177,9 +179,7 @@ describe('melee Sync unresolved Deck List module', () => {
 	});
 
 	it('retains the last confirmed unresolved list when a same-event refresh fails', async () => {
-		const entries = [
-			unresolved(),
-		];
+		const entries = [unresolved()];
 		mockEventRepo.listUnresolvedDeckCards
 			.mockResolvedValueOnce(entries)
 			.mockRejectedValueOnce(new Error('Refresh failed'));
@@ -216,8 +216,9 @@ describe('melee Sync unresolved Deck List module', () => {
 		workflow.resolveSearchTerm.value = 'second';
 		const newerRequest = workflow.searchResolveCandidates();
 		// The older search is abandoned and the newer one is still live.
-		expect(callsTo(mockFetch, 2, SCRYFALL_SEARCH_ENDPOINT)
-			.map(([, options]) => options.signal.aborted)).toEqual([true, false]);
+		expect(
+			callsTo(mockFetch, 2, SCRYFALL_SEARCH_ENDPOINT).map(([, options]) => options.signal.aborted),
+		).toEqual([true, false]);
 
 		const newestResult = { id: 'new', name: 'Newest', set: 'new' };
 		secondSearch.resolve({
@@ -227,9 +228,7 @@ describe('melee Sync unresolved Deck List module', () => {
 		expect(workflow.resolveSearchResults.value).toEqual([newestResult]);
 
 		firstSearch.resolve({
-			data: [
-				{ id: 'old', name: 'Stale', set: 'old' },
-			],
+			data: [{ id: 'old', name: 'Stale', set: 'old' }],
 		});
 		await olderRequest;
 		expect(workflow.resolveSearchResults.value).toEqual([newestResult]);
@@ -254,9 +253,7 @@ describe('melee Sync unresolved Deck List module', () => {
 
 	it('invalidates visible Scryfall results as soon as the search term changes', async () => {
 		mockFetch.mockResolvedValueOnce({
-			data: [
-				{ id: 'old', name: 'Old result', set: 'old' },
-			],
+			data: [{ id: 'old', name: 'Old result', set: 'old' }],
 		});
 		const workflow = useMeleeSyncUnresolvedDeckListResolution({
 			eventId: ref(1),
@@ -275,9 +272,7 @@ describe('melee Sync unresolved Deck List module', () => {
 
 	it('resolves the active group, reloads Players, reloads unresolved entries, and closes the modal when complete', async () => {
 		mockEventRepo.listUnresolvedDeckCards
-			.mockResolvedValueOnce([
-				unresolved({ id: 10 }),
-			])
+			.mockResolvedValueOnce([unresolved({ id: 10 })])
 			.mockResolvedValueOnce([]);
 		const workflow = useMeleeSyncUnresolvedDeckListResolution({
 			eventId: ref(1),
@@ -286,29 +281,38 @@ describe('melee Sync unresolved Deck List module', () => {
 		await flushAsyncWork();
 		workflow.openResolveModal();
 
-		await workflow.resolveUnresolvedDeckCard({ id: 'scryfall-1', name: 'Lightning Bolt', set: 'm11' });
+		await workflow.resolveUnresolvedDeckCard({
+			id: 'scryfall-1',
+			name: 'Lightning Bolt',
+			set: 'm11',
+		});
 
-		expect(mockEventRepo.resolveUnresolvedDeckCard).toHaveBeenCalledWith(1, 10, { scryfallId: 'scryfall-1' });
+		expect(mockEventRepo.resolveUnresolvedDeckCard).toHaveBeenCalledWith(1, 10, {
+			scryfallId: 'scryfall-1',
+		});
 		expect(mockPlayerStore.loadPlayersByEventId).toHaveBeenCalledWith(1, { failure: 'raise' });
 		expect(mockEventRepo.listUnresolvedDeckCards).toHaveBeenCalledTimes(2);
 		expect(workflow.resolveModalOpen.value).toBe(false);
 		expect(workflow.resolvingScryfallId.value).toBeNull();
-		expect(successToast).toEqual({ title: 'Deck Card Resolved', description: 'Resolved card', color: 'success' });
+		expect(successToast).toEqual({
+			title: 'Deck Card Resolved',
+			description: 'Resolved card',
+			color: 'success',
+		});
 	});
 
 	// The resolution is stored, so a Players reload that fails is this browser's to
 	// report. The store raises a failed load only to a caller that asks.
 	it('says Reload Needed when the Players reload fails after the resolution is stored, and still reloads the unresolved entries', async () => {
 		mockEventRepo.listUnresolvedDeckCards
-			.mockResolvedValueOnce([
-				unresolved({ id: 10 }),
-			])
+			.mockResolvedValueOnce([unresolved({ id: 10 })])
 			.mockResolvedValueOnce([]);
-		mockPlayerStore.loadPlayersByEventId.mockImplementation(async (_eventId: number, load?: { failure?: 'raise' }) => {
-			if (load?.failure === 'raise')
-				throw new Error('players offline');
-			return null;
-		});
+		mockPlayerStore.loadPlayersByEventId.mockImplementation(
+			async (_eventId: number, load?: { failure?: 'raise' }) => {
+				if (load?.failure === 'raise') throw new Error('players offline');
+				return null;
+			},
+		);
 		const workflow = useMeleeSyncUnresolvedDeckListResolution({
 			eventId: ref(1),
 			isSetupComplete: ref(true),
@@ -316,41 +320,54 @@ describe('melee Sync unresolved Deck List module', () => {
 		await flushAsyncWork();
 		workflow.openResolveModal();
 
-		await workflow.resolveUnresolvedDeckCard({ id: 'scryfall-1', name: 'Lightning Bolt', set: 'm11' });
+		await workflow.resolveUnresolvedDeckCard({
+			id: 'scryfall-1',
+			name: 'Lightning Bolt',
+			set: 'm11',
+		});
 
-		expect(successToast).toMatchObject({ title: 'Deck Card Resolved — Reload Needed', color: 'warning' });
+		expect(successToast).toMatchObject({
+			title: 'Deck Card Resolved — Reload Needed',
+			color: 'warning',
+		});
 		expect(mockEventRepo.listUnresolvedDeckCards).toHaveBeenCalledTimes(2);
 		expect(workflow.resolveModalOpen.value).toBe(false);
 	});
 
-	it('refreshes this browser\'s Metagame pages, which its own Event message skips as self-origin (#648)', async () => {
-		mockEventRepo.listUnresolvedDeckCards.mockResolvedValue([
-			unresolved({ id: 10 }),
-		]);
+	it("refreshes this browser's Metagame pages, which its own Event message skips as self-origin (#648)", async () => {
+		mockEventRepo.listUnresolvedDeckCards.mockResolvedValue([unresolved({ id: 10 })]);
 		const workflow = useMeleeSyncUnresolvedDeckListResolution({
 			eventId: ref(1),
 			isSetupComplete: ref(true),
 		});
 		await flushAsyncWork();
 
-		await workflow.resolveUnresolvedDeckCard({ id: 'scryfall-1', name: 'Lightning Bolt', set: 'm11' });
+		await workflow.resolveUnresolvedDeckCard({
+			id: 'scryfall-1',
+			name: 'Lightning Bolt',
+			set: 'm11',
+		});
 
 		expect(mockMetagameStore.applyRemoteInvalidated).toHaveBeenCalledOnce();
 	});
 
 	it('refreshes no Metagame page when the resolution is refused', async () => {
-		mockEventRepo.listUnresolvedDeckCards.mockResolvedValue([
-			unresolved({ id: 10 }),
-		]);
+		mockEventRepo.listUnresolvedDeckCards.mockResolvedValue([unresolved({ id: 10 })]);
 		mockEventRepo.resolveUnresolvedDeckCard.mockRejectedValue(new Error('refused'));
-		mockRunRequest.mockImplementation(async (action: () => Promise<unknown>) => await action().catch(() => null));
+		mockRunRequest.mockImplementation(
+			async (action: () => Promise<unknown>) => await action().catch(() => null),
+		);
 		const workflow = useMeleeSyncUnresolvedDeckListResolution({
 			eventId: ref(1),
 			isSetupComplete: ref(true),
 		});
 		await flushAsyncWork();
 
-		await workflow.resolveUnresolvedDeckCard({ id: 'scryfall-1', name: 'Lightning Bolt', set: 'm11' });
+		await workflow.resolveUnresolvedDeckCard({
+			id: 'scryfall-1',
+			name: 'Lightning Bolt',
+			set: 'm11',
+		});
 
 		expect(mockMetagameStore.applyRemoteInvalidated).not.toHaveBeenCalled();
 	});

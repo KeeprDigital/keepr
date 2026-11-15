@@ -37,15 +37,9 @@ function mountHeader(clockState: ClockState) {
 
 describe('feature match panel header', () => {
 	it.each([
-		[
-			'countdown',
-			{ clock: true, untimed: false },
-		],
-		[
-			'untimed',
-			{ clock: false, untimed: true },
-		],
-	] as const)('shows a %s match\'s clock controls only when it has a clock', (type, expected) => {
+		['countdown', { clock: true, untimed: false }],
+		['untimed', { clock: false, untimed: true }],
+	] as const)("shows a %s match's clock controls only when it has a clock", (type, expected) => {
 		const wrapper = mountHeader(clock(type));
 
 		expect({

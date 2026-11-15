@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PASSWORD_RESET_PAGE_PATH } from '~~/shared/utils/passwordResetLink';
-import { LOGIN_PATH, loginPathFor, pageRequiresSession, postSignInPath, safeRedirectTarget } from '~/modules/auth/pageGate';
+import {
+	LOGIN_PATH,
+	loginPathFor,
+	pageRequiresSession,
+	postSignInPath,
+	safeRedirectTarget,
+} from '~/modules/auth/pageGate';
 
 describe('pageRequiresSession', () => {
 	it('gates an ordinary operator page', () => {
@@ -84,8 +90,9 @@ describe('postSignInPath', () => {
 
 describe('loginPathFor', () => {
 	it('carries the interrupted page as an encoded query value', () => {
-		expect(loginPathFor('/event/12/matches?round=3'))
-			.toBe('/login?redirect=%2Fevent%2F12%2Fmatches%3Fround%3D3');
+		expect(loginPathFor('/event/12/matches?round=3')).toBe(
+			'/login?redirect=%2Fevent%2F12%2Fmatches%3Fround%3D3',
+		);
 	});
 
 	it('omits the query for the page sign-in returns to anyway', () => {

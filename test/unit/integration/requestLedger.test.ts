@@ -22,7 +22,7 @@ function clock(start = 1_000) {
 	};
 }
 
-describe('the integration suite\'s request ledger', () => {
+describe("the integration suite's request ledger", () => {
 	it('names the request a stalled test is still waiting on, after the ones that returned', async () => {
 		const time = clock();
 		const ledger = createRequestLedger(time.now);
@@ -56,7 +56,7 @@ describe('the integration suite\'s request ledger', () => {
 		expect(ledger.report()).toEqual(['POST /api/events/1/commands: threw after 45ms']);
 	});
 
-	it('starts each test from nothing, so a report holds only that test\'s requests', async () => {
+	it("starts each test from nothing, so a report holds only that test's requests", async () => {
 		const time = clock();
 		const ledger = createRequestLedger(time.now);
 		await ledger.record('POST /api/events', async () => {});

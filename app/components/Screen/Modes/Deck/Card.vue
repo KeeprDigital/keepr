@@ -3,21 +3,24 @@ import type { DeckArtSize } from '~~/shared/utils/deckArt';
 import type { DeckListCardWithData } from '~/types/card/deckList';
 import { foundationTokenVar, modeTokenVar } from '~/modules/screen-mode';
 
-const props = withDefaults(defineProps<{
-	card: DeckListCardWithData;
-	/** The Scryfall image its board draws, the one its deck preloaded (#1201). */
-	art?: DeckArtSize;
-	showQuantity: boolean;
-	showHighlanderPoints: boolean;
-	quantityPositionClass: string;
-	quantityBadgeStyle: Record<string, string>;
-	highlanderPointsPositionClass: string;
-	highlanderPointsBadgeStyle: Record<string, string>;
-	/** A tag naming the card's role, such as the companion's. */
-	tag?: string;
-	/** Where the tag sits, as the other badges are placed. */
-	tagPositionClass?: string;
-}>(), { art: 'normal' });
+const props = withDefaults(
+	defineProps<{
+		card: DeckListCardWithData;
+		/** The Scryfall image its board draws, the one its deck preloaded (#1201). */
+		art?: DeckArtSize;
+		showQuantity: boolean;
+		showHighlanderPoints: boolean;
+		quantityPositionClass: string;
+		quantityBadgeStyle: Record<string, string>;
+		highlanderPointsPositionClass: string;
+		highlanderPointsBadgeStyle: Record<string, string>;
+		/** A tag naming the card's role, such as the companion's. */
+		tag?: string;
+		/** Where the tag sits, as the other badges are placed. */
+		tagPositionClass?: string;
+	}>(),
+	{ art: 'normal' },
+);
 
 /** A pill matching the quantity badge: its colours, its text size and its 1.75em height. */
 const tagStyle = computed(() => ({

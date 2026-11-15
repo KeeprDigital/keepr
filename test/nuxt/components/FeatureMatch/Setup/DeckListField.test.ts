@@ -1,4 +1,7 @@
-import type { FeatureMatchDeckListReference, FeatureMatchDeckListView } from '~~/shared/types/featureMatchDeckList';
+import type {
+	FeatureMatchDeckListReference,
+	FeatureMatchDeckListView,
+} from '~~/shared/types/featureMatchDeckList';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,7 +49,9 @@ const preview: FeatureMatchDeckListView = {
 	],
 };
 
-function mountField(props: { deckList?: FeatureMatchDeckListReference | null; locked?: boolean } = {}) {
+function mountField(
+	props: { deckList?: FeatureMatchDeckListReference | null; locked?: boolean } = {},
+) {
 	return mount(DeckListField, {
 		props: {
 			slotId: 3,
@@ -67,28 +72,34 @@ async function paste(wrapper: ReturnType<typeof mountField>, text = TEXT) {
 	await flushPromises();
 }
 
-describe('a Slot side\'s Deck List field', () => {
+describe("a Slot side's Deck List field", () => {
 	beforeEach(() => {
 		mockFetch.mockReset();
 		applySavedSlot.mockClear();
-		mockFetch.mockImplementation(async (path: string) => path.endsWith('/preview')
-			? { available: true, deckList: preview }
-			: {
-					available: true,
-					deckList: {
-						...preview,
-						id: 11,
-						slotId: 3,
-						sourceText: TEXT,
+		mockFetch.mockImplementation(async (path: string) =>
+			path.endsWith('/preview')
+				? { available: true, deckList: preview }
+				: {
+						available: true,
+						deckList: {
+							...preview,
+							id: 11,
+							slotId: 3,
+							sourceText: TEXT,
+						},
+						featureMatch: { id: 3 },
 					},
-					featureMatch: { id: 3 },
-				});
+		);
 	});
 
-	it('shows the side\'s Deck List by its Mainboard count', () => {
-		expect(mountField({
-			deckList: { id: 11, mainboardCount: 50 },
-		}).get('[data-deck-list]').attributes('data-mainboard-count')).toBe('50');
+	it("shows the side's Deck List by its Mainboard count", () => {
+		expect(
+			mountField({
+				deckList: { id: 11, mainboardCount: 50 },
+			})
+				.get('[data-deck-list]')
+				.attributes('data-mainboard-count'),
+		).toBe('50');
 		expect(mountField().find('[data-deck-list]').exists()).toBe(false);
 	});
 
@@ -98,25 +109,30 @@ describe('a Slot side\'s Deck List field', () => {
 		await paste(wrapper);
 
 		const entries = wrapper.findAll('[data-deck-list-entry]');
-		expect(entries.map(entry => [
-			entry.attributes('data-number'),
-			entry.attributes('data-resolved'),
-		])).toEqual([
+		expect(
+			entries.map((entry) => [entry.attributes('data-number'), entry.attributes('data-resolved')]),
+		).toEqual([
 			['OP01-001', 'true'],
 			['OP99-999', 'false'],
 		]);
-		expect(wrapper.findAll('[data-warning-code]').map(warning => warning.attributes('data-warning-code')))
-			.toEqual(['MAINBOARD_COUNT', 'UNKNOWN_CARD']);
+		expect(
+			wrapper
+				.findAll('[data-warning-code]')
+				.map((warning) => warning.attributes('data-warning-code')),
+		).toEqual(['MAINBOARD_COUNT', 'UNKNOWN_CARD']);
 
 		const saving = deferred<unknown>();
 		mockFetch.mockImplementationOnce(() => saving.promise);
 		await wrapper.get('button[aria-label="Save Deck List"]').trigger('click');
 		await flushPromises();
 		expect(wrapper.get('button[aria-label="Save Deck List"]').attributes('aria-busy')).toBe('true');
-		expect(mockFetch).toHaveBeenLastCalledWith('/api/events/7/feature-match-slots/3/deck-lists', expect.objectContaining({
-			method: 'POST',
-			body: { side: 'player2', text: TEXT },
-		}));
+		expect(mockFetch).toHaveBeenLastCalledWith(
+			'/api/events/7/feature-match-slots/3/deck-lists',
+			expect.objectContaining({
+				method: 'POST',
+				body: { side: 'player2', text: TEXT },
+			}),
+		);
 
 		saving.resolve({
 			available: true,
@@ -142,7 +158,7 @@ describe('a Slot side\'s Deck List field', () => {
 		expect(wrapper.get('button[aria-label="Save Deck List"]').attributes('disabled')).toBeDefined();
 	});
 
-	it('starts a re-paste from the saved Deck List\'s text', async () => {
+	it("starts a re-paste from the saved Deck List's text", async () => {
 		mockFetch.mockResolvedValueOnce({
 			...preview,
 			id: 11,
@@ -156,14 +172,19 @@ describe('a Slot side\'s Deck List field', () => {
 		await wrapper.get('button[aria-label="Paste Deck List"]').trigger('click');
 		await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledWith('/api/events/7/feature-match-slots/3/deck-lists/11', expect.anything());
+		expect(mockFetch).toHaveBeenCalledWith(
+			'/api/events/7/feature-match-slots/3/deck-lists/11',
+			expect.anything(),
+		);
 		expect((wrapper.get('textarea').element as HTMLTextAreaElement).value).toBe(TEXT);
 	});
 
-	it('waits for the setup form\'s unsaved changes', () => {
+	it("waits for the setup form's unsaved changes", () => {
 		const wrapper = mountField({ locked: true });
 
-		expect(wrapper.get('button[aria-label="Paste Deck List"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.get('button[aria-label="Paste Deck List"]').attributes('disabled'),
+		).toBeDefined();
 		expect(wrapper.text()).toContain('Save or reset');
 	});
 
@@ -174,6 +195,8 @@ describe('a Slot side\'s Deck List field', () => {
 		await paste(wrapper);
 
 		expect(wrapper.text()).toContain('Card data unavailable');
-		expect(wrapper.find('button[aria-label="Save Deck List"]').attributes('disabled')).toBeDefined();
+		expect(
+			wrapper.find('button[aria-label="Save Deck List"]').attributes('disabled'),
+		).toBeDefined();
 	});
 });

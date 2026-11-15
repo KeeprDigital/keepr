@@ -1,4 +1,10 @@
-import type { EventResponse, FeatureMatchResponse, MatchResponse, PhaseResponse, RoundResponse } from '~~/shared/api';
+import type {
+	EventResponse,
+	FeatureMatchResponse,
+	MatchResponse,
+	PhaseResponse,
+	RoundResponse,
+} from '~~/shared/api';
 import type { Seat, Variant } from '~~/shared/types/enums';
 import { eventKind, eventSeats, getGameConfig } from '~~/shared/config/games';
 import { featureMatchTokenCatalogue } from '~~/shared/featureMatchTokenCatalogue';
@@ -43,7 +49,10 @@ export const FEATURE_MATCH_OVERLAY_TEMPLATE_TOKENS = [
 
 export interface FeatureMatchOverlayTemplateMetadataInput {
 	event: Pick<EventResponse, 'name' | 'game'> | null | undefined;
-	featureMatch: Pick<FeatureMatchResponse, 'tableNumber' | 'roundName' | 'formatName' | 'activeSession'> | null | undefined;
+	featureMatch:
+		| Pick<FeatureMatchResponse, 'tableNumber' | 'roundName' | 'formatName' | 'activeSession'>
+		| null
+		| undefined;
 	sourceMatch: Pick<MatchResponse, 'tableNumber'> | null | undefined;
 	round: Pick<RoundResponse, 'name'> | null | undefined;
 	phase: Pick<PhaseResponse, 'name'> | null | undefined;
@@ -64,31 +73,42 @@ export function buildFeatureMatchOverlayTemplateMetadataValues({
 	round,
 	phase,
 }: FeatureMatchOverlayTemplateMetadataInput): FeatureMatchOverlayTemplateMetadataValues {
-	const tableNumber = featureMatch?.tableNumber
-		?? sourceMatch?.tableNumber
-		?? featureMatch?.activeSession?.sourceSnapshot.tableNumber;
-	const roundName = featureMatch?.roundName
-		?? featureMatch?.activeSession?.sourceSnapshot.roundName
-		?? round?.name
-		?? '';
+	const tableNumber =
+		featureMatch?.tableNumber ??
+		sourceMatch?.tableNumber ??
+		featureMatch?.activeSession?.sourceSnapshot.tableNumber;
+	const roundName =
+		featureMatch?.roundName ??
+		featureMatch?.activeSession?.sourceSnapshot.roundName ??
+		round?.name ??
+		'';
 	const phaseName = phase?.name ?? '';
 
 	return {
 		round: roundName,
 		stage: phaseName || roundName,
-		table: tableNumber
-			? `Table ${tableNumber}`
-			: '',
-		format: featureMatch?.formatName ?? featureMatch?.activeSession?.sourceSnapshot.formatName ?? (event?.game
-			? getGameConfig(event.game).label
-			: ''),
+		table: tableNumber ? `Table ${tableNumber}` : '',
+		format:
+			featureMatch?.formatName ??
+			featureMatch?.activeSession?.sourceSnapshot.formatName ??
+			(event?.game ? getGameConfig(event.game).label : ''),
 		eventName: event?.name ?? '',
 	};
 }
 
 export interface FeatureMatchTokenValuesInput {
 	/** Its Variant decides which Seats and terms it holds values for; absent reads as Two-Player. */
-	event: (Pick<EventResponse, 'name' | 'game' | 'displayRecordSeparator' | 'displayHideZeroDraws' | 'displayPositionFormat'> & { variant?: Variant | null }) | null | undefined;
+	event:
+		| (Pick<
+				EventResponse,
+				| 'name'
+				| 'game'
+				| 'displayRecordSeparator'
+				| 'displayHideZeroDraws'
+				| 'displayPositionFormat'
+		  > & { variant?: Variant | null })
+		| null
+		| undefined;
 	featureMatch: FeatureMatchResponse | null | undefined;
 	sourceMatch: Pick<MatchResponse, 'tableNumber'> | null | undefined;
 	round: Pick<RoundResponse, 'name'> | null | undefined;
@@ -96,7 +116,16 @@ export interface FeatureMatchTokenValuesInput {
 }
 
 /** Every per-Seat token suffix; an Event's catalogue says which of them it holds. */
-type SeatValueKey = 'Name' | 'Record' | 'Deck' | 'DeckColors' | 'Pronouns' | 'Lgs' | 'LeaderImage' | 'Commander1Image' | 'Commander2Image';
+type SeatValueKey =
+	| 'Name'
+	| 'Record'
+	| 'Deck'
+	| 'DeckColors'
+	| 'Pronouns'
+	| 'Lgs'
+	| 'LeaderImage'
+	| 'Commander1Image'
+	| 'Commander2Image';
 
 /** The player a Seat shows, by the Session's side order while one is active (ADR-0058). */
 function playerData(input: FeatureMatchTokenValuesInput, side: Seat) {
@@ -112,12 +141,12 @@ function playerData(input: FeatureMatchTokenValuesInput, side: Seat) {
  */
 function record(input: FeatureMatchTokenValuesInput, side: Seat): string {
 	const data = playerData(input, side);
-	const displayMode = input.featureMatch?.activeSession?.sourceSnapshot.playerDisplayMode
-		?? input.featureMatch?.playerDisplayMode
-		?? 'score';
+	const displayMode =
+		input.featureMatch?.activeSession?.sourceSnapshot.playerDisplayMode ??
+		input.featureMatch?.playerDisplayMode ??
+		'score';
 	if (displayMode === 'position') {
-		if (data?.position == null)
-			return '';
+		if (data?.position == null) return '';
 		return input.event?.displayPositionFormat === 'ordinal'
 			? formatOrdinal(data.position)
 			: String(data.position);
@@ -125,8 +154,7 @@ function record(input: FeatureMatchTokenValuesInput, side: Seat): string {
 
 	// An absent record renders empty rather than `0-0`: a Player with no results
 	// yet and a Player who has lost nothing look identical otherwise.
-	if (data?.wins == null && data?.losses == null && data?.draws == null)
-		return '';
+	if (data?.wins == null && data?.losses == null && data?.draws == null) return '';
 
 	return formatPlayerRecord(data, input.event);
 }
@@ -141,15 +169,14 @@ function playerValues(
 	// A One Piece deck is named by its Leader, which also sets its colours, so a
 	// Leader shows where a Magic deck name and its mana colours do.
 	const leader = getOpGameData(data?.gameData).leader;
-	const commanderImage = (index: number) => scryfallCardImageUrl(mtg.commanders?.[index]?.scryfallId) ?? '';
+	const commanderImage = (index: number) =>
+		scryfallCardImageUrl(mtg.commanders?.[index]?.scryfallId) ?? '';
 
 	return {
 		Name: playerDisplayName(data),
 		Record: record(input, side),
 		Deck: mtg.deckName ?? leader?.name ?? '',
-		DeckColors: mtg.deckColors ?? (leader
-			? formatOpColors(leader.colors)
-			: ''),
+		DeckColors: mtg.deckColors ?? (leader ? formatOpColors(leader.colors) : ''),
 		Pronouns: data?.pronouns ?? '',
 		Lgs: data?.lgs ?? '',
 		LeaderImage: leader?.imageUrl ?? '',
@@ -174,17 +201,16 @@ function playerValues(
  * separate Graphic Items or a Graphic Group rather than relying on a string to
  * tidy itself.
  */
-export function featureMatchTokenValues(input: FeatureMatchTokenValuesInput): Record<string, string> {
-	const kind = input.event
-		? eventKind(input.event)
-		: 'mtg-two-player';
-	const offered = new Set(featureMatchTokenCatalogue(kind).map(token => token.key));
+export function featureMatchTokenValues(
+	input: FeatureMatchTokenValuesInput,
+): Record<string, string> {
+	const kind = input.event ? eventKind(input.event) : 'mtg-two-player';
+	const offered = new Set(featureMatchTokenCatalogue(kind).map((token) => token.key));
 	const values: Record<string, string> = {};
 
 	for (const seat of eventSeats(kind)) {
 		for (const [key, value] of Object.entries(playerValues(input, seat))) {
-			if (offered.has(`${seat}${key}`))
-				values[`${seat}${key}`] = value;
+			if (offered.has(`${seat}${key}`)) values[`${seat}${key}`] = value;
 		}
 	}
 

@@ -21,8 +21,7 @@ function answerStatusRequests() {
 	mockFetch.mockImplementation(async (url: string) => {
 		for (const [assetId, status] of statusByAsset) {
 			if (url.includes(`/graphics-assets/${assetId}/`)) {
-				if (status === 'unreachable')
-					throw new Error('library did not answer');
+				if (status === 'unreachable') throw new Error('library did not answer');
 				return status;
 			}
 		}
@@ -73,12 +72,14 @@ function configWithBackgroundAndLogo() {
 
 function mountEligibility(config: Ref<FeatureMatchOverlayModeConfig>) {
 	let result!: ReturnType<typeof useGraphicAssetPublicationEligibility>;
-	const wrapper = mount(defineComponent({
-		setup() {
-			result = useGraphicAssetPublicationEligibility(() => config.value);
-			return () => h('div');
-		},
-	}));
+	const wrapper = mount(
+		defineComponent({
+			setup() {
+				result = useGraphicAssetPublicationEligibility(() => config.value);
+				return () => h('div');
+			},
+		}),
+	);
 
 	return { wrapper, ...result };
 }
@@ -173,9 +174,11 @@ describe('useGraphicAssetPublicationEligibility', () => {
 
 	it('discards the answer to a configuration that has moved on', async () => {
 		let resolveStatus!: (value: unknown) => void;
-		mockFetch.mockReturnValue(new Promise((resolve) => {
-			resolveStatus = resolve;
-		}));
+		mockFetch.mockReturnValue(
+			new Promise((resolve) => {
+				resolveStatus = resolve;
+			}),
+		);
 		const config = ref(configWithBackground());
 
 		const { eligibility } = mountEligibility(config);

@@ -12,8 +12,7 @@ function rememberedUnit(): Ref<string> {
 	try {
 		// Read on mount, so a server render and the first client render agree on px.
 		return useLocalStorage<string>(GEOMETRY_UNIT_STORAGE_KEY, 'px', { initOnMounted: true });
-	}
-	catch {
+	} catch {
 		// A browser that refuses storage still lets the author switch units for this view.
 		return ref('px');
 	}
@@ -29,9 +28,7 @@ function rememberedUnit(): Ref<string> {
 export function useGeometryUnit() {
 	const stored = rememberedUnit();
 	return computed<GeometryUnit>({
-		get: () => isGeometryUnit(stored.value)
-			? stored.value
-			: 'px',
+		get: () => (isGeometryUnit(stored.value) ? stored.value : 'px'),
 		set: (unit) => {
 			stored.value = unit;
 		},

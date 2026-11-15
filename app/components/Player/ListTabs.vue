@@ -39,12 +39,7 @@ const emit = defineEmits<{
 			@click="emit('select', list.id)"
 		>
 			{{ list.name }}
-			<UBadge
-				v-if="list.memberCount > 0"
-				color="neutral"
-				variant="subtle"
-				size="xs"
-			>
+			<UBadge v-if="list.memberCount > 0" color="neutral" variant="subtle" size="xs">
 				{{ list.memberCount }}
 			</UBadge>
 		</UButton>

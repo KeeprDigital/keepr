@@ -15,13 +15,13 @@ mockNuxtImport('$fetch', () => mockFetch);
 // The Event middleware runs on this suite's query navigations, and the route they
 // run on is no Event's, so it would reset every Event store, the Screen the page
 // just selected included, whenever a navigation lands after the page loads.
-vi.mock('~/utils/eventStores', async importOriginal => ({
-	...await importOriginal<typeof import('~/utils/eventStores')>(),
+vi.mock('~/utils/eventStores', async (importOriginal) => ({
+	...(await importOriginal<typeof import('~/utils/eventStores')>()),
 	resetAllEventStores: () => {},
 }));
 
-vi.mock('~/modules/event-data/resync', async importOriginal => ({
-	...await importOriginal<typeof import('~/modules/event-data/resync')>(),
+vi.mock('~/modules/event-data/resync', async (importOriginal) => ({
+	...(await importOriginal<typeof import('~/modules/event-data/resync')>()),
 	useConsumedEventData: () => {},
 }));
 
@@ -67,7 +67,12 @@ const featureMatchStore = reactive({
 		},
 	],
 });
-function match(id: number, roundId: number, player1: ReturnType<typeof deckPlayer>, player2: ReturnType<typeof deckPlayer>) {
+function match(
+	id: number,
+	roundId: number,
+	player1: ReturnType<typeof deckPlayer>,
+	player2: ReturnType<typeof deckPlayer>,
+) {
 	return {
 		id,
 		roundId,
@@ -80,18 +85,8 @@ function match(id: number, roundId: number, player1: ReturnType<typeof deckPlaye
 }
 /** Match 7 of Round 3 is an unrelated pairing, Mallory and Nina; Round 4 pairs Mallory and Bob. */
 const matchesByRound = new Map([
-	[
-		3,
-		[
-			match(SHARED_ID, 3, playerStore.players[2]!, playerStore.players[3]!),
-		],
-	],
-	[
-		4,
-		[
-			match(9, 4, playerStore.players[2]!, playerStore.players[1]!),
-		],
-	],
+	[3, [match(SHARED_ID, 3, playerStore.players[2]!, playerStore.players[3]!)]],
+	[4, [match(9, 4, playerStore.players[2]!, playerStore.players[1]!)]],
 ]);
 const matchStore = reactive({
 	matches: [] as ReturnType<typeof match>[],
@@ -246,13 +241,7 @@ describe('cards page matchup Deck Lists', () => {
 
 	// Slot 7 and Match 7 come from different tables: each reference keeps its own kind.
 	it.each([
-		[
-			'the Card Spotlight Screen\'s Slot',
-			{},
-			['Alice', 'Bob'],
-			undefined,
-			{ slotId: '7' },
-		],
+		["the Card Spotlight Screen's Slot", {}, ['Alice', 'Bob'], undefined, { slotId: '7' }],
 		[
 			'a linked Slot',
 			{ mode: 'match-decklist', roundId: '3', slotId: '7' },
@@ -272,7 +261,9 @@ describe('cards page matchup Deck Lists', () => {
 
 		expect(shownDecks()).toEqual(decks);
 		expect(pickedMatchId(wrapper)).toBe(pickedMatch);
-		await vi.waitFor(() => expect(useRoute().query).toEqual({ mode: 'match-decklist', roundId: '3', ...link }));
+		await vi.waitFor(() =>
+			expect(useRoute().query).toEqual({ mode: 'match-decklist', roundId: '3', ...link }),
+		);
 	});
 
 	it('replaces a shown Slot with the first Match of a Round the operator picks', async () => {
@@ -283,7 +274,9 @@ describe('cards page matchup Deck Lists', () => {
 
 		expect(shownDecks()).toEqual(['Mallory', 'Bob']);
 		expect(pickedMatchId(wrapper)).toBe(9);
-		await vi.waitFor(() => expect(useRoute().query).toEqual({ mode: 'match-decklist', roundId: '4', matchId: '9' }));
+		await vi.waitFor(() =>
+			expect(useRoute().query).toEqual({ mode: 'match-decklist', roundId: '4', matchId: '9' }),
+		);
 	});
 });
 
@@ -306,18 +299,25 @@ describe('cards page by Card Game', () => {
 	it.each([
 		['op', true, false],
 		['mtg', false, true],
-	])('on a %s Event, lists Unresolved Deck Cards: %s, offers the Player Deck List mode: %s', async (game, listsUnresolved, offersPlayerDecks) => {
-		eventStore.event.game = game;
+	])(
+		'on a %s Event, lists Unresolved Deck Cards: %s, offers the Player Deck List mode: %s',
+		async (game, listsUnresolved, offersPlayerDecks) => {
+			eventStore.event.game = game;
 
-		const wrapper = await openCardsPage();
+			const wrapper = await openCardsPage();
 
-		expect(wrapper.findComponent({ name: 'OpUnresolvedDeckCards' }).exists()).toBe(listsUnresolved);
-		expect(wrapper.findComponent({ name: 'MtgCardModeToggle' }).props('offersPlayerDecklist')).toBe(offersPlayerDecks);
-		wrapper.unmount();
-	});
+			expect(wrapper.findComponent({ name: 'OpUnresolvedDeckCards' }).exists()).toBe(
+				listsUnresolved,
+			);
+			expect(
+				wrapper.findComponent({ name: 'MtgCardModeToggle' }).props('offersPlayerDecklist'),
+			).toBe(offersPlayerDecks);
+			wrapper.unmount();
+		},
+	);
 
 	// An OP Event has no Rounds, so its matchup is a Feature Match Slot (ADR-0057).
-	it('opens a One Piece Event on the Deck Lists of its Card Spotlight Screen\'s Slot', async () => {
+	it("opens a One Piece Event on the Deck Lists of its Card Spotlight Screen's Slot", async () => {
 		eventStore.event.game = 'op';
 		roundStore.rounds = [];
 		featureMatchStore.featureMatches = [
@@ -332,16 +332,12 @@ describe('cards page by Card Game', () => {
 		] as never;
 		mockFetch.mockImplementation(async (path: string) => {
 			const deckListId = Number(path.split('/').at(-1));
-			const leader = deckListId === 301
-				? ZORO
-				: NAMI;
+			const leader = deckListId === 301 ? ZORO : NAMI;
 			return {
 				id: deckListId,
 				slotId: SHARED_ID,
 				sourceText: '',
-				entries: [
-					opDeckListEntry(leader.number, 1, 'leader'),
-				],
+				entries: [opDeckListEntry(leader.number, 1, 'leader')],
 				leaderNumber: leader.number,
 				mainboardCount: 0,
 				warnings: [],
@@ -355,18 +351,26 @@ describe('cards page by Card Game', () => {
 		const cardStore = useCardStore();
 		await vi.waitFor(() => {
 			expect(cardStore.cardPageMode).toBe('match-decklist');
-			expect([cardStore.opDeckListPlayer1, cardStore.opDeckListPlayer2].map(side => side?.deckList?.leaderNumber)).toEqual([ZORO.number, NAMI.number]);
+			expect(
+				[cardStore.opDeckListPlayer1, cardStore.opDeckListPlayer2].map(
+					(side) => side?.deckList?.leaderNumber,
+				),
+			).toEqual([ZORO.number, NAMI.number]);
 		});
-		expect(wrapper.findComponent({ name: 'MtgCardDeckListHeader' }).props('matchOptions')).toBeUndefined();
-		await vi.waitFor(() => expect(useRoute().query).toEqual({
-			mode: 'match-decklist',
-			slotId: String(SHARED_ID),
-		}));
+		expect(
+			wrapper.findComponent({ name: 'MtgCardDeckListHeader' }).props('matchOptions'),
+		).toBeUndefined();
+		await vi.waitFor(() =>
+			expect(useRoute().query).toEqual({
+				mode: 'match-decklist',
+				slotId: String(SHARED_ID),
+			}),
+		);
 		wrapper.unmount();
 	});
 
 	// A Commander Event has no Rounds or Players: it picks a Slot, each Seat read as its Commanders (ADR-0087).
-	it('opens a Commander Event on the Seats of its Card Spotlight Screen\'s Slot, with no Player Deck List mode', async () => {
+	it("opens a Commander Event on the Seats of its Card Spotlight Screen's Slot, with no Player Deck List mode", async () => {
 		eventStore.event.variant = 'commander';
 		roundStore.rounds = [];
 		featureMatchStore.featureMatches = [
@@ -386,13 +390,17 @@ describe('cards page by Card Game', () => {
 		const cardStore = useCardStore();
 		await vi.waitFor(() => {
 			expect(cardStore.cardPageMode).toBe('match-decklist');
-			expect(cardStore.commanderDeckListSeats.map(seat => [seat.seat, seat.playerName])).toEqual([
+			expect(cardStore.commanderDeckListSeats.map((seat) => [seat.seat, seat.playerName])).toEqual([
 				['player1', 'Ana'],
 				['player3', 'Cyd'],
 			]);
 		});
-		expect(wrapper.findComponent({ name: 'MtgCardDeckListHeader' }).props('matchOptions')).toBeUndefined();
-		expect(wrapper.findComponent({ name: 'MtgCardModeToggle' }).props('offersPlayerDecklist')).toBe(false);
+		expect(
+			wrapper.findComponent({ name: 'MtgCardDeckListHeader' }).props('matchOptions'),
+		).toBeUndefined();
+		expect(wrapper.findComponent({ name: 'MtgCardModeToggle' }).props('offersPlayerDecklist')).toBe(
+			false,
+		);
 		expect(wrapper.findComponent({ name: 'MtgCardCommanderDeckList' }).exists()).toBe(true);
 		expect(wrapper.findComponent({ name: 'MtgCardDeckList' }).exists()).toBe(false);
 		wrapper.unmount();

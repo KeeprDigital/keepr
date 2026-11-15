@@ -15,8 +15,11 @@ import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
  * provider and Ably are stood in for; a lost Session race is forced on the real service.
  */
 
-vi.stubGlobal('createError', (input: { statusCode: number; message?: string; statusMessage?: string; data?: unknown }) =>
-	Object.assign(new Error(input.message ?? input.statusMessage), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; message?: string; statusMessage?: string; data?: unknown }) =>
+		Object.assign(new Error(input.message ?? input.statusMessage), input),
+);
 
 const harness = await createSqliteD1Harness();
 const db = drizzle(harness.database, { schema });
@@ -56,8 +59,8 @@ vi.doMock('~~/server/utils/ably', () => ({
 	publishMessageStrict: publishMessage,
 	publishScreenCommand: async () => {},
 }));
-vi.doMock('~~/server/modules/broadcast-graphics-live-session', async importOriginal => ({
-	...await importOriginal<object>(),
+vi.doMock('~~/server/modules/broadcast-graphics-live-session', async (importOriginal) => ({
+	...(await importOriginal<object>()),
 	refreshBroadcastGraphicsBindings: async () => {},
 }));
 vi.doMock('~~/server/services/featureMatchState', async (importOriginal) => {
@@ -68,11 +71,12 @@ vi.doMock('~~/server/services/featureMatchState', async (importOriginal) => {
 			const service = actual.featureMatchStateService();
 			return {
 				...service,
-				applyCommandToActiveSession: async (...args: Parameters<typeof service.applyCommandToActiveSession>) => {
+				applyCommandToActiveSession: async (
+					...args: Parameters<typeof service.applyCommandToActiveSession>
+				) => {
 					const failure = failNextCorrection;
 					failNextCorrection = undefined;
-					if (failure)
-						throw failure;
+					if (failure) throw failure;
 					return await service.applyCommandToActiveSession(...args);
 				},
 			};
@@ -105,44 +109,51 @@ const tournament = {
 		},
 	],
 };
-const tournamentPlayers = [1, 2, 3, 4].map(teamId => meleePlayer(teamId, teamId === 1
-	? {
-			Decklists: [
-				{
-					Guid: 'deck-burn',
-					FormatId: 'modern',
-					DecklistName: 'Burn',
-					Records: [],
-					Attributes: [],
-				},
-			],
-		}
-	: {}));
+const tournamentPlayers = [1, 2, 3, 4].map((teamId) =>
+	meleePlayer(
+		teamId,
+		teamId === 1
+			? {
+					Decklists: [
+						{
+							Guid: 'deck-burn',
+							FormatId: 'modern',
+							DecklistName: 'Burn',
+							Records: [],
+							Attributes: [],
+						},
+					],
+				}
+			: {},
+	),
+);
 
 /** A Round's unreported pairings: Players 1 and 2, and 3 and 4. */
 function pairings(meleeRoundId: number) {
-	return [
-		[1, 2] as const,
-		[3, 4] as const,
-	].map(([first, second]) => meleeMatch(`${meleeRoundId}-${first}`, {
-		TableNumber: first,
-		HasResult: false,
-		Competitors: [
-			meleeCompetitor(first, { SortOrder: 0 }),
-			meleeCompetitor(second, { SortOrder: 1 }),
-		],
-	}));
+	return [[1, 2] as const, [3, 4] as const].map(([first, second]) =>
+		meleeMatch(`${meleeRoundId}-${first}`, {
+			TableNumber: first,
+			HasResult: false,
+			Competitors: [
+				meleeCompetitor(first, { SortOrder: 0 }),
+				meleeCompetitor(second, { SortOrder: 1 }),
+			],
+		}),
+	);
 }
 
 async function createEvent(values: Partial<typeof schema.events.$inferInsert> = {}) {
-	const [event] = await db.insert(schema.events).values({
-		name: 'Melee Championship',
-		game: 'mtg',
-		featureMatchOrientation: 'horizontal',
-		meleeEnabled: true,
-		meleeEventId: 'melee-1',
-		...values,
-	}).returning({ id: schema.events.id });
+	const [event] = await db
+		.insert(schema.events)
+		.values({
+			name: 'Melee Championship',
+			game: 'mtg',
+			featureMatchOrientation: 'horizontal',
+			meleeEnabled: true,
+			meleeEventId: 'melee-1',
+			...values,
+		})
+		.returning({ id: schema.events.id });
 	return event!.id;
 }
 
@@ -150,46 +161,61 @@ async function createEvent(values: Partial<typeof schema.events.$inferInsert> = 
  * The tournament as an earlier sync stored it. A `synced` Round was paired then
  * and holds its Round Standings, though no Match, so a refresh of it shows.
  */
-async function seedTournament({ synced, deckListsSynced }: { synced: readonly string[]; deckListsSynced: boolean }) {
+async function seedTournament({
+	synced,
+	deckListsSynced,
+}: {
+	synced: readonly string[];
+	deckListsSynced: boolean;
+}) {
 	const eventId = await createEvent({
-		lastDecklistsSyncedAt: deckListsSynced
-			? EARLIER
-			: null,
+		lastDecklistsSyncedAt: deckListsSynced ? EARLIER : null,
 	});
-	const [phase] = await db.insert(schema.phases).values({
-		eventId,
-		name: 'Swiss',
-		sortOrder: 0,
-		externalId: '10',
-		externalSource: 'melee',
-		formatExternalId: 'modern',
-	}).returning();
-	const players = await db.insert(schema.players).values(tournamentPlayers.map(player => ({
-		eventId,
-		name: player.PlayerName,
-		externalId: String(player.TeamId),
-		externalSource: 'melee' as const,
-	}))).returning();
+	const [phase] = await db
+		.insert(schema.phases)
+		.values({
+			eventId,
+			name: 'Swiss',
+			sortOrder: 0,
+			externalId: '10',
+			externalSource: 'melee',
+			formatExternalId: 'modern',
+		})
+		.returning();
+	const players = await db
+		.insert(schema.players)
+		.values(
+			tournamentPlayers.map((player) => ({
+				eventId,
+				name: player.PlayerName,
+				externalId: String(player.TeamId),
+				externalSource: 'melee' as const,
+			})),
+		)
+		.returning();
 	for (const [index, round] of tournament.Phases[0]!.Rounds.entries()) {
 		const paired = synced.includes(round.Name);
-		const [stored] = await db.insert(schema.rounds).values({
-			eventId,
-			phaseId: phase!.id,
-			name: round.Name,
-			roundNumber: index + 1,
-			externalId: String(round.ID),
-			externalSource: 'melee',
-			lastSyncedAt: paired
-				? EARLIER
-				: null,
-		}).returning();
-		if (paired) {
-			await db.insert(schema.playerRoundStandings).values(players.map(player => ({
+		const [stored] = await db
+			.insert(schema.rounds)
+			.values({
 				eventId,
-				playerId: player.id,
-				roundId: stored!.id,
-				wins: 1,
-			})));
+				phaseId: phase!.id,
+				name: round.Name,
+				roundNumber: index + 1,
+				externalId: String(round.ID),
+				externalSource: 'melee',
+				lastSyncedAt: paired ? EARLIER : null,
+			})
+			.returning();
+		if (paired) {
+			await db.insert(schema.playerRoundStandings).values(
+				players.map((player) => ({
+					eventId,
+					playerId: player.id,
+					roundId: stored!.id,
+					wins: 1,
+				})),
+			);
 		}
 	}
 	return eventId;
@@ -202,24 +228,51 @@ async function readEvent(eventId: number) {
 
 /** What the Event holds, by name: its Phases, Rounds and Players, the Rounds holding Matches, and its Deck Lists. */
 async function storedIn(eventId: number) {
-	const names = (rows: { name: string | null }[]) => rows.map(row => row.name);
-	const paired = await db.selectDistinct({ name: schema.rounds.name })
+	const names = (rows: { name: string | null }[]) => rows.map((row) => row.name);
+	const paired = await db
+		.selectDistinct({ name: schema.rounds.name })
 		.from(schema.matches)
 		.innerJoin(schema.rounds, eq(schema.rounds.id, schema.matches.roundId))
 		.where(eq(schema.matches.eventId, eventId))
 		.orderBy(schema.rounds.roundNumber);
 	return {
-		phases: names(await db.select().from(schema.phases).where(eq(schema.phases.eventId, eventId)).orderBy(schema.phases.id)),
-		rounds: names(await db.select().from(schema.rounds).where(eq(schema.rounds.eventId, eventId)).orderBy(schema.rounds.id)),
-		players: names(await db.select().from(schema.players).where(eq(schema.players.eventId, eventId)).orderBy(schema.players.id)),
+		phases: names(
+			await db
+				.select()
+				.from(schema.phases)
+				.where(eq(schema.phases.eventId, eventId))
+				.orderBy(schema.phases.id),
+		),
+		rounds: names(
+			await db
+				.select()
+				.from(schema.rounds)
+				.where(eq(schema.rounds.eventId, eventId))
+				.orderBy(schema.rounds.id),
+		),
+		players: names(
+			await db
+				.select()
+				.from(schema.players)
+				.where(eq(schema.players.eventId, eventId))
+				.orderBy(schema.players.id),
+		),
 		pairedRounds: names(paired),
-		deckLists: names(await db.select().from(schema.playerDecks).where(eq(schema.playerDecks.eventId, eventId)).orderBy(schema.playerDecks.id)),
+		deckLists: names(
+			await db
+				.select()
+				.from(schema.playerDecks)
+				.where(eq(schema.playerDecks.eventId, eventId))
+				.orderBy(schema.playerDecks.id),
+		),
 	};
 }
 
 /** Each `melee:` message published so far, by type. */
 function announcedByMelee() {
-	return publishMessage.mock.calls.map(([, type]) => type as string).filter(type => type.startsWith('melee:'));
+	return publishMessage.mock.calls
+		.map(([, type]) => type as string)
+		.filter((type) => type.startsWith('melee:'));
 }
 
 beforeEach(() => {
@@ -229,13 +282,17 @@ beforeEach(() => {
 	melee.fetchEvent.mockReset().mockResolvedValue(tournament);
 	melee.fetchPlayers.mockReset().mockResolvedValue(tournamentPlayers);
 	melee.fetchCurrentStandings.mockReset().mockResolvedValue([]);
-	melee.fetchMergedPlayers.mockReset().mockResolvedValue(mapMeleePlayersToDb(tournamentPlayers, []));
-	melee.fetchMatchesByRound.mockReset().mockImplementation(async (meleeRoundId: number) => pairings(meleeRoundId));
+	melee.fetchMergedPlayers
+		.mockReset()
+		.mockResolvedValue(mapMeleePlayersToDb(tournamentPlayers, []));
+	melee.fetchMatchesByRound
+		.mockReset()
+		.mockImplementation(async (meleeRoundId: number) => pairings(meleeRoundId));
 	melee.fetchStandingsByRound.mockReset().mockResolvedValue([]);
 });
 
 describe('initial Setup', () => {
-	it('imports structure, Players and Deck Lists from one upstream snapshot, and no Round\'s Matches', async () => {
+	it("imports structure, Players and Deck Lists from one upstream snapshot, and no Round's Matches", async () => {
 		const eventId = await createEvent();
 
 		const result = await meleeSyncModule().runInitialSetup(requestEvent, eventId);
@@ -249,12 +306,7 @@ describe('initial Setup', () => {
 		expect(await storedIn(eventId)).toEqual({
 			phases: ['Swiss'],
 			rounds: ['Round 1', 'Round 2'],
-			players: [
-				'Player 1',
-				'Player 2',
-				'Player 3',
-				'Player 4',
-			],
+			players: ['Player 1', 'Player 2', 'Player 3', 'Player 4'],
 			pairedRounds: [],
 			deckLists: ['Burn'],
 		});
@@ -293,15 +345,12 @@ describe('initial Setup', () => {
 			deckListsSkipped: true,
 			deckLists: { players: 0, deckLists: 0 },
 		});
-		expect(result.warnings).toContain('Melee.gg reported an unrecognized game, so MTG Deck Lists were not imported');
+		expect(result.warnings).toContain(
+			'Melee.gg reported an unrecognized game, so MTG Deck Lists were not imported',
+		);
 		expect(await storedIn(eventId)).toMatchObject({
 			phases: ['Swiss'],
-			players: [
-				'Player 1',
-				'Player 2',
-				'Player 3',
-				'Player 4',
-			],
+			players: ['Player 1', 'Player 2', 'Player 3', 'Player 4'],
 			deckLists: [],
 		});
 		const event = await readEvent(eventId);
@@ -317,12 +366,7 @@ describe('update from Melee', () => {
 			synced: ['Round 1'],
 			deckListsSynced: true,
 			options: {},
-			steps: [
-				'structure',
-				'players',
-				'previous-round',
-				'next-round',
-			],
+			steps: ['structure', 'players', 'previous-round', 'next-round'],
 			refreshed: 'Round 1',
 			advanced: 'Round 2',
 			pairedRounds: ['Round 1', 'Round 2'],
@@ -333,12 +377,7 @@ describe('update from Melee', () => {
 			synced: [],
 			deckListsSynced: true,
 			options: { includeDeckLists: true },
-			steps: [
-				'structure',
-				'players',
-				'decklists',
-				'next-round',
-			],
+			steps: ['structure', 'players', 'decklists', 'next-round'],
 			refreshed: null,
 			advanced: 'Round 1',
 			pairedRounds: ['Round 1'],
@@ -349,12 +388,7 @@ describe('update from Melee', () => {
 			synced: [],
 			deckListsSynced: false,
 			options: {},
-			steps: [
-				'structure',
-				'players',
-				'decklists',
-				'next-round',
-			],
+			steps: ['structure', 'players', 'decklists', 'next-round'],
 			refreshed: null,
 			advanced: 'Round 1',
 			pairedRounds: ['Round 1'],
@@ -371,27 +405,44 @@ describe('update from Melee', () => {
 			pairedRounds: ['Round 2'],
 			deckLists: [],
 		},
-	])('$case', async ({ synced, deckListsSynced, options, steps, refreshed, advanced, pairedRounds, deckLists }) => {
-		const eventId = await seedTournament({ synced, deckListsSynced });
+	])(
+		'$case',
+		async ({
+			synced,
+			deckListsSynced,
+			options,
+			steps,
+			refreshed,
+			advanced,
+			pairedRounds,
+			deckLists,
+		}) => {
+			const eventId = await seedTournament({ synced, deckListsSynced });
 
-		const result = await meleeSyncModule().updateFromMelee(requestEvent, eventId, options);
+			const result = await meleeSyncModule().updateFromMelee(requestEvent, eventId, options);
 
-		expect(result.steps).toEqual(steps);
-		expect(result.refreshedRound?.name ?? null).toBe(refreshed);
-		expect(result.advancedRound?.name ?? null).toBe(advanced);
-		expect(await storedIn(eventId)).toMatchObject({ pairedRounds, deckLists });
-	});
+			expect(result.steps).toEqual(steps);
+			expect(result.refreshedRound?.name ?? null).toBe(refreshed);
+			expect(result.advancedRound?.name ?? null).toBe(advanced);
+			expect(await storedIn(eventId)).toMatchObject({ pairedRounds, deckLists });
+		},
+	);
 
 	// Each stage is durable on its own, so a command that has lost the Event
 	// stops at the next checkpoint rather than write over its new owner.
-	it('stops before its next stage once another command holds the Event, leaving that command\'s lease alone', async () => {
+	it("stops before its next stage once another command holds the Event, leaving that command's lease alone", async () => {
 		const eventId = await createEvent();
 		publishMessage.mockImplementation(async (_eventId: number, type: string) => {
 			if (type === 'melee:structureSynced')
-				await db.update(schema.events).set({ meleeSyncLeaseToken: 'another-command' }).where(eq(schema.events.id, eventId));
+				await db
+					.update(schema.events)
+					.set({ meleeSyncLeaseToken: 'another-command' })
+					.where(eq(schema.events.id, eventId));
 		});
 
-		await expect(meleeSyncModule().updateFromMelee(requestEvent, eventId)).rejects.toThrow('lease ownership was lost');
+		await expect(meleeSyncModule().updateFromMelee(requestEvent, eventId)).rejects.toThrow(
+			'lease ownership was lost',
+		);
 
 		expect(await storedIn(eventId)).toEqual({
 			phases: ['Swiss'],
@@ -400,7 +451,10 @@ describe('update from Melee', () => {
 			pairedRounds: [],
 			deckLists: [],
 		});
-		expect(await readEvent(eventId)).toMatchObject({ meleeSyncLeaseToken: 'another-command', lastSyncError: null });
+		expect(await readEvent(eventId)).toMatchObject({
+			meleeSyncLeaseToken: 'another-command',
+			lastSyncError: null,
+		});
 	});
 });
 
@@ -434,43 +488,48 @@ describe('syncing Event structure', () => {
 					Name: 'Swiss',
 					FormatId: 'modern',
 					SortOrder: 0,
-					Rounds: [
-						{ ID: 101, Name: 'Round 1', SortOrder: 0 },
-					],
+					Rounds: [{ ID: 101, Name: 'Round 1', SortOrder: 0 }],
 				},
 				{
 					ID: 11,
 					Name: 'Top Cut',
 					FormatId: 'modern',
 					SortOrder: 1,
-					Rounds: [
-						{ ID: 101, Name: 'Quarterfinals', SortOrder: 0 },
-					],
+					Rounds: [{ ID: 101, Name: 'Quarterfinals', SortOrder: 0 }],
 				},
 			],
 			refusal: 'Duplicate Melee round external identity: 101',
 		},
-	])('refuses a tournament naming one $kind identity twice, storing none of its structure', async ({ phases, refusal }) => {
-		const eventId = await createEvent();
-		melee.fetchEvent.mockResolvedValue({ ...tournament, Phases: phases });
+	])(
+		'refuses a tournament naming one $kind identity twice, storing none of its structure',
+		async ({ phases, refusal }) => {
+			const eventId = await createEvent();
+			melee.fetchEvent.mockResolvedValue({ ...tournament, Phases: phases });
 
-		await expect(meleeSyncModule().syncEventStructure(requestEvent, eventId)).rejects.toThrow(refusal);
+			await expect(meleeSyncModule().syncEventStructure(requestEvent, eventId)).rejects.toThrow(
+				refusal,
+			);
 
-		expect(await storedIn(eventId)).toMatchObject({ phases: [], rounds: [] });
-		expect(announcedByMelee()).toEqual([]);
-	});
+			expect(await storedIn(eventId)).toMatchObject({ phases: [], rounds: [] });
+			expect(announcedByMelee()).toEqual([]);
+		},
+	);
 
-	it('names the provider\'s refusal in the log when its notification cannot be delivered', async () => {
+	it("names the provider's refusal in the log when its notification cannot be delivered", async () => {
 		const eventId = await createEvent();
 		publishMessage.mockImplementation(async (_eventId: number, type: string) => {
-			if (type === 'melee:structureSynced')
-				throw providerRefusal();
+			if (type === 'melee:structureSynced') throw providerRefusal();
 		});
 		const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		const result = await meleeSyncModule().syncEventStructure(requestEvent, eventId);
 
-		const [line] = lastCallTo(warned, ([logged]) => typeof logged === 'string' && logged.includes('"message":"melee_sync_realtime_publish_failed"'));
+		const [line] = lastCallTo(
+			warned,
+			([logged]) =>
+				typeof logged === 'string' &&
+				logged.includes('"message":"melee_sync_realtime_publish_failed"'),
+		);
 		expect(JSON.parse(line as string)).toEqual({
 			message: 'melee_sync_realtime_publish_failed',
 			messageType: 'melee:structureSynced',
@@ -481,7 +540,9 @@ describe('syncing Event structure', () => {
 		});
 		expect(result).toMatchObject({
 			success: true,
-			warnings: ['Data was saved, but realtime notification "melee:structureSynced" could not be delivered'],
+			warnings: [
+				'Data was saved, but realtime notification "melee:structureSynced" could not be delivered',
+			],
 		});
 		expect(await storedIn(eventId)).toMatchObject({
 			phases: ['Swiss'],
@@ -490,38 +551,54 @@ describe('syncing Event structure', () => {
 	});
 });
 
-describe('syncing a Round\'s Matches', () => {
+describe("syncing a Round's Matches", () => {
 	it.each([
-		{ case: 'another Event\'s Round', round: 'foreign', statusCode: 404 },
+		{ case: "another Event's Round", round: 'foreign', statusCode: 404 },
 		{ case: 'a manual Round', round: 'manual', statusCode: 400 },
-	] as const)('refuses $case with a $statusCode, without asking Melee for its Matches', async ({ round, statusCode }) => {
-		const eventId = await createEvent();
-		const insertRound = async (ownerId: number, externalId: string | null) => {
-			const [phase] = await db.insert(schema.phases).values({ eventId: ownerId, name: 'Swiss' }).returning();
-			const [stored] = await db.insert(schema.rounds).values({
-				eventId: ownerId,
-				phaseId: phase!.id,
-				name: 'Round 1',
-				roundNumber: 1,
-				externalId,
-				externalSource: externalId ? 'melee' : 'manual',
-			}).returning();
-			return stored!.id;
-		};
-		const rounds = {
-			foreign: await insertRound(await createEvent(), '101'),
-			manual: await insertRound(eventId, null),
-		};
-		const [manualMatch] = await db.insert(schema.matches).values({ eventId, roundId: rounds.manual, tableNumber: 1 }).returning();
+	] as const)(
+		'refuses $case with a $statusCode, without asking Melee for its Matches',
+		async ({ round, statusCode }) => {
+			const eventId = await createEvent();
+			const insertRound = async (ownerId: number, externalId: string | null) => {
+				const [phase] = await db
+					.insert(schema.phases)
+					.values({ eventId: ownerId, name: 'Swiss' })
+					.returning();
+				const [stored] = await db
+					.insert(schema.rounds)
+					.values({
+						eventId: ownerId,
+						phaseId: phase!.id,
+						name: 'Round 1',
+						roundNumber: 1,
+						externalId,
+						externalSource: externalId ? 'melee' : 'manual',
+					})
+					.returning();
+				return stored!.id;
+			};
+			const rounds = {
+				foreign: await insertRound(await createEvent(), '101'),
+				manual: await insertRound(eventId, null),
+			};
+			const [manualMatch] = await db
+				.insert(schema.matches)
+				.values({ eventId, roundId: rounds.manual, tableNumber: 1 })
+				.returning();
 
-		await expect(meleeSyncModule().syncRoundMatches(requestEvent, eventId, rounds[round])).rejects.toMatchObject({ statusCode });
+			await expect(
+				meleeSyncModule().syncRoundMatches(requestEvent, eventId, rounds[round]),
+			).rejects.toMatchObject({ statusCode });
 
-		expect(melee.fetchMatchesByRound).not.toHaveBeenCalled();
-		expect(await db.select().from(schema.matches).where(eq(schema.matches.roundId, rounds.manual)))
-			.toEqual([manualMatch]);
-		expect(await db.select().from(schema.matches).where(eq(schema.matches.roundId, rounds.foreign)))
-			.toEqual([]);
-	});
+			expect(melee.fetchMatchesByRound).not.toHaveBeenCalled();
+			expect(
+				await db.select().from(schema.matches).where(eq(schema.matches.roundId, rounds.manual)),
+			).toEqual([manualMatch]);
+			expect(
+				await db.select().from(schema.matches).where(eq(schema.matches.roundId, rounds.foreign)),
+			).toEqual([]);
+		},
+	);
 });
 
 // A sync's own write has committed by the time its Reverse Sync runs, so a
@@ -539,14 +616,23 @@ describe('a sync whose Reverse Sync loses a Session race', () => {
 		},
 	])('$sync still succeeds, leaving the Slot for the next pass', async ({ run }) => {
 		const eventId = await seedTournament({ synced: [], deckListsSynced: true });
-		const [seated] = await db.select().from(schema.players).where(eq(schema.players.eventId, eventId)).orderBy(schema.players.id);
-		const [slot] = await db.insert(schema.featureMatches).values({
-			eventId,
-			tableNumber: 1,
-			player1Id: seated!.id,
-			player1Data: { name: 'Old Name' },
-		}).returning();
-		failNextCorrection = Object.assign(new Error('Feature match session has advanced'), { statusCode: 409 });
+		const [seated] = await db
+			.select()
+			.from(schema.players)
+			.where(eq(schema.players.eventId, eventId))
+			.orderBy(schema.players.id);
+		const [slot] = await db
+			.insert(schema.featureMatches)
+			.values({
+				eventId,
+				tableNumber: 1,
+				player1Id: seated!.id,
+				player1Data: { name: 'Old Name' },
+			})
+			.returning();
+		failNextCorrection = Object.assign(new Error('Feature match session has advanced'), {
+			statusCode: 409,
+		});
 		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		const result = await run(eventId);
@@ -555,10 +641,16 @@ describe('a sync whose Reverse Sync loses a Session race', () => {
 			success: true,
 			results: { matchesUpdated: 0 },
 		});
-		expect(logged).toHaveBeenCalledWith(expect.stringContaining('feature_match_reverse_sync_conflict'));
-		expect((await db.query.featureMatches.findFirst({
-			where: eq(schema.featureMatches.id, slot!.id),
-		}))?.player1Data).toEqual({ name: 'Old Name' });
+		expect(logged).toHaveBeenCalledWith(
+			expect.stringContaining('feature_match_reverse_sync_conflict'),
+		);
+		expect(
+			(
+				await db.query.featureMatches.findFirst({
+					where: eq(schema.featureMatches.id, slot!.id),
+				})
+			)?.player1Data,
+		).toEqual({ name: 'Old Name' });
 		expect((await readEvent(eventId)).lastSyncError).toBeNull();
 	});
 });
@@ -573,39 +665,51 @@ describe('a command that completes', () => {
 	const unrecognisedGame = { ...tournament, Game: 'Some Future Game' };
 
 	// Setup of an unrecognised game is `initial Setup`'s, above.
-	it.each<{ command: string; upstream?: object; run: (eventId: number) => Promise<unknown>; records: readonly (typeof SYNC_TIMES)[number][] }>([
+	it.each<{
+		command: string;
+		upstream?: object;
+		run: (eventId: number) => Promise<unknown>;
+		records: readonly (typeof SYNC_TIMES)[number][];
+	}>([
 		{
 			command: 'initial Setup',
-			run: eventId => meleeSyncModule().runInitialSetup(requestEvent, eventId),
+			run: (eventId) => meleeSyncModule().runInitialSetup(requestEvent, eventId),
 			records: SYNC_TIMES,
 		},
 		{
 			command: 'an update that imports Deck Lists',
-			run: eventId => meleeSyncModule().updateFromMelee(requestEvent, eventId),
+			run: (eventId) => meleeSyncModule().updateFromMelee(requestEvent, eventId),
 			records: ['lastEventSyncedAt', 'lastPlayersSyncedAt', 'lastDecklistsSyncedAt'],
 		},
 		{
 			command: 'an update of an unrecognised game, which imports no Deck Lists',
 			upstream: unrecognisedGame,
-			run: eventId => meleeSyncModule().updateFromMelee(requestEvent, eventId, { advanceRound: false }),
+			run: (eventId) =>
+				meleeSyncModule().updateFromMelee(requestEvent, eventId, { advanceRound: false }),
 			records: ['lastEventSyncedAt', 'lastPlayersSyncedAt'],
 		},
 		{
 			command: 'a Deck List sync on its own, which never completes setup',
-			run: eventId => meleeSyncModule().syncDeckLists(requestEvent, eventId),
+			run: (eventId) => meleeSyncModule().syncDeckLists(requestEvent, eventId),
 			records: ['lastDecklistsSyncedAt'],
 		},
-	])('$command records its own sync times, clears the last failure and gives the Event back', async ({ upstream, run, records }) => {
-		const eventId = await createEvent({ lastSyncError: 'An earlier sync failed' });
-		if (upstream)
-			melee.fetchEvent.mockResolvedValue(upstream);
+	])(
+		'$command records its own sync times, clears the last failure and gives the Event back',
+		async ({ upstream, run, records }) => {
+			const eventId = await createEvent({ lastSyncError: 'An earlier sync failed' });
+			if (upstream) melee.fetchEvent.mockResolvedValue(upstream);
 
-		await run(eventId);
+			await run(eventId);
 
-		const event = await readEvent(eventId);
-		expect(SYNC_TIMES.filter(time => event[time] !== null)).toEqual(records);
-		expect(event).toMatchObject({ lastSyncError: null, meleeSyncLeaseToken: null, meleeSyncLeaseCommand: null });
-	});
+			const event = await readEvent(eventId);
+			expect(SYNC_TIMES.filter((time) => event[time] !== null)).toEqual(records);
+			expect(event).toMatchObject({
+				lastSyncError: null,
+				meleeSyncLeaseToken: null,
+				meleeSyncLeaseCommand: null,
+			});
+		},
+	);
 
 	// A configuration save holds the same lease, so what a command reads under it cannot change beneath it.
 	it('reads the tournament to sync only once it holds the Event, so a configuration saved just before is the one it syncs', async () => {
@@ -613,9 +717,7 @@ describe('a command that completes', () => {
 		const execute = harness.client.execute.bind(harness.client);
 		let leaseTaken = false;
 		vi.spyOn(harness.client, 'execute').mockImplementation((async (statement: unknown) => {
-			const sql = typeof statement === 'string'
-				? statement
-				: (statement as { sql: string }).sql;
+			const sql = typeof statement === 'string' ? statement : (statement as { sql: string }).sql;
 			if (!leaseTaken && /update "events" set "melee_sync_lease_token"/i.test(sql)) {
 				leaseTaken = true;
 				await execute({
@@ -629,8 +731,6 @@ describe('a command that completes', () => {
 		await meleeSyncModule().syncPlayers(requestEvent, eventId);
 
 		expect(leaseTaken).toBe(true);
-		expect([
-			...new Set(tournamentsRead),
-		]).toEqual(['melee-2']);
+		expect([...new Set(tournamentsRead)]).toEqual(['melee-2']);
 	});
 });

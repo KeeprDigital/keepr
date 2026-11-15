@@ -9,12 +9,11 @@ const { mockRuntimeConfig, mockRequestHeader } = vi.hoisted(() => ({
 
 vi.stubGlobal('useRuntimeConfig', mockRuntimeConfig);
 vi.stubGlobal('getRequestHeader', mockRequestHeader);
-vi.stubGlobal('createError', (input: {
-	statusCode: number;
-	statusMessage?: string;
-	message: string;
-	cause?: unknown;
-}) => Object.assign(new Error(input.message), input));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage?: string; message: string; cause?: unknown }) =>
+		Object.assign(new Error(input.message), input),
+);
 
 async function requireAdministrator() {
 	return (await import('~~/server/modules/graphics-administrator')).requireGraphicsAdministrator;

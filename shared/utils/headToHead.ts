@@ -1,5 +1,10 @@
 import type { PlayerGameData } from '../types/game';
-import type { HeadToHeadOutcome, ScreenOutputHeadToHeadEarlierMatch, ScreenOutputHeadToHeadPlayer, ScreenOutputHeadToHeadResponse } from '../types/screenOutputReads';
+import type {
+	HeadToHeadOutcome,
+	ScreenOutputHeadToHeadEarlierMatch,
+	ScreenOutputHeadToHeadPlayer,
+	ScreenOutputHeadToHeadResponse,
+} from '../types/screenOutputReads';
 import type { MatchResultFacts, MatchSideOutcome } from './matchFromPlayerSide';
 import { resolvePlayerDeckIdentity } from './gameData';
 import { formatGameScore, readMatchFromPlayerSide } from './matchFromPlayerSide';
@@ -14,7 +19,12 @@ interface RecordFacts {
 
 /** What a Head-to-Head reads of one Player. */
 export interface HeadToHeadPlayerFacts {
-	player: RecordFacts & { id: number; name: string; pronouns: string | null; gameData: PlayerGameData | null };
+	player: RecordFacts & {
+		id: number;
+		name: string;
+		pronouns: string | null;
+		gameData: PlayerGameData | null;
+	};
 	/** Their assigned Archetype, if any. */
 	archetype: { name: string; colors: string | null } | null;
 	/** Their Round Standings in the latest Round holding any for them; `null` when none does. */
@@ -47,10 +57,12 @@ function holdsRecord({ wins, losses }: RecordFacts): boolean {
 	return wins != null || losses != null;
 }
 
-function projectPlayer({ player, archetype, latestStanding }: HeadToHeadPlayerFacts): ScreenOutputHeadToHeadPlayer {
-	const record = holdsRecord(player)
-		? player
-		: latestStanding ?? player;
+function projectPlayer({
+	player,
+	archetype,
+	latestStanding,
+}: HeadToHeadPlayerFacts): ScreenOutputHeadToHeadPlayer {
+	const record = holdsRecord(player) ? player : (latestStanding ?? player);
 	const deck = resolvePlayerDeckIdentity(archetype, player.gameData);
 	return {
 		id: player.id,
@@ -66,7 +78,10 @@ function projectPlayer({ player, archetype, latestStanding }: HeadToHeadPlayerFa
 }
 
 function seatsBoth(match: HeadToHeadMatchFacts, a: number, b: number): boolean {
-	return (match.player1Id === a && match.player2Id === b) || (match.player1Id === b && match.player2Id === a);
+	return (
+		(match.player1Id === a && match.player2Id === b) ||
+		(match.player1Id === b && match.player2Id === a)
+	);
 }
 
 /** A reported Match read from the first Player's side. A bye never seats both Players. */
@@ -77,10 +92,12 @@ const OUTCOME_FROM_FIRST_SIDE = {
 } as const satisfies Partial<Record<MatchSideOutcome, HeadToHeadOutcome>>;
 
 function byPlayOrder(a: HeadToHeadMatchFacts, b: HeadToHeadMatchFacts): number {
-	return a.phaseSortOrder - b.phaseSortOrder
-		|| a.roundNumber - b.roundNumber
-		|| a.sortOrder - b.sortOrder
-		|| a.id - b.id;
+	return (
+		a.phaseSortOrder - b.phaseSortOrder ||
+		a.roundNumber - b.roundNumber ||
+		a.sortOrder - b.sortOrder ||
+		a.id - b.id
+	);
 }
 
 /**
@@ -88,15 +105,18 @@ function byPlayOrder(a: HeadToHeadMatchFacts, b: HeadToHeadMatchFacts): number {
  * from the first Player's side. A Match not yet reported, and the one the two
  * are about to play, are not earlier Matches.
  */
-function projectEarlierMatches(facts: HeadToHeadFacts, player1Id: number, player2Id: number): ScreenOutputHeadToHeadEarlierMatch[] {
+function projectEarlierMatches(
+	facts: HeadToHeadFacts,
+	player1Id: number,
+	player2Id: number,
+): ScreenOutputHeadToHeadEarlierMatch[] {
 	return facts.matches
-		.filter(match => match.id !== facts.currentMatchId && seatsBoth(match, player1Id, player2Id))
+		.filter((match) => match.id !== facts.currentMatchId && seatsBoth(match, player1Id, player2Id))
 		.sort(byPlayOrder)
 		.flatMap((match) => {
 			const side = readMatchFromPlayerSide(match, player1Id);
 			const gameScore = formatGameScore(side);
-			if (side.outcome === 'pending' || side.outcome === 'bye' || gameScore === null)
-				return [];
+			if (side.outcome === 'pending' || side.outcome === 'bye' || gameScore === null) return [];
 			return [
 				{
 					matchId: match.id,
@@ -120,17 +140,11 @@ function projectEarlierMatches(facts: HeadToHeadFacts, player1Id: number, player
  * of their own shows their latest Round Standings.
  */
 export function projectHeadToHead(facts: HeadToHeadFacts): ScreenOutputHeadToHeadResponse {
-	const player1 = facts.player1
-		? projectPlayer(facts.player1)
-		: null;
-	const player2 = facts.player2
-		? projectPlayer(facts.player2)
-		: null;
+	const player1 = facts.player1 ? projectPlayer(facts.player1) : null;
+	const player2 = facts.player2 ? projectPlayer(facts.player2) : null;
 	return {
 		player1,
 		player2,
-		earlierMatches: player1 && player2
-			? projectEarlierMatches(facts, player1.id, player2.id)
-			: [],
+		earlierMatches: player1 && player2 ? projectEarlierMatches(facts, player1.id, player2.id) : [],
 	};
 }

@@ -13,7 +13,8 @@ interface MeleeCredentialRuntimeConfig {
 
 const KEY_VERSION_PATTERN = /^\w[\w.-]{0,63}$/;
 
-const PREVIOUS_KEYS_INVALID = 'Melee credential previous encryption keys must be a JSON object of key versions to base64 keys';
+const PREVIOUS_KEYS_INVALID =
+	'Melee credential previous encryption keys must be a JSON object of key versions to base64 keys';
 
 /**
  * A configured value as the operator wrote it, whatever runtimeConfig made of it.
@@ -35,12 +36,9 @@ const PREVIOUS_KEYS_INVALID = 'Melee credential previous encryption keys must be
  * refused by name where they matter.
  */
 function optionalConfigString(value: unknown): string {
-	if (typeof value === 'string')
-		return value.trim();
+	if (typeof value === 'string') return value.trim();
 
-	return typeof value === 'number' && Number.isFinite(value)
-		? String(value)
-		: '';
+	return typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 }
 
 /**
@@ -59,35 +57,39 @@ function optionalConfigString(value: unknown): string {
  * rotation loses data quietly.
  */
 function previousKeysSource(value: unknown): unknown {
-	if (value === undefined || value === null)
-		return null;
+	if (value === undefined || value === null) return null;
 
-	if (typeof value === 'object')
-		return value;
+	if (typeof value === 'object') return value;
 
 	if (typeof value === 'string') {
 		const configured = value.trim();
-		if (!configured)
-			return null;
+		if (!configured) return null;
 
 		try {
 			return JSON.parse(configured);
-		}
-		catch {
-			throw new MeleeCredentialCryptoError('MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID', PREVIOUS_KEYS_INVALID);
+		} catch {
+			throw new MeleeCredentialCryptoError(
+				'MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID',
+				PREVIOUS_KEYS_INVALID,
+			);
 		}
 	}
 
-	throw new MeleeCredentialCryptoError('MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID', PREVIOUS_KEYS_INVALID);
+	throw new MeleeCredentialCryptoError(
+		'MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID',
+		PREVIOUS_KEYS_INVALID,
+	);
 }
 
 function parsePreviousKeys(value: unknown): Map<string, string> {
 	const parsed = previousKeysSource(value);
-	if (parsed === null)
-		return new Map();
+	if (parsed === null) return new Map();
 
 	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-		throw new MeleeCredentialCryptoError('MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID', PREVIOUS_KEYS_INVALID);
+		throw new MeleeCredentialCryptoError(
+			'MELEE_CREDENTIAL_PREVIOUS_KEYS_INVALID',
+			PREVIOUS_KEYS_INVALID,
+		);
 	}
 
 	const keys = new Map<string, string>();
@@ -110,8 +112,7 @@ export function getMeleeCredentialKeyring(
 	const activeKey = optionalConfigString(config.meleeCredentialEncryptionKey);
 	const keys = parsePreviousKeys(config.meleeCredentialEncryptionPreviousKeys);
 
-	if (activeKeyVersion && activeKey)
-		keys.set(activeKeyVersion, activeKey);
+	if (activeKeyVersion && activeKey) keys.set(activeKeyVersion, activeKey);
 
 	return { activeKeyVersion, keys };
 }
@@ -158,12 +159,9 @@ const KEYRING_CONFIGURATION_FAULT_SENTENCES: Record<string, string> = {
  * cause that crossed a module-registry boundary still classifies.
  */
 export function meleeKeyringConfigurationFaultSentence(cause: unknown): string | null {
-	if (!cause || typeof cause !== 'object' || !('code' in cause))
-		return null;
+	if (!cause || typeof cause !== 'object' || !('code' in cause)) return null;
 	const code = (cause as { code: unknown }).code;
-	return typeof code === 'string'
-		? KEYRING_CONFIGURATION_FAULT_SENTENCES[code] ?? null
-		: null;
+	return typeof code === 'string' ? (KEYRING_CONFIGURATION_FAULT_SENTENCES[code] ?? null) : null;
 }
 
 /** Encrypt a newly supplied client secret before it crosses the persistence boundary. */

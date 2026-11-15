@@ -65,7 +65,7 @@ describe('useGraphicsAuthorship', () => {
 	 * own message is all there is and is the right thing to show. Reading the sentence
 	 * first must not disturb that.
 	 */
-	it('keeps a client-side failure\'s own message, and calls nobody signed out for it', () => {
+	it("keeps a client-side failure's own message, and calls nobody signed out for it", () => {
 		const { describeFailure, signedOut } = useGraphicsAuthorship();
 
 		const said = describeFailure(
@@ -77,7 +77,7 @@ describe('useGraphicsAuthorship', () => {
 		expect(signedOut.value).toBe(false);
 	});
 
-	it('falls back to the caller\'s wording for a throw that is not an Error', () => {
+	it("falls back to the caller's wording for a throw that is not an Error", () => {
 		const { describeFailure } = useGraphicsAuthorship();
 
 		expect(describeFailure('not an error', 'Cancellation failed.')).toBe('Cancellation failed.');

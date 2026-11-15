@@ -2,7 +2,11 @@ import type { MaybeRefOrGetter } from 'vue';
 import type { Seat } from '~~/shared/types/enums';
 import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import type { FeatureMatchStateUpdate } from '~/modules/feature-match-session/client';
-import { eventKind, getFeatureMatchStateTracking, getStartingHandSize } from '~~/shared/config/games';
+import {
+	eventKind,
+	getFeatureMatchStateTracking,
+	getStartingHandSize,
+} from '~~/shared/config/games';
 import { applyCommanderTurnStep, filledSeats } from '~~/shared/modules/feature-match-session';
 import { PLAYER_SIDE_VALUES } from '~~/shared/types/enums';
 import { toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
@@ -27,25 +31,24 @@ export function useFeatureMatchGameMode(
 	const mid = () => toValue(matchId);
 	const eid = () => eventStore.eventId;
 
-	const game = computed(() => (eventStore.displayEvent?.game ?? 'mtg'));
+	const game = computed(() => eventStore.displayEvent?.game ?? 'mtg');
 	const defaults = computed(() => toFeatureMatchDefaults(eventStore.displayEvent));
 
 	// ── Feature flags from the Card Game and event config ──
 
 	// What the Event tracks, by its Card Game and Variant, bounds what its toggles can turn on.
-	const kind = computed(() => eventKind({ game: game.value, variant: eventStore.displayEvent?.variant }));
+	const kind = computed(() =>
+		eventKind({ game: game.value, variant: eventStore.displayEvent?.variant }),
+	);
 	const tracks = computed(() => getFeatureMatchStateTracking(kind.value));
 	/** A Commander Event's Session plays one game across up to four Seats (ADR-0087). */
 	const isCommander = computed(() => kind.value === 'mtg-commander');
 
 	/** The Seats in the game: the pair, or a Commander Slot's filled Seats. */
 	const seatsInGame = computed<readonly Seat[]>(() => {
-		if (!isCommander.value)
-			return PLAYER_SIDE_VALUES;
+		if (!isCommander.value) return PLAYER_SIDE_VALUES;
 		const session = followedFeatureMatchSession(mid(), featureMatchStateStore);
-		return session
-			? filledSeats(session.sourceSnapshot)
-			: [];
+		return session ? filledSeats(session.sourceSnapshot) : [];
 	});
 
 	const turnTrackingEnabled = computed(() => defaults.value.turnTrackingEnabled);
@@ -54,8 +57,12 @@ export function useFeatureMatchGameMode(
 	const counterTrackingEnabled = computed(() => tracks.value.counters);
 	const overtimeTrackingEnabled = computed(() => tracks.value.overtime);
 	const sideboardTrackingEnabled = computed(() => tracks.value.sideboard);
-	const extraTurnsEnabled = computed(() => tracks.value.overtime && defaults.value.extraTurnsEnabled);
-	const mulliganTrackingEnabled = computed(() => tracks.value.mulligan && defaults.value.mulliganTrackingEnabled);
+	const extraTurnsEnabled = computed(
+		() => tracks.value.overtime && defaults.value.extraTurnsEnabled,
+	);
+	const mulliganTrackingEnabled = computed(
+		() => tracks.value.mulligan && defaults.value.mulliganTrackingEnabled,
+	);
 
 	// Display feature flags (event-level toggles for optional fields)
 	const pronounsEnabled = computed(() => eventStore.displayEvent?.pronounsEnabled ?? true);
@@ -65,55 +72,57 @@ export function useFeatureMatchGameMode(
 
 	// ── Mulligan phase ──
 
-	const inMulliganPhase = computed(() =>
-		mulliganTrackingEnabled.value
-		&& (turnTrackingEnabled.value || activePlayerTrackingEnabled.value)
-		&& matchState.value != null
-		&& matchState.value.turnNumber < 1,
+	const inMulliganPhase = computed(
+		() =>
+			mulliganTrackingEnabled.value &&
+			(turnTrackingEnabled.value || activePlayerTrackingEnabled.value) &&
+			matchState.value != null &&
+			matchState.value.turnNumber < 1,
 	);
 
 	const startingHandSize = computed(() => getStartingHandSize(game.value));
 
 	// ── Turn counter ──
 
-	const needsFirstPlayerSelection = computed(() =>
-		activePlayerTrackingEnabled.value && matchState.value && !matchState.value.firstPlayer,
+	const needsFirstPlayerSelection = computed(
+		() => activePlayerTrackingEnabled.value && matchState.value && !matchState.value.firstPlayer,
 	);
 
 	const turnCounterMode = computed<'counter' | 'selection'>(() =>
 		needsFirstPlayerSelection.value ? 'selection' : 'counter',
 	);
 
-	const showTurnCounter = computed(() =>
-		(turnTrackingEnabled.value || activePlayerTrackingEnabled.value) && matchState.value,
+	const showTurnCounter = computed(
+		() => (turnTrackingEnabled.value || activePlayerTrackingEnabled.value) && matchState.value,
 	);
 
 	const turnCounterLabel = computed(() => {
-		if (needsFirstPlayerSelection.value)
-			return undefined;
-		if (turnTrackingEnabled.value)
-			return `Turn ${matchState.value?.turnNumber ?? 0}`;
+		if (needsFirstPlayerSelection.value) return undefined;
+		if (turnTrackingEnabled.value) return `Turn ${matchState.value?.turnNumber ?? 0}`;
 		return 'Active';
 	});
 
 	const stepBackDisabled = computed(() => {
 		const state = matchState.value;
-		if (!state?.firstPlayer || !state.activePlayer)
-			return true;
+		if (!state?.firstPlayer || !state.activePlayer) return true;
 		// A Commander game's first turn may start past the Seat that went first, once that Seat is out.
-		const snapshot = isCommander.value && followedFeatureMatchSession(mid(), featureMatchStateStore)?.sourceSnapshot;
-		if (snapshot)
-			return applyCommanderTurnStep(state, snapshot, -1) === state;
+		const snapshot =
+			isCommander.value &&
+			followedFeatureMatchSession(mid(), featureMatchStateStore)?.sourceSnapshot;
+		if (snapshot) return applyCommanderTurnStep(state, snapshot, -1) === state;
 		return state.activePlayer === state.firstPlayer && state.turnNumber <= 1;
 	});
 
 	const turnHalf = computed<1 | 2 | undefined>(() => {
 		// A Commander game's turn passes round the table, not back and forth.
-		if (isCommander.value || !activePlayerTrackingEnabled.value || !matchState.value?.activePlayer || !matchState.value.firstPlayer)
+		if (
+			isCommander.value ||
+			!activePlayerTrackingEnabled.value ||
+			!matchState.value?.activePlayer ||
+			!matchState.value.firstPlayer
+		)
 			return undefined;
-		return matchState.value.activePlayer === matchState.value.firstPlayer
-			? 1
-			: 2;
+		return matchState.value.activePlayer === matchState.value.firstPlayer ? 1 : 2;
 	});
 
 	const extraTurnsTotal = computed(() => defaults.value.extraTurns);
@@ -125,25 +134,29 @@ export function useFeatureMatchGameMode(
 	 * Whether a countdown has run out, by its projection on server time
 	 * (ADR-0088): answered anew as a running one reaches its end.
 	 */
-	const isClockExpired = useClockProjection((serverTime) => {
-		const stored = matchState.value?.clock ?? null;
-		// A countdown's time remaining alone is read, so no Untimed Label is passed.
-		const { remainingMs, isRunning } = projectFeatureMatchClock(stored && readStoredClock(stored), serverTime, '');
-		const runsOut = isRunning && remainingMs != null && remainingMs > 0;
-		return {
-			value: remainingMs === 0,
-			nextChangeInMs: runsOut
-				? remainingMs
-				: null,
-		};
-	}, { whileServerTimeUnknown: 'device-time' });
+	const isClockExpired = useClockProjection(
+		(serverTime) => {
+			const stored = matchState.value?.clock ?? null;
+			// A countdown's time remaining alone is read, so no Untimed Label is passed.
+			const { remainingMs, isRunning } = projectFeatureMatchClock(
+				stored && readStoredClock(stored),
+				serverTime,
+				'',
+			);
+			const runsOut = isRunning && remainingMs != null && remainingMs > 0;
+			return {
+				value: remainingMs === 0,
+				nextChangeInMs: runsOut ? remainingMs : null,
+			};
+		},
+		{ whileServerTimeUnknown: 'device-time' },
+	);
 
 	// ── Auto-start overtime ──
 
 	watch(isClockExpired, (expired) => {
 		if (expired && extraTurnsEnabled.value && !matchState.value?.overtime) {
-			if (!eid())
-				return;
+			if (!eid()) return;
 			void featureMatchStateStore.startOvertime(eid()!, mid(), extraTurnsTotal.value);
 		}
 	});
@@ -151,8 +164,7 @@ export function useFeatureMatchGameMode(
 	// ── Action handlers ──
 
 	async function autoCommitCardsKept() {
-		if (!eid() || !matchState.value)
-			return;
+		if (!eid() || !matchState.value) return;
 		const state = matchState.value;
 		for (const seat of seatsInGame.value) {
 			if (state[seat] && state[seat].cardsKept === undefined)
@@ -161,14 +173,12 @@ export function useFeatureMatchGameMode(
 	}
 
 	async function handleCardsKeptUpdate(player: Seat, value: number) {
-		if (!eid())
-			return;
+		if (!eid()) return;
 		await featureMatchStateStore.setCardsKept(eid()!, mid(), player, value);
 	}
 
 	async function handleTurnChange(delta: number) {
-		if (!eid() || !matchState.value)
-			return;
+		if (!eid() || !matchState.value) return;
 
 		if (inMulliganPhase.value && delta === 1) {
 			await autoCommitCardsKept();
@@ -176,16 +186,14 @@ export function useFeatureMatchGameMode(
 
 		if (activePlayerTrackingEnabled.value && matchState.value.firstPlayer) {
 			await featureMatchStateStore.stepTurn(eid()!, mid(), delta as 1 | -1);
-		}
-		else {
+		} else {
 			const newTurn = Math.max(0, matchState.value.turnNumber + delta);
 			await featureMatchStateStore.setTurnNumber(eid()!, mid(), newTurn);
 		}
 	}
 
 	async function handleSelectFirstPlayer(player: Seat) {
-		if (!eid())
-			return;
+		if (!eid()) return;
 		if (inMulliganPhase.value) {
 			await autoCommitCardsKept();
 		}
@@ -193,26 +201,22 @@ export function useFeatureMatchGameMode(
 	}
 
 	async function handleChangeFirstPlayer() {
-		if (!eid())
-			return;
+		if (!eid()) return;
 		await featureMatchStateStore.changeFirstPlayer(eid()!, mid());
 	}
 
 	async function handleNextOvertimeTurn() {
-		if (!eid())
-			return;
+		if (!eid()) return;
 		await featureMatchStateStore.nextOvertimeTurn(eid()!, mid());
 	}
 
 	async function handlePrevOvertimeTurn() {
-		if (!eid())
-			return;
+		if (!eid()) return;
 		await featureMatchStateStore.prevOvertimeTurn(eid()!, mid());
 	}
 
 	async function handleResetGame() {
-		if (!eid())
-			return;
+		if (!eid()) return;
 
 		const instance = confirmModal.open({
 			title: 'Reset Game',
@@ -231,12 +235,12 @@ export function useFeatureMatchGameMode(
 	}
 
 	async function handleResetMatch() {
-		if (!eid())
-			return;
+		if (!eid()) return;
 
 		const instance = confirmModal.open({
 			title: 'Reset Match',
-			message: 'Reset all game wins, life totals, counters, and turn tracking for the entire match?',
+			message:
+				'Reset all game wins, life totals, counters, and turn tracking for the entire match?',
 			description: 'This action cannot be undone.',
 			icon: 'i-lucide-rotate-ccw',
 			iconColor: 'text-error',
@@ -263,23 +267,20 @@ export function useFeatureMatchGameMode(
 	 * and says why it was refused.
 	 */
 	async function handleEditStateSave(update: FeatureMatchStateUpdate) {
-		if (!eid())
-			return;
+		if (!eid()) return;
 		editStateSaving.value = true;
 		try {
 			const result = await featureMatchStateStore.updateState(eid()!, mid(), update);
 			if (result) {
 				editStateOpen.value = false;
-			}
-			else {
+			} else {
 				toast.add({
 					title: 'Failed to update match state',
 					description: featureMatchStateStore.error ?? undefined,
 					color: 'error',
 				});
 			}
-		}
-		finally {
+		} finally {
 			editStateSaving.value = false;
 		}
 	}
@@ -290,8 +291,7 @@ export function useFeatureMatchGameMode(
 		const items: import('@nuxt/ui').DropdownMenuItem[][] = [];
 		// Its dialog and its first-player change edit the pair; a Commander
 		// game's state is all on its Seats' own controls.
-		if (isCommander.value)
-			return items;
+		if (isCommander.value) return items;
 		const actions: import('@nuxt/ui').DropdownMenuItem[] = [
 			{
 				label: 'Edit Match State…',

@@ -11,12 +11,17 @@ mockNuxtImport('$fetch', () => mockFetch);
 
 function mountCapability(eventId: Ref<number>, screenId: Ref<number | undefined>) {
 	let result!: ReturnType<typeof useScreenOutputAssetCapability>;
-	const wrapper = mount(defineComponent({
-		setup() {
-			result = useScreenOutputAssetCapability(() => eventId.value, () => screenId.value);
-			return () => h('div');
-		},
-	}));
+	const wrapper = mount(
+		defineComponent({
+			setup() {
+				result = useScreenOutputAssetCapability(
+					() => eventId.value,
+					() => screenId.value,
+				);
+				return () => h('div');
+			},
+		}),
+	);
 
 	return { wrapper, ...result };
 }

@@ -15,8 +15,7 @@ export function fitGraphicTextFontSize(
 	const max = Math.max(0, Math.floor(bounds.maxFontSize));
 	const min = Math.min(max, Math.max(0, Math.floor(bounds.minFontSize)));
 
-	if (fits(max))
-		return max;
+	if (fits(max)) return max;
 
 	let low = min;
 	let high = max;
@@ -27,8 +26,7 @@ export function fitGraphicTextFontSize(
 		if (fits(candidate)) {
 			best = candidate;
 			low = candidate + 1;
-		}
-		else {
+		} else {
 			high = candidate - 1;
 		}
 	}

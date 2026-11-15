@@ -16,8 +16,7 @@ const RESOLUTION_BASE = 'https://remote-media-url.invalid';
 function hasUnsafePathCharacter(path: string): boolean {
 	for (const character of path) {
 		const code = character.codePointAt(0)!;
-		if (code <= 0x20 || code === 0x7F || character === '\\')
-			return true;
+		if (code <= 0x20 || code === 0x7f || character === '\\') return true;
 	}
 	return false;
 }
@@ -29,27 +28,23 @@ function hasUnsafePathCharacter(path: string): boolean {
  * layer is refused rather than reasoned about.
  */
 function isAppServedMediaPath(value: string): boolean {
-	if (!value.startsWith('/') || hasUnsafePathCharacter(value))
-		return false;
+	if (!value.startsWith('/') || hasUnsafePathCharacter(value)) return false;
 	let resolved: URL;
 	let decoded: string;
 	try {
 		resolved = new URL(value, RESOLUTION_BASE);
 		decoded = decodeURIComponent(resolved.pathname);
-	}
-	catch {
+	} catch {
 		return false;
 	}
-	if (resolved.origin !== RESOLUTION_BASE)
-		return false;
-	if (hasUnsafePathCharacter(decoded) || decoded.includes('%'))
-		return false;
-	if (decoded.split('/').some(segment => segment === '.' || segment === '..'))
-		return false;
-	return APP_SERVED_MEDIA_PATH_PREFIXES.some(prefix =>
-		resolved.pathname.startsWith(prefix)
-		&& decoded.startsWith(prefix)
-		&& decoded.length > prefix.length,
+	if (resolved.origin !== RESOLUTION_BASE) return false;
+	if (hasUnsafePathCharacter(decoded) || decoded.includes('%')) return false;
+	if (decoded.split('/').some((segment) => segment === '.' || segment === '..')) return false;
+	return APP_SERVED_MEDIA_PATH_PREFIXES.some(
+		(prefix) =>
+			resolved.pathname.startsWith(prefix) &&
+			decoded.startsWith(prefix) &&
+			decoded.length > prefix.length,
 	);
 }
 
@@ -60,15 +55,11 @@ function isAppServedMediaPath(value: string): boolean {
  * route rather than another host.
  */
 function isHttpsUrl(value: string): boolean {
-	if (!/^https:\/\//i.test(value))
-		return false;
+	if (!/^https:\/\//i.test(value)) return false;
 	try {
 		const parsed = new URL(value);
-		return parsed.protocol === 'https:'
-			&& parsed.username === ''
-			&& parsed.password === '';
-	}
-	catch {
+		return parsed.protocol === 'https:' && parsed.username === '' && parsed.password === '';
+	} catch {
 		return false;
 	}
 }
@@ -82,8 +73,7 @@ function isHttpsUrl(value: string): boolean {
  * The schema and the editor share this one rule and its wording.
  */
 export function remoteMediaUrlRefusal(value: string): string | undefined {
-	if (value === '' || isHttpsUrl(value))
-		return undefined;
+	if (value === '' || isHttpsUrl(value)) return undefined;
 	if (value.startsWith('/') && !value.startsWith('//')) {
 		return isAppServedMediaPath(value)
 			? undefined

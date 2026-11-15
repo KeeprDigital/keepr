@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.stubGlobal('createError', (input: { statusCode: number; statusMessage: string; message: string }) => Object.assign(
-	new Error(input.message),
-	input,
-));
+vi.stubGlobal(
+	'createError',
+	(input: { statusCode: number; statusMessage: string; message: string }) =>
+		Object.assign(new Error(input.message), input),
+);
 
 const mockGetRequestHeader = vi.fn();
 const mockGetRequestWebStream = vi.fn();
@@ -12,7 +13,8 @@ vi.stubGlobal('getRequestHeader', mockGetRequestHeader);
 vi.stubGlobal('getRequestWebStream', mockGetRequestWebStream);
 vi.stubGlobal('readBody', mockReadBody);
 
-const { assertJsonPayloadSize, jsonPayloadByteLength, readJsonPayloadLimited } = await import('~~/server/utils/payloadLimits');
+const { assertJsonPayloadSize, jsonPayloadByteLength, readJsonPayloadLimited } =
+	await import('~~/server/utils/payloadLimits');
 
 describe('json payload limits', () => {
 	beforeEach(() => {
@@ -26,9 +28,15 @@ describe('json payload limits', () => {
 	});
 
 	it('throws a 413 for oversized persisted payloads', () => {
-		expect(() => assertJsonPayloadSize({
-			value: 'x'.repeat(100),
-		}, 16, 'Config')).toThrowError(
+		expect(() =>
+			assertJsonPayloadSize(
+				{
+					value: 'x'.repeat(100),
+				},
+				16,
+				'Config',
+			),
+		).toThrowError(
 			expect.objectContaining({ statusCode: 413, statusMessage: 'Payload Too Large' }),
 		);
 	});
@@ -44,13 +52,15 @@ describe('json payload limits', () => {
 
 	it('stops a chunked request when its streamed bytes cross the limit', async () => {
 		const encoder = new TextEncoder();
-		mockGetRequestWebStream.mockReturnValue(new ReadableStream({
-			start(controller) {
-				controller.enqueue(encoder.encode('{"value":"'));
-				controller.enqueue(encoder.encode('x'.repeat(64)));
-				controller.close();
-			},
-		}));
+		mockGetRequestWebStream.mockReturnValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue(encoder.encode('{"value":"'));
+					controller.enqueue(encoder.encode('x'.repeat(64)));
+					controller.close();
+				},
+			}),
+		);
 
 		await expect(readJsonPayloadLimited({} as any, 32, 'Config')).rejects.toMatchObject({
 			statusCode: 413,
@@ -59,17 +69,19 @@ describe('json payload limits', () => {
 
 	it('parses valid JSON from the bounded byte stream', async () => {
 		const encoder = new TextEncoder();
-		mockGetRequestWebStream.mockReturnValue(new ReadableStream({
-			start(controller) {
-				controller.enqueue(encoder.encode('{"label":"😀"}'));
-				controller.close();
-			},
-		}));
+		mockGetRequestWebStream.mockReturnValue(
+			new ReadableStream({
+				start(controller) {
+					controller.enqueue(encoder.encode('{"label":"😀"}'));
+					controller.close();
+				},
+			}),
+		);
 
 		await expect(readJsonPayloadLimited({} as any, 64, 'Config')).resolves.toEqual({ label: '😀' });
 	});
 
-	it('prefers the middleware bounded stream over H3\'s original web request body', async () => {
+	it("prefers the middleware bounded stream over H3's original web request body", async () => {
 		const encoder = new TextEncoder();
 		const boundedStream = new ReadableStream({
 			start(controller) {

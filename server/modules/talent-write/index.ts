@@ -29,25 +29,28 @@ interface UpdateTalentParams {
  * asked of the library first so the refusal names the slot, and again by the
  * statement that commits it.
  */
-async function assertPhotoSelectable(photo: GraphicAssetReference | null | undefined, graphicsAssets: GraphicsAssets) {
-	if (!photo)
-		return;
-	await assertGraphicsTemplateReferencesSelectable(graphicsAssets(), [
-		{ reference: photo, ownerSlot: TALENT_PHOTO_SLOT, kind: 'image' },
-	], 'Talent');
+async function assertPhotoSelectable(
+	photo: GraphicAssetReference | null | undefined,
+	graphicsAssets: GraphicsAssets,
+) {
+	if (!photo) return;
+	await assertGraphicsTemplateReferencesSelectable(
+		graphicsAssets(),
+		[{ reference: photo, ownerSlot: TALENT_PHOTO_SLOT, kind: 'image' }],
+		'Talent',
+	);
 }
 
 async function refusingStalePhoto<T>(write: () => Promise<T>): Promise<T> {
 	try {
 		return await write();
-	}
-	catch (error) {
-		if (!(error instanceof TalentPhotoReferenceConflict))
-			throw error;
+	} catch (error) {
+		if (!(error instanceof TalentPhotoReferenceConflict)) throw error;
 		throw createError({
 			statusCode: 409,
 			statusMessage: 'Conflict',
-			message: 'The Graphic Asset Revision this photo names stopped being selectable while it was being saved. Choose another, or restore the asset.',
+			message:
+				'The Graphic Asset Revision this photo names stopped being selectable while it was being saved. Choose another, or restore the asset.',
 		});
 	}
 }
@@ -62,7 +65,12 @@ export function talentWriteModule() {
 	const publication = eventDataPublicationModule();
 	const talents = talentService();
 
-	async function createTalent({ eventId, input, originConnectionId, graphicsAssets }: CreateTalentParams) {
+	async function createTalent({
+		eventId,
+		input,
+		originConnectionId,
+		graphicsAssets,
+	}: CreateTalentParams) {
 		await assertPhotoSelectable(input.photo, graphicsAssets);
 		const newTalent = await refusingStalePhoto(() => talents.create(eventId, input));
 
@@ -73,7 +81,13 @@ export function talentWriteModule() {
 		});
 	}
 
-	async function updateTalent({ eventId, talentId, input, originConnectionId, graphicsAssets }: UpdateTalentParams) {
+	async function updateTalent({
+		eventId,
+		talentId,
+		input,
+		originConnectionId,
+		graphicsAssets,
+	}: UpdateTalentParams) {
 		await assertPhotoSelectable(input.photo, graphicsAssets);
 		const updatedTalent = await refusingStalePhoto(() => talents.update(talentId, eventId, input));
 

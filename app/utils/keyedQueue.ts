@@ -19,15 +19,16 @@ export function createKeyedQueue<K = string>(): KeyedQueue<K> {
 		enqueue: <T>(key: K, action: () => Promise<T>): Promise<T> => {
 			const previous = chains.get(key);
 			const current = previous
-				? previous.catch(() => {
-					// The previous failure already rejected its own enqueue promise.
-					}).then(action)
+				? previous
+						.catch(() => {
+							// The previous failure already rejected its own enqueue promise.
+						})
+						.then(action)
 				: action();
 			chains.set(key, current);
 			current
 				.finally(() => {
-					if (chains.get(key) === current)
-						chains.delete(key);
+					if (chains.get(key) === current) chains.delete(key);
 				})
 				.catch(() => {
 					// Rejection is observed via the returned promise; keep the chain settled.

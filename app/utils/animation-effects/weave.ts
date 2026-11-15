@@ -86,18 +86,21 @@ export default function createWeaveEffect(
 	host: HTMLElement,
 	params: AnimationEffectParams<'weave'>,
 ): AnimationEffectInstance<AnimationEffectParams<'weave'>> {
-	return createShaderPlaneEffect({
-		three: THREE,
-		host,
-		fragmentShader: WEAVE_FRAGMENT_SHADER,
-		uniforms: current => ({
-			warpColor: current.warpColor,
-			weftColor: current.weftColor,
-			backgroundColor: current.backgroundColor,
-			scale: current.scale,
-			thickness: current.thickness,
-			sheen: current.sheen,
-		}),
-		timeScale: current => current.speed,
-	}, params);
+	return createShaderPlaneEffect(
+		{
+			three: THREE,
+			host,
+			fragmentShader: WEAVE_FRAGMENT_SHADER,
+			uniforms: (current) => ({
+				warpColor: current.warpColor,
+				weftColor: current.weftColor,
+				backgroundColor: current.backgroundColor,
+				scale: current.scale,
+				thickness: current.thickness,
+				sheen: current.sheen,
+			}),
+			timeScale: (current) => current.speed,
+		},
+		params,
+	);
 }

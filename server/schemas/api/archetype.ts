@@ -5,7 +5,13 @@ import { eventIdParamSchema } from '~~/server/schemas/api/eventId';
 import { METAGAME_CHART_SERIES_COUNT } from '~~/shared/utils/metagameChart';
 
 /** A Pinned Chart Series: one of the Theme's chart series, or null for none. Set by editing an Archetype. */
-const chartSeriesSchema = z.number().int().min(1).max(METAGAME_CHART_SERIES_COUNT).nullable().optional();
+const chartSeriesSchema = z
+	.number()
+	.int()
+	.min(1)
+	.max(METAGAME_CHART_SERIES_COUNT)
+	.nullable()
+	.optional();
 
 // ── Archetype CRUD Schemas ──
 
@@ -43,25 +49,29 @@ export const updateArchetypeSchema = createUpdateSchema(archetypes)
 
 // ── Key Cards ──
 
-export const setArchetypeKeyCardsSchema = z.object({
-	/** Ordered list of card IDs to set as key cards (max 5). Empty array clears all. */
-	cardIds: z.array(z.number().int().positive()).max(5).optional(),
-	/** Alternative: card names to look up and set as key cards (max 5). */
-	cardNames: z.array(z.string().trim().min(1)).max(5).optional(),
-}).strict().refine(
-	data => data.cardIds !== undefined || data.cardNames !== undefined,
-	{ message: 'Either cardIds or cardNames must be provided' },
-).refine(
-	data => !(data.cardIds !== undefined && data.cardNames !== undefined),
-	{ message: 'Provide either cardIds or cardNames, not both' },
-);
+export const setArchetypeKeyCardsSchema = z
+	.object({
+		/** Ordered list of card IDs to set as key cards (max 5). Empty array clears all. */
+		cardIds: z.array(z.number().int().positive()).max(5).optional(),
+		/** Alternative: card names to look up and set as key cards (max 5). */
+		cardNames: z.array(z.string().trim().min(1)).max(5).optional(),
+	})
+	.strict()
+	.refine((data) => data.cardIds !== undefined || data.cardNames !== undefined, {
+		message: 'Either cardIds or cardNames must be provided',
+	})
+	.refine((data) => !(data.cardIds !== undefined && data.cardNames !== undefined), {
+		message: 'Provide either cardIds or cardNames, not both',
+	});
 
 // ── Merge ──
 
 /** The Archetype the one in the path is merged into. */
-export const mergeArchetypeSchema = z.object({
-	intoArchetypeId: z.number().int().positive(),
-}).strict();
+export const mergeArchetypeSchema = z
+	.object({
+		intoArchetypeId: z.number().int().positive(),
+	})
+	.strict();
 
 // ── Route Params ──
 

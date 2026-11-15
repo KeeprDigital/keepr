@@ -43,16 +43,16 @@ describe('usePlayerMatchHistory', () => {
 	});
 
 	afterEach(() => {
-		scopes.splice(0).forEach(scope => scope.stop());
+		scopes.splice(0).forEach((scope) => scope.stop());
 	});
 
-	it('reads the Player\'s history from the Event, and again when one of their Matches changes', async () => {
+	it("reads the Player's history from the Event, and again when one of their Matches changes", async () => {
 		mockFetch.mockResolvedValue(answer(7, 'Alice'));
 		const { history } = readHistory(() => 7);
 		await flushPromises();
 
 		expect(mockFetch).toHaveBeenCalledWith('/api/events/1/players/7/match-history');
-		expect(history.value.map(row => row.opponentName)).toEqual(['Bob']);
+		expect(history.value.map((row) => row.opponentName)).toEqual(['Bob']);
 
 		mockFetch.mockResolvedValue(answer(7, 'Alice', 'Bob (renamed)'));
 		realtime.deliver('match:updated', {
@@ -65,7 +65,7 @@ describe('usePlayerMatchHistory', () => {
 		});
 		await flushPromises();
 
-		expect(history.value.map(row => row.opponentName)).toEqual(['Bob (renamed)']);
+		expect(history.value.map((row) => row.opponentName)).toEqual(['Bob (renamed)']);
 	});
 
 	// An Archetype rename or delete names the Players it re-projected, or none when they do not fit (ADR-0084).
@@ -86,18 +86,21 @@ describe('usePlayerMatchHistory', () => {
 			reads: 1,
 		},
 		{ naming: 'no Player', playerIds: null, reads: 2 },
-	])('has read $reads times after a deck projection change naming $naming', async ({ playerIds, reads }) => {
-		mockFetch.mockResolvedValue(answer(7, 'Alice'));
-		readHistory(() => 7);
-		await flushPromises();
+	])(
+		'has read $reads times after a deck projection change naming $naming',
+		async ({ playerIds, reads }) => {
+			mockFetch.mockResolvedValue(answer(7, 'Alice'));
+			readHistory(() => 7);
+			await flushPromises();
 
-		realtime.deliver('player:deckProjectionsChanged', { playerIds });
-		await flushPromises();
+			realtime.deliver('player:deckProjectionsChanged', { playerIds });
+			await flushPromises();
 
-		expect(mockFetch).toHaveBeenCalledTimes(reads);
-	});
+			expect(mockFetch).toHaveBeenCalledTimes(reads);
+		},
+	);
 
-	it('shows nothing of the last Player while the next Player\'s history loads', async () => {
+	it("shows nothing of the last Player while the next Player's history loads", async () => {
 		const playerId = ref(7);
 		mockFetch.mockResolvedValue(answer(7, 'Alice'));
 		const { player, history, loading } = readHistory(() => playerId.value);

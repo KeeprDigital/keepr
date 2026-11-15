@@ -36,7 +36,9 @@ export async function main(argv = process.argv) {
 	const name = argv[2];
 	const page = PAGES[name];
 	if (!page)
-		throw new Error(`run-browser-page-acceptance: expected one of ${Object.keys(PAGES).join(', ')}, got ${name ?? 'nothing'}`);
+		throw new Error(
+			`run-browser-page-acceptance: expected one of ${Object.keys(PAGES).join(', ')}, got ${name ?? 'nothing'}`,
+		);
 	const deployed = argv.includes('--deployed');
 
 	await runAcceptanceHarness({
@@ -51,28 +53,26 @@ export async function main(argv = process.argv) {
 						}),
 					});
 			try {
-				const origin = deployed
-					? acceptanceOrigin({ deployed })
-					: local.origin;
+				const origin = deployed ? acceptanceOrigin({ deployed }) : local.origin;
 				const verdict = await observeChromiumVerdict({ url: `${origin}${page.path}` });
-				record(verdict.outcome === 'passed'
-					? []
-					: [
-							{
-								code: verdictFailureCode(verdict),
-								detail: { page: page.harness },
-							},
-						]);
+				record(
+					verdict.outcome === 'passed'
+						? []
+						: [
+								{
+									code: verdictFailureCode(verdict),
+									detail: { page: page.harness },
+								},
+							],
+				);
 				return {
 					mode: deployed ? 'deployed' : 'local',
 				};
-			}
-			finally {
+			} finally {
 				await local?.close();
 			}
 		},
 	});
 }
 
-if (import.meta.main)
-	await main();
+if (import.meta.main) await main();

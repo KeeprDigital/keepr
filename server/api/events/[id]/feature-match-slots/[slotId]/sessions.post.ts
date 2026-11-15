@@ -6,7 +6,11 @@ export default defineEventHandler(async (event) => {
 	const { id, slotId } = await getValidatedRouterParams(event, featureMatchSlotParamsSchema.parse);
 	const originConnectionId = getOriginConnectionId(event);
 
-	const session = await featureMatchSessionModule().createSessionForSlot(slotId, id, originConnectionId);
+	const session = await featureMatchSessionModule().createSessionForSlot(
+		slotId,
+		id,
+		originConnectionId,
+	);
 	if (!session) {
 		throw createError({ statusCode: 404, message: 'Feature match slot not found' });
 	}

@@ -29,14 +29,23 @@ export async function createFeatureMatchSlot(
 	});
 }
 
-export async function getFeatureMatchSlot(eventId: number, slotId: number): Promise<FeatureMatchResponse> {
+export async function getFeatureMatchSlot(
+	eventId: number,
+	slotId: number,
+): Promise<FeatureMatchResponse> {
 	return await $fetch<FeatureMatchResponse>(`/api/events/${eventId}/feature-match-slots/${slotId}`);
 }
 
-export async function createFeatureMatchSession(eventId: number, slotId: number): Promise<FeatureMatchSessionResponse> {
-	return await $fetch<FeatureMatchSessionResponse>(`/api/events/${eventId}/feature-match-slots/${slotId}/sessions`, {
-		method: 'POST',
-	});
+export async function createFeatureMatchSession(
+	eventId: number,
+	slotId: number,
+): Promise<FeatureMatchSessionResponse> {
+	return await $fetch<FeatureMatchSessionResponse>(
+		`/api/events/${eventId}/feature-match-slots/${slotId}/sessions`,
+		{
+			method: 'POST',
+		},
+	);
 }
 
 export async function sendFeatureMatchCommand(
@@ -44,10 +53,13 @@ export async function sendFeatureMatchCommand(
 	sessionId: number,
 	command: FeatureMatchSessionCommand,
 ): Promise<FeatureMatchSessionCommandResult> {
-	return await $fetch<FeatureMatchSessionCommandResult>(`/api/events/${eventId}/feature-match-sessions/${sessionId}/commands`, {
-		method: 'POST',
-		body: command,
-	});
+	return await $fetch<FeatureMatchSessionCommandResult>(
+		`/api/events/${eventId}/feature-match-sessions/${sessionId}/commands`,
+		{
+			method: 'POST',
+			body: command,
+		},
+	);
 }
 
 export async function createCommandHarness(

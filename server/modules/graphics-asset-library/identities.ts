@@ -42,9 +42,15 @@ export function graphicsDerivativeId(value: string): GraphicsDerivativeId {
 }
 
 export function graphicsIngestionOperationId(value: string): GraphicsIngestionOperationId {
-	return requiredIdentity<GraphicsIngestionOperationId>(value, 'Graphics Ingestion Operation identity');
+	return requiredIdentity<GraphicsIngestionOperationId>(
+		value,
+		'Graphics Ingestion Operation identity',
+	);
 }
 
 export function installedGraphicsTemplateId(value: string): InstalledGraphicsTemplateId {
-	return requiredIdentity<InstalledGraphicsTemplateId>(value, 'Installed Graphics Template identity');
+	return requiredIdentity<InstalledGraphicsTemplateId>(
+		value,
+		'Installed Graphics Template identity',
+	);
 }
