@@ -15,6 +15,7 @@ export const scryfallCardFaceSchema = z.object({
 	mana_cost: z.string().max(500).nullable().optional(),
 	oracle_text: z.string().max(50_000).nullable().optional(),
 	flavor_name: z.string().max(500).nullable().optional(),
+	printed_name: z.string().max(500).nullable().optional(),
 }).passthrough();
 
 const scryfallRelatedCardSchema = z.object({
@@ -34,6 +35,8 @@ export const scryfallCardSchema = z.object({
 	name: z.string().min(1).max(500),
 	/** The name a Universes Within printing is printed with, which deck sites name it by. */
 	flavor_name: z.string().max(500).nullable().optional(),
+	/** The name a printing is printed with where it differs from the card's, as Secret Lair's Walking Dead cards' does. */
+	printed_name: z.string().max(500).nullable().optional(),
 	/** Three-letter set code */
 	set: z.string().min(1).max(20),
 	/** Printing identity within the set. */
@@ -68,6 +71,14 @@ export const scryfallCollectionResponseSchema = z.object({
 		}).passthrough(),
 	).max(75),
 	data: z.array(scryfallCardSchema).max(75),
+}).passthrough();
+
+// ── Search response ───────────────────────────────────────────────────────────
+
+/** One page of `/cards/search`: at most 175 cards. */
+export const scryfallCardListResponseSchema = z.object({
+	object: z.literal('list'),
+	data: z.array(scryfallCardSchema).max(175),
 }).passthrough();
 
 // ── Inferred types ────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import type { ScryfallCard } from '@scryfall/api-types';
 import type { DeckTokenRequirement } from '~~/shared/utils/deckTokens';
-import { scryfallCardSchema, scryfallCollectionResponseSchema } from '~~/server/schemas/external/scryfall';
+import { scryfallCardListResponseSchema, scryfallCardSchema, scryfallCollectionResponseSchema } from '~~/server/schemas/external/scryfall';
 import { deriveDeckCounterTypesFromScryfallCard } from '~~/shared/utils/deckCounters';
 import { deriveDeckTokensFromScryfallCard } from '~~/shared/utils/deckTokens';
 
@@ -245,16 +245,22 @@ function mapScryfallCardData(card: ScryfallCard.Any): ScryfallCardData {
 		typeLine,
 		deckCounterTypes: deriveDeckCounterTypesFromScryfallCard(card),
 		deckTokens: deriveDeckTokensFromScryfallCard(card),
-		flavorNames: flavorNamesOf(card),
+		printedNames: printedNamesOf(card),
 	};
 }
 
-function flavorNamesOf(card: ScryfallCard.Any): string[] {
-	const named = card as { flavor_name?: string | null; card_faces?: Array<{ flavor_name?: string | null }> | null };
+interface PrintedNameFields {
+	flavor_name?: string | null;
+	printed_name?: string | null;
+}
+
+function printedNamesOf(card: ScryfallCard.Any): string[] {
+	const named = card as PrintedNameFields & { card_faces?: PrintedNameFields[] | null };
 	return [
-		named.flavor_name,
-		...(named.card_faces ?? []).map(face => face.flavor_name),
+		named,
+		...(named.card_faces ?? []),
 	]
+		.flatMap(fields => [fields.flavor_name, fields.printed_name])
 		.filter((name): name is string => typeof name === 'string' && name.length > 0);
 }
 
@@ -278,8 +284,8 @@ export interface ScryfallCardData {
 	deckCounterTypes: string[];
 	/** Linked token cards this card can create */
 	deckTokens: DeckTokenRequirement[];
-	/** The names this printing is printed with in place of its own, card or faces; none for most. */
-	flavorNames?: readonly string[];
+	/** The names this printing is printed with in place of its own, card or faces: flavor and printed names; none for most. */
+	printedNames?: readonly string[];
 }
 
 export async function fetchScryfallCardById(id: string): Promise<ScryfallCardData> {
@@ -636,6 +642,65 @@ export async function batchLookupScryfallPrintings(
 		}
 	}
 	return requests.map(request => cards.get(printingKey(request.setCode, request.collectorNumber)) ?? null);
+}
+
+const PRINTED_NAME_SEARCH_BATCH_SIZE = 20;
+
+/** A name `!"…"` can quote, and a set code `set:` can take, as Scryfall's search syntax reads them. */
+function printedNameTerm(request: { name: string; setCode: string | null }): string | null {
+	const name = request.name.trim();
+	if (!name || name.includes('"'))
+		return null;
+	if (request.setCode && !/^[a-z0-9]+$/i.test(request.setCode))
+		return null;
+	return request.setCode
+		? `(!"${name}" set:${request.setCode.toLowerCase()})`
+		: `!"${name}"`;
+}
+
+/**
+ * Searches for the printings bearing each name, as the card's own or as one
+ * printed on it in place of it (a flavor or printed name), which
+ * `/cards/collection` never matches. Twenty names to a request, one page each,
+ * so a deck pays one request for the names a collection lookup missed.
+ * Answers every printing found, for the caller to match; a failed request throws.
+ */
+export async function searchScryfallPrintingsByPrintedName(
+	requests: ReadonlyArray<{ name: string; setCode: string | null }>,
+): Promise<ScryfallCardData[]> {
+	const terms = [
+		...new Set(requests.flatMap(request => printedNameTerm(request) ?? [])),
+	];
+	const errorPrefix = 'Scryfall printed name search failed';
+	const cards: ScryfallCardData[] = [];
+	for (let index = 0; index < terms.length; index += PRINTED_NAME_SEARCH_BATCH_SIZE) {
+		if (index > 0)
+			await delay(COLLECTION_BATCH_PAUSE_MS);
+		const query = new URLSearchParams({
+			q: terms.slice(index, index + PRINTED_NAME_SEARCH_BATCH_SIZE).join(' or '),
+			unique: 'prints',
+		});
+		let raw: unknown;
+		try {
+			raw = await fetchScryfallJson(
+				`${SCRYFALL_API_URL}/cards/search?${query.toString()}`,
+				{ headers: SCRYFALL_HEADERS },
+				errorPrefix,
+				SCRYFALL_COLLECTION_BODY_LIMIT_BYTES,
+			);
+		}
+		catch (error) {
+			// A search matching nothing answers 404.
+			if (isScryfallNotFoundError(error))
+				continue;
+			throw error;
+		}
+		const parsed = scryfallCardListResponseSchema.safeParse(raw);
+		if (!parsed.success)
+			throw new ScryfallRequestError(`${errorPrefix}: invalid response schema`, { cause: parsed.error });
+		cards.push(...parsed.data.data.map(card => mapScryfallCardData(card as ScryfallCard.Any)));
+	}
+	return cards;
 }
 
 /**

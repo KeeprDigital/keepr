@@ -1,7 +1,8 @@
 /**
  * Scryfall at the network boundary, matching names as the live API does: a lone name
  * prefers the card of exactly that name, but `/cards/collection` answers a name with an
- * earlier identifier's card when the name is one of its faces.
+ * earlier identifier's card when the name is one of its faces. Only `/cards/search`
+ * matches a name printed on a printing in place of its own.
  */
 
 export interface FakeScryfallCard {
@@ -15,6 +16,8 @@ export interface FakeScryfallCard {
 	color_identity?: string[];
 	/** The name a Universes Within printing is printed with. */
 	flavor_name?: string;
+	/** The name an English printing is printed with in place of its own, as Secret Lair's Walking Dead cards are. */
+	printed_name?: string;
 }
 
 /** What `/cards/collection` is asked for: a name, in a set or not, or one exact printing. */
@@ -50,12 +53,16 @@ function toScryfallJson(card: FakeScryfallCard) {
 		...(card.flavor_name
 			? { flavor_name: card.flavor_name }
 			: {}),
+		...(card.printed_name
+			? { printed_name: card.printed_name }
+			: {}),
 	};
 }
 
 export function createScryfallFake(catalogue: readonly FakeScryfallCard[]) {
 	const namedLookups: string[] = [];
 	const collectionBatches: string[][] = [];
+	const searches: string[] = [];
 
 	const inSet = (card: FakeScryfallCard, set: string | null | undefined) =>
 		!set || sameName(card.set, set);
@@ -102,6 +109,27 @@ export function createScryfallFake(catalogue: readonly FakeScryfallCard[]) {
 			: json({ object: 'error', status: 404 }, 404);
 	};
 
+	// `!"name"`, alone or `set:` narrowed, joined by `or`: the exact-name terms a search is asked.
+	const search = (url: URL) => {
+		const query = url.searchParams.get('q') ?? '';
+		searches.push(query);
+		const terms = [
+			...query.matchAll(/!"([^"]+)"(?: set:([a-z0-9]+))?/g),
+		]
+			.map(([, name, set]) => ({ name: name!, set }));
+		const printedWith = (card: FakeScryfallCard, name: string) => sameName(card.name, name)
+			|| hasFace(card, name)
+			|| [card.flavor_name, card.printed_name].some(printed => printed !== undefined && sameName(printed, name));
+		const data = catalogue.filter(card => terms.some(term => inSet(card, term.set) && printedWith(card, term.name)));
+		return data.length > 0
+			? json({
+					object: 'list',
+					has_more: false,
+					data: data.map(toScryfallJson),
+				})
+			: json({ object: 'error', code: 'not_found', status: 404 }, 404);
+	};
+
 	const fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
 		const url = new URL(typeof input === 'string' || input instanceof URL
 			? input
@@ -110,10 +138,17 @@ export function createScryfallFake(catalogue: readonly FakeScryfallCard[]) {
 			return collection(JSON.parse(String(init?.body)).identifiers);
 		if (url.pathname === '/cards/named')
 			return named(url);
+		if (url.pathname === '/cards/search')
+			return search(url);
 		throw new Error(`Unexpected Scryfall request: ${url}`);
 	};
 
-	return { fetch, namedLookups, collectionBatches };
+	return {
+		fetch,
+		namedLookups,
+		collectionBatches,
+		searches,
+	};
 }
 
 /** Cards a face of which is also a standalone card's name, as on Scryfall. */

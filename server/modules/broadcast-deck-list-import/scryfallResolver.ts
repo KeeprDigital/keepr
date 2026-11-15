@@ -11,6 +11,7 @@ import {
 	batchLookupScryfallPrintings,
 	createCardKey,
 	ScryfallRequestError,
+	searchScryfallPrintingsByPrintedName,
 } from '~~/server/utils/scryfall';
 
 export interface BroadcastDeckListNameOverride {
@@ -48,7 +49,16 @@ async function lookupScryfallCardsByName(
 		throw new ScryfallRequestError('Scryfall exact batch lookup failed', { retryable: true });
 	}
 
-	return requests.map(request => lookup.results.get(createCardKey(request.name, request.setCode)) ?? null);
+	const cards = requests.map(request => lookup.results.get(createCardKey(request.name, request.setCode)) ?? null);
+	const missed = requests.filter((_, index) => cards[index] === null);
+	if (missed.length === 0)
+		return cards;
+
+	// A name printed on a printing in place of its own is matched by search alone (#1201).
+	const printings = await searchScryfallPrintingsByPrintedName(missed);
+	return requests.map((request, index) => cards[index]
+		?? printings.find(card => cardMatchesName(card, request.name) && inSet(card, request.setCode))
+		?? null);
 }
 
 const DEFAULT_SCRYFALL_BOUNDARY: BroadcastDeckListScryfallBoundary = {
@@ -81,9 +91,13 @@ function cardMatchesName(card: ScryfallCardData, name: string): boolean {
 	// A Universes Within printing is named by the name printed on it, as Moxfield's own copy names it (#1201).
 	return [
 		...card.name.split(' // '),
-		...(card.flavorNames ?? []),
+		...(card.printedNames ?? []),
 	]
 		.some(faceName => normalizeImportedCardName(faceName) === expected);
+}
+
+function inSet(card: ScryfallCardData, setCode: string | null): boolean {
+	return setCode === null || card.setCode.toLowerCase() === setCode.toLowerCase();
 }
 
 function isExactPrinting(
@@ -91,7 +105,7 @@ function isExactPrinting(
 	request: BroadcastDeckListCardResolutionRequest,
 ): boolean {
 	return cardMatchesName(card, request.name)
-		&& (request.setCode === null || card.setCode.toLowerCase() === request.setCode.toLowerCase())
+		&& inSet(card, request.setCode)
 		&& (request.collectorNumber === null || card.collectorNumber === request.collectorNumber);
 }
 

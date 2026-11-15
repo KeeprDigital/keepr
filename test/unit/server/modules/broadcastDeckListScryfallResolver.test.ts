@@ -1,4 +1,5 @@
 import type { ScryfallCardData } from '~~/server/utils/scryfall';
+import type { FakeScryfallCard } from '~~/test/helpers/scryfallFake';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	BroadcastDeckListCardProviderError,
@@ -211,6 +212,140 @@ describe('broadcast Deck List Scryfall resolver', () => {
 		finally {
 			vi.unstubAllGlobals();
 		}
+	});
+
+	describe('a name printed on a printing in place of its own, pasted with no collector number', () => {
+		const printedNameCatalogue = [
+			{
+				id: 'ragavan-mh2',
+				name: 'Ragavan, Nimble Pilferer',
+				set: 'mh2',
+				collector_number: '138',
+			},
+			{
+				id: 'ragavan-fca-43',
+				name: 'Ragavan, Nimble Pilferer',
+				set: 'fca',
+				collector_number: '43',
+				flavor_name: 'Zidane Tribal',
+			},
+			{
+				id: 'ragavan-sld-900',
+				name: 'Ragavan, Nimble Pilferer',
+				set: 'sld',
+				collector_number: '900',
+				flavor_name: 'Zidane Tribal',
+			},
+			{
+				id: 'greymond-sld-143',
+				name: 'Greymond, Avacyn\'s Stalwart',
+				set: 'sld',
+				collector_number: '143',
+				printed_name: 'Rick, Steadfast Leader',
+			},
+			{
+				id: 'lightning-bolt',
+				name: 'Lightning Bolt',
+				set: 'msc',
+				collector_number: '806',
+			},
+		] satisfies FakeScryfallCard[];
+
+		// `/cards/collection` matches no printed name; the printing bearing it is the one named.
+		it.each([
+			{
+				line: 'a flavor name',
+				name: 'Zidane Tribal',
+				setCode: null,
+				scryfallId: 'ragavan-fca-43',
+				canonicalName: 'Ragavan, Nimble Pilferer',
+			},
+			{
+				line: 'a printed name',
+				name: 'Rick, Steadfast Leader',
+				setCode: null,
+				scryfallId: 'greymond-sld-143',
+				canonicalName: 'Greymond, Avacyn\'s Stalwart',
+			},
+			{
+				line: 'a flavor name in a set',
+				name: 'Zidane Tribal',
+				setCode: 'SLD',
+				scryfallId: 'ragavan-sld-900',
+				canonicalName: 'Ragavan, Nimble Pilferer',
+			},
+		])('resolves $line to the printing bearing it, as the card it is', async ({ name, setCode, scryfallId, canonicalName }) => {
+			vi.stubGlobal('fetch', createScryfallFake(printedNameCatalogue).fetch);
+
+			try {
+				const result = await createBroadcastDeckListScryfallResolver().resolve([
+					{ name, setCode, collectorNumber: null },
+				]);
+
+				expect(result).toEqual([
+					{
+						status: 'resolved',
+						card: expect.objectContaining({ canonicalName, scryfallId }),
+					},
+				]);
+			}
+			finally {
+				vi.unstubAllGlobals();
+			}
+		});
+
+		// The fallback is one search for every name the collection misses, never a request per card.
+		it.each([
+			{
+				deck: 'names the collection finds',
+				names: ['Lightning Bolt', 'Ragavan, Nimble Pilferer'],
+				searches: 0,
+				resolved: [true, true],
+			},
+			{
+				deck: 'names it misses',
+				names: [
+					'Lightning Bolt',
+					'Zidane Tribal',
+					'Rick, Steadfast Leader',
+					'Not A Card',
+				],
+				searches: 1,
+				resolved: [true, true, true, false],
+			},
+		])('searches once at most for a deck of $deck', async ({ names, searches, resolved }) => {
+			const scryfall = createScryfallFake(printedNameCatalogue);
+			vi.stubGlobal('fetch', scryfall.fetch);
+
+			try {
+				const result = await createBroadcastDeckListScryfallResolver().resolve(
+					names.map(name => ({ name, setCode: null, collectorNumber: null })),
+				);
+
+				expect(result.map(resolution => resolution.status === 'resolved')).toEqual(resolved);
+				expect(scryfall.searches).toHaveLength(searches);
+			}
+			finally {
+				vi.unstubAllGlobals();
+			}
+		});
+
+		it('keeps a failed search a retryable import failure rather than an unresolved card', async () => {
+			const scryfall = createScryfallFake(printedNameCatalogue);
+			vi.stubGlobal('fetch', async (input: string | URL | Request, init?: RequestInit) =>
+				String(input).includes('/cards/search')
+					? new Response(null, { status: 400 })
+					: scryfall.fetch(input, init));
+
+			try {
+				await expect(createBroadcastDeckListScryfallResolver().resolve([
+					{ name: 'Zidane Tribal', setCode: null, collectorNumber: null },
+				])).rejects.toBeInstanceOf(BroadcastDeckListCardProviderError);
+			}
+			finally {
+				vi.unstubAllGlobals();
+			}
+		});
 	});
 
 	it('asks for every exact printing in one lookup, a printing pasted twice asked for once', async () => {
