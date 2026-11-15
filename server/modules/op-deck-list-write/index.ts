@@ -14,6 +14,7 @@ import { opCardCatalogueModule } from '~~/server/modules/op-card-catalogue';
 import { playerUpdateModule } from '~~/server/modules/player-update';
 import { featureMatchService } from '~~/server/services/featureMatch';
 import { featureMatchDeckListService } from '~~/server/services/featureMatchDeckList';
+import { opCardNumberResolutionService } from '~~/server/services/opCardNumberResolution';
 import { opPlayerDeckListService } from '~~/server/services/opPlayerDeckList';
 import { bandaiKeeprConfig } from '~~/server/utils/bandaiKeepr';
 import { inJsonArray } from '~~/server/utils/db';
@@ -32,7 +33,8 @@ import { opDeckListLeaderCard, opDeckListText, opDeckListView, parseOpDeckListTe
  * saved Deck List with its warnings.
  *
  * Behind it, card numbers are resolved through the card catalogue, the ones
- * it lacks in one bulk lookup; a failed lookup saves nothing. A number
+ * it lacks in one bulk lookup; a failed lookup saves nothing. A number an
+ * operator resolved in the Event is read first as the card it was resolved to. A number
  * bandai-keepr does not know is kept number-only, as an Unresolved Deck Card.
  * The paste rules and deck-rule warnings are ADR-0057's, and a breach never
  * refuses. Every write is a new Deck List id, so whoever reads it by
@@ -81,20 +83,34 @@ export type OpDeckListWriteAnswer<TOwner extends OpDeckListOwner> = TOwner exten
 	? WriteOpPlayerDeckListAnswer<PlayerResponse>
 	: SlotSideDeckListAnswer;
 
-function inputLines(input: OpDeckListInput): OpDeckListLine[] {
-	if ('text' in input)
-		return parseOpDeckListText(input.text);
+/**
+ * The input's lines, each number the Event resolved read as the card it
+ * names, and a number given twice, as given or once resolved, added together.
+ */
+function inputLines(input: OpDeckListInput, resolutions: ReadonlyMap<string, string>): OpDeckListLine[] {
+	const given = 'text' in input
+		? parseOpDeckListText(input.text)
+		: input.entries;
 	const byNumber = new Map<string, OpDeckListLine>();
-	for (const { number, quantity } of input.entries) {
+	for (const line of given) {
+		const number = resolutions.get(line.number) ?? line.number;
 		const held = byNumber.get(number);
 		if (held)
-			held.quantity += quantity;
+			held.quantity += line.quantity;
 		else
-			byNumber.set(number, { number, quantity });
+			byNumber.set(number, { number, quantity: line.quantity });
 	}
 	return [
 		...byNumber.values(),
 	];
+}
+
+/** The Leader the input picks or marks, read as the card the Event resolved it to. */
+function givenLeader(input: OpDeckListInput, resolutions: ReadonlyMap<string, string>): string | null {
+	const given = input.leaderNumber ?? null;
+	return given === null
+		? null
+		: resolutions.get(given) ?? given;
 }
 
 interface ResolvedInput {
@@ -103,8 +119,7 @@ interface ResolvedInput {
 	marked: string | null;
 }
 
-function inputNumbers(input: OpDeckListInput, lines: readonly OpDeckListLine[]): string[] {
-	const given = input.leaderNumber ?? null;
+function inputNumbers(lines: readonly OpDeckListLine[], given: string | null): string[] {
 	return [
 		...lines.map(line => line.number),
 		...(given === null
@@ -114,8 +129,7 @@ function inputNumbers(input: OpDeckListInput, lines: readonly OpDeckListLine[]):
 }
 
 /** The input's entries with the cards resolved for them. */
-function withCards(input: OpDeckListInput, lines: readonly OpDeckListLine[], cards: ReadonlyMap<string, OpCatalogueCard | null>): ResolvedInput {
-	const given = input.leaderNumber ?? null;
+function withCards(input: OpDeckListInput, lines: readonly OpDeckListLine[], given: string | null, cards: ReadonlyMap<string, OpCatalogueCard | null>): ResolvedInput {
 	const entries = lines.map(line => ({ ...line, card: cards.get(line.number) ?? null }));
 	// ADR-0057: a pasted Leader line sets the Leader, and only a paste with none keeps the one picked.
 	const pastedLeader = 'text' in input && entries.some(entry => entry.card?.category === 'leader');
@@ -125,18 +139,28 @@ function withCards(input: OpDeckListInput, lines: readonly OpDeckListLine[], car
 	return { entries, marked };
 }
 
-/** The inputs' entries with their cards, through the catalogue and at most one bulk lookup for them all. */
-async function resolveInputs(inputs: readonly OpDeckListInput[]): Promise<ResolvedInput[]> {
-	const lineSets = inputs.map(inputLines);
+/**
+ * The inputs' entries with their cards, through the catalogue and at most one
+ * bulk lookup for them all. A number the Event resolved is read as the card
+ * it names before the lookup, so an import or paste still holding it saves
+ * that card and no Unresolved Deck Card.
+ */
+async function resolveInputs(eventId: number, inputs: readonly OpDeckListInput[]): Promise<ResolvedInput[]> {
+	const resolutions = await opCardNumberResolutionService().findByEvent(eventId);
+	const read = inputs.map(input => ({
+		input,
+		lines: inputLines(input, resolutions),
+		leader: givenLeader(input, resolutions),
+	}));
 	const cards = await opCardCatalogueModule().resolve(
 		bandaiKeeprConfig,
-		inputs.flatMap((input, index) => inputNumbers(input, lineSets[index]!)),
+		read.flatMap(({ lines, leader }) => inputNumbers(lines, leader)),
 	);
-	return inputs.map((input, index) => withCards(input, lineSets[index]!, cards));
+	return read.map(({ input, lines, leader }) => withCards(input, lines, leader, cards));
 }
 
-async function resolveInput(input: OpDeckListInput): Promise<ResolvedInput> {
-	const [resolved] = await resolveInputs([input]);
+async function resolveInput(eventId: number, input: OpDeckListInput): Promise<ResolvedInput> {
+	const [resolved] = await resolveInputs(eventId, [input]);
 	return resolved!;
 }
 
@@ -179,7 +203,7 @@ export function opDeckListWriteModule() {
 	): Promise<WriteOpPlayerDeckListAnswer<PlayerResponse>> {
 		const { playerId } = owner;
 		await requirePlayer(eventId, playerId);
-		const { entries, marked } = await resolveInput(input);
+		const { entries, marked } = await resolveInput(eventId, input);
 		const view = opDeckListView(entries, marked);
 
 		const leader = opDeckListLeaderCard(view);
@@ -245,7 +269,7 @@ export function opDeckListWriteModule() {
 		if (held[SLOT_SIDE_PLAYER_KEY[side]] != null)
 			throw createError({ statusCode: 409, message: 'This side shows its Player\'s Deck List: edit the Player\'s Deck List instead' });
 
-		const { entries } = await resolveInput('text' in input
+		const { entries } = await resolveInput(eventId, 'text' in input
 			? { text: input.text }
 			: { entries: input.entries, leaderNumber: null });
 		const view = opDeckListView(entries);
@@ -319,7 +343,7 @@ export function opDeckListWriteModule() {
 	 */
 	async function previewMany({ eventId, inputs }: { eventId: number; inputs: readonly OpDeckListInput[] }): Promise<OpDeckListView[]> {
 		await requireOpEvent(eventId);
-		const resolved = await resolveInputs(inputs);
+		const resolved = await resolveInputs(eventId, inputs);
 		return resolved.map(({ entries, marked }) => opDeckListView(entries, marked));
 	}
 

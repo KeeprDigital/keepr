@@ -54,6 +54,7 @@ const previewRoute = (await import('~~/server/api/events/[id]/tcgplus/preview.po
 const importRoute = (await import('~~/server/api/events/[id]/tcgplus/import.post')).default as unknown as Handler;
 const handWriteRoute = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list.put')).default as unknown as Handler;
 const useImportedRoute = (await import('~~/server/api/events/[id]/players/[playerId]/deck-list/use-imported.post')).default as unknown as Handler;
+const resolveRoute = (await import('~~/server/api/events/[id]/op-unresolved-deck-cards/[number]/index.put')).default as unknown as Handler;
 
 beforeEach(async () => {
 	upstream = fakeOpCardBulkLookup([
@@ -118,6 +119,16 @@ function writeByHand(eventId: number, playerId: number, text: string) {
 			playerId: String(playerId),
 		},
 		body: { text },
+	}));
+}
+
+function resolveUnresolved(eventId: number, number: string, cardNumber: string) {
+	return resolveRoute(stubH3Event({
+		params: {
+			id: String(eventId),
+			number,
+		},
+		body: { cardNumber },
 	}));
 }
 
@@ -464,6 +475,39 @@ describe('a TCG+ Import', () => {
 			.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
 			.where(eq(schema.playerDeckCards.deckId, deck!.id));
 		expect(held).toContainEqual({ number: late, quantity: copies });
+	});
+
+	// The Event remembers a resolution, so a re-import still exporting the old number brings nothing back.
+	it('saves the card an operator resolved a number to, and changes nothing, when re-imported unchanged', async () => {
+		const eventId = await stageEvent();
+		const csv = tcgPlusExport([
+			zoroPlayer('1', 'ana', {
+				cards: [
+					...tcgPlusDeck('OP01', 12),
+					['OP91-042', 2],
+				],
+			}),
+		]);
+		await commit(eventId, csv);
+		const [ana] = await eventPlayers(eventId);
+		await resolveUnresolved(eventId, 'OP91-042', 'OP01-042');
+		const resolvedIds = await eventDeckIds(eventId);
+		published.length = 0;
+
+		const previewed = await preview(eventId, csv);
+		const answer = await commit(eventId, csv);
+
+		expect(previewed.deckListChanged).toEqual([]);
+		expect(previewed.warnings.unknownCards).toEqual([]);
+		expect(answer.results.deckListsWritten).toBe(0);
+		expect(await eventDeckIds(eventId)).toEqual(resolvedIds);
+		const deckId = resolvedIds.get(ana!.id)!;
+		expect(await db.select().from(schema.playerDeckUnresolvedCards).where(eq(schema.playerDeckUnresolvedCards.deckId, deckId))).toEqual([]);
+		const held = await db.select({ number: schema.cards.cardNumber, quantity: schema.playerDeckCards.quantity })
+			.from(schema.playerDeckCards)
+			.innerJoin(schema.cards, eq(schema.cards.id, schema.playerDeckCards.cardId))
+			.where(eq(schema.playerDeckCards.deckId, deckId));
+		expect(held).toContainEqual({ number: 'OP01-042', quantity: 2 });
 	});
 
 	it('keeps a hand-edited Deck List the export differs from, flagged in the preview', async () => {
