@@ -49,12 +49,20 @@ export function useModeConfigUpdate<M extends ScreenMode>(
 	});
 
 	/**
+	 * Whether a display reset can write now. A Feature Match Overlay resets to
+	 * the layout its Event is offered, so it waits until the Event has loaded.
+	 */
+	const resetReady = computed(() => mode !== 'feature-match-overlay' || eventKind.value !== undefined);
+
+	/**
 	 * Reset all display settings to defaults (preserves what the Screen points
 	 * at, such as its Event References). A paginated mode's Page Rotation
 	 * restarts from page 1, and a Feature Match Overlay lands on a layout its
 	 * Event is offered.
 	 */
 	function resetConfig() {
+		if (!resetReady.value)
+			return;
 		updateConfig(getDisplayResetForMode(mode, config.value, getServerTime(), eventKind.value) as ScreenModeConfigPatch<M>);
 	}
 
@@ -65,6 +73,7 @@ export function useModeConfigUpdate<M extends ScreenMode>(
 		saveError,
 		updateConfig,
 		resetConfig,
+		resetReady,
 		retry,
 		discard,
 		flush,

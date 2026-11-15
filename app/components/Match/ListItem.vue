@@ -359,19 +359,7 @@ function getScoreColor(side: 'player1' | 'player2') {
 					<template #item-label="{ item }">
 						<div class="flex flex-col gap-0.5">
 							<span class="font-medium">{{ item.label }}</span>
-							<div v-if="item.player1DeckName || item.player2DeckName" class="flex items-center gap-1 text-xs text-muted">
-								<template v-if="item.player1DeckName">
-									<MtgManaColorDisplay v-if="item.player1Colors" :colors="item.player1Colors" size="xs" />
-									<span>{{ item.player1DeckName }}</span>
-								</template>
-								<template v-if="item.player1DeckName && item.player2DeckName">
-									<span class="text-dimmed">vs</span>
-								</template>
-								<template v-if="item.player2DeckName">
-									<MtgManaColorDisplay v-if="item.player2Colors" :colors="item.player2Colors" size="xs" />
-									<span>{{ item.player2DeckName }}</span>
-								</template>
-							</div>
+							<FeatureMatchSeatDecks :decks="item.decks" />
 						</div>
 					</template>
 				</UDropdownMenu>

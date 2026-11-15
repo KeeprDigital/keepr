@@ -29,7 +29,7 @@ const mockScreenStore = {
 mockNuxtImport('useScreenStore', () => () => mockScreenStore);
 mockNuxtImport('useToast', () => () => mockToast);
 const mockEventStore = {
-	event: { game: 'mtg', variant: 'commander' },
+	event: { game: 'mtg', variant: 'commander' } as { game: string; variant: string } | null,
 };
 mockNuxtImport('useEventStore', () => () => mockEventStore);
 
@@ -37,6 +37,7 @@ describe('useModeConfigUpdate', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.useFakeTimers();
+		mockEventStore.event = { game: 'mtg', variant: 'commander' };
 	});
 
 	afterEach(() => {
@@ -71,5 +72,19 @@ describe('useModeConfigUpdate', () => {
 
 		await vi.advanceTimersByTimeAsync(200);
 		expect(isFourSeatFeatureMatchLayout(mockUpdateModeConfig.mock.calls[0]![3].layout)).toBe(true);
+	});
+
+	// Which layout a Feature Match Overlay resets to depends on its Event, so the reset waits for it.
+	it.each([
+		{ mode: 'feature-match-overlay' as const, ready: false, writes: 0 },
+		{ mode: 'standings' as const, ready: true, writes: 1 },
+	])('a display reset of $mode before its Event loads is ready: $ready', async ({ mode, ready, writes }) => {
+		mockEventStore.event = null;
+		const { resetConfig, resetReady } = useModeConfigUpdate(1, 1, mode, { debounceMs: 100 });
+
+		expect(resetReady.value).toBe(ready);
+		resetConfig();
+		await vi.advanceTimersByTimeAsync(200);
+		expect(mockUpdateModeConfig).toHaveBeenCalledTimes(writes);
 	});
 });

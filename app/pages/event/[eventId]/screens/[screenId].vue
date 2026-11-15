@@ -74,7 +74,7 @@ const backgroundLayersMode = computed<BackgroundLayersCapableMode | null>(() => 
 
 // Reset: restores the current mode's display settings (preserves bindings and Theme overrides).
 // A mode whose reset is an authoring write says so while its Graphics Authoring Lease is another's.
-const modeControlsRef = ref<{ resetConfig?: () => void; resetBlocked?: boolean; saving?: boolean } | null>(null);
+const modeControlsRef = ref<{ resetConfig?: () => void; resetBlockedReason?: string; saving?: boolean } | null>(null);
 const showResetConfirm = ref(false);
 const showCapabilityRotationConfirm = ref(false);
 const rotatingCapability = ref(false);
@@ -87,7 +87,7 @@ const isSaving = computed(() =>
 	|| backgroundLayersControlsRef.value?.saving === true,
 );
 
-const resetBlocked = computed(() => modeControlsRef.value?.resetBlocked === true);
+const resetBlockedReason = computed(() => modeControlsRef.value?.resetBlockedReason);
 
 function confirmResetAll() {
 	modeControlsRef.value?.resetConfig?.();
@@ -264,10 +264,8 @@ const moreActionItems = computed(() => [
 			label: 'Reset mode settings',
 			icon: 'i-lucide-rotate-ccw',
 			color: 'error' as const,
-			disabled: resetBlocked.value,
-			description: resetBlocked.value
-				? 'Another session is editing this Screen\'s graphics'
-				: undefined,
+			disabled: !!resetBlockedReason.value,
+			description: resetBlockedReason.value,
 			onSelect: () => {
 				showResetConfirm.value = true;
 			},

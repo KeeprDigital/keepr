@@ -48,8 +48,14 @@ const mockMatches = [
 		player1Data: { name: 'Dana', gameData: null },
 		player2Id: null,
 		player2Data: null,
-		player3Data: { name: 'Eve', gameData: null },
-		player4Data: { name: 'Finn', gameData: null },
+		player3Data: {
+			name: 'Eve',
+			gameData: { type: 'mtg', deckName: 'Atraxa', deckColors: 'WUBG' },
+		},
+		player4Data: {
+			name: 'Finn',
+			gameData: { type: 'mtg', deckName: 'Krenko', deckColors: 'R' },
+		},
 	},
 	{
 		id: 5,
@@ -80,10 +86,10 @@ describe('useFeatureMatchMenuItems', () => {
 		expect(useFeatureMatchMenuItems().value[0]).toMatchObject({
 			value: 1,
 			label: 'Match 1 — Alice vs Bob',
-			player1DeckName: 'Azorius Control',
-			player1Colors: 'WU',
-			player2DeckName: 'Mono Red',
-			player2Colors: 'R',
+			decks: [
+				{ deckName: 'Azorius Control', colors: 'WU', leader: null },
+				{ deckName: 'Mono Red', colors: 'R', leader: null },
+			],
 		});
 	});
 
@@ -94,49 +100,50 @@ describe('useFeatureMatchMenuItems', () => {
 			slot: 1,
 			session: 'no',
 			label: 'Match 1 — Alice vs Bob',
-			player1Name: 'Alice',
-			player1DeckName: 'Azorius Control',
+			firstDeck: { deckName: 'Azorius Control', leader: null },
 		},
 		{
 			game: 'MTG',
 			slot: 1,
 			session: 'a swapped',
 			label: 'Match 1 — Bob vs Alice',
-			player1Name: 'Bob',
-			player1DeckName: 'Mono Red',
+			firstDeck: { deckName: 'Mono Red', leader: null },
 		},
 		{
 			game: 'OP',
 			slot: 3,
 			session: 'no',
 			label: 'Match 3 — Ana vs Ben',
-			player1Name: 'Ana',
-			player1DeckName: null,
+			firstDeck: { deckName: null, leader: ZORO },
 		},
 		{
 			game: 'OP',
 			slot: 3,
 			session: 'a swapped',
 			label: 'Match 3 — Ben vs Ana',
-			player1Name: 'Ben',
-			player1DeckName: null,
+			firstDeck: { deckName: null, leader: LAW },
 		},
-	])('names a $game Slot\'s players in the order $session Session seats them', ({ game: _game, slot, session, ...named }) => {
+	])('names a $game Slot\'s players in the order $session Session seats them', ({ game: _game, slot, session, label, firstDeck }) => {
 		if (session === 'a swapped')
 			followSwappedSession(followed, mockMatches.find(match => match.id === slot)!);
 
-		expect(useFeatureMatchMenuItems().value.find(item => item.value === slot)).toMatchObject(named);
+		const item = useFeatureMatchMenuItems().value.find(item => item.value === slot)!;
+		expect(item.label).toBe(label);
+		expect(item.decks[0]).toMatchObject(firstDeck);
 	});
 
-	it('leaves blank what a Slot does not hold', () => {
-		expect(useFeatureMatchMenuItems().value[1]).toMatchObject({
-			value: 2,
-			player1Name: 'Charlie',
-			player1DeckName: null,
-			player1Colors: null,
-			player2Name: null,
-			player2DeckName: null,
-		});
+	it('lists no deck for a Seat that holds none', () => {
+		expect(useFeatureMatchMenuItems().value[1]).toMatchObject({ value: 2, label: 'Match 2 — Charlie vs TBD', decks: [] });
+	});
+
+	// Every Seat of a Commander Slot that holds a deck is listed, in Seat order.
+	it('lists a Commander Slot\'s third and fourth Seat decks', () => {
+		mockEventKind.value = 'mtg-commander';
+
+		expect(useFeatureMatchMenuItems().value.find(item => item.value === 4)!.decks).toEqual([
+			{ deckName: 'Atraxa', colors: 'WUBG', leader: null },
+			{ deckName: 'Krenko', colors: 'R', leader: null },
+		]);
 	});
 
 	// A Commander Slot is labelled by every Seat somebody sits in, and an empty Seat is not in the game.

@@ -42,24 +42,22 @@ const MtgManaColorDisplayStub = defineComponent({
 	template: '<i :data-colors="colors" />',
 });
 
-function slot(value: number, label: string, decks: [string | null, string | null], colors: [string | null, string | null]) {
+function slot(value: number, label: string, decks: Array<[string, string]>) {
 	return {
 		value,
 		label,
-		player1Name: 'A',
-		player1DeckName: decks[0],
-		player1Colors: colors[0],
-		player2Name: 'B',
-		player2DeckName: decks[1],
-		player2Colors: colors[1],
+		decks: decks.map(([deckName, colors]) => ({ deckName, colors, leader: null })),
 	};
 }
 
 describe('screenFeatureMatchSlotField', () => {
 	beforeEach(() => {
 		slotItems.value = [
-			slot(11, 'Match 1 — A vs B', ['Mono Red', 'Azorius Control'], ['R', 'WU']),
-			slot(12, 'Match 2', [null, null], [null, null]),
+			slot(11, 'Match 1 — A vs B', [
+				['Mono Red', 'R'],
+				['Azorius Control', 'WU'],
+			]),
+			slot(12, 'Match 2', []),
 		];
 	});
 

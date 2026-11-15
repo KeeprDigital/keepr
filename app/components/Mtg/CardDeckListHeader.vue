@@ -96,32 +96,7 @@ watch([
 				<template #item-label="{ item }">
 					<div class="flex flex-col gap-0.5">
 						<span class="font-medium">{{ item.label }}</span>
-						<div v-if="item.player1DeckName || item.player2DeckName" class="flex items-center gap-1 text-xs text-muted">
-							<template v-if="item.player1DeckName">
-								<MtgManaColorDisplay v-if="item.player1Colors" :colors="item.player1Colors" size="xs" />
-								<span>{{ item.player1DeckName }}</span>
-							</template>
-							<template v-if="item.player1DeckName && item.player2DeckName">
-								<span class="text-dimmed">vs</span>
-							</template>
-							<template v-if="item.player2DeckName">
-								<MtgManaColorDisplay v-if="item.player2Colors" :colors="item.player2Colors" size="xs" />
-								<span>{{ item.player2DeckName }}</span>
-							</template>
-						</div>
-						<div v-if="item.player1Leader || item.player2Leader" class="flex items-center gap-1 text-xs text-muted">
-							<template v-if="item.player1Leader">
-								<OpColorDisplay :colors="item.player1Leader.colors" size="xs" />
-								<span>{{ item.player1Leader.name }}</span>
-							</template>
-							<template v-if="item.player1Leader && item.player2Leader">
-								<span class="text-dimmed">vs</span>
-							</template>
-							<template v-if="item.player2Leader">
-								<OpColorDisplay :colors="item.player2Leader.colors" size="xs" />
-								<span>{{ item.player2Leader.name }}</span>
-							</template>
-						</div>
+						<FeatureMatchSeatDecks :decks="item.decks" />
 					</div>
 				</template>
 			</USelect>

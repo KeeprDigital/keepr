@@ -35,7 +35,7 @@ const previewTheme = useGraphicsPreviewTheme(() => previewEventStore.event?.them
 const screenStore = useScreenStore();
 const eventStore = useEventStore();
 
-const { config, saving, saveState, saveError, updateConfig, resetConfig, retry: retrySave, discard, flush } = useModeConfigUpdate(
+const { config, saving, saveState, saveError, updateConfig, resetConfig, resetReady, retry: retrySave, discard, flush } = useModeConfigUpdate(
 	() => props.eventId,
 	() => props.screen.id,
 	'feature-match-overlay',
@@ -88,7 +88,12 @@ const {
 
 defineExpose({
 	resetConfig: resetLayout,
-	resetBlocked: computed(() => !canAuthor.value),
+	/** Why the header's Reset is held, if it is. */
+	resetBlockedReason: computed(() => !resetReady.value
+		? 'Waiting for this Event to load'
+		: !canAuthor.value
+				? 'Another session is editing this Screen\'s graphics'
+				: undefined),
 	saving,
 });
 
