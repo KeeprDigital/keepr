@@ -244,6 +244,13 @@ describe('broadcast Deck List Scryfall resolver', () => {
 				printed_name: 'Rick, Steadfast Leader',
 			},
 			{
+				id: 'quoted-printing',
+				name: 'Kongming, "Sleeping Dragon"',
+				set: 'sld',
+				collector_number: '901',
+				flavor_name: 'The "Sleeping Dragon"',
+			},
+			{
 				id: 'lightning-bolt',
 				name: 'Lightning Bolt',
 				set: 'msc',
@@ -273,6 +280,13 @@ describe('broadcast Deck List Scryfall resolver', () => {
 				setCode: 'SLD',
 				scryfallId: 'ragavan-sld-900',
 				canonicalName: 'Ragavan, Nimble Pilferer',
+			},
+			{
+				line: 'a printed name holding a double quote',
+				name: 'The "Sleeping Dragon"',
+				setCode: null,
+				scryfallId: 'quoted-printing',
+				canonicalName: 'Kongming, "Sleeping Dragon"',
 			},
 		])('resolves $line to the printing bearing it, as the card it is', async ({ name, setCode, scryfallId, canonicalName }) => {
 			vi.stubGlobal('fetch', createScryfallFake(printedNameCatalogue).fetch);
@@ -323,6 +337,43 @@ describe('broadcast Deck List Scryfall resolver', () => {
 				);
 
 				expect(result.map(resolution => resolution.status === 'resolved')).toEqual(resolved);
+				expect(scryfall.searches).toHaveLength(searches);
+			}
+			finally {
+				vi.unstubAllGlobals();
+			}
+		});
+
+		// A search a page at a time: Rick follows every Zidane printing, and five pages are the most read.
+		it.each([
+			{ zidanePrintings: 2, rickResolved: true, searches: 3 },
+			{ zidanePrintings: 5, rickResolved: false, searches: 5 },
+		])('reads $searches pages for a search answering $zidanePrintings printings ahead of the last name', async ({ zidanePrintings, rickResolved, searches }) => {
+			const scryfall = createScryfallFake([
+				...Array.from({ length: zidanePrintings }, (_, index) => ({
+					id: `ragavan-fca-${index}`,
+					name: 'Ragavan, Nimble Pilferer',
+					set: 'fca',
+					collector_number: String(index),
+					flavor_name: 'Zidane Tribal',
+				})),
+				{
+					id: 'greymond-sld-143',
+					name: 'Greymond, Avacyn\'s Stalwart',
+					set: 'sld',
+					collector_number: '143',
+					printed_name: 'Rick, Steadfast Leader',
+				},
+			], { searchPageSize: 1 });
+			vi.stubGlobal('fetch', scryfall.fetch);
+
+			try {
+				const result = await createBroadcastDeckListScryfallResolver().resolve([
+					{ name: 'Zidane Tribal', setCode: null, collectorNumber: null },
+					{ name: 'Rick, Steadfast Leader', setCode: null, collectorNumber: null },
+				]);
+
+				expect(result.map(resolution => resolution.status === 'resolved')).toEqual([true, rickResolved]);
 				expect(scryfall.searches).toHaveLength(searches);
 			}
 			finally {

@@ -75,9 +75,11 @@ export const scryfallCollectionResponseSchema = z.object({
 
 // ── Search response ───────────────────────────────────────────────────────────
 
-/** One page of `/cards/search`: at most 175 cards. */
+/** One page of `/cards/search`: at most 175 cards, and the next page's URL while there are more. */
 export const scryfallCardListResponseSchema = z.object({
 	object: z.literal('list'),
+	has_more: z.boolean().optional(),
+	next_page: z.string().max(2_048).nullable().optional(),
 	data: z.array(scryfallCardSchema).max(175),
 }).passthrough();
 

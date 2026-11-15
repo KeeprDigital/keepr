@@ -59,7 +59,9 @@ function toScryfallJson(card: FakeScryfallCard) {
 	};
 }
 
-export function createScryfallFake(catalogue: readonly FakeScryfallCard[]) {
+/** `searchPageSize`: the cards a search page holds, 175 as on Scryfall unless a test pages sooner. */
+export function createScryfallFake(catalogue: readonly FakeScryfallCard[], options: { searchPageSize?: number } = {}) {
+	const searchPageSize = options.searchPageSize ?? 175;
 	const namedLookups: string[] = [];
 	const collectionBatches: string[][] = [];
 	const searches: string[] = [];
@@ -109,23 +111,32 @@ export function createScryfallFake(catalogue: readonly FakeScryfallCard[]) {
 			: json({ object: 'error', status: 404 }, 404);
 	};
 
-	// `!"name"`, alone or `set:` narrowed, joined by `or`: the exact-name terms a search is asked.
+	// `!"name"` or `!'name'`, alone or `set:` narrowed, joined by `or`, paged by `next_page`.
 	const search = (url: URL) => {
 		const query = url.searchParams.get('q') ?? '';
 		searches.push(query);
 		const terms = [
-			...query.matchAll(/!"([^"]+)"(?: set:([a-z0-9]+))?/g),
+			...query.matchAll(/!(?:"([^"]+)"|'([^']+)')(?: set:([a-z0-9]+))?/g),
 		]
-			.map(([, name, set]) => ({ name: name!, set }));
+			.map(([, doubleQuoted, singleQuoted, set]) => ({ name: (doubleQuoted ?? singleQuoted)!, set }));
 		const printedWith = (card: FakeScryfallCard, name: string) => sameName(card.name, name)
 			|| hasFace(card, name)
 			|| [card.flavor_name, card.printed_name].some(printed => printed !== undefined && sameName(printed, name));
 		const data = catalogue.filter(card => terms.some(term => inSet(card, term.set) && printedWith(card, term.name)));
+		const page = Number(url.searchParams.get('page') ?? '1');
+		const hasMore = page * searchPageSize < data.length;
+		const nextPage = new URL(url);
+		nextPage.searchParams.set('page', String(page + 1));
 		return data.length > 0
 			? json({
 					object: 'list',
-					has_more: false,
-					data: data.map(toScryfallJson),
+					has_more: hasMore,
+					...(hasMore
+						? {
+								next_page: nextPage.toString(),
+							}
+						: {}),
+					data: data.slice((page - 1) * searchPageSize, page * searchPageSize).map(toScryfallJson),
 				})
 			: json({ object: 'error', code: 'not_found', status: 404 }, 404);
 	};
