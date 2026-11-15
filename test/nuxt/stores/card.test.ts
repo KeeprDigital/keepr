@@ -72,10 +72,10 @@ mockNuxtImport('useScryfallBatch', () => () => ({
 	}),
 	buildDeckListArrays: vi.fn().mockReturnValue({ mainboard: [], sideboard: [] }),
 }));
-const mockFetchDeck = vi.fn().mockResolvedValue(null);
+const mockReadDeck = vi.fn().mockResolvedValue(null);
 const mockGetCachedDeck = vi.fn().mockReturnValue(null);
 mockNuxtImport('usePlayerDeckCache', () => () => ({
-	fetchDeck: mockFetchDeck,
+	readDeck: mockReadDeck,
 	getCachedDeck: mockGetCachedDeck,
 }));
 

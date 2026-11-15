@@ -175,7 +175,7 @@ mockNuxtImport('useScryfallBatch', () => () => ({
 	buildDeckListArrays: () => ({ mainboard: [], sideboard: [] }),
 }));
 mockNuxtImport('usePlayerDeckCache', () => () => ({
-	fetchDeck: vi.fn(async () => null),
+	readDeck: vi.fn(async () => null),
 }));
 
 const NuxtLayoutStub = defineComponent({ template: '<div><slot name="actions" /><slot /></div>' });

@@ -37,7 +37,10 @@ interface SeatedSeat {
  * somebody sits in shows its Commanders, and the Mainboard of the list it
  * holds, each card the printing it was saved as. A list never changes under
  * its id, so a re-paste, a clear, Swap Seats or a change of Commander reaches
- * the page as a change to the Slot, and the shown Slot reloads.
+ * the page as a change to the Slot, and the shown Slot reloads. A load whose
+ * list the server did not answer, or whose card data Scryfall did not,
+ * re-fetches on the degraded cadence (`useDegradedRefetch`), as the
+ * Two-Player matchup does.
  */
 export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSourceRuntimeState) {
 	const featureMatchStateStore = useFeatureMatchStateStore();
@@ -94,7 +97,7 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 		return read;
 	}
 
-	async function seatDeckData(eventId: number, slotId: number, seat: SeatedSeat): Promise<CommanderSeatDeckData> {
+	async function seatDeckData(eventId: number, slotId: number, seat: SeatedSeat): Promise<{ data: CommanderSeatDeckData; degraded: boolean }> {
 		let entries: CommanderDeckListEntry[] = [];
 		let failed = false;
 		if (seat.deckListId !== null) {
@@ -115,50 +118,72 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 		});
 		const commanders = seat.commanders.map(commander => asCard(commander, 1, null));
 		const mainboard = commanderMainboard(entries, seat.commanders).map(entry => asCard(entry, entry.quantity, entry.cardType));
-		const { cards } = await fetchScryfallCards([
+		const { cards, degraded } = await fetchScryfallCards([
 			...commanders,
 			...mainboard,
 		]);
 		return {
-			seat: seat.seat,
-			playerName: seat.playerName,
-			deckName: seat.deckName,
-			deckColors: seat.deckColors,
-			commanders: buildDeckListArrays(commanders, cards).mainboard,
-			mainboard: buildDeckListArrays(mainboard, cards).mainboard,
-			failed,
+			data: {
+				seat: seat.seat,
+				playerName: seat.playerName,
+				deckName: seat.deckName,
+				deckColors: seat.deckColors,
+				commanders: buildDeckListArrays(commanders, cards).mainboard,
+				mainboard: buildDeckListArrays(mainboard, cards).mainboard,
+				failed,
+			},
+			// An unread list is no answer about the Seat's deck, so it is read again on the cadence too.
+			degraded: degraded || failed,
 		};
 	}
 
 	/** The Feature Match Slot whose Seats the page shows. */
 	const shownSlotId = ref<number | null>(null);
-	let flight = 0;
+
+	const shownSlotKey = computed(() => shownSlotId.value === null
+		? null
+		: JSON.stringify(slotSeats(shownSlotId.value)));
+
+	/** Who the shown rendering's Seats seated, as `shownSlotKey` read when it loaded. */
+	let renderedKey: string | null = null;
+
+	const slotRefetch = useDegradedRefetch<string>({
+		refetch: () => {
+			if (shownSlotId.value !== null)
+				void runSlotLoad(shownSlotId.value, { silent: true });
+		},
+		isUnchanged: key => key === renderedKey,
+	});
 
 	async function runSlotLoad(slotId: number, options: { silent: boolean }) {
 		const seats = slotSeats(slotId);
 		const eventId = toValue(state.eventId);
-		if (!seats || !eventId)
+		if (!seats || !eventId) {
+			// A degraded rendering keeps re-fetching even when one attempt finds nothing to build from.
+			slotRefetch.keepCadence();
 			return;
+		}
 
-		const current = ++flight;
+		const key = JSON.stringify(seats);
+		const flight = slotRefetch.begin();
 		// A reload that overtakes a load still in flight takes its spinner over, and ends it.
 		const endsLoading = !options.silent || state.loadingDeckList.value;
 		if (!options.silent)
 			state.loadingDeckList.value = true;
 		try {
 			const loaded = await Promise.all(seats.map(seat => seatDeckData(eventId, slotId, seat)));
-			if (current === flight)
-				state.seats.value = loaded;
+			if (flight.stale)
+				return;
+			if (slotRefetch.completeLoad(loaded.some(seat => seat.degraded), key) === 'keep')
+				return;
+			state.seats.value = loaded.map(seat => seat.data);
+			renderedKey = key;
 		}
 		finally {
-			if (endsLoading && current === flight)
+			if (endsLoading && flight.current)
 				state.loadingDeckList.value = false;
 		}
 	}
-
-	const shownSlotKey = computed(() => shownSlotId.value === null
-		? null
-		: JSON.stringify(slotSeats(shownSlotId.value)));
 
 	// Swap Seats, a new list, or any edit to who the shown Slot seats reloads it in place.
 	watch([shownSlotId, shownSlotKey], ([slotId, key], [previousSlotId, previousKey]) => {
@@ -174,8 +199,9 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 
 	function clearMatchDeckLists() {
 		shownSlotId.value = null;
-		// Whatever was loading is left behind, and its spinner with it.
-		++flight;
+		// Whatever was loading is left behind, and its spinner with it; nothing is left to re-fetch.
+		slotRefetch.settle();
+		renderedKey = null;
 		state.loadingDeckList.value = false;
 		state.seats.value = [];
 	}
@@ -187,6 +213,8 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 
 	return {
 		canUseDeckListMode,
+		/** True while the shown Slot renders a list not read, or cards Scryfall did not answer (#465). */
+		cardDataDegraded: slotRefetch.degraded,
 		slotHoldsDecks,
 		loadMatchDeckLists,
 		clearMatchDeckLists,

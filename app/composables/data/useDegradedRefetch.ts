@@ -37,6 +37,14 @@ export interface DegradedRefetch<TSource> {
 	 */
 	completeLoad: (degraded: boolean, next: TSource) => 'keep' | 'render';
 	/**
+	 * Record a load whose source read failed. A failed read is no answer about
+	 * the source, so the surface is degraded and the cadence asks again.
+	 * Answers whether the current rendering should be kept: a degraded one
+	 * stays up through the outage (#465 review); any other is the caller's to
+	 * replace with its failure.
+	 */
+	failLoad: () => 'keep' | 'render';
+	/**
 	 * A failed or empty attempt must not end a degraded rendering's recovery
 	 * cadence — the source endpoint failing during the same outage would
 	 * otherwise leave the degradation permanent (#465 review). Returns whether
@@ -104,6 +112,15 @@ export function useDegradedRefetch<TSource>(
 			: 'render';
 	}
 
+	function failLoad(): 'keep' | 'render' {
+		const wasDegraded = degraded.value;
+		setDegraded(true);
+		schedule();
+		return wasDegraded
+			? 'keep'
+			: 'render';
+	}
+
 	function keepCadence(): boolean {
 		if (!degraded.value) {
 			return false;
@@ -122,6 +139,7 @@ export function useDegradedRefetch<TSource>(
 		degraded: readonly(degraded),
 		begin,
 		completeLoad,
+		failLoad,
 		keepCadence,
 		settle,
 		cancel,

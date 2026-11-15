@@ -124,7 +124,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 		const selectedRound = state.deckListRoundId.value == null
 			? null
 			: roundStore.rounds.find(round => round.id === state.deckListRoundId.value) ?? null;
-		return deckCache.fetchDeck(
+		return deckCache.readDeck(
 			resolvedPlayerId,
 			evtId,
 			player?.updatedAt ?? `match-deck:${deckId}`,
@@ -382,10 +382,10 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			if (flight.stale) {
 				return;
 			}
-			// A failed load while degraded must not blank the rendering — the deck
-			// endpoint failing during the same outage would otherwise take down the
-			// placeholder surface too (#465 review).
-			if (matchupRefetch.keepCadence()) {
+			// A failed read is no answer about the decks: the cadence reads them
+			// again, and a degraded rendering stays up meanwhile rather than the
+			// same outage taking down the placeholder surface too (#465 review).
+			if (matchupRefetch.failLoad() === 'keep') {
 				return;
 			}
 			state.deckListPlayer1.value = null;
@@ -508,7 +508,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 		const evtId = toValue(state.eventId);
 		if (!player || !getMtgGameData(player.gameData).deckName || !evtId) {
 			// A degraded rendering keeps re-fetching even when one attempt finds
-			// nothing to build from — same cadence rule as the catch below.
+			// nothing to build from.
 			playerDeckRefetch.keepCadence();
 			return;
 		}
@@ -519,7 +519,7 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 		state.playerDeckPlayerId.value = playerId;
 
 		try {
-			const deckResponse = await deckCache.fetchDeck(player.id, evtId, player.updatedAt);
+			const deckResponse = await deckCache.readDeck(player.id, evtId, player.updatedAt);
 			const deckCards = toDeckListCards(deckResponse);
 			const companionCard = toCompanionCard(deckResponse);
 			const { cards: cardDataMap, degraded } = deckCards.length > 0
@@ -549,8 +549,8 @@ export function useCardDeckSourceRuntime(state: CardDeckSourceRuntimeState) {
 			if (flight.stale) {
 				return;
 			}
-			// A failed load while degraded must not blank the rendering (#465 review).
-			if (playerDeckRefetch.keepCadence()) {
+			// Same rule as the matchup surface: a failed read is read again on the cadence.
+			if (playerDeckRefetch.failLoad() === 'keep') {
 				return;
 			}
 			state.playerDeckData.value = null;

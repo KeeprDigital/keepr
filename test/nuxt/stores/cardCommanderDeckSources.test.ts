@@ -2,7 +2,7 @@ import type { CommanderDeckListEntry } from '~~/shared/types/featureMatchDeckLis
 import type { Commander } from '~~/shared/types/game';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { storedSeat } from '~~/test/helpers/commanders';
 import { deferred } from '~~/test/helpers/deferred';
 import { ANIMAR, ASHLING, deckListEntryOf, MOXFIELD_CARDS } from '~~/test/helpers/magicDeckText';
@@ -14,12 +14,13 @@ import { createFollowedFeatureMatchSessions, followNoSession } from '~~/test/nux
 
 const { ashling, animar, forest, hedgeMaze } = MOXFIELD_CARDS;
 
-const { mockFetch } = vi.hoisted(() => ({
+const { mockFetch, scryfall } = vi.hoisted(() => ({
 	mockFetch: vi.fn(),
+	scryfall: { up: true },
 }));
 mockNuxtImport('$fetch', () => mockFetch);
 // Imported inside the factory, which runs before this file's own imports.
-mockNuxtImport('useScryfallBatch', async () => (await import('~~/test/nuxt/helpers/scryfallBatch')).scryfallBatchAnswering(scryfallId => ({ id: scryfallId })));
+mockNuxtImport('useScryfallBatch', async () => (await import('~~/test/nuxt/helpers/scryfallBatch')).scryfallBatchAnswering(scryfallId => ({ id: scryfallId }), () => scryfall.up));
 
 mockNuxtImport('useEventStore', () => () => ({
 	eventId: 1,
@@ -80,6 +81,7 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 	beforeEach(() => {
 		store = useCardStore();
 		store.$reset();
+		scryfall.up = true;
 		followNoSession(followed);
 		featureMatchStore.featureMatches = [
 			slot7(),
@@ -179,15 +181,57 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 		]);
 	});
 
-	it('keeps a Seat\'s Commanders, and says so, when its list cannot be read', async () => {
-		deckLists.delete(301);
+	// The cadence and its rules are useDegradedRefetch's; this is the Cards page's wiring.
+	describe('while card data or a list cannot be read', () => {
+		beforeEach(() => vi.useFakeTimers());
+		afterEach(() => vi.useRealTimers());
 
-		await store.loadMatchDeckLists(7);
+		it('shows the cards by name, reports it, and fills them in on the re-fetch cadence', async () => {
+			scryfall.up = false;
+			await store.loadMatchDeckLists(7);
 
-		expect(shown()[0]).toMatchObject({
-			commanders: [ashling.id],
-			mainboard: [],
-			failed: true,
+			expect(shown()[0]).toMatchObject({
+				commanders: [undefined],
+				mainboard: [
+					[3, undefined],
+				],
+			});
+			expect(store.cardDataDegraded).toBe(true);
+
+			scryfall.up = true;
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(shown()[0]).toMatchObject({
+				commanders: [ashling.id],
+				mainboard: [
+					[3, forest.id],
+				],
+			});
+			expect(store.cardDataDegraded).toBe(false);
+		});
+
+		it('keeps a Seat\'s Commanders, says so, and reads its list again on the re-fetch cadence', async () => {
+			const entries = deckLists.get(301)!;
+			deckLists.delete(301);
+			await store.loadMatchDeckLists(7);
+
+			expect(shown()[0]).toMatchObject({
+				commanders: [ashling.id],
+				mainboard: [],
+				failed: true,
+			});
+			expect(store.cardDataDegraded).toBe(true);
+
+			deckLists.set(301, entries);
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(shown()[0]).toMatchObject({
+				mainboard: [
+					[3, forest.id],
+				],
+				failed: false,
+			});
+			expect(store.cardDataDegraded).toBe(false);
 		});
 	});
 

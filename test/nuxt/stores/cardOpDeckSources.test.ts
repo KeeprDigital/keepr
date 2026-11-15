@@ -143,6 +143,7 @@ describe('useCardStore One Piece Feature Match Deck Lists', () => {
 
 	afterEach(() => {
 		store.$reset();
+		vi.useRealTimers();
 	});
 
 	it.each([
@@ -248,6 +249,27 @@ describe('useCardStore One Piece Feature Match Deck Lists', () => {
 
 		expect(shown()[0]).toEqual(side);
 		expect(shown()[1]?.cards).toEqual([NAMI.number, 'OP01-060']);
+	});
+
+	// The cadence and its rules are useDegradedRefetch's; this is the One Piece wiring.
+	it('reports a side whose Deck List cannot be read, and reads it again on the re-fetch cadence', async () => {
+		vi.useFakeTimers();
+		const path = '/api/events/1/feature-match-slots/7/deck-lists/301';
+		const alice = deckLists.get(path);
+		deckLists.delete(path);
+		await store.loadMatchDeckLists(7);
+
+		expect(shown()[0]?.failed).toBe(true);
+		expect(store.cardDataDegraded).toBe(true);
+
+		deckLists.set(path, alice);
+		await vi.advanceTimersByTimeAsync(60_000);
+
+		expect(shown()[0]).toMatchObject({
+			cards: [ZORO.number, 'OP01-025'],
+			failed: false,
+		});
+		expect(store.cardDataDegraded).toBe(false);
 	});
 
 	it('shows the Slot picked last when an earlier pick answers after it', async () => {
