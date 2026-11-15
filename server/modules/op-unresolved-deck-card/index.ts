@@ -9,6 +9,7 @@ import { opCardCatalogueModule } from '~~/server/modules/op-card-catalogue';
 import { opDeckListWriteModule } from '~~/server/modules/op-deck-list-write';
 import { deckListReferenceOf, featureMatchDeckListService } from '~~/server/services/featureMatchDeckList';
 import { opCatalogueRowFor } from '~~/server/services/opCardCatalogue';
+import { opCardNumberResolutionService } from '~~/server/services/opCardNumberResolution';
 import { opPlayerDeckListService } from '~~/server/services/opPlayerDeckList';
 import { bandaiKeeprConfig } from '~~/server/utils/bandaiKeepr';
 import { requireOpEvent } from '~~/server/utils/routeGuards';
@@ -245,7 +246,10 @@ export function opUnresolvedDeckCardModule() {
 	/**
 	 * Names the number as the card the operator picked from a bandai-keepr
 	 * search, in every Deck List in the Event holding it (as ADR-0031 does for
-	 * MTG). A picked card bandai-keepr does not know is refused.
+	 * MTG), and remembers it for the Event, so every later write holding the
+	 * number saves the card picked. It is remembered before the rewrite, so a
+	 * rewrite failing part-way still holds for the next import. A picked card
+	 * bandai-keepr does not know is refused.
 	 */
 	async function resolve({ eventId, number, cardNumber }: { eventId: number; number: string; cardNumber: string }): Promise<OpUnresolvedDeckCardAnswer> {
 		await requireOpEvent(eventId);
@@ -253,6 +257,8 @@ export function opUnresolvedDeckCardModule() {
 		const card = (await catalogue.resolve(bandaiKeeprConfig, [cardNumber])).get(cardNumber) ?? null;
 		if (!card)
 			throw createError({ statusCode: 400, message: `bandai-keepr has no card ${cardNumber}` });
+		if (cardNumber !== number)
+			await opCardNumberResolutionService().record({ eventId, cardNumber: number, resolvedCardNumber: cardNumber });
 		return {
 			number,
 			card: { number: cardNumber, name: card.name },

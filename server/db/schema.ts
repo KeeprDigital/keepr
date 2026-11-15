@@ -910,6 +910,25 @@ export const eventCardNameOverrides = sqliteTable('event_card_name_overrides', {
 	),
 ]);
 
+/**
+ * A One Piece Card Game Event's resolved Unresolved Deck Cards (ADR-0074): each
+ * card number an operator resolved, and the card number it names. Every OP
+ * Deck List write in the Event reads `cardNumber` as `resolvedCardNumber`
+ * before its catalogue lookup, so a re-import holding the old number keeps
+ * the resolution.
+ */
+export const eventOpCardNumberResolutions = sqliteTable('event_op_card_number_resolutions', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	eventId: integer('event_id')
+		.references(() => events.id, { onDelete: 'cascade' })
+		.notNull(),
+	cardNumber: text('card_number').notNull(),
+	resolvedCardNumber: text('resolved_card_number').notNull(),
+	...timestamps,
+}, table => [
+	uniqueIndex('event_op_card_number_resolutions_event_number_idx').on(table.eventId, table.cardNumber),
+]);
+
 export const playerDeckUnresolvedCards = sqliteTable('player_deck_unresolved_cards', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	deckId: integer('deck_id')
@@ -1015,6 +1034,7 @@ export const eventsRelations = relations(events, ({ many }) => ({
 	screens: many(screens),
 	archetypes: many(archetypes),
 	eventCardNameOverrides: many(eventCardNameOverrides),
+	eventOpCardNumberResolutions: many(eventOpCardNumberResolutions),
 	playerDecks: many(playerDecks),
 }));
 
@@ -1297,6 +1317,13 @@ export const eventCardNameOverridesRelations = relations(eventCardNameOverrides,
 	card: one(cards, {
 		fields: [eventCardNameOverrides.resolvedCardId],
 		references: [cards.id],
+	}),
+}));
+
+export const eventOpCardNumberResolutionsRelations = relations(eventOpCardNumberResolutions, ({ one }) => ({
+	event: one(events, {
+		fields: [eventOpCardNumberResolutions.eventId],
+		references: [events.id],
 	}),
 }));
 

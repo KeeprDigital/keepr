@@ -422,3 +422,114 @@ describe('resolving an Unresolved Deck Card to a picked card', () => {
 		await expect(act(eventId)).rejects.toMatchObject({ statusCode: 404 });
 	});
 });
+
+describe('a resolved Unresolved Deck Card', () => {
+	interface Resolved {
+		eventId: number;
+		otherEventId: number;
+		ana: { id: number };
+		dan: { id: number };
+		slotId: number;
+	}
+
+	/** An Event in which OP91-025 was resolved to OP01-025, and the unknown Leader OP13-097 to OP13-079. */
+	async function stageResolved(): Promise<Resolved> {
+		const eventId = await stageEvent();
+		const otherEventId = await stageEvent();
+		const ana = await stagePlayer(eventId, 'ana');
+		const dan = await stagePlayer(otherEventId, 'dan');
+		const slot = await stageSlot(eventId, 'Cora');
+		await writePlayer(eventId, ana.id, '3x OP91-025', 'import', 'OP13-097');
+		upstream.know(LATE_LEADER);
+		await unresolved.resolve({ eventId, number: 'OP91-025', cardNumber: 'OP01-025' });
+		await unresolved.resolve({ eventId, number: 'OP13-097', cardNumber: 'OP13-079' });
+		return {
+			eventId,
+			otherEventId,
+			ana,
+			dan,
+			slotId: slot.id,
+		};
+	}
+
+	function savedAs({ leaderNumber, entries }: { leaderNumber: string | null; entries: ReadonlyArray<{ number: string; quantity: number; card: unknown }> }) {
+		return {
+			leaderNumber,
+			entries: entries.map(({ number, quantity, card }) => ({ number, quantity, known: card !== null })),
+		};
+	}
+
+	it.each([
+		[
+			'pasted to a Player',
+			async ({ eventId, ana }: Resolved) => (await writePlayer(eventId, ana.id, '1x OP01-001\n3x OP91-025', 'hand')).deckList,
+			{
+				leaderNumber: 'OP01-001',
+				entries: [
+					{ number: 'OP01-001', quantity: 1, known: true },
+					{ number: 'OP01-025', quantity: 3, known: true },
+				],
+			},
+		],
+		[
+			'imported beside copies of the card it names, added into them',
+			async ({ eventId, ana }: Resolved) => (await opDeckListWriteModule().write({
+				eventId,
+				owner: { kind: 'player', playerId: ana.id },
+				input: {
+					entries: [
+						{ number: 'OP01-025', quantity: 1 },
+						{ number: 'OP91-025', quantity: 3 },
+					],
+					leaderNumber: 'OP01-001',
+				},
+				source: 'import',
+			})).deckList,
+			{
+				leaderNumber: 'OP01-001',
+				entries: [
+					{ number: 'OP01-001', quantity: 1, known: true },
+					{ number: 'OP01-025', quantity: 4, known: true },
+				],
+			},
+		],
+		[
+			'marked as the Leader',
+			async ({ eventId, ana }: Resolved) => (await writePlayer(eventId, ana.id, '2x OP01-040', 'import', 'OP13-097')).deckList,
+			{
+				leaderNumber: 'OP13-079',
+				entries: [
+					{ number: 'OP13-079', quantity: 1, known: true },
+					{ number: 'OP01-040', quantity: 2, known: true },
+				],
+			},
+		],
+		[
+			'pasted to a Slot side',
+			async ({ eventId, slotId }: Resolved) => (await pasteToSlot(eventId, slotId, '1x OP01-001\n2x OP91-025')).deckList,
+			{
+				leaderNumber: 'OP01-001',
+				entries: [
+					{ number: 'OP01-001', quantity: 1, known: true },
+					{ number: 'OP01-025', quantity: 2, known: true },
+				],
+			},
+		],
+		[
+			'written in another Event, which keeps it unresolved',
+			async ({ otherEventId, dan }: Resolved) => (await writePlayer(otherEventId, dan.id, '1x OP01-001\n3x OP91-025')).deckList,
+			{
+				leaderNumber: 'OP01-001',
+				entries: [
+					{ number: 'OP01-001', quantity: 1, known: true },
+					{ number: 'OP91-025', quantity: 3, known: false },
+				],
+			},
+		],
+	])('saves the card it was resolved to when a later write holds its number: %s', async (_case, write, expected) => {
+		const resolved = await stageResolved();
+
+		expect(savedAs(await write(resolved))).toEqual(expected);
+		expect(await unresolved.list({ eventId: resolved.eventId })).toEqual([]);
+	});
+});
