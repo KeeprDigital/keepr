@@ -98,6 +98,29 @@ describe('screenDeckCard', () => {
 		expect(wrapper.get('nuxt-img-stub').attributes('loading')).toBe('eager');
 	});
 
+	// A card draws the Scryfall image its deck chose for its board, which is the one preloaded.
+	it.each([
+		{ art: 'small', src: 'https://img.test/mana-drain-small.jpg' },
+		{ art: undefined, src: 'https://img.test/mana-drain.jpg' },
+	] as const)('draws the $art art', async ({ art, src }) => {
+		const wrapper = await mountComponent({
+			art,
+			card: createCard({
+				mtgCard: {
+					imageData: {
+						front: {
+							small: 'https://img.test/mana-drain-small.jpg',
+							normal: 'https://img.test/mana-drain.jpg',
+						},
+						back: null,
+					},
+				} as DeckListCardWithData['mtgCard'],
+			}),
+		});
+
+		expect(wrapper.get('nuxt-img-stub').attributes('src')).toBe(src);
+	});
+
 	it('keeps a named placeholder visible when card art is unavailable', async () => {
 		const wrapper = await mountComponent({
 			card: createCard({ name: 'Rest in Peace', mtgCard: null }),

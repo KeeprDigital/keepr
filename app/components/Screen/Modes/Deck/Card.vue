@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import type { DeckArtSize } from '~~/shared/utils/deckArt';
 import type { DeckListCardWithData } from '~/types/card/deckList';
 import { foundationTokenVar, modeTokenVar } from '~/modules/screen-mode';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
 	card: DeckListCardWithData;
+	/** The Scryfall image its board draws, the one its deck preloaded (#1201). */
+	art?: DeckArtSize;
 	showQuantity: boolean;
 	showHighlanderPoints: boolean;
 	quantityPositionClass: string;
@@ -14,7 +17,7 @@ const props = defineProps<{
 	tag?: string;
 	/** Where the tag sits, as the other badges are placed. */
 	tagPositionClass?: string;
-}>();
+}>(), { art: 'normal' });
 
 /** A pill matching the quantity badge: its colours, its text size and its 1.75em height. */
 const tagStyle = computed(() => ({
@@ -30,7 +33,7 @@ const placeholderStyle = {
 };
 
 function getCardImageUrl(card: DeckListCardWithData): string | null {
-	return card.mtgCard?.imageData?.front?.normal ?? null;
+	return card.mtgCard?.imageData?.front?.[props.art] ?? null;
 }
 </script>
 

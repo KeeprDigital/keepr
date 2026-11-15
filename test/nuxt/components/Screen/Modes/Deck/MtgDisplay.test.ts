@@ -35,6 +35,13 @@ const deckColors = ref('U');
 const displayedDeckVersion = ref(1);
 const pendingSwapVersion = ref(0);
 const commitPendingDeck = vi.fn();
+/** The Scryfall image each board's cards draw, as the deck data chose it. */
+const art = ref({
+	commanders: 'normal',
+	mainboard: 'normal',
+	sideboard: 'normal',
+	companion: 'normal',
+});
 
 // The mode's data is faked, so nothing reads the Screen context it is handed.
 mockNuxtImport('useScreenContext', () => () => ({}));
@@ -56,6 +63,7 @@ mockNuxtImport('useDeckModeData', () => () => ({
 	displayedDeckVersion,
 	pendingSwapVersion,
 	commitPendingDeck,
+	art,
 }));
 
 const ScreenModeBaseStub = defineComponent({
@@ -83,8 +91,9 @@ const DeckCardStub = defineComponent({
 		tag: { type: String, required: false },
 		quantityBadgeStyle: { type: Object, required: false },
 		highlanderPointsBadgeStyle: { type: Object, required: false },
+		art: { type: String, required: false },
 	},
-	template: '<div data-testid="deck-card" :data-tag="tag" :data-name="card.name" :data-show-quantity="String(showQuantity)" :data-quantity-size="quantityBadgeStyle?.fontSize" :data-points-size="highlanderPointsBadgeStyle?.fontSize" :data-show-highlander-points="String(showHighlanderPoints)" :data-point-position="highlanderPointsPositionClass" />',
+	template: '<div data-testid="deck-card" :data-art="art" :data-tag="tag" :data-name="card.name" :data-show-quantity="String(showQuantity)" :data-quantity-size="quantityBadgeStyle?.fontSize" :data-points-size="highlanderPointsBadgeStyle?.fontSize" :data-show-highlander-points="String(showHighlanderPoints)" :data-point-position="highlanderPointsPositionClass" />',
 });
 
 function createCard(overrides: Partial<DeckListCardWithData> = {}): DeckListCardWithData {
@@ -167,6 +176,12 @@ describe('screenDeckDisplay', () => {
 		displayedDeckVersion.value = 1;
 		pendingSwapVersion.value = 0;
 		commitPendingDeck.mockReset();
+		art.value = {
+			commanders: 'normal',
+			mainboard: 'normal',
+			sideboard: 'normal',
+			companion: 'normal',
+		};
 		mainboard.value = [
 			createCard(),
 		];
@@ -547,6 +562,33 @@ describe('screenDeckDisplay', () => {
 	});
 
 	// Measured, the boards share one card size and are sized and placed as one group.
+	// Each card draws the art its deck data chose for its board, the companion its own.
+	it('draws each board\'s cards at its chosen art', async () => {
+		mutableConfig = {
+			...mutableConfig,
+			sideboard: { view: 'grid' },
+		};
+		art.value = {
+			commanders: 'normal',
+			mainboard: 'small',
+			sideboard: 'small',
+			companion: 'normal',
+		};
+		sideboard.value = [
+			createCard({ name: 'Duress', compartment: 'sideboard' }),
+		];
+		companionCard.value = createCard({ name: 'Lutri, the Spellchaser', compartment: 'sideboard' });
+
+		const wrapper = await mountComponent();
+
+		const drawn = Object.fromEntries(wrapper.findAll('[data-testid="deck-card"]')
+			.map(card => [
+				card.attributes('data-name'),
+				card.attributes('data-art'),
+			]));
+		expect(drawn).toEqual({ 'Mana Drain': 'small', 'Duress': 'small', 'Lutri, the Spellchaser': 'normal' });
+	});
+
 	it('lays every board out at one card size from the space it measures', async () => {
 		measured.width = 1920;
 		measured.height = 960;

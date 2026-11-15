@@ -8,11 +8,15 @@ import type { HighlanderDeckSummary } from '~~/shared/types/highlander';
 import type { PlayerDeckResponse } from '~~/shared/types/metagame';
 import type { DeckModeConfig, DeckSource } from '~~/shared/types/screenConfig';
 import type { ScreenOutputCommanderDeckListResponse } from '~~/shared/types/screenOutputReads';
+import type { DeckArtSize } from '~~/shared/utils/deckArt';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
 import type { Player } from '~/types';
 import type { DeckListCardWithData } from '~/types/card/deckList';
+import { useWindowSize } from '@vueuse/core';
+import { DEFAULT_EVENT_CANVAS } from '~~/shared/eventCanvas';
 import { deckBoardsShowingArt } from '~~/shared/types/screenConfig';
 import { commanderMainboard } from '~~/shared/utils/commanderDeckList';
+import { deckArtSizes } from '~~/shared/utils/deckArt';
 import { featureMatchSidePlayer } from '~~/shared/utils/featureMatchSidePlayer';
 import { getMtgGameData } from '~~/shared/utils/gameData';
 import { createDeckLookupCards } from '~~/shared/utils/playerDeck';
@@ -176,30 +180,36 @@ function computeDeckStats(cards: Array<{ quantity: number; compartment: string; 
 	return result;
 }
 
-const deckImageUrl = (card: DeckListCardWithData) => card.mtgCard?.imageData?.front?.normal;
-
-/** Starts loading art no board draws yet, waiting for none of it and judging none of it. */
-function warmDeckImages(cards: DeckListCardWithData[]) {
-	void preloadImages(cards.map(deckImageUrl).filter((url): url is string => !!url));
+/** A card and the Scryfall image its board draws it from. */
+interface DeckArt {
+	card: DeckListCardWithData;
+	size: DeckArtSize;
 }
 
-async function preloadDeckImages(cards: DeckListCardWithData[]): Promise<boolean> {
+const deckImageUrl = ({ card, size }: DeckArt) => card.mtgCard?.imageData?.front?.[size];
+
+/** Starts loading art no board draws yet, waiting for none of it and judging none of it. */
+function warmDeckImages(art: DeckArt[]) {
+	void preloadImages(art.map(deckImageUrl).filter((url): url is string => !!url));
+}
+
+async function preloadDeckImages(art: DeckArt[]): Promise<boolean> {
 	if (!import.meta.client) {
 		return false;
 	}
 
 	const failedUrls = await preloadImages(
-		cards
+		art
 			.map(deckImageUrl)
 			.filter((url): url is string => !!url),
 	);
 	if (failedUrls.size === 0)
 		return false;
 
-	for (const card of cards) {
-		const url = deckImageUrl(card);
+	for (const drawn of art) {
+		const url = deckImageUrl(drawn);
 		if (url && failedUrls.has(url))
-			card.mtgCard = null;
+			drawn.card.mtgCard = null;
 	}
 
 	return true;
@@ -225,6 +235,36 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	let deckVersion = 0;
 
 	const selectedSource = computed(() => selectedDeckSource(config.value.deckSource, followsSeat));
+
+	/**
+	 * Output pixels per Event Canvas pixel: the scale that fits the canvas to
+	 * the output, times the output's device pixel ratio.
+	 */
+	const windowSize = useWindowSize();
+	const pixelRatio = computed(() => {
+		const canvas = context.eventCanvas?.value ?? DEFAULT_EVENT_CANVAS;
+		const viewport = context.viewport?.value ?? windowSize;
+		const width = unref(viewport.width);
+		const height = unref(viewport.height);
+		// Unmeasured, as on the server, the output is taken as the canvas.
+		const measured = [width, height].every(side => Number.isFinite(side) && side > 0);
+		const scale = measured
+			? Math.min(width / canvas.width, height / canvas.height)
+			: 1;
+		return scale * (import.meta.client
+			? window.devicePixelRatio || 1
+			: 1);
+	});
+
+	/** The Scryfall image each board draws for decks of these counts, at the config and output now (#1201). */
+	function artSizesFor(counts: { commanders: number; mainboard: number; sideboard: number }) {
+		return deckArtSizes({
+			config: config.value,
+			counts,
+			canvas: context.eventCanvas?.value ?? DEFAULT_EVENT_CANVAS,
+			pixelRatio: pixelRatio.value,
+		});
+	}
 	const isSelected = (source: LoadedDeckSource) => sameDeckSource(selectedSource.value, source);
 
 	/**
@@ -320,6 +360,16 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 	const mainboard = computed(() => displayedDeck.value?.mainboard ?? []);
 	const sideboard = computed(() => displayedDeck.value?.sideboard ?? []);
 	const displayedDeckVersion = computed(() => displayedDeck.value?.version ?? 0);
+	/**
+	 * The Scryfall image each board's cards draw: what the deck on program was
+	 * preloaded at, and, after a change to its layout or output, the size that
+	 * change needs, which loads in place of the image shown.
+	 */
+	const art = computed(() => artSizesFor({
+		commanders: commanders.value.length,
+		mainboard: mainboard.value.length,
+		sideboard: sideboard.value.length,
+	}));
 	const hasDisplayedDeck = computed(() => displayedDeck.value !== null);
 
 	const loading = freshness.loading;
@@ -421,26 +471,37 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 		// First show waits for the art its boards draw (#1201). A listed or hidden
 		// board's art is warmed once that has loaded, never sharing its bandwidth,
 		// so a later switch to the board's grid finds it loaded.
-		const art = deckBoardsShowingArt(config.value, { followsSeat });
+		// Each is drawn from the smallest image its board's cards are no wider than (#1201).
+		const shown = deckBoardsShowingArt(config.value, { followsSeat });
+		const sizes = artSizesFor({
+			commanders: commanders.length,
+			mainboard: arrays.mainboard.length,
+			sideboard: arrays.sideboard.length,
+		});
+		const drawnAt = (size: DeckArtSize) => (card: DeckListCardWithData): DeckArt => ({ card, size });
+		const mainboardArt = arrays.mainboard.map(drawnAt(sizes.mainboard));
+		const sideboardArt = arrays.sideboard.map(drawnAt(sizes.sideboard));
 		const artDegraded = await preloadDeckImages([
-			...commanders,
-			...(art.mainboard
-				? arrays.mainboard
+			...commanders.map(drawnAt(sizes.commanders)),
+			...(shown.mainboard
+				? mainboardArt
 				: []),
-			...(art.sideboard
-				? arrays.sideboard
+			...(shown.sideboard
+				? sideboardArt
 				: []),
 			...(companionCard
-				? [companionCard]
+				? [
+						drawnAt(sizes.companion)(companionCard),
+					]
 				: []),
 		]);
 		warmDeckImages([
-			...(art.mainboard
+			...(shown.mainboard
 				? []
-				: arrays.mainboard),
-			...(art.sideboard
+				: mainboardArt),
+			...(shown.sideboard
 				? []
-				: arrays.sideboard),
+				: sideboardArt),
 		]);
 
 		return {
@@ -650,6 +711,7 @@ export function useDeckModeData(context: ScreenContext, { followsSeat = false }:
 		displayedDeckVersion,
 		pendingSwapVersion: readonly(pendingSwapVersion),
 		commitPendingDeck,
+		art,
 	};
 }
 
