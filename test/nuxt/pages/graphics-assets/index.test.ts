@@ -471,8 +471,8 @@ describe('the Graphics Asset Library Workspace', () => {
 		expect(wrapper.text()).toContain('Canonical Capacity Pressure: critical');
 		expect(wrapper.text()).toContain('95 B of 100 B');
 		expect(wrapper.text()).toContain('Staging 10 B of 20 B');
-		expect(wrapper.text()).toContain('Source content 68 B');
-		expect(wrapper.text()).toContain('Derivatives 27 B');
+		expect(wrapper.text()).toMatch(/Source content\s*68 B/);
+		expect(wrapper.text()).toMatch(/Derivatives\s*27 B/);
 	});
 
 	it('browser-decodes the exact source before initiating and publishing it', async () => {

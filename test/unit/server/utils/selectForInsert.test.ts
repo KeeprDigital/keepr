@@ -99,12 +99,13 @@ describe('selectForInsert', () => {
 	});
 
 	it('rejects a map missing a column, naming it', () => {
-		// @ts-expect-error — the omission under test
-		expect(() => selectForInsert(gadgets, {
+		const partial = {
 			id: sql`null`,
 			eventId: sql`${41}`,
 			name: sql`'x'`,
-		}, sql`where true`)).toThrow(/sortOrder/);
+		};
+		// @ts-expect-error — the omission under test
+		expect(() => selectForInsert(gadgets, partial, sql`where true`)).toThrow(/sortOrder/);
 	});
 
 	it('rejects a map with an unknown column, naming it', () => {

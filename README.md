@@ -501,7 +501,7 @@ Gotchas:
 - **Local acceptance harnesses target `http://127.0.0.1:8787`**, whichever
   checkout is serving it, and provision real Events there. Set
   `STREAM_KEEPR_LOCAL_ACCEPTANCE_URL` to aim at your own preview.
-- **`pnpm lint` is Oxlint** (`.oxlintrc.json`, ADR-0089), over the whole tree in about ten seconds; `pnpm lint:fix` applies its safe fixes. It reads types only where a tsconfig covers the file: not in a component, a test or a script.
+- **`pnpm lint` checks the formatting, then lints** (ADR-0089): Oxfmt (`.oxfmtrc.json`) and Oxlint (`.oxlintrc.json`), over the whole tree in about ten seconds. `pnpm lint:fix` applies Oxlint's safe fixes and formats; `pnpm format` only formats. Oxlint reads types only where a tsconfig covers the file: not in a component, a test or a script.
 
 ## Database
 

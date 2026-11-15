@@ -50,6 +50,11 @@ const url = computed(() => props.modelValue?.kind === 'url'
  * surface only as a failed save of the whole stack or layout (#582).
  */
 const urlRefusal = computed(() => remoteMediaUrlRefusal(url.value));
+const urlPlaceholder = computed(() =>
+	props.assetKind === 'silent-video'
+		? 'https://example.com/background.webm'
+		: 'https://example.com/background.png',
+);
 const reference = computed(() => screenMediaSourceReference(props.modelValue) ?? undefined);
 
 function selectKind(next: 'asset' | 'url') {
@@ -93,7 +98,7 @@ function clearAsset(next: GraphicAssetReference | undefined) {
 	>
 		<UInput
 			:model-value="url"
-			:placeholder="assetKind === 'silent-video' ? 'https://example.com/background.webm' : 'https://example.com/background.png'"
+			:placeholder="urlPlaceholder"
 			size="sm"
 			class="w-full"
 			@update:model-value="emit('update:modelValue', { kind: 'url', url: String($event) })"

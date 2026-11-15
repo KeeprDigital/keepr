@@ -1,15 +1,21 @@
 {
-	// Oxlint is the linter (`.oxlintrc.json`); its safe fixes apply on save.
-	"editor.formatOnSave": false,
+	// Oxfmt formats on save (`.oxfmtrc.json`), and Oxlint's safe fixes apply (`.oxlintrc.json`).
+	"editor.defaultFormatter": "oxc.oxc-vscode",
+	"editor.formatOnSave": true,
 	"editor.codeActionsOnSave": {
 		"source.fixAll.oxc": "explicit",
 		"source.organizeImports": "never"
+	},
+	// Prose is wrapped by hand.
+	"[markdown]": {
+		"editor.formatOnSave": false
 	},
 
 	"files.associations": {
 		"*.css": "tailwindcss",
 		"wrangler.json": "jsonc",
-		".oxlintrc.json": "jsonc"
+		".oxlintrc.json": "jsonc",
+		".oxfmtrc.json": "jsonc"
 	},
 
 	"editor.quickSuggestions": {
