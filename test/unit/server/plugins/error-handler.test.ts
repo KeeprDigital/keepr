@@ -170,9 +170,7 @@ describe('error-handler mapping logic', () => {
 			expect(errorLogFields(failed({ cause: cyclic }), '/api/events/1'))
 				.toMatchObject({ errorCode: null });
 
-			const tooDeep = [
-				...Array.from({ length: 5 }),
-			].reduce<object>(
+			const tooDeep = Array.from({ length: 5 }).reduce<object>(
 				cause => ({ cause }),
 				{ code: 'BURIED' },
 			);

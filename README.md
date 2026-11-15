@@ -312,7 +312,7 @@ Binding any other bypassed launcher off loopback carries the same exposure
 | While developing                            | `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:integration`, `pnpm test:local-auth` | Watch mode; pass `--run` for a single pass. Local-auth is one spawned-dev-server pass.                                                                                                                                                                                                                                      |
 | Before commit                               | `pnpm test`                                                                         | Every test gate of `pnpm verify` (`verify.mjs --tests`): unit + Nuxt (coverage thresholds in `vitest.shared.ts`), integration, local-auth, then the five local browser gates, each in turn: `still-images`, `silent-video`, `fonts`, `animation-effects`, `key-matte`. No lint, typecheck, or build. Needs Chrome/Chromium. |
 | Tests your branch touches                   | `pnpm test:changed`                                                                 | Only the unit and Nuxt test files whose imports reach a file changed since `origin/main`; seconds to half a minute, no coverage thresholds.                                                                                                                                                                                 |
-| Before a push                               | `pnpm verify:quick`                                                                 | What this checkout changes since `main`: lint of the changed files, typecheck, and the unit and Nuxt tests whose imports reach them. Seconds to about a minute. `--all` runs the whole cheap half instead: lint, typecheck, unit and Nuxt suites with their coverage floors.                                                |
+| Before a push                               | `pnpm verify:quick`                                                                 | Lint, typecheck, and the unit and Nuxt tests whose imports reach what this checkout changes since `main`. Seconds to about a minute. `--all` runs the whole cheap half instead: lint, typecheck, unit and Nuxt suites with their coverage floors.                                                                           |
 | Reproducing a CI failure                    | `pnpm verify`                                                                       | CI's gates on the working tree, run side by side as a graph (`scripts/verify.mjs`) and stopped at the first failure: typecheck (the validator Worker included), lint, every `pnpm test` suite, `validator:dry-run`, build, `worker:dry-run`, `worker:smoke`.                                                                |
 | Checking an existing build                  | `pnpm worker:smoke`                                                                 | Runs `.output/server` under local workerd and probes routing, Better Auth, deny-by-default, the bypass session, D1, generated config, object storage, codec Wasm, and ranged delivery. Refuses a missing build.                                                                                                             |
 | Seeing what holds the machine               | `pnpm slots`                                                                        | Who holds run slots and who waits, across every worktree (below).                                                                                                                                                                                                                                                           |
@@ -368,19 +368,12 @@ How `pnpm verify` runs:
   and so does one that has held them 30 minutes, which no gate takes.
 - **Each gate logs to `node_modules/.cache/verify/<gate>.log`.** The terminal
   shows one line per gate and the tail of the first failure.
-- **Lint and typecheck are cached** (`node_modules/.cache/eslint/`,
-  `node_modules/.cache/tsc/`), so an unchanged tree lints and typechecks in
-  seconds. The ESLint cache is per file, so a type-aware rule can miss a finding
-  in an unchanged file that a changed file's types caused; CI starts cold and
-  catches it. Delete the cache directory to reproduce CI exactly.
+- **Typecheck is cached** (`node_modules/.cache/tsc/`), so an unchanged tree
+  typechecks in seconds. Delete the cache directory to reproduce CI exactly.
+  Lint keeps no cache: it reads the whole tree in about ten seconds.
 - **Only `nuxt prepare` writes `.nuxt`.** The root tsconfig extends it, so every
   other gate reads it (except the validator's two, whose tsconfig stands alone); the Nuxt suite, the servers and `verify`'s build each use
-  their own build directory. Keep it that way when adding a gate. Lint is the
-  gate that once broke it: the ESLint config `@nuxt/eslint` generates offers
-  `withNuxt()`, which also writes rule types to `.nuxt/eslint-typegen.d.ts` as
-  the config resolves, and a typecheck beside it read the half-written file.
-  `eslint.config.mjs` composes the same config without that step; the types
-  checked nothing in that file. Dev servers
+  their own build directory. Keep it that way when adding a gate. Dev servers
   started together also need their own Vite cache (`nuxt.config.ts` gives each
   one), or they rewrite each other's optimised dependencies.
 - **A checkout reads its own `.nuxt` and no other.** An agent's worktree sits
@@ -399,15 +392,11 @@ How `pnpm verify` runs:
   83 files fail on leaked state); Vitest's `fsModuleCache` (no gain on the
   unit suite, breaks the Nuxt suite on a warm cache; on by default since
   Vitest 5, so `vitest.nuxt.config.ts` turns it off); `pool: 'threads'`
-  (no gain); ESLint `--concurrency` and `projectService` (slower, and
-  `projectService` exhausts the heap). Measured again in November 2026:
+  (no gain). Measured again in November 2026:
   Vitest's own worker count, one fewer than the cores (the unit suite 56 s at
   nine workers, 44 s at six; the Nuxt suite 113 s and 75 s, so a run takes at
-  most six slots); `--no-isolate` for the unit suite (Miniflare stubs
-  outlive the file that made them); and `ts/no-floating-promises` on app and
-  test code as well as server and shared (a cold lint cost 176 s of CPU and
-  4.4 GB, against 60 s and 3.5 GB with the rule where a floating promise loses
-  a write, and 46 s and 2.0 GB without it).
+  most six slots); and `--no-isolate` for the unit suite (Miniflare stubs
+  outlive the file that made them).
 
 CI (`.github/workflows/ci.yml`) runs the same gates as `pnpm verify` on PRs
 and in the merge queue, split across parallel jobs (lint, typecheck, the unit
@@ -416,8 +405,8 @@ Worker build) so the longest job sets the wall time. The queue's run tests the e
 ([Releases](#releases)). It skips draft PRs (marking one ready runs it) and
 the Worker build when only tests, docs or the other workflows changed. A change
 that touches only docs skips the code gates and runs `pnpm verify:docs`
-instead: the Markdown lint and the documentation link test, the two things
-those gates check of a document (`scripts/ci-scope.mjs` decides, against a PR's
+instead: the documentation link test, the one thing those gates check of a
+document (`scripts/ci-scope.mjs` decides, against a PR's
 base or the queue's base, and runs everything when it cannot tell). A merge
 group also skips the gates when its tree is byte-identical to one a full, green
 PR run verified: one PR, with `main` unchanged since its PR run. That PR run's
@@ -499,7 +488,8 @@ Gotchas:
   `test/helpers/loadTolerantBounds.ts`: 60s a test, 120s a hook, and 20s for
   `vi.waitFor`/`vi.waitUntil` (`test/helpers/loadTolerantWaits.ts`) and the
   settle kit (`test/helpers/settle.ts`), which fails rather than giving up
-  quietly. ESLint refuses a number written on one test, hook or wait. A run
+  quietly. Leave a test, hook or wait on those defaults: a number written on
+  one can only undercut them. A run
   stops after five failed tests, so a real hang names itself well inside CI's
   job limit rather than spending the timeout on every test after it. A test
   that passes alone and fails under load is a defect in the test: it is racing
@@ -511,7 +501,7 @@ Gotchas:
 - **Local acceptance harnesses target `http://127.0.0.1:8787`**, whichever
   checkout is serving it, and provision real Events there. Set
   `STREAM_KEEPR_LOCAL_ACCEPTANCE_URL` to aim at your own preview.
-- **Use `pnpm lint`**, not `npx eslint`, which resolves nothing locally and exits 0. ESLint also exits 0 on warnings, so read the output.
+- **`pnpm lint` is Oxlint** (`.oxlintrc.json`, ADR-0089), over the whole tree in about ten seconds; `pnpm lint:fix` applies its safe fixes. It reads types only where a tsconfig covers the file: not in a component, a test or a script.
 
 ## Database
 

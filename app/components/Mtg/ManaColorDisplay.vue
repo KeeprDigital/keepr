@@ -60,7 +60,6 @@ function parseManaCost(manaCost: string): string[] {
 	const symbols: string[] = [];
 	const re = /\{([^}]+)\}/g;
 	let match: RegExpExecArray | null;
-	// eslint-disable-next-line no-cond-assign
 	while ((match = re.exec(manaCost)) !== null) {
 		// Normalise: lowercase, strip "/" separators (handles hybrid + phyrexian)
 		const cls = match[1]!.toLowerCase().replace(/\//g, '');

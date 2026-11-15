@@ -132,7 +132,7 @@ const MODE_CONFIG_ENDPOINT_REQUIRED
  * Screen Output would then be asked for a revision its capability never covered.
  */
 function rejectUnindexedGraphicAssetReferencesOnCreate(
-	modeConfigs: CreateScreenInput['modeConfigs'] | UpdateScreenInput['modeConfigs'],
+	modeConfigs: CreateScreenInput['modeConfigs'],
 ) {
 	for (const mode of GRAPHIC_ASSET_REFERENCING_SCREEN_MODES) {
 		if (screenModeGraphicAssetReferences(mode, modeConfigs).length > 0) {

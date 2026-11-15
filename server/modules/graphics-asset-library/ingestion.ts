@@ -1820,7 +1820,6 @@ export function createGraphicsAssetIngestion(
 				),
 			});
 			if (staged.outcome !== 'staged') {
-				// eslint-disable-next-line drizzle/enforce-delete-with-where -- Object-store deletion is scoped by immutable identity.
 				await staging.delete(stagingIdentity);
 				if (staged.outcome === 'unavailable') {
 					return await failOperation(catalogue, operation, {

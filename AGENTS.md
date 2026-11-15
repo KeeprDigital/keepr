@@ -4,8 +4,8 @@ holds only what an agent must follow.
 ## Before pushing
 
 Push once `pnpm verify:quick` passes. It checks what your checkout changes
-since `main`: lint of the changed files, typecheck, and the unit and Nuxt tests
-whose imports reach them. CI is the full gate, and runs everything. Open the PR
+since `main`: lint, typecheck, and the unit and Nuxt tests whose imports reach
+the files it changed. CI is the full gate, and runs everything. Open the PR
 as a draft, which CI skips, and mark it ready when the branch is done: that
 runs every gate `pnpm verify` runs, Worker build and workerd smoke included.
 Realtime integration tests are the exception: CI has no Ably key, so they run
@@ -94,8 +94,9 @@ relies on breaks, and staying green through a refactor.
   extending a kit when it lacks something.
 - Test comments state the invariant in at most three lines; issue history
   belongs in the commit and PR.
-- An invariant that resists a behavioural test goes, in order, to a type, an
-  ESLint rule, a parsed config, or an off-the-shelf linter.
+- An invariant that resists a behavioural test goes, in order, to a type, a
+  rule Oxlint already has (`.oxlintrc.json`), a parsed config, or an
+  off-the-shelf linter.
 
 Models: `test/unit/server/api/cardExpiry.sqlite.test.ts`,
 `test/nuxt/stores/broadcastGraphicsLiveSessionProtocol.test.ts`,

@@ -31,7 +31,7 @@ const matchRowClasses = computed(() => ({
 	'match-row--featured': !!props.featureMatchAssignment,
 }));
 
-async function saveAssignmentNote(note: string) {
+async function saveNote(note: string) {
 	if (!props.featureMatchAssignment || !props.saveAssignmentNote)
 		return;
 	return await props.saveAssignmentNote(props.featureMatchAssignment.id, note);
@@ -325,7 +325,7 @@ function getScoreColor(side: 'player1' | 'player2') {
 					v-if="featureMatchAssignment && assignmentNoteEnabled"
 					:note="assignmentNote"
 					:note-key="featureMatchAssignment.id"
-					:save="saveAssignmentNote"
+					:save="saveNote"
 					:remote-changed="assignmentNoteRemoteChanged"
 					content-align="end"
 				>

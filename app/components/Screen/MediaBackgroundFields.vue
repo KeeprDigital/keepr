@@ -16,7 +16,7 @@ const emit = defineEmits<{
 
 const media = computed<ScreenMediaBackgroundConfig>(() => ({
 	...DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG,
-	...(props.media ?? {}),
+	...props.media,
 }));
 
 function updateMedia(patch: MediaFieldsPatch) {

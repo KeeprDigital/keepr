@@ -144,7 +144,7 @@ describe('typography fields', () => {
 
 			expect(selectField(wrapper, 'type-font-style')?.props('modelValue')).toBe('base');
 			expect(selectField(wrapper, 'type-case')?.props('modelValue')).toBe('uppercase');
-			expect((selectField(wrapper, 'type-case')?.props('items') as { value: string }[])[0])
+			expect((selectField(wrapper, 'type-case')!.props('items') as { value: string }[])[0])
 				.toEqual({ label: 'Same as base', value: 'base' });
 			expect(await choose(wrapper, 'type-case', 'base')).toEqual({ textTransform: undefined });
 			expect(await choose(wrapper, 'type-font-style', 'italic')).toEqual({ fontStyle: 'italic' });

@@ -33,7 +33,7 @@ const paramFields = computed(() => animationEffectParamFields(props.selection.ef
 /** The authored bag may be sparse; the editor always shows the completed view. */
 const params = computed<Record<string, AnimationEffectParamValue>>(() => ({
 	...animationEffectDefaultParams(props.selection.effect) as Record<string, AnimationEffectParamValue>,
-	...(props.selection.params ?? {}),
+	...props.selection.params,
 }));
 
 /**

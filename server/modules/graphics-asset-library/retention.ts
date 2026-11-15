@@ -365,7 +365,6 @@ async function releaseStagedIngestionObjects(
 		released = released && aborted.outcome !== 'unavailable';
 	}
 	for (const identity of stagedIngestionObjectIdentities(operationId)) {
-		// eslint-disable-next-line drizzle/enforce-delete-with-where -- Object-store deletion is scoped by immutable identity.
 		const deleted = await staging.delete(identity);
 		released = released && deleted.outcome !== 'unavailable';
 	}
@@ -832,7 +831,6 @@ export function createGraphicsRetention(dependencies: GraphicsRetentionDependenc
 			});
 			if (!claimed)
 				continue;
-			// eslint-disable-next-line drizzle/enforce-delete-with-where -- Object-store deletion is scoped by immutable content identity.
 			const removal = await dependencies.canonical.delete(
 				canonicalContentIdentity(content.digest),
 			);

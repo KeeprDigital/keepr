@@ -496,6 +496,6 @@ export function createMessage<T extends MessageType>(
 		eventId,
 		timestamp: Date.now(),
 		originConnectionId,
-		...(payload || {}),
+		...payload,
 	} as CompleteMessage<T>;
 }

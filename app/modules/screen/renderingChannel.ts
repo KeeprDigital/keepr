@@ -23,7 +23,7 @@ export const SCREEN_CHANNEL_PROTOCOL = 2;
 
 /**
  * The Event channel, for a surface showing authored state. The one seam
- * through which rendering code reaches it (`eslint.config.mjs` forbids the
+ * through which rendering code reaches it (`.oxlintrc.json` forbids the
  * direct import), so no Screen Output comes to depend on it unnoticed.
  */
 export function authoringEventChannel(eventId: number): string {

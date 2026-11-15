@@ -1035,7 +1035,6 @@ export function createGraphicsAssetLibrary(
 			return { ...unavailable, code: 'source-content-unavailable', message: 'The canonical source content is not currently available.' };
 		// Staged objects are create-if-absent, so an abandoned copy from a
 		// previous attempt would otherwise be validated instead of this one.
-		// eslint-disable-next-line drizzle/enforce-delete-with-where -- Object-store deletion is scoped by immutable identity.
 		await requireStaging().delete(reconciliationWorkingCopyIdentity(input.discrepancyId));
 		const staged = await requireStaging().createImmutable({
 			identity: reconciliationWorkingCopyIdentity(input.discrepancyId),
@@ -1567,7 +1566,6 @@ export function createGraphicsAssetLibrary(
 		}
 		finally {
 			if (answered) {
-				// eslint-disable-next-line drizzle/enforce-delete-with-where -- Object-store deletion is scoped by immutable identity.
 				await staging.delete(workingCopy);
 			}
 		}
@@ -1674,7 +1672,7 @@ export function createGraphicsAssetLibrary(
 
 		async function readEntryDocument(
 			entry: TemplatePackageArchiveEntry,
-		): Promise<unknown | undefined> {
+		): Promise<unknown> {
 			if (entry.byteLength > MAXIMUM_PACKAGE_DOCUMENT_BYTES)
 				return undefined;
 			try {

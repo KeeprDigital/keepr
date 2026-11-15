@@ -304,7 +304,6 @@ describe('judging an accumulating effect settling back to its background', () =>
  */
 describe('the expression the run polls', () => {
 	function poll(document: object) {
-		// eslint-disable-next-line no-new-func
 		return new Function('document', `return (${ANIMATION_EFFECT_PROOF_EXPRESSION})`)(document);
 	}
 

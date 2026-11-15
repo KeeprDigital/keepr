@@ -8,7 +8,7 @@
  * comes from Web Crypto where it exists, which is faster on a large upload,
  * and is computed here where it does not.
  *
- * Browser code takes a digest through this and nothing else: ESLint refuses
+ * Browser code takes a digest through this and nothing else: the lint refuses
  * `crypto.subtle` and `crypto.randomUUID` in `app/` and `shared/`.
  */
 export async function sha256Hex(bytes: ArrayBuffer | ArrayBufferView): Promise<string> {

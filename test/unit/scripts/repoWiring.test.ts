@@ -1,4 +1,3 @@
-/* eslint-disable no-template-curly-in-string -- GitHub Actions expressions are literal strings here. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
@@ -82,19 +81,18 @@ describe('verify --quick checks what a checkout changes', () => {
 		'test:nuxt:coverage',
 	];
 
-	it('lints the changed files, typechecks, and runs the unit and Nuxt tests the change reaches', () => {
+	it('lints, typechecks, and runs the unit and Nuxt tests the change reaches', () => {
 		const gates = selectGates(['--quick'], () => 'origin/main');
 
 		expect(Object.keys(gates)).toEqual([
 			'prepare',
-			'lint:changed',
+			'lint',
 			'typecheck:app',
 			'typecheck:test',
 			'typecheck:validator',
 			'test:unit:changed',
 			'test:nuxt:changed',
 		]);
-		expect(scripts['lint:changed']).toBe('node scripts/lint-changed.mjs');
 		expect(gates['test:unit:changed']!.command.join(' ')).toBe('exec vitest run --changed origin/main --passWithNoTests');
 		expect(gates['test:nuxt:changed']!.command.join(' ')).toBe('exec vitest run --config vitest.nuxt.config.ts --changed origin/main --passWithNoTests');
 	});

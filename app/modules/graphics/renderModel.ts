@@ -1307,9 +1307,7 @@ function textDescriptor(
 				? undefined
 				: inputs.textTokenPresentations?.[segment.inputKey];
 			const symbolCount = presentation === 'mtg-mana-colors'
-				? [
-						...segment.text.toUpperCase(),
-					].filter(color => 'WUBRGC'.includes(color)).length
+				? segment.text.toUpperCase().split('').filter(color => 'WUBRGC'.includes(color)).length
 				: 0;
 			const manaColors = presentation === 'mtg-mana-colors' && symbolCount > 0
 				? {

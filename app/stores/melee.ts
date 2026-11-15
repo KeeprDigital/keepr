@@ -17,7 +17,7 @@ interface MeleeOperationResult {
 
 interface LocalProjectionRefresh {
 	label: string;
-	run: () => unknown | Promise<unknown>;
+	run: () => unknown;
 }
 
 /**

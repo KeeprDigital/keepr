@@ -22,9 +22,9 @@
  * its turn when there are none: the integration suite takes them all.
  *
  * Usage: node scripts/verify.mjs [--quick [--all] | --tests]
- *   --quick  what this checkout's change can break: lint of the files it
- *            changes, typecheck, and the unit and Nuxt tests whose imports
- *            reach those files. Before a push; CI is the full gate.
+ *   --quick  what this checkout's change can break: lint, typecheck, and the
+ *            unit and Nuxt tests whose imports reach the files it changes.
+ *            Before a push; CI is the full gate.
  *   --quick --all
  *            the whole cheap stage: lint, typecheck, unit and Nuxt suites.
  *   --tests  every test suite and local acceptance gate, without lint,
@@ -36,7 +36,7 @@ import { createWriteStream } from 'node:fs';
 import { mkdir, readFile } from 'node:fs/promises';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
-import { changeBase } from './changed-files.mjs';
+import { changeBase } from './change-base.mjs';
 import { main as reapStrandedWorkerd } from './reap-workerd.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -153,8 +153,8 @@ const NOT_TESTS = new Set([
 ]);
 
 /**
- * `--quick`: the first stage, with lint and both suites narrowed to what this
- * checkout changes. Vitest reads the change itself (`--changed`), following
+ * `--quick`: the first stage, with both suites narrowed to what this checkout
+ * changes. Vitest reads the change itself (`--changed`), following
  * each test file's imports, and runs every test when the change reaches a
  * file every test depends on and none imports (`unitRerunTriggers`,
  * `vitest.shared.ts`).
@@ -165,10 +165,7 @@ function changedGates(baseRef) {
 	const changed = ['--changed', baseRef, '--passWithNoTests'];
 	return {
 		'prepare': GATES.prepare,
-		'lint:changed': {
-			command: ['run', 'lint:changed'],
-			after: ['prepare'],
-		},
+		'lint': GATES.lint,
 		'typecheck:app': GATES['typecheck:app'],
 		'typecheck:test': GATES['typecheck:test'],
 		'typecheck:validator': GATES['typecheck:validator'],
@@ -230,7 +227,7 @@ function signalGroup(child, signal) {
 export async function main(argv = process.argv) {
 	const gates = selectGates(argv);
 	await mkdir(logDirectory, { recursive: true });
-	if ('lint:changed' in gates)
+	if ('test:unit:changed' in gates)
 		process.stdout.write(`verify --quick: checking what this checkout changes since ${changeBase()?.ref}; CI runs everything\n`);
 
 	const started = Date.now();

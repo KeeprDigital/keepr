@@ -46,7 +46,7 @@ export class RemoteCommandFailure extends Error {
  * completed in seconds. This output is parsed, so the codes are stripped once.
  */
 function stripAnsi(text) {
-	// eslint-disable-next-line no-control-regex
+	// oxlint-disable-next-line no-control-regex
 	return text.replace(/\x1B\[[0-9;]*m/g, '');
 }
 

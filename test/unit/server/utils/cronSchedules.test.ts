@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { getStaticJSONValue, parseJSON } from 'jsonc-eslint-parser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRAPHICS_CRON, LIVE_RESULTS_CRON } from '~~/server/utils/cronSchedules';
 import { createFakeNitroApp, installNitroPlugin } from '~~/test/helpers/nitroApp';
+import { parseJsonc } from '../../../../scripts/graphics-acceptance/deployed-target.mjs';
 
 /*
  * Every `cloudflare:scheduled` handler runs on every cron trigger, so each must
@@ -57,7 +57,7 @@ beforeEach(() => vi.clearAllMocks());
 
 describe('cron schedules', () => {
 	it('are the triggers wrangler.jsonc declares', () => {
-		const config = getStaticJSONValue(parseJSON(readFileSync('wrangler.jsonc', 'utf8'))) as {
+		const config = parseJsonc(readFileSync('wrangler.jsonc', 'utf8')) as {
 			triggers: { crons: string[] };
 		};
 

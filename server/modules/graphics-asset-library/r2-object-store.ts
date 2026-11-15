@@ -160,7 +160,6 @@ function createR2ObjectStoreAccess(bucket: R2Bucket) {
 				const existing = await bucket.head(identity);
 				if (!existing)
 					return { outcome: 'missing' as const };
-				// eslint-disable-next-line drizzle/enforce-delete-with-where -- Cloudflare R2 binding, not a Drizzle table.
 				await bucket.delete(identity);
 				return { outcome: 'deleted' as const };
 			}

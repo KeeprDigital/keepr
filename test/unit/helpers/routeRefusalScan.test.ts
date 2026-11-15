@@ -88,7 +88,6 @@ describe('what the scan reads out of a source file', () => {
 	});
 
 	it('reports a message it cannot read as unreadable, not as empty', () => {
-		// eslint-disable-next-line no-template-curly-in-string -- TypeScript source under scan.
 		expect(scan('createError({ statusCode: 404, message: `Screen ${id} not found` });')[0]?.message).toBeUndefined();
 	});
 

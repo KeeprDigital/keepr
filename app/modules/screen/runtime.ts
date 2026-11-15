@@ -102,7 +102,7 @@ function applyOwnedFields(screen: Screen, fields: OwnedFields): Screen {
 			return {
 				...screen,
 				themeOverrides: stripNullValues({
-					...(screen.themeOverrides ?? {}),
+					...screen.themeOverrides,
 					...fields.patch,
 				}),
 			};

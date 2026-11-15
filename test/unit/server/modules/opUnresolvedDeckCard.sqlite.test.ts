@@ -179,7 +179,7 @@ async function sideDeckList(eventId: number, slotId: number) {
 	const slot = (await db.query.featureMatches.findFirst({
 		where: eq(schema.featureMatches.id, slotId),
 	}))!;
-	const reference = (slot.player1Data?.gameData as { featureMatchDeckList: { id: number } }).featureMatchDeckList;
+	const reference = (slot.player1Data!.gameData as { featureMatchDeckList: { id: number } }).featureMatchDeckList;
 	return (await featureMatchDeckListService().findById(reference.id, slotId, eventId))!;
 }
 

@@ -89,7 +89,7 @@ const text = computed(() => {
 		: scoped;
 });
 const inheritedValue = computed(() => props.inherited ?? definition.value.default);
-const inherited = computed(() => `${text.value.inherited}: ${valueText(inheritedValue.value)}`);
+const inheritedText = computed(() => `${text.value.inherited}: ${valueText(inheritedValue.value)}`);
 const badge = computed(() => {
 	if (!props.compact)
 		return isSet.value ? text.value.set : 'Inherited';
@@ -129,7 +129,7 @@ function clear() {
 					{{ definition.label }}
 				</p>
 				<p :class="compact ? 'sr-only' : 'text-xs text-muted'" data-token-inherited>
-					{{ inherited }}
+					{{ inheritedText }}
 				</p>
 			</div>
 			<div class="flex items-center gap-2">
@@ -138,7 +138,7 @@ function clear() {
 					variant="subtle"
 					size="sm"
 					:label="badge"
-					:title="compact ? inherited : undefined"
+					:title="compact ? inheritedText : undefined"
 				/>
 				<UButton
 					v-if="isSet"

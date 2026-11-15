@@ -1,0 +1,125 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "unicorn", "oxc", "vue"],
+	"categories": {
+		"correctness": "error"
+	},
+	"options": {
+		// Rules that read types run through `oxlint-tsgolint`, on the tsconfig nearest each file.
+		"typeAware": true,
+		"reportUnusedDisableDirectives": "error"
+	},
+	"ignorePatterns": [
+		"**/migrations/**",
+		"**/worker-configuration.d.ts",
+		// A tsconfig that cannot load, on purpose (test/unit/build/checkoutTsconfig.test.ts).
+		"test/helpers/unloadableTsconfig/**"
+	],
+	"rules": {
+		// A Zod schema's methods are bound, and `readValidatedBody(event, schema.parse)` is how every route validates.
+		"typescript/unbound-method": "off",
+		// Reads a Drizzle statement, and a `let` a callback assigns, as values that are not promises.
+		"typescript/await-thenable": "off",
+		// It reads `for (const child of [...group.children]) group.remove(child)` as a needless copy.
+		// A loop that changes what it walks needs the copy.
+		"unicorn/no-useless-spread": "off",
+		// `const { a, ...rest } = value` is how a key is left out. Stating one option replaces
+		// the defaults, so the `_` prefix for a deliberately unused name is restated.
+		"no-unused-vars": [
+			"error",
+			{
+				"ignoreRestSiblings": true,
+				"argsIgnorePattern": "^_",
+				"varsIgnorePattern": "^_",
+				"caughtErrorsIgnorePattern": "^_"
+			}
+		]
+	},
+	"overrides": [
+		{
+			// Tests and scripts are in no tsconfig the linter finds (the tests' program is
+			// `tsconfig.test.json`), so a rule that reads types sees `any` there and reports noise.
+			// These are the type-aware rules of the `correctness` category. The one that matters is
+			// `typescript/no-floating-promises`, and it guards the code a Worker runs, where a lost
+			// promise loses a write.
+			"files": ["test/**", "scripts/**"],
+			"rules": {
+				"typescript/await-thenable": "off",
+				"typescript/no-array-delete": "off",
+				"typescript/no-base-to-string": "off",
+				"typescript/no-duplicate-type-constituents": "off",
+				"typescript/no-floating-promises": "off",
+				"typescript/no-for-in-array": "off",
+				"typescript/no-implied-eval": "off",
+				"typescript/no-meaningless-void-operator": "off",
+				"typescript/no-misused-spread": "off",
+				"typescript/no-redundant-type-constituents": "off",
+				"typescript/no-unsafe-unary-minus": "off",
+				"typescript/no-useless-default-assignment": "off",
+				"typescript/require-array-sort-compare": "off",
+				"typescript/restrict-template-expressions": "off"
+			}
+		},
+		{
+			// A fake of a lazy query or a deferred value is an object with a `then`.
+			"files": ["test/**"],
+			"rules": {
+				"unicorn/no-thenable": "off"
+			}
+		},
+		{
+			// A page opened over plain HTTP on a LAN address has no secure context, so no
+			// `crypto.subtle` and no `crypto.randomUUID` (README § Local auth bypass). Code
+			// a browser runs takes a digest from `sha256Hex` and an id from `randomUuid`.
+			"files": ["app/**/*.{ts,vue}", "shared/**/*.ts"],
+			"excludeFiles": ["shared/utils/sha256.ts"],
+			"rules": {
+				"no-restricted-properties": [
+					"error",
+					{
+						"property": "subtle",
+						"message": "Web Crypto is missing on a plain-HTTP LAN page: use sha256Hex (shared/utils/sha256.ts)."
+					},
+					{
+						"property": "randomUUID",
+						"message": "crypto.randomUUID is missing on a plain-HTTP LAN page: use randomUuid (shared/utils/uuid.ts)."
+					}
+				]
+			}
+		},
+		{
+			// A live rendering of a Screen follows only its Screen's own channel. Rendering code names
+			// the Event channel through one seam, so nothing a Screen Output runs comes to depend on it.
+			"files": [
+				"app/composables/screen/**/*.ts",
+				"app/modules/screen/**/*.ts",
+				"app/modules/screen-mode/**/*.ts",
+				"app/components/Screen/**/*.vue",
+				"app/pages/event/*/screen/**/*.vue"
+			],
+			"excludeFiles": ["app/modules/screen/renderingChannel.ts"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{
+								"group": ["**/realtimeChannels"],
+								"importNames": ["eventRealtimeChannel"],
+								"message": "A rendering of a Screen follows its Screen's own channel (`renderingChannel`); a preview or editor names the Event channel through `authoringEventChannel`."
+							}
+						]
+					}
+				],
+				// The same function as Nuxt auto-imports it from `shared/utils`.
+				"no-restricted-globals": [
+					"error",
+					{
+						"name": "eventRealtimeChannel",
+						"message": "A rendering of a Screen follows its Screen's own channel (`renderingChannel`); a preview or editor names the Event channel through `authoringEventChannel`."
+					}
+				]
+			}
+		}
+	]
+}

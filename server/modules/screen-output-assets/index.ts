@@ -111,7 +111,6 @@ function publicHeaders(headers: Headers): Headers {
 	const result = new Headers(headers);
 	result.set('cache-control', 'private, no-store');
 	result.set('vary', 'authorization, cookie');
-	// eslint-disable-next-line drizzle/enforce-delete-with-where -- Web Headers API, not a Drizzle table.
 	result.delete('cache-tag');
 	return result;
 }
@@ -210,7 +209,6 @@ export function createScreenOutputAssetDelivery(
 			: undefined;
 		if (requestedRange === 'unsatisfiable') {
 			headers.set('content-range', `bytes */${inspection.byteLength}`);
-			// eslint-disable-next-line drizzle/enforce-delete-with-where -- Web Headers API, not a Drizzle table.
 			headers.delete('content-length');
 			return {
 				outcome: 'delivered',
