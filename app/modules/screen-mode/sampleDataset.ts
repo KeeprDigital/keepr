@@ -650,29 +650,34 @@ function sampleLowerThird(name: string, detail: string): BroadcastGraphicConfig 
 /** The leading Player, by their deck and record. */
 const SAMPLE_LOWER_THIRD = sampleLowerThird(LEADER.name, `${deckOf(0).name} · ${LEADER.wins}-${LEADER.losses}-${LEADER.draws}`);
 
-/** The sample Live Session: the lower third on air, long since settled at rest. */
-const SAMPLE_LIVE_SESSION: BroadcastGraphicsLiveSessionResponse = {
-	id: SAMPLE_ID,
-	eventId: SAMPLE_ID,
-	screenId: SAMPLE_ID,
-	status: 'active',
-	currentState: {
-		playout: {
-			[SAMPLE_LOWER_THIRD.id]: {
-				onAir: true,
-				effectiveStartedAt: SAMPLE_TIMESTAMP.getTime(),
-				cut: true,
+/** A sample Live Session: `graphic` on air, long since settled at rest. */
+function sampleLiveSession(graphic: BroadcastGraphicConfig): BroadcastGraphicsLiveSessionResponse {
+	return {
+		id: SAMPLE_ID,
+		eventId: SAMPLE_ID,
+		screenId: SAMPLE_ID,
+		status: 'active',
+		currentState: {
+			playout: {
+				[graphic.id]: {
+					onAir: true,
+					effectiveStartedAt: SAMPLE_TIMESTAMP.getTime(),
+					cut: true,
+				},
 			},
+			inputs: {},
+			sources: {},
 		},
-		inputs: {},
-		sources: {},
-	},
-	recoveryFault: null,
-	sequence: 1,
-	endedAt: null,
-	createdAt: SAMPLE_TIMESTAMP,
-	updatedAt: SAMPLE_TIMESTAMP,
-};
+		recoveryFault: null,
+		sequence: 1,
+		endedAt: null,
+		createdAt: SAMPLE_TIMESTAMP,
+		updatedAt: SAMPLE_TIMESTAMP,
+	};
+}
+
+/** The sample Live Session: the lower third on air. */
+const SAMPLE_LIVE_SESSION = sampleLiveSession(SAMPLE_LOWER_THIRD);
 
 type SampleReadRepository = ReturnType<typeof useScreenOutputReadRepository>;
 
@@ -1144,8 +1149,51 @@ const COMMANDER_SAMPLE_SLOT: FeatureMatchResponse = {
 	player4Data: commanderSlotData(COMMANDER_FEATURE_MATCH_SAMPLE_SEATS[3]!),
 };
 
+/**
+ * Broadcast Graphics' Commander sample: a plate per Seat naming its player and
+ * Commanders, two by two and clockwise from the top left where Commander Table
+ * plates them (ADR-0087), each bound to the Foundation Tokens the lower third is.
+ */
+function sampleCommanderTable(): BroadcastGraphicConfig {
+	const cells = [
+		{ x: 24, y: 432 },
+		{ x: 972, y: 432 },
+		{ x: 972, y: 960 },
+		{ x: 24, y: 960 },
+	];
+	const width = 924;
+	const height = 96;
+	return withThemeBindings({
+		id: 'sample-commander-table',
+		name: 'Sample Commander table',
+		items: COMMANDER_FEATURE_MATCH_SAMPLE_SEATS.flatMap((seat, index) => {
+			const { x, y } = cells[index]!;
+			const id = `sample-seat-${index + 1}`;
+			return [
+				withThemeBindings(sampleShape(`${id}-panel`, { x, y, width, height }), { surfaceStyle: 'panel', geometry: 'panel-shape' }),
+				withThemeBindings(sampleShape(`${id}-accent`, { x, y, width: 14, height }), { 'surfaceStyle.fill': 'accent-fill' }),
+				withThemeBindings(sampleText(`${id}-name`, seat.name, 36, {
+					x: x + 40,
+					y: y + 6,
+					width: width - 64,
+					height: 48,
+				}), { 'typography': 'heading', 'typography.color': 'text-primary' }),
+				withThemeBindings(sampleText(`${id}-deck`, commanderDeckIdentity(seat.commanders).deckName ?? '', 24, {
+					x: x + 40,
+					y: y + 54,
+					width: width - 64,
+					height: 34,
+				}), { 'typography': 'body', 'typography.color': 'text-secondary' }),
+			];
+		}),
+	}, { 'animation.enter': 'motion-enter', 'animation.update': 'motion-update', 'animation.exit': 'motion-exit' });
+}
+
+const COMMANDER_SAMPLE_GRAPHIC = sampleCommanderTable();
+
 /** What the Commander dataset answers for the reads only a Commander Event's Screen Modes make. */
 const COMMANDER_ANSWERS = {
+	liveSession: sampleLiveSession(COMMANDER_SAMPLE_GRAPHIC),
 	featureMatchSlot: {
 		slot: COMMANDER_SAMPLE_SLOT,
 		match: null,
@@ -1200,7 +1248,7 @@ const SCREEN_MODE_SAMPLE_CONFIGS: Record<EventKind, ModeConfigsMap> = {
 	},
 	'mtg-commander': {
 		'broadcast-graphics': {
-			graphics: [SAMPLE_LOWER_THIRD],
+			graphics: [COMMANDER_SAMPLE_GRAPHIC],
 		},
 		// A Commander Seat's deck: its Commanders apart, ahead of its Mainboard (ADR-0087).
 		'deck': {
@@ -1266,7 +1314,7 @@ const SAMPLE_READ_REPOSITORIES: Record<EventKind, SampleReadRepository> = {
 	'mtg-commander': {
 		event: none('Event context'),
 		card: answer(ANSWERS.card),
-		liveSession: answer(ANSWERS.liveSession),
+		liveSession: answer(COMMANDER_ANSWERS.liveSession),
 		featureMatchSlot: answer(COMMANDER_ANSWERS.featureMatchSlot),
 		featureMatchDeckList: none('One Piece Feature Match Deck List'),
 		commanderDeckList: answer(COMMANDER_ANSWERS.commanderDeckList),

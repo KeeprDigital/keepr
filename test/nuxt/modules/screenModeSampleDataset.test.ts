@@ -90,7 +90,15 @@ const SHOWS: Record<SamplePick, Partial<Record<ScreenMode, Shown>>> = {
 			&& inSection('commanders', 'Kraum, Ludevic\'s Opus')(rendering)
 			&& inSection('mainboard', 'Sol Ring')(rendering)
 			&& text('Oluwaseun Adebayo-Lindqvist')(rendering),
-		'broadcast-graphics': text('Boros Convoke · 6-0-1'),
+		// The table's four Seats, each by name and Commanders, as Commander Table seats them (ADR-0087).
+		'broadcast-graphics': rendering => [
+			'Oluwaseun Adebayo-Lindqvist',
+			'Bo Li',
+			'Marguerite Okafor',
+			'Tomás Reyes',
+		]
+			.every(name => text(name)(rendering))
+			&& text('Tymna the Weaver / Kraum, Ludevic\'s Opus')(rendering),
 		'feature-match-overlay': text('Tomás Reyes'),
 		'talent': text('Sam Okafor'),
 	},
