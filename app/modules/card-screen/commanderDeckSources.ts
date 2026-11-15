@@ -38,8 +38,9 @@ interface SeatedSeat {
  * holds, each card the printing it was saved as. A list never changes under
  * its id, so a re-paste, a clear, Swap Seats or a change of Commander reaches
  * the page as a change to the Slot, and the shown Slot reloads. A load whose
- * card data Scryfall did not answer re-fetches on the degraded cadence
- * (`useDegradedRefetch`), as the Two-Player matchup does.
+ * list the server did not answer, or whose card data Scryfall did not,
+ * re-fetches on the degraded cadence (`useDegradedRefetch`), as the
+ * Two-Player matchup does.
  */
 export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSourceRuntimeState) {
 	const featureMatchStateStore = useFeatureMatchStateStore();
@@ -131,7 +132,8 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 				mainboard: buildDeckListArrays(mainboard, cards).mainboard,
 				failed,
 			},
-			degraded,
+			// An unread list is no answer about the Seat's deck, so it is read again on the cadence too.
+			degraded: degraded || failed,
 		};
 	}
 
@@ -211,7 +213,7 @@ export function useCommanderCardDeckSourceRuntime(state: CommanderCardDeckSource
 
 	return {
 		canUseDeckListMode,
-		/** True while the shown Slot renders cards Scryfall did not answer (#465). */
+		/** True while the shown Slot renders a list not read, or cards Scryfall did not answer (#465). */
 		cardDataDegraded: slotRefetch.degraded,
 		slotHoldsDecks,
 		loadMatchDeckLists,

@@ -182,7 +182,7 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 	});
 
 	// The cadence and its rules are useDegradedRefetch's; this is the Cards page's wiring.
-	describe('while Scryfall is down', () => {
+	describe('while card data or a list cannot be read', () => {
 		beforeEach(() => vi.useFakeTimers());
 		afterEach(() => vi.useRealTimers());
 
@@ -209,17 +209,29 @@ describe('useCardStore Commander Feature Match Deck Lists', () => {
 			});
 			expect(store.cardDataDegraded).toBe(false);
 		});
-	});
 
-	it('keeps a Seat\'s Commanders, and says so, when its list cannot be read', async () => {
-		deckLists.delete(301);
+		it('keeps a Seat\'s Commanders, says so, and reads its list again on the re-fetch cadence', async () => {
+			const entries = deckLists.get(301)!;
+			deckLists.delete(301);
+			await store.loadMatchDeckLists(7);
 
-		await store.loadMatchDeckLists(7);
+			expect(shown()[0]).toMatchObject({
+				commanders: [ashling.id],
+				mainboard: [],
+				failed: true,
+			});
+			expect(store.cardDataDegraded).toBe(true);
 
-		expect(shown()[0]).toMatchObject({
-			commanders: [ashling.id],
-			mainboard: [],
-			failed: true,
+			deckLists.set(301, entries);
+			await vi.advanceTimersByTimeAsync(60_000);
+
+			expect(shown()[0]).toMatchObject({
+				mainboard: [
+					[3, forest.id],
+				],
+				failed: false,
+			});
+			expect(store.cardDataDegraded).toBe(false);
 		});
 	});
 

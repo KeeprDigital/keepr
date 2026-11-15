@@ -29,9 +29,9 @@ mockNuxtImport('useScryfallBatch', () => () => ({
 	fetchScryfallCards: mockFetchScryfallCards,
 	buildDeckListArrays: mockBuildDeckListArrays,
 }));
-const mockFetchDeck = vi.fn().mockResolvedValue(null);
+const mockReadDeck = vi.fn().mockResolvedValue(null);
 mockNuxtImport('usePlayerDeckCache', () => () => ({
-	fetchDeck: mockFetchDeck,
+	readDeck: mockReadDeck,
 	getCachedDeck: vi.fn().mockReturnValue(null),
 }));
 
@@ -122,7 +122,7 @@ describe('useCardStore deck sources and search', () => {
 		mockPlayerStoreState.players = [];
 		mockFeatureMatchStoreState.featureMatches = [];
 		followNoSession(followed);
-		mockFetchDeck.mockReset().mockResolvedValue(null);
+		mockReadDeck.mockReset().mockResolvedValue(null);
 		mockFetchScryfallCards.mockReset().mockResolvedValue({
 			cards: new Map(),
 			degraded: false,
@@ -297,7 +297,7 @@ describe('useCardStore deck sources and search', () => {
 
 			await store.loadMatchDeckLists(1);
 
-			expect(mockFetchDeck).not.toHaveBeenCalled();
+			expect(mockReadDeck).not.toHaveBeenCalled();
 			expect(store.deckListPlayer1?.deckList).toBeNull();
 		});
 
@@ -321,7 +321,7 @@ describe('useCardStore deck sources and search', () => {
 
 			await store.loadMatchDeckLists(1);
 
-			expect(mockFetchDeck).toHaveBeenCalledWith(42, 1, updatedAt, { deckId: 77 });
+			expect(mockReadDeck).toHaveBeenCalledWith(42, 1, updatedAt, { deckId: 77 });
 		});
 
 		it('loads a historical deck by its ids when the Player is not in the active roster', async () => {
@@ -337,7 +337,7 @@ describe('useCardStore deck sources and search', () => {
 
 			await store.loadMatchDeckLists(1);
 
-			expect(mockFetchDeck).toHaveBeenCalledWith(42, 1, 'match-deck:77', { deckId: 77 });
+			expect(mockReadDeck).toHaveBeenCalledWith(42, 1, 'match-deck:77', { deckId: 77 });
 		});
 
 		it('names a historical deck\'s Player by id when the snapshot kept no name', async () => {
@@ -345,7 +345,7 @@ describe('useCardStore deck sources and search', () => {
 
 			await store.loadMatchDeckLists(1);
 
-			expect(mockFetchDeck).toHaveBeenCalledWith(42, 1, 'match-deck:77', { deckId: 77 });
+			expect(mockReadDeck).toHaveBeenCalledWith(42, 1, 'match-deck:77', { deckId: 77 });
 			expect(store.deckListPlayer1?.playerName).toBe('Player 42');
 		});
 
@@ -363,7 +363,7 @@ describe('useCardStore deck sources and search', () => {
 
 			await store.loadMatchDeckLists(1);
 
-			expect(mockFetchDeck).toHaveBeenCalledWith(42, 1, updatedAt, { deckId: 77 });
+			expect(mockReadDeck).toHaveBeenCalledWith(42, 1, updatedAt, { deckId: 77 });
 		});
 
 		// The followed Session owns which side each Player sits on (ADR-0058).
@@ -539,7 +539,7 @@ describe('useCardStore deck sources and search', () => {
 			],
 			['Player', 'no companion', null, null],
 		])('a %s deck with %s offers its companion as a selectable card', async (surface, _, companion, selectableId) => {
-			mockFetchDeck.mockResolvedValue(deckWithCompanion(companion));
+			mockReadDeck.mockResolvedValue(deckWithCompanion(companion));
 
 			if (surface === 'matchup')
 				await store.loadMatchDeckLists(1);
@@ -578,7 +578,7 @@ describe('useCardStore deck sources and search', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
 			primeMatchup();
-			mockFetchDeck.mockResolvedValue({
+			mockReadDeck.mockResolvedValue({
 				id: 77,
 				externalId: 'deck-77',
 				formatExternalId: 'modern',
@@ -643,11 +643,35 @@ describe('useCardStore deck sources and search', () => {
 			expect(mockFetchScryfallCards).toHaveBeenCalledTimes(3);
 		});
 
+		it.each([
+			[
+				'matchup',
+				(s: ReturnType<typeof useCardStore>) => s.loadMatchDeckLists(1),
+				(s: ReturnType<typeof useCardStore>) => s.deckListPlayer1,
+			],
+			[
+				'player deck',
+				(s: ReturnType<typeof useCardStore>) => s.loadPlayerDeck(42),
+				(s: ReturnType<typeof useCardStore>) => s.playerDeckData,
+			],
+		])('a %s whose deck read failed reports it and reads it again on the cadence', async (_, load, rendering) => {
+			mockFetchScryfallCards.mockResolvedValue(complete);
+			mockReadDeck.mockRejectedValueOnce(new Error('network down'));
+
+			await load(store);
+			expect(rendering(store)).toBeNull();
+			expect(store.cardDataDegraded).toBe(true);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(rendering(store)?.deckList?.name).toBe('Burn');
+			expect(store.cardDataDegraded).toBe(false);
+		});
+
 		it('keeps the cadence and the rendering when a re-fetch itself fails mid-outage', async () => {
 			mockFetchScryfallCards.mockResolvedValueOnce(degraded).mockResolvedValue(complete);
 
 			await store.loadMatchDeckLists(1);
-			mockFetchDeck.mockRejectedValueOnce(new Error('network down'));
+			mockReadDeck.mockRejectedValueOnce(new Error('network down'));
 			await vi.advanceTimersByTimeAsync(60_000);
 
 			expect(store.cardDataDegraded).toBe(true);

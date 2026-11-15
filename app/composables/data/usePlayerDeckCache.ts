@@ -17,7 +17,7 @@ export interface PlayerDeckSelection {
 }
 
 const cache = new Map<number, DeckCacheEntry>();
-const inFlight = new Map<string, Promise<PlayerDeckCollectionResponse | null>>();
+const inFlight = new Map<string, Promise<PlayerDeckCollectionResponse>>();
 /**
  * How many times the whole cache, and each Player's entry, has been dropped. A
  * read that lands after its Player was dropped may hold what the drop was for —
@@ -63,12 +63,13 @@ export function selectPlayerDeck(
 }
 
 export function usePlayerDeckCache() {
-	async function fetchDecks(
+	/** A Player's decks; rejects when the read fails, so a reader can tell a failed read from no deck. */
+	async function readDecks(
 		playerId: number,
 		eventId: number,
 		updatedAt: Date | string,
 		selection: PlayerDeckSelection = {},
-	): Promise<PlayerDeckCollectionResponse | null> {
+	): Promise<PlayerDeckCollectionResponse> {
 		const key = updatedAtKey(updatedAt);
 		const cached = cache.get(playerId);
 		const requiresServerSelection = selection.roundId != null;
@@ -97,12 +98,31 @@ export function usePlayerDeckCache() {
 				},
 			});
 			return collection;
-		}).catch(() => null).finally(() => {
+		}).finally(() => {
 			inFlight.delete(queryKey);
 		});
 
 		inFlight.set(queryKey, promise);
 		return promise;
+	}
+
+	async function fetchDecks(
+		playerId: number,
+		eventId: number,
+		updatedAt: Date | string,
+		selection: PlayerDeckSelection = {},
+	): Promise<PlayerDeckCollectionResponse | null> {
+		return readDecks(playerId, eventId, updatedAt, selection).catch(() => null);
+	}
+
+	/** The deck a selection names, or null for none; rejects when the read fails, as `readDecks` does. */
+	async function readDeck(
+		playerId: number,
+		eventId: number,
+		updatedAt: Date | string,
+		selection: PlayerDeckSelection = {},
+	): Promise<PlayerDeckResponse | null> {
+		return selectPlayerDeck(await readDecks(playerId, eventId, updatedAt, selection), selection);
 	}
 
 	async function fetchDeck(
@@ -111,10 +131,7 @@ export function usePlayerDeckCache() {
 		updatedAt: Date | string,
 		selection: PlayerDeckSelection = {},
 	): Promise<PlayerDeckResponse | null> {
-		const collection = await fetchDecks(playerId, eventId, updatedAt, selection);
-		return collection
-			? selectPlayerDeck(collection, selection)
-			: null;
+		return readDeck(playerId, eventId, updatedAt, selection).catch(() => null);
 	}
 
 	function getCachedDeck(playerId: number, selection: PlayerDeckSelection = {}): PlayerDeckResponse | null {
@@ -257,6 +274,7 @@ export function usePlayerDeckCache() {
 	return {
 		fetchDecks,
 		fetchDeck,
+		readDeck,
 		getCachedDeck,
 		clearCachedDeck,
 		reviewDeck,

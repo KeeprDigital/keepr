@@ -66,6 +66,20 @@ describe('useDegradedRefetch', () => {
 		expect(refetch).toHaveBeenCalledTimes(2);
 	});
 
+	// A failed read is no answer about the source, so it asks again; a degraded rendering stays up meanwhile.
+	it('degrades on a failed read and re-fetches on the cadence, keeping a rendering already degraded', () => {
+		const { lifecycle, refetch, report } = harness();
+
+		expect(lifecycle.failLoad()).toBe('render');
+		expect(report).toHaveBeenLastCalledWith(true);
+		vi.advanceTimersByTime(DECK_CARD_DATA_REFETCH_MS);
+		expect(refetch).toHaveBeenCalledOnce();
+
+		expect(lifecycle.failLoad()).toBe('keep');
+		vi.advanceTimersByTime(DECK_CARD_DATA_REFETCH_MS);
+		expect(refetch).toHaveBeenCalledTimes(2);
+	});
+
 	it('supersedes the previous load and its pending re-fetch when a load begins', () => {
 		const { lifecycle, refetch } = harness();
 		const first = lifecycle.begin();

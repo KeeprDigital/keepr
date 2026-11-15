@@ -82,6 +82,16 @@ describe('usePlayerDeckCache', () => {
 		expect(result).toEqual(response.decks[0]);
 	});
 
+	// A reader that retries must tell a failed read from a Player with no deck; one that does not reads no deck.
+	it('rejects a failed read through readDeck, answers fetchDeck with no deck, and reads again next time', async () => {
+		mockFetch.mockRejectedValueOnce(new Error('network down')).mockRejectedValueOnce(new Error('network down')).mockResolvedValueOnce(collection());
+		const cache = usePlayerDeckCache();
+
+		await expect(cache.readDeck(1, 1, new Date('2026-01-01'))).rejects.toThrow('network down');
+		await expect(cache.fetchDeck(1, 1, new Date('2026-01-01'))).resolves.toBeNull();
+		await expect(cache.readDeck(1, 1, new Date('2026-01-01'))).resolves.toMatchObject({ id: 10 });
+	});
+
 	it('caches by player update timestamp and refetches after it changes', async () => {
 		mockFetch.mockResolvedValue(collection());
 		const cache = usePlayerDeckCache();
