@@ -20,6 +20,18 @@
 				],
 				"createdAt": "2026-11-13T04:46:17.270Z",
 				"reason": "Agent: test fixture CSS for the built-fonts check; Inter is a registry family name under test, not a UI font choice"
+			},
+			{
+				"rule": "design-system-font",
+				"value": "stream-keepr-graphic-asset-asset-brand-face-revision-1",
+				"createdAt": "2026-11-15T01:12:47.502Z",
+				"reason": "agent judgement: test fixture asserting the generated family name of an uploaded Graphic Asset font revision, not a UI font choice"
+			},
+			{
+				"rule": "design-system-font",
+				"value": "stream-keepr-graphic-asset-asset-brand-face-revision-2",
+				"createdAt": "2026-11-15T01:12:47.519Z",
+				"reason": "agent judgement: test fixture asserting the generated family name of an uploaded Graphic Asset font revision, not a UI font choice"
 			}
 		]
 	}
