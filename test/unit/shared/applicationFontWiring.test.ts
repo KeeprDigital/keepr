@@ -4,19 +4,24 @@ import { parse } from 'yaml';
 import workspace from '~~/pnpm-workspace.yaml?raw';
 import { GRAPHIC_FONTS } from '~~/shared/modules/graphics/typography';
 
-// The registry names packages; package.json must install each at an exact version.
+// The registry names packages; the catalog must install each at an exact version.
 const manifest = JSON.parse(readFileSync('package.json', 'utf8')) as {
 	dependencies: Record<string, string>;
 };
-const overrides = (parse(workspace) as { overrides?: Record<string, string> }).overrides ?? {};
+const { catalog = {}, overrides = {} } = parse(workspace) as {
+	catalog?: Record<string, string>;
+	overrides?: Record<string, string>;
+};
 const packages = GRAPHIC_FONTS.flatMap(font => (font.package
 	? [font.package]
 	: []));
 
 describe('application font packaging', () => {
 	it('installs every packaged family at an exact version', () => {
-		for (const { name } of packages)
-			expect(manifest.dependencies[name], name).toMatch(/^\d+\.\d+\.\d+$/);
+		for (const { name } of packages) {
+			expect(manifest.dependencies[name], name).toBe('catalog:');
+			expect(catalog[name], name).toMatch(/^\d+\.\d+\.\d+$/);
+		}
 	});
 
 	it('names every @fontsource dependency from exactly one definition', () => {
@@ -25,9 +30,11 @@ describe('application font packaging', () => {
 			expect(packages.filter(pkg => pkg.name === name), name).toHaveLength(1);
 	});
 
-	// Nuxt UI depends on its own range of Nuxt Fonts; the override must hold it to the root's pin, or a bump is silently held back.
-	it('overrides @nuxt/fonts to the version package.json pins', () => {
-		expect(overrides['@nuxt/fonts']).toBe(manifest.dependencies['@nuxt/fonts']);
+	// Nuxt UI depends on its own range of Nuxt Fonts; the override must hold it to the catalog's pin, or a bump is silently held back.
+	it('overrides @nuxt/fonts to the version the catalog pins', () => {
+		expect(manifest.dependencies['@nuxt/fonts']).toBe('catalog:');
+		expect(overrides['@nuxt/fonts']).toBe('catalog:');
+		expect(catalog['@nuxt/fonts']).toMatch(/^\d+\.\d+\.\d+$/);
 	});
 
 	// `cssFamily` names `--font-<id>`; the stylesheet must declare it as the registry's stack, and only the UI roles besides.
