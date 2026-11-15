@@ -161,7 +161,9 @@ export const useCardStore = defineStore('card', () => {
 			: deckSourceRuntime.canUseDeckListMode.value;
 	});
 	const canUsePlayerDeckMode = deckSourceRuntime.canUsePlayerDeckMode;
-	const cardDataDegraded = computed(() => deckSourceRuntime.cardDataDegraded.value || commanderDeckSourceRuntime.cardDataDegraded.value);
+	const cardDataDegraded = computed(() => deckSourceRuntime.cardDataDegraded.value
+		|| opDeckSourceRuntime.cardDataDegraded.value
+		|| commanderDeckSourceRuntime.cardDataDegraded.value);
 
 	// ──────────────── Active Screen ────────────────
 

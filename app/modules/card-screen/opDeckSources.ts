@@ -38,7 +38,9 @@ interface SeatedSide {
  * Each side shows whoever its followed Session seats there (ADR-0058), and
  * reads the Deck List that player's slot data names. A Deck List never changes
  * under its id, so a re-paste, a clear, a Player's Deck List write or a swap
- * reaches the page as a new reference, and the shown Slot reloads.
+ * reaches the page as a new reference, and the shown Slot reloads. A side
+ * whose Deck List the server did not answer is read again on the degraded
+ * cadence (`useDegradedRefetch`), as the Two-Player matchup's decks are.
  */
 export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) {
 	const featureMatchStateStore = useFeatureMatchStateStore();
@@ -131,33 +133,51 @@ export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) 
 
 	/** The Feature Match Slot whose Deck Lists the page shows. */
 	const shownSlotId = ref<number | null>(null);
-	let flight = 0;
-
-	async function runSlotLoad(slotId: number, options: { silent: boolean }) {
-		const sides = slotSides(slotId);
-		const eventId = toValue(state.eventId);
-		if (!sides || !eventId)
-			return;
-
-		const current = ++flight;
-		if (!options.silent)
-			state.loadingDeckList.value = true;
-		try {
-			const [player1, player2] = await Promise.all(sides.map(side => sideDeckData(eventId, side)));
-			if (current !== flight)
-				return;
-			state.deckListPlayer1.value = player1 ?? null;
-			state.deckListPlayer2.value = player2 ?? null;
-		}
-		finally {
-			if (!options.silent && current === flight)
-				state.loadingDeckList.value = false;
-		}
-	}
 
 	const shownSlotKey = computed(() => shownSlotId.value === null
 		? null
 		: JSON.stringify(slotSides(shownSlotId.value)));
+
+	/** Who the shown rendering's sides seated, as `shownSlotKey` read when it loaded. */
+	let renderedKey: string | null = null;
+
+	// A side whose Deck List was not read is no answer about it, so it is read again on the degraded cadence.
+	const slotRefetch = useDegradedRefetch<string>({
+		refetch: () => {
+			if (shownSlotId.value !== null)
+				void runSlotLoad(shownSlotId.value, { silent: true });
+		},
+		isUnchanged: key => key === renderedKey,
+	});
+
+	async function runSlotLoad(slotId: number, options: { silent: boolean }) {
+		const sides = slotSides(slotId);
+		const eventId = toValue(state.eventId);
+		if (!sides || !eventId) {
+			// A degraded rendering keeps re-fetching even when one attempt finds nothing to build from.
+			slotRefetch.keepCadence();
+			return;
+		}
+
+		const key = JSON.stringify(sides);
+		const flight = slotRefetch.begin();
+		if (!options.silent)
+			state.loadingDeckList.value = true;
+		try {
+			const [player1, player2] = await Promise.all(sides.map(side => sideDeckData(eventId, side)));
+			if (flight.stale)
+				return;
+			if (slotRefetch.completeLoad(Boolean(player1?.failed || player2?.failed), key) === 'keep')
+				return;
+			state.deckListPlayer1.value = player1 ?? null;
+			state.deckListPlayer2.value = player2 ?? null;
+			renderedKey = key;
+		}
+		finally {
+			if (!options.silent && flight.current)
+				state.loadingDeckList.value = false;
+		}
+	}
 
 	// A swap, a new Deck List, or any edit to who the shown Slot seats reloads it in place.
 	watch([shownSlotId, shownSlotKey], ([slotId, key], [previousSlotId, previousKey]) => {
@@ -174,7 +194,9 @@ export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) 
 
 	function clearMatchDeckLists() {
 		shownSlotId.value = null;
-		++flight;
+		// Whatever was loading is left behind; nothing is left to re-fetch.
+		slotRefetch.settle();
+		renderedKey = null;
 		state.deckListPlayer1.value = null;
 		state.deckListPlayer2.value = null;
 	}
@@ -187,6 +209,8 @@ export function useOpCardDeckSourceRuntime(state: OpCardDeckSourceRuntimeState) 
 
 	return {
 		canUseDeckListMode,
+		/** True while a side of the shown Slot shows a Deck List not read. */
+		cardDataDegraded: slotRefetch.degraded,
 		slotHoldsDeckLists,
 		loadMatchDeckLists,
 		clearMatchDeckLists,
