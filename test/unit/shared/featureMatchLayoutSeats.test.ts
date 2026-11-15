@@ -3,7 +3,7 @@ import type { FeatureMatchSourceRole } from '~~/shared/types/screenConfig';
 import { describe, expect, it } from 'vitest';
 import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { createFeatureMatchLayoutComposition } from '~~/shared/featureMatchLayoutComposition';
-import { isFeatureMatchLayoutOfferedTo, isFourSeatFeatureMatchLayout } from '~~/shared/featureMatchLayoutSeats';
+import { isFeatureMatchLayoutHeldBy, isFeatureMatchLayoutOfferedTo, isFourSeatFeatureMatchLayout } from '~~/shared/featureMatchLayoutSeats';
 import { getGraphicItemDefinition } from '~~/shared/modules/graphics';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
 
@@ -125,5 +125,18 @@ describe('a four-Seat Feature Match Layout', () => {
 		expect(BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES
 			.filter(template => isFeatureMatchLayoutOfferedTo(template.config.layout, kind))
 			.map(template => template.id)).toEqual(offered);
+	});
+
+	// Held is wider than offered: a Commander Event may hold the pair's layout its reset writes.
+	it.each([
+		{ kind: 'mtg-two-player' as const, fourSeat: true, held: false },
+		{ kind: 'mtg-commander' as const, fourSeat: true, held: true },
+		{ kind: 'mtg-commander' as const, fourSeat: false, held: true },
+		{ kind: 'op' as const, fourSeat: false, held: true },
+	])('lets a $kind Event hold a four-Seat layout ($fourSeat): $held', ({ kind, fourSeat, held }) => {
+		const built = fourSeat
+			? layout([], ['main', 'player3'])
+			: layout([]);
+		expect(isFeatureMatchLayoutHeldBy(built, kind)).toBe(held);
 	});
 });

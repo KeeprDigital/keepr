@@ -58,3 +58,12 @@ export function isFourSeatLayoutOfferedTo(fourSeat: boolean, kind: EventKind): b
 export function isFeatureMatchLayoutOfferedTo(layout: Pick<FeatureMatchLayoutConfig, 'sources' | 'composition'>, kind: EventKind): boolean {
 	return isFourSeatLayoutOfferedTo(isFourSeatFeatureMatchLayout(layout), kind);
 }
+
+/**
+ * Whether an Event of this kind may hold a layout on a Screen: a four-Seat one a
+ * Commander Event alone, any other every Event. Wider than what is offered, as a
+ * Commander Event's Screen may still hold a pair's layout.
+ */
+export function isFeatureMatchLayoutHeldBy(layout: Pick<FeatureMatchLayoutConfig, 'sources' | 'composition'>, kind: EventKind): boolean {
+	return kind === 'mtg-commander' || !isFourSeatFeatureMatchLayout(layout);
+}

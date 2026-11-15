@@ -11,6 +11,7 @@ import {
 	graphicAssets,
 } from '~~/server/db/schema/graphicsAsset';
 import { updateScreenSchema } from '~~/server/schemas/api/screen';
+import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
@@ -373,6 +374,100 @@ describe('a write putting a Screen into a Screen Mode its Event is not offered',
 		});
 
 		expect(await stored(screen.id)).toMatchObject({ name: 'Renamed', currentMode: 'standings' });
+	});
+});
+
+// A Two-Player Event holds no third Seat or Commander term, whichever write would bring one (ADR-0087).
+describe('a write giving a Two-Player Event\'s Screen a four-Seat Feature Match Layout', () => {
+	const fourSeat = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES
+		.find(template => template.id === 'commander-table')!
+		.config
+		.layout;
+	const withFourSeat = {
+		'feature-match-overlay': { layout: fourSeat },
+	};
+	const refusal = {
+		statusCode: 422,
+		data: { code: 'FOUR_SEAT_LAYOUT_COMMANDER_ONLY' },
+	};
+	async function stageCommanderEvent() {
+		const [commander] = await db.insert(schema.events)
+			.values({
+				name: 'Commander',
+				game: 'mtg',
+				variant: 'commander',
+				featureMatchOrientation: 'horizontal',
+			})
+			.returning({ id: schema.events.id });
+		return commander!.id;
+	}
+
+	it('refuses a create, storing nothing', async () => {
+		await expect(screenWriteModule().createScreen({
+			eventId,
+			input: {
+				name: 'Table',
+				slug: 'four-seat-create',
+				currentMode: 'feature-match-overlay',
+				modeConfigs: withFourSeat,
+			} as never,
+			screenOutputAssetCapabilities: provideCapabilities as never,
+		})).rejects.toMatchObject(refusal);
+
+		expect(await db.select().from(schema.screens).where(eq(schema.screens.slug, 'four-seat-create'))).toEqual([]);
+		expect(capabilitiesPrepared).toBe(0);
+	});
+
+	it('refuses an update, leaving the Screen as it was', async () => {
+		const screen = await stageScreen({ currentMode: 'feature-match-overlay' });
+
+		await expect(screenWriteModule().updateScreen({
+			authoringSessionId: undefined,
+			eventId,
+			screenId: screen.id,
+			input: { modeConfigs: withFourSeat, stateVersion: screen.stateVersion } as never,
+		})).rejects.toMatchObject(refusal);
+
+		expect(await stored(screen.id)).toMatchObject({ modeConfigs: screen.modeConfigs, stateVersion: screen.stateVersion });
+	});
+
+	it('refuses a mode configuration write, leaving the Screen as it was', async () => {
+		const screen = await stageScreen({ currentMode: 'feature-match-overlay' });
+
+		await expect(writeLayout(screen.id, fourSeat, provideUnusedGraphicsAssets)).rejects.toMatchObject(refusal);
+
+		expect(await stored(screen.id)).toMatchObject({ modeConfigs: screen.modeConfigs, stateVersion: screen.stateVersion });
+		expect(announced()).toEqual([]);
+	});
+
+	it('stores one written to a Commander Event\'s Screen', async () => {
+		const commanderId = await stageCommanderEvent();
+		const screen = await stageScreen({ eventId: commanderId, currentMode: 'feature-match-overlay' });
+
+		await screenWriteModule().updateModeConfig({
+			authoringSessionId: undefined,
+			eventId: commanderId,
+			screenId: screen.id,
+			mode: 'feature-match-overlay',
+			config: { layout: fourSeat },
+			graphicsAssets: provideUnusedGraphicsAssets,
+		});
+
+		expect((await stored(screen.id))?.modeConfigs?.['feature-match-overlay']?.layout).toEqual(fourSeat);
+	});
+
+	// A Screen stored with one before the rule keeps saving: only a layout the write changes is judged.
+	it('stores an update that carries a four-Seat layout the Screen already holds back unchanged', async () => {
+		const screen = await stageScreen({ currentMode: 'feature-match-overlay', modeConfigs: withFourSeat });
+
+		await screenWriteModule().updateScreen({
+			authoringSessionId: undefined,
+			eventId,
+			screenId: screen.id,
+			input: { name: 'Renamed', modeConfigs: withFourSeat, stateVersion: screen.stateVersion } as never,
+		});
+
+		expect(await stored(screen.id)).toMatchObject({ name: 'Renamed', modeConfigs: withFourSeat });
 	});
 });
 
