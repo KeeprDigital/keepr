@@ -11,8 +11,10 @@ runs every gate `pnpm verify` runs, Worker build and workerd smoke included.
 Realtime integration tests are the exception: CI has no Ably key, so they run
 only against your local `.env`. A change touching realtime needs
 `pnpm test:integration --run` green before you mark it ready. Reach for
-`pnpm verify` to reproduce a CI failure locally. Commit `pnpm-lock.yaml` with
-any `package.json` change that affects dependency resolution.
+`pnpm verify` to reproduce a CI failure locally. A dependency's
+version lives in the catalog in `pnpm-workspace.yaml`, and `package.json` names
+it as `catalog:`; `pnpm add` writes both. Commit `pnpm-lock.yaml` with any
+change to either that affects dependency resolution.
 
 ## Landing on main
 

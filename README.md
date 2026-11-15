@@ -1355,8 +1355,9 @@ only through the `SILENT_VIDEO_PLAYBACK_VALIDATOR` service binding (no
 - **Adding an application font.** Add its id to `GRAPHIC_FONT_IDS` and its
   entry to `GRAPHIC_FONTS` in `shared/modules/graphics/typography.ts`, with its
   `package` (name, CSS family, weights, italic); add `@fontsource/<family>` to
-  `package.json` at an exact version (static, never `@fontsource-variable/*`)
-  and commit the lockfile; add its `--font-<id>` custom property to
+  the catalog in `pnpm-workspace.yaml` at an exact version (static, never
+  `@fontsource-variable/*`), name it in `package.json` as `catalog:`, and
+  commit the lockfile; add its `--font-<id>` custom property to
   `app/assets/css/main.css`; add its row to `THIRD_PARTY_FONTS.md`. Put it
   beside its category's other fonts, at the same place in both lists: the picker
   groups fonts by category in registry order, and
