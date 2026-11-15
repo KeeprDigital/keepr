@@ -45,9 +45,9 @@ import { verifiedRunOnGitHub } from './ci-reuse.mjs';
  */
 const OUTSIDE_CODE = /\.md$|^\.vscode\/|^\.github\/dependabot\.yml$/;
 /**
- * What the code gates check outside the code: `pnpm lint` formats every
- * document and the documentation test follows its links. A change that skips
- * those gates still runs that much (`pnpm verify:docs`).
+ * What the code gates check outside the code: the documentation test follows
+ * every document's links. A change that skips those gates still runs that
+ * much (`pnpm verify:docs`).
  */
 const DOCUMENT = /\.md$/;
 /**

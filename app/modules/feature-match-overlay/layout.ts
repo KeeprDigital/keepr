@@ -70,7 +70,7 @@ export function patchSourceFramingStyle(layout: FeatureMatchLayoutConfig, id: st
 	return mapSource(layout, id, item => ({
 		...item,
 		framingStyle: {
-			...(item.framingStyle ?? {}),
+			...item.framingStyle,
 			...updates,
 		},
 	}));

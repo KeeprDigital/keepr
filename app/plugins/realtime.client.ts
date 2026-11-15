@@ -902,7 +902,7 @@ export default defineNuxtPlugin({
 			channels.clear();
 			continuity.clear();
 
-			void disconnect();
+			disconnect();
 		}
 
 		// `pagehide`, not `beforeunload`: the latter also fires when the operator

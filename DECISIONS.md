@@ -1214,7 +1214,7 @@ Accepted · 2026-10-21 · [#586](https://github.com/KeeprDigital/stream-keepr/is
 
 **One rule decides which edits change the rotation's shape** (`pageRotationEdit` in `shared/modules/page-rotation`): an edit of the declared page size field or of `autoPageIntervalMs`. While auto-page is on, such an edit restarts the rotation from page 1 by writing a Rotation Anchor of now. A page size edit also writes `currentPage: 1`, whether or not auto-page is on, because every page then holds different rows. Any other edit is written as it is, so nothing else re-anchors (ADR-0009).
 
-**Every consumer reads the declaration.** A paginated mode's settings editor writes every edit through `useRotationConfigWrites({ mode, config, rowCount, saveConfig })`, whose `updateConfig` applies the rule and whose `totalPages` counts pages by the declared field; its `updateRotationShape`, which each editor had to remember to call, is deleted. Every paginated mode's settings page is drawn by the generic renderer over what that composable returns (ADR-0037, #1094, #1095; the one Pagination card of #775, `ScreenPaginationSettingsCard`, is deleted): the declared page size field and the page duration in its Paging card, auto-page and the page selection in its Live card, each labelled and bounded from the mode's contract and written through the composable, with the page count the `rowCount` gives, so no editor writes the rotation fields itself. A paginated mode's rendering pages through `usePaginatedScreenMode({ mode, config, rows })`, which reads the page size from the declared field and writes a page selection or Rotation Anchor only from an interactive surface. It returns that page size as `pageSize`, which a mode's data passes on wherever its rendering sizes by it, so a Display lays its rows out for it without naming the field; an ESLint rule (`eslint.config.mjs`) refuses a page size field read in `app/components/Screen/Modes`, outside the settings editors (#913). The three hand-wired copies of that paging and its writes are deleted. A display reset writes through the rule as well (`getDisplayResetForMode`). Screen Outputs still never write the Rotation Anchor.
+**Every consumer reads the declaration.** A paginated mode's settings editor writes every edit through `useRotationConfigWrites({ mode, config, rowCount, saveConfig })`, whose `updateConfig` applies the rule and whose `totalPages` counts pages by the declared field; its `updateRotationShape`, which each editor had to remember to call, is deleted. Every paginated mode's settings page is drawn by the generic renderer over what that composable returns (ADR-0037, #1094, #1095; the one Pagination card of #775, `ScreenPaginationSettingsCard`, is deleted): the declared page size field and the page duration in its Paging card, auto-page and the page selection in its Live card, each labelled and bounded from the mode's contract and written through the composable, with the page count the `rowCount` gives, so no editor writes the rotation fields itself. A paginated mode's rendering pages through `usePaginatedScreenMode({ mode, config, rows })`, which reads the page size from the declared field and writes a page selection or Rotation Anchor only from an interactive surface. It returns that page size as `pageSize`, which a mode's data passes on wherever its rendering sizes by it, so a Display lays its rows out for it without naming the field; a rendering in `app/components/Screen/Modes`, outside the settings editors, does not read a page size field (#913; a lint rule refused it until ADR-0089). The three hand-wired copies of that paging and its writes are deleted. A display reset writes through the rule as well (`getDisplayResetForMode`). Screen Outputs still never write the Rotation Anchor.
 
 ### Why
 
@@ -1228,7 +1228,7 @@ Each paginated editor decided the rule separately, and the copies disagreed: a S
 - A display reset of a paginated mode goes through the rule too (`getDisplayResetForMode` in `shared/screenModeDefinitions.ts`, which `useModeConfigUpdate`'s `resetConfig` writes): it restores the default page size and duration, a shape change, so it restarts the rotation from page 1 and writes a Rotation Anchor of now only if auto-page is on once reset. The defaults turn auto-page off, so today a reset writes `currentPage: 1` and no anchor; neither `currentPage` nor `rotationAnchor` is a display default or a preserved key. The reset is written from the Screen's settings page, so Screen Outputs still never write the Rotation Anchor.
 - The Metagame chart display (#754) is one page. It draws at most eight Archetypes and folds the rest into Other, so it gives the rotation no rows to page, and its editor hides the page controls. Its page size and page duration stay stored and apply again when the operator returns to a table. The eight-Archetype limit belongs to the chart's projection (`projectMetagameChart`), not to the contract: Top archetypes keeps its bounds (ADR-0037). Above eight, it still limits the table, and the chart draws eight plus Other.
 - `test/unit/shared/screenModePageRotation.test.ts` lists the declarations, checks that every other mode carries no rotation field, and runs over every declaring mode from `SCREEN_MODES`: it carries the shared fields, validation and defaults, a page size or page duration edit re-anchors only while auto-page is on, and a page size edit resets the manually selected page to 1. `test/nuxt/modules/rotationConfigWrites.test.ts` shows a settings editor's `updateConfig` applies the rule, `test/nuxt/components/Screen/ModeSettingsPaging.test.ts` that a settings page writes through it whatever the mode names its page size field, and `test/nuxt/composables/screen/useModeConfigUpdate.test.ts` that a display reset does.
-- **The editor's `rowCount` is the rows the Screen renders** (#780): each paginated editor sets up its mode's own data composable (`useEditedScreenModeData`), so it reads what the Screen Output reads, through its Screen Output read, and follows it by Screen Mode Data Freshness. It reads through the Screen as saved: the store shows an edit at once, but the server answers from what it holds, so the editor holds the Screen it reads through until its edit is answered, then reads again if the edit changed the read. `rowCount` is the count of the rows that composable pages. No editor estimates it from config (Most Played Cards and Metagame from the limit, Standings from the operator's roster) or counts it once on selection (Pairings, Player History, Archetype Spotlight). A manual page selection is clamped to that count's last page. Every mode-data composable takes its Screen context as an argument: a rendering passes the one its host provides, and `useEditedScreenModeData` builds one for the edited Screen (#914). No module-level override stands in for it, which held only while a composable's setup ran synchronously; an ESLint rule (`eslint.config.mjs`) refuses an injected context in mode data. Until the editor's rows answer their first read, on opening or once something is selected where nothing was (the mode data's `answered`), the manual page controls show they are counting (`aria-busy`) rather than "Page 1 of 1", which would read as an answer; a later read keeps the count it has.
+- **The editor's `rowCount` is the rows the Screen renders** (#780): each paginated editor sets up its mode's own data composable (`useEditedScreenModeData`), so it reads what the Screen Output reads, through its Screen Output read, and follows it by Screen Mode Data Freshness. It reads through the Screen as saved: the store shows an edit at once, but the server answers from what it holds, so the editor holds the Screen it reads through until its edit is answered, then reads again if the edit changed the read. `rowCount` is the count of the rows that composable pages. No editor estimates it from config (Most Played Cards and Metagame from the limit, Standings from the operator's roster) or counts it once on selection (Pairings, Player History, Archetype Spotlight). A manual page selection is clamped to that count's last page. Every mode-data composable takes its Screen context as an argument: a rendering passes the one its host provides, and `useEditedScreenModeData` builds one for the edited Screen (#914). No module-level override stands in for it, which held only while a composable's setup ran synchronously; mode data does not inject one (a lint rule refused it until ADR-0089). Until the editor's rows answer their first read, on opening or once something is selected where nothing was (the mode data's `answered`), the manual page controls show they are counting (`aria-busy`) rather than "Page 1 of 1", which would read as an answer; a later read keeps the count it has.
 - Every paginated mode has the same manual page buttons, labelled Previous and Next (#775, now the renderer's `ScreenPageSelection`); Standings, Metagame and Most Played Cards had shown icon-only buttons.
 
 ### Rejected alternatives
@@ -2797,7 +2797,7 @@ Every select, number field and toggle lines up the same way only if one componen
 - A new density or layout is a prop on the primitive, never a second component.
 - The `ScreenSettings*` layout primitives have no tests of their own beyond the open-and-remember rule of the section (`test/nuxt/components/Screen/SettingsSection.test.ts`); the seams that mount them, such as the generic renderer's and `ScreenConfigField`'s tests, cover them.
 - Event configuration pages and modals are outside this decision.
-- A bare `UInputNumber` under `app/components/Graphics/` or `app/components/Theme/` fails lint (`eslint.config.mjs`), so a new inspector or Theme field takes the shared number field.
+- A new inspector or Theme field takes the shared number field, not a bare `UInputNumber` (a lint rule refused one under `app/components/Graphics/` or `app/components/Theme/` until ADR-0089).
 - A Theme dimension now steps and drags like every other number, so the Theme editor writes it once its edits pause, as it does a composite token, and an entry beyond its bounds is held at the bound rather than undone. A typography token's weight is a number stepping by 100 rather than a list.
 - A Source Item's corners are no longer set through the shared `borderRadius`: "All corners" writes each corner's own radius. A stored `borderRadius` still reads as the radius of every corner that names none.
 - A shared field control under `app/components/Graphics/` is tested at its home for the rules it owns, such as a typography's bounds and cleared field, a number field's drag, or a fill's stops (`test/nuxt/components/Graphics/*Fields.test.ts`, `NumberField.test.ts`). The Theme editor's page test and the inspector's, Source Item's and settings' tests each wire it once, through the adapter that maps their values to its fields, and do not retest its rules.
@@ -2887,13 +2887,13 @@ Accepted · 2026-11-12
 
 ### Decision
 
-**Before a push, `pnpm verify:quick` checks what the checkout changes since `main`, and CI checks everything.** Quick lints the changed files, typechecks both programs, and runs the unit and Nuxt tests whose imports reach a changed file (Vitest's `--changed`, which runs every test when the change reaches a file every test depends on and none imports: `package.json`, a Vitest config or setup file, a migration). `--all` runs the whole cheap stage, as quick did before. CI stays the full gate on every ready PR and in the merge queue (ADR-0036); nothing it runs is narrowed.
+**Before a push, `pnpm verify:quick` checks what the checkout changes since `main`, and CI checks everything.** Quick lints (everything, since ADR-0089 made that ten seconds), typechecks both programs, and runs the unit and Nuxt tests whose imports reach a changed file (Vitest's `--changed`, which runs every test when the change reaches a file every test depends on and none imports: `package.json`, a Vitest config or setup file, a migration). `--all` runs the whole cheap stage, as quick did before. CI stays the full gate on every ready PR and in the merge queue (ADR-0036); nothing it runs is narrowed.
 
 **Every heavy gate takes run slots from one budget for the machine, shared by every worktree of the checkout** (`scripts/slots.mjs`). A slot is about one busy core and 1.5 GB. The pool is two fewer than the cores, capped by memory: eight on a 10-core, 16 GB machine, three on a CI runner. Lint, each typecheck program and the build take three; a test run takes one per worker, to a ceiling two below the pool; the integration suite takes all of them. A gate with too few free waits in line, first come first served, and says who holds them. The ledger is one SQLite file in the Git common directory, the one place every worktree shares and can write. A gate started inside one that already holds slots (a script a test runs) takes none, since it would wait in line behind its own parent. A holder whose process is gone, or that has held slots for 30 minutes, gives them back. A ledger that cannot be read never blocks a gate: it runs unqueued and says so.
 
 **CI's lint, typecheck, unit suite and Nuxt suite are four jobs, not one.**
 
-**The one type-aware lint rule, `ts/no-floating-promises`, runs on server and shared code only.** There a floating promise is a defect no test sees: on Workers a promise a request handler never awaited can be cut off once the response has gone, and the write or publish is lost. In a component it is a click handler's, and the rule's yield was `void` written in front of it.
+**The floating-promise lint rule (`typescript/no-floating-promises`) is for the code a Worker runs.** There a floating promise is a defect no test sees: on Workers a promise a request handler never awaited can be cut off once the response has gone, and the write or publish is lost. In a component it is a click handler's, and the rule's yield was `void` written in front of it. Under ESLint the rule ran on server and shared code only, for its cost; since ADR-0089 it also reads the app's `.ts` files, and still no component.
 
 ### Why
 
@@ -2903,12 +2903,12 @@ Most work here is done by agents, several at once, each in its own worktree and 
 - **The rule nobody could follow.** "Run one integration suite at a time per machine" was an instruction to agents with no way to see each other. The pool enforces it.
 - **More workers were slower.** Vitest starts one worker fewer than the cores. On the 10-core machine (four performance cores) the unit suite took 56 s at nine workers and 44 s at six; the Nuxt suite 113 s and 75 s. The ceiling is the faster setting, not a compromise.
 - **Proportion.** A change to one shared utility reaches 16 unit files (3 s against 56 s for the suite); a change to one component reaches 38 Nuxt files (39 s against 113 s). Quick ran every test for every push, 216 times in three weeks, and CI then ran them again.
-- **One rule was most of lint.** Linting everything with type information cost 176 s of CPU and 4.4 GB for a cold run, nearly all of it building the app's and the tests' TypeScript program. With the rule on server and shared code it is 60 s and 3.5 GB; without the rule at all, 46 s and 2.0 GB. Changed files outside server and shared now lint in under two seconds and half a gigabyte.
+- **One rule was most of lint.** Linting everything with type information cost 176 s of CPU and 4.4 GB for a cold run, nearly all of it building the app's and the tests' TypeScript program. With the rule on server and shared code it is 60 s and 3.5 GB; without the rule at all, 46 s and 2.0 GB. Changed files outside server and shared then linted in under two seconds and half a gigabyte. (Oxlint, ADR-0089, lints the whole tree with type information in ten seconds, so quick no longer narrows lint.)
 - **CI's wall time was one job.** Lint, typecheck and both suites ran in sequence for 11 to 18 minutes; every other job took 2 to 4.
 
 ### Consequences
 
-- A test that reads a file without importing it (the documentation link test, the workflow and `package.json` wiring tests, route censuses) is not selected by a change to that file. CI catches it, a few minutes later than quick would have. So does a lint finding that one file's change causes in another, which the per-file ESLint cache already left to CI.
+- A test that reads a file without importing it (the documentation link test, the workflow and `package.json` wiring tests, route censuses) is not selected by a change to that file. CI catches it, a few minutes later than quick would have.
 - Coverage floors are not checked by quick: a floor is over a whole suite. CI and `verify:quick --all` check them.
 - A gate can wait. A wait prints `[run-slots] … has waited` every 15 seconds, and `pnpm slots` shows the line. A run started under a short tool timeout and killed while waiting has cost nothing; starting a second copy only lengthens the line.
 - The pool covers the worktrees of one checkout. Another clone, or another project's suites, is outside it.
@@ -2924,7 +2924,6 @@ Most work here is done by agents, several at once, each in its own worktree and 
 - **The ledger in the temp directory.** Where that is depends on each session's environment (`TMPDIR`): two sessions given different ones would each see an empty pool. The Git common directory is the same for every worktree by construction.
 - **Failing a gate that waits too long.** It fails exactly when the machine is busiest, and the agent's answer to a failed gate is to run it again.
 - **Dropping `ts/no-floating-promises` altogether.** It would save a further 14 s of CPU and 1.5 GB on a cold lint, and give up the one check that stands between a forgotten `await` in a handler and a write lost in production.
-- **Seeding a fresh worktree's ESLint cache from the main checkout.** The cache is keyed by absolute path and by a config hash that holds the checkout's path.
 - **Sharding the Nuxt suite in CI.** Its coverage floor is over the whole suite, so shards would need a merged report; the split already takes the wall time from the sum to the longest job.
 
 ## ADR-0083: The history is squashed into one baseline again before the next ship, under a new name
@@ -3237,3 +3236,53 @@ A correction applied as a step moves server time by its whole size between two r
 - **Averaging the samples of a sync.** The mean of a tight sample and a loose one is worse than the tight one alone.
 - **Easing every correction.** A clock a minute out would take ten minutes to come right.
 - **Stepping only forwards, easing only backwards.** A forward step still skips a digit on one output of a clock and not on another.
+
+## ADR-0089: Oxlint is the linter, and it keeps three rules of this codebase's own
+
+Accepted · 2026-11-15. Changes ADR-0039, ADR-0079 and ADR-0082 where each named an ESLint rule.
+
+### Decision
+
+**Oxlint lints the repository** (`.oxlintrc.json`): its `correctness` rules for JavaScript, TypeScript and a component's `<script>`, with type information wherever a tsconfig covers the file. ESLint is gone, and with it the antfu preset, the Nuxt ESLint module, the Drizzle plugin, every stylistic rule, and the linting and formatting of Markdown, CSS and SVG.
+
+**Three rules of this codebase's own remain**, each for a defect no test sees:
+
+| Rule                                               | Where                                    | The defect                                                                                                 |
+| -------------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `typescript/no-floating-promises`                  | the app's, the server's and shared `.ts` | on Workers a promise a handler never awaited is cut off once the response has gone (ADR-0082)              |
+| no `crypto.subtle` and no `crypto.randomUUID`      | `app/` and `shared/`                     | a page opened over plain HTTP on a LAN address has neither (README § Local auth bypass)                    |
+| no `eventRealtimeChannel`, imported or auto-import | rendering code                           | a rendering of a Screen follows its Screen's own channel, through `app/modules/screen/renderingChannel.ts` |
+
+**The rules that were AST selectors are not carried over.** Oxlint has no rule that takes a selector, and it does not read a component's template. What those rules held is now convention, stated where it was decided:
+
+- the test conventions of AGENTS.md § Writing tests: no assertion on a Tailwind class, no optional `$emit`, no conditional `expect`, no mock of Drizzle or of the module's own services, no timeout written on one test, real timers restored;
+- a rendering reads its page size from its mode data, and mode data takes its Screen context as an argument (ADR-0039);
+- an inspector or Theme field takes the shared number field (ADR-0079);
+- the compositor's panels commit the stack through `useCompositorEditing` alone;
+- a non-500 5xx names a cause the error mapper classifies;
+- the Screen Mode Sample Dataset is a Theme preview's alone;
+- a Drizzle `delete` or `update` names its rows.
+
+**The server's program holds the Worker's generated types.** `nuxt.config.ts` adds `worker-configuration.d.ts` to it (`nitro.typescript.tsConfig`), so the floating-promise rule sees the promise a D1, R2 or KV binding returns rather than `any`.
+
+**`pnpm verify:quick` lints everything.** A whole lint is ten seconds, so the script that linted only a branch's changed files is gone.
+
+### Why
+
+- **The repository is becoming one app of several in a monorepo.** A lint configuration of four hundred lines, most of it this app's architecture written as selectors, is one every other app would have to restate or do without. What is shared has to be small.
+- **Cost.** A cold ESLint run was 39 to 60 seconds and 3.5 GB, enough that quick linted only changed files and CI was the backstop for the rest. Oxlint reads all 2,500 files, type-aware rules included, in 9 seconds (31 s of CPU, about 3 GB), measured on the 10-core, 16 GB machine in November 2026.
+- **Most code here is written by agents**, against AGENTS.md and these decisions. The selector rules repeated in a second place what those already say.
+
+### Consequences
+
+- A component's `<script>` is linted without type information, and its template not at all. `vue-tsc` typechecks both, as before.
+- Tests and scripts are linted without type information: no tsconfig the linter finds covers them, so the type-aware rules are off there (`.oxlintrc.json` says which).
+- Three rules of the `correctness` category are off for what they misread here: a Zod schema's bound `parse` passed as a callback, an awaited Drizzle statement, and a copy taken before a loop that changes what it walks.
+- Nothing mechanical holds the conventions listed above. A change that breaks one is caught by a test where one exists, and by review otherwise.
+- Markdown is not linted. `pnpm verify:docs` is the documentation link test alone.
+
+### Rejected alternatives
+
+- **Porting the selector rules to Oxlint's JavaScript plugins.** The plugin API is alpha, it reaches no template, and each rule would be one this repository maintains.
+- **ESLint kept for templates and selectors, beside Oxlint.** Two linters, two configurations, and the slow one still in every run.
+- **Vite+ as the entry point** (`vp check`). It asks for its own build of Vite across the whole workspace, and a Nuxt app builds with Nuxt's.

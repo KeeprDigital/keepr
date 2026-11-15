@@ -89,11 +89,9 @@ const activeGradientDir = computed(() => {
 		: 'to right';
 });
 
-const panelStyle = computed(() => ({
-	...(isActive.value
-		? { '--active-dir': activeGradientDir.value }
-		: {}),
-}));
+const panelStyle = computed(() => (isActive.value
+	? { '--active-dir': activeGradientDir.value }
+	: {}));
 </script>
 
 <template>

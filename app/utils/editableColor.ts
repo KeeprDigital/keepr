@@ -22,7 +22,7 @@ export function parseEditableColor(css: string): EditableColor | null {
 	const hex = HEX.exec(value)?.[1];
 	if (hex) {
 		const full = hex.length === 3
-			? [...hex].map(digit => digit + digit).join('')
+			? hex.split('').map(digit => digit + digit).join('')
 			: hex;
 		return {
 			hex: `#${full.slice(0, 6).toLowerCase()}`,

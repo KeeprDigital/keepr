@@ -23,9 +23,7 @@ describe('the operational queue vocabulary', () => {
 
 		const rank = { critical: 0, warning: 1, info: 2 } as const;
 		expect(severities.map(severity => rank[severity]))
-			.toEqual([
-				...severities.map(severity => rank[severity]),
-			].sort());
+			.toEqual(severities.map(severity => rank[severity]).sort());
 
 		expect(graphicsQueueSeverity('critical-integrity-incident')).toBe('critical');
 		expect(graphicsQueueSeverity('unavailable-content')).toBe('warning');

@@ -447,7 +447,7 @@ describe('graphicsCompositorBindings', () => {
 				}),
 			});
 
-			const labels = (selects(wrapper, 'graphic-binding-field')[0]?.props('items') as { label: string }[][])
+			const labels = (selects(wrapper, 'graphic-binding-field')[0]!.props('items') as { label: string }[][])
 				.flat()
 				.map(item => item.label);
 			expect(labels).toContain('Wins');

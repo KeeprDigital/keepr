@@ -1179,7 +1179,6 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 		});
 		let reclaimed = 0;
 		for (const claim of stale) {
-			// eslint-disable-next-line drizzle/enforce-delete-with-where -- Object-store deletion is scoped by immutable identity.
 			const removal = await staging.delete(graphicsObjectIdentity(claim.workingCopyKey));
 			if (removal.outcome === 'unavailable')
 				continue;
@@ -1190,7 +1189,6 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 	}
 
 	async function releaseWorkingCopy(discrepancyId: string, identity: GraphicsObjectIdentity) {
-		// eslint-disable-next-line drizzle/enforce-delete-with-where -- Object-store deletion is scoped by immutable identity.
 		const removal = await staging.delete(identity);
 		if (removal.outcome !== 'unavailable')
 			await catalogue.releaseDiscrepancyWorkingCopy({ id: discrepancyId });
@@ -1680,7 +1678,6 @@ export function createGraphicsReconciliation(dependencies: GraphicsReconciliatio
 				// A previous attempt whose lease expired before a sweep reclaimed it
 				// could still be staged here, and staged objects are create-if-absent,
 				// so this repair would otherwise verify someone else's bytes.
-				// eslint-disable-next-line drizzle/enforce-delete-with-where -- Object-store deletion is scoped by immutable identity.
 				await staging.delete(workingCopy);
 				// Supplied bytes are staged first. Nothing unverified is ever written
 				// under a digest-owned canonical identity, because that identity is

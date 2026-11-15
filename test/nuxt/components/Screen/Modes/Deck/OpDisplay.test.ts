@@ -200,12 +200,12 @@ beforeEach(() => {
 		deckList: deckList(601, ZORO_LIST_ENTRIES),
 	};
 	mockFetch.mockImplementation(async (path: string) => {
-		if (/players\/31\/deck-list$/.test(path))
+		if (path.endsWith('players/31/deck-list'))
 			return playerRead.value;
 		const listId = /feature-match-slots\/11\/deck-lists\/(\d+)$/.exec(path)?.[1];
 		if (listId)
 			return await deckListReads.get(Number(listId));
-		if (/feature-match-slots\/11$/.test(path)) {
+		if (path.endsWith('feature-match-slots/11')) {
 			return {
 				slot: slot(ALICE, BOB),
 				match: null,

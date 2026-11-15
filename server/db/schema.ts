@@ -113,9 +113,7 @@ export const events = sqliteTable('events', {
 	description: text('description'),
 	holdingText: text('holding_text'),
 
-	// eslint-disable-next-line ts/no-use-before-define -- circular FK: events ↔ eventTalents
 	commentator1TalentId: integer('commentator1_talent_id').references((): AnySQLiteColumn => eventTalents.id, { onDelete: 'set null' }),
-	// eslint-disable-next-line ts/no-use-before-define -- circular FK: events ↔ eventTalents
 	commentator2TalentId: integer('commentator2_talent_id').references((): AnySQLiteColumn => eventTalents.id, { onDelete: 'set null' }),
 
 	meleeEnabled: integer('melee_enabled', { mode: 'boolean' }).notNull().default(false),
@@ -233,7 +231,6 @@ export const players = sqliteTable('players', {
 	position: integer('position'),
 	points: integer('points'),
 
-	// eslint-disable-next-line ts/no-use-before-define -- circular FK: players ↔ archetypes
 	archetypeId: integer('archetype_id').references((): AnySQLiteColumn => archetypes.id, { onDelete: 'set null' }),
 
 	lgs: text('lgs'),
@@ -447,7 +444,6 @@ export const featureMatchSlots = sqliteTable('feature_match_slots', {
 	sortOrder: integer('sort_order').notNull().default(0),
 	playerDisplayMode: text('player_display_mode', { enum: PLAYER_DISPLAY_MODE_VALUES }).notNull().default('score'),
 
-	// eslint-disable-next-line ts/no-use-before-define -- circular FK: slots ↔ sessions
 	activeSessionId: integer('active_session_id').references((): AnySQLiteColumn => featureMatchSessions.id, { onDelete: 'set null' }),
 
 	...timestamps,
@@ -593,7 +589,6 @@ export const broadcastGraphicsLiveSessions = sqliteTable('broadcast_graphics_liv
 		.references(() => events.id, { onDelete: 'cascade' })
 		.notNull(),
 	screenId: integer('screen_id')
-		// eslint-disable-next-line ts/no-use-before-define -- screens is declared below
 		.references((): AnySQLiteColumn => screens.id, { onDelete: 'cascade' })
 		.notNull(),
 

@@ -268,10 +268,13 @@ export function cardFieldsSummary(card: SettingsPageCard): string[] {
 							shownLabel(fieldLabel(entry)),
 						]
 					: [];
-			case 'select':
-				return value === undefined || value === null
-					? []
-					: [fieldOptions(entry)?.find(option => option.value === value)?.label ?? String(value)];
+			case 'select': {
+				if (value === undefined || value === null)
+					return [];
+				const label = fieldOptions(entry)?.find(option => option.value === value)?.label;
+				// oxlint-disable-next-line typescript/no-base-to-string -- a value no option lists is shown as written
+				return [label ?? String(value)];
+			}
 			case 'number':
 				return typeof value === 'number'
 					? [`${fieldLabel(entry)}: ${value / entry.field.displayScale}`]

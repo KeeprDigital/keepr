@@ -15,7 +15,7 @@ export function colourIdentityColours(colorIdentity: string): string {
 /** Colour identity letters, each once, in WUBRG order. */
 export function orderedColourIdentity(letters: Iterable<string>): string {
 	const held = new Set(letters);
-	return [...COLOUR_ORDER].filter(letter => held.has(letter)).join('');
+	return COLOUR_ORDER.split('').filter(letter => held.has(letter)).join('');
 }
 
 /**
@@ -27,7 +27,7 @@ export function commanderDeckIdentity(commanders: readonly Commander[]): Require
 		return { deckName: null, deckColors: null };
 	return {
 		deckName: commanders.map(commander => commander.name).join(' / '),
-		deckColors: colourIdentityColours(orderedColourIdentity(commanders.flatMap(commander => [...commander.colorIdentity]))),
+		deckColors: colourIdentityColours(orderedColourIdentity(commanders.flatMap(commander => commander.colorIdentity.split('')))),
 	};
 }
 

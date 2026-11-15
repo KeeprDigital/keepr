@@ -52,7 +52,7 @@ permissions:
   contents: read
 
 # Node's default ~2GB old-space cap is too small on hosted runners for the
-# Nuxt/Vite build, whole-repo eslint, and vue-tsc alike.
+# Nuxt/Vite build and vue-tsc alike.
 env:
   NODE_OPTIONS: --max-old-space-size=6144
 
@@ -109,10 +109,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup
-      # The cache is not restored: a cold run is the backstop for what a local
-      # run can miss, whether through the per-file ESLint cache or through
-      # `pnpm verify:quick` linting only the files a branch changes
-      # (README § Testing).
       - if: needs.scope.outputs.code == 'true'
         run: pnpm lint
       # The workflows are code nothing else reads before it runs. actionlint
@@ -151,9 +147,9 @@ jobs:
           advanced-security: false
           online-audits: false
           collect: workflows,actions
-      # A docs-only change skips the code gates, but `pnpm lint` formats every
-      # document and the documentation test follows its links: unchecked, a
-      # bad document would fail the next code change instead (#1028). A step of
+      # A docs-only change skips the code gates, but the documentation test
+      # follows every document's links: unchecked, a broken one would fail the
+      # next code change instead (#1028). A step of
       # this job, not a job of its own, so that a full run still has no skipped
       # job: a merge group reuses only such a run (scripts/ci-reuse.mjs).
       - if: needs.scope.outputs.docs == 'true'

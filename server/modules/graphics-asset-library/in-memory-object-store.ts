@@ -238,7 +238,6 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 				uploadedAt: new Date(),
 			};
 			objects.set(input.upload.identity, { bytes, metadata });
-			// eslint-disable-next-line drizzle/enforce-delete-with-where -- In-memory Map, not a Drizzle table.
 			multipartUploads.delete(input.upload.uploadId);
 			return { outcome: 'created' as const, object: metadata };
 		},
@@ -251,16 +250,13 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			// second abort of a gone upload indistinguishable from an outage.
 			if (!stored || stored.upload.identity !== upload.identity)
 				return { outcome: 'missing' as const };
-			// eslint-disable-next-line drizzle/enforce-delete-with-where -- In-memory Map, not a Drizzle table.
 			multipartUploads.delete(upload.uploadId);
 			return { outcome: 'aborted' as const };
 		},
 		async delete(identity: GraphicsObjectIdentity) {
 			if (shouldFailTransiently('delete'))
 				return unavailableObjectStoreOutcome();
-			// eslint-disable-next-line drizzle/enforce-delete-with-where -- In-memory Set, not a Drizzle table.
 			unavailableObjects.delete(identity);
-			// eslint-disable-next-line drizzle/enforce-delete-with-where -- In-memory Map, not a Drizzle table.
 			return objects.delete(identity)
 				? { outcome: 'deleted' as const }
 				: { outcome: 'missing' as const };
@@ -271,7 +267,6 @@ function createInMemoryGraphicsObjectStoreImplementation() {
 			unavailableObjects.add(identity);
 		},
 		restore(identity: GraphicsObjectIdentity) {
-			// eslint-disable-next-line drizzle/enforce-delete-with-where -- In-memory Set, not a Drizzle table.
 			unavailableObjects.delete(identity);
 		},
 		injectTransientFailure(operation: InMemoryOperation, count = 1) {
@@ -291,7 +286,6 @@ function canonicalCapabilities(
 		readMetadata: implementation.readMetadata,
 		read: implementation.read,
 		list: implementation.list,
-		// eslint-disable-next-line drizzle/enforce-delete-with-where -- In-memory adapter method, not a Drizzle table.
 		delete: implementation.delete,
 		markUnavailable: implementation.markUnavailable,
 		restore: implementation.restore,

@@ -67,7 +67,6 @@ export default defineNuxtConfig({
 		// Writes the `mana-font` stylesheet the mana symbol components import,
 		// with one woff2 `Mana` face in place of the package's own faces.
 		manaFontModule,
-		'@nuxt/eslint',
 		'@nuxt/fonts',
 		'@nuxt/ui',
 		'@pinia/nuxt',
@@ -97,12 +96,6 @@ export default defineNuxtConfig({
 	css: [
 		'~/assets/css/main.css',
 	],
-
-	eslint: {
-		config: {
-			standalone: false,
-		},
-	},
 
 	// Application fonts come from their pinned Fontsource packages on disk, and
 	// only from there (`build/applicationFonts.ts`, ADR-0086).
@@ -136,6 +129,15 @@ export default defineNuxtConfig({
 
 	nitro: {
 		preset: 'cloudflare_module',
+		// The server program (`.nuxt/tsconfig.server.json`, which `server/tsconfig.json`
+		// extends) is the one the type-aware lint reads for server code. Without the
+		// Worker's generated types in it, every binding (`Env`, D1, R2, KV) is `any`
+		// there, and a floating promise on one goes unseen.
+		typescript: {
+			tsConfig: {
+				include: ['../worker-configuration.d.ts'],
+			},
+		},
 		// Nitro's own Wasm support (unwasm). The `cloudflare_module` preset
 		// configures it as `{ lazy: false, esmImport: true }`, so a `.wasm?module`
 		// import becomes a real ESM import of an emitted `.wasm` asset and the

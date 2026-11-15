@@ -97,7 +97,7 @@ async function mountComponent(options: {
 }
 
 function emittedGraphic(wrapper: Awaited<ReturnType<typeof mountComponent>>, index = 0) {
-	return (wrapper.emitted('update:graphics')?.[index]?.[0] as BroadcastGraphicConfig[])[0]!;
+	return (wrapper.emitted('update:graphics')![index]![0] as BroadcastGraphicConfig[])[0]!;
 }
 
 describe('graphicsCompositorSocialProfileProjections', () => {

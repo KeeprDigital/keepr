@@ -14,9 +14,7 @@
  */
 const SUSPENSE_NOTICE = '<Suspense> is an experimental feature and its API will likely change.';
 
-// eslint-disable-next-line no-console -- wraps the method rather than logging
 const info = console.info.bind(console);
-// eslint-disable-next-line no-console -- wraps the method rather than logging
 console.info = (...data: unknown[]) => {
 	if (data.length === 1 && data[0] === SUSPENSE_NOTICE)
 		return;

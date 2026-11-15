@@ -215,7 +215,6 @@ export function createMeleeTransport(
 	const createTimeoutSignal = options.createTimeoutSignal ?? AbortSignal.timeout;
 	const logger = options.logger ?? {
 		// Workers Logs indexes structured objects emitted through console.log.
-		// eslint-disable-next-line no-console
 		info: (entry: MeleeTransportLogEntry) => console.log(entry),
 		warn: (entry: MeleeTransportLogEntry) => console.warn(entry),
 		error: (entry: MeleeTransportLogEntry) => console.error(entry),

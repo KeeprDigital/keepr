@@ -396,7 +396,7 @@ export function effectiveGraphicInputValue(
 export function acceptGraphicInputValues(
 	inputs: NormalizedBroadcastGraphicInputsState,
 	declarations: readonly GraphicInputDeclaration[],
-	bindings: readonly GraphicInputBinding[] | undefined = undefined,
+	bindings?: readonly GraphicInputBinding[],
 	bound: Readonly<Record<string, GraphicInputValue>> = {},
 	/** Whether this acceptance is happening to a graphic already on a program output. */
 	onAir = false,
@@ -429,7 +429,7 @@ export function acceptGraphicInputValues(
 export function unavailableRequiredGraphicInputs(
 	inputs: NormalizedBroadcastGraphicInputsState,
 	declarations: readonly GraphicInputDeclaration[],
-	bindings: readonly GraphicInputBinding[] | undefined = undefined,
+	bindings?: readonly GraphicInputBinding[],
 	bound: Readonly<Record<string, GraphicInputValue>> = {},
 ): GraphicInputDeclaration[] {
 	const accepted = acceptGraphicInputValues(inputs, declarations, bindings, bound, false);

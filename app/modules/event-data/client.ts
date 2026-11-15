@@ -51,6 +51,7 @@ export function useEventDataFetch() {
 			...options,
 			headers: {
 				...headers.getHeaders(),
+				// oxlint-disable-next-line unicorn/no-useless-fallback-in-spread -- `options` is generic: its headers spread only once they are known to be an object
 				...(options.headers ?? {}),
 			},
 		} as T & { headers: HeadersInit };

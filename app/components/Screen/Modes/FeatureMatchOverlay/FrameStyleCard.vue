@@ -29,7 +29,7 @@ const animation = computed<FeatureMatchOverlayFrameAnimationConfig>(() =>
 
 const mediaBackground = computed<ScreenMediaBackgroundConfig>(() => ({
 	...DEFAULT_SCREEN_MEDIA_BACKGROUND_CONFIG,
-	...(props.config.layout.frame.mediaBackground ?? {}),
+	...props.config.layout.frame.mediaBackground,
 }));
 
 function updateFrame(updates: Partial<FeatureMatchLayoutFrameConfig>) {
