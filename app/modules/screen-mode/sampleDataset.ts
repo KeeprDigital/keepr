@@ -1,31 +1,36 @@
-import type { FeatureMatchResponse, PhaseResponse, PlayerResponse, RoundResponse } from '~~/shared/api';
-import type { OpFeatureMatchSampleSide } from '~~/shared/featureMatchSampleDataset';
+import type { FeatureMatchResponse, PhaseResponse, PlayerResponse, PlayerSlotData, RoundResponse } from '~~/shared/api';
+import type { EventKind } from '~~/shared/config/games';
+import type { CommanderFeatureMatchSampleSeat, OpFeatureMatchSampleSide } from '~~/shared/featureMatchSampleDataset';
 import type { FoundationTokenName } from '~~/shared/modules/theme';
 import type { BracketEntrant, BracketMatchInput } from '~~/shared/modules/top-cut-bracket';
 import type { BroadcastGraphicsLiveSessionResponse } from '~~/shared/types/broadcastGraphicsLiveSession';
 import type { MtgCard } from '~~/shared/types/card/mtg';
 import type { OpScreenCard } from '~~/shared/types/card/op';
 import type { Game, ScreenMode, Variant } from '~~/shared/types/enums';
+import type { CommanderDeckListEntry } from '~~/shared/types/featureMatchDeckList';
 import type { BroadcastGraphicConfig, GraphicItemConfig, TextGraphicItemConfig } from '~~/shared/types/graphics';
 import type { GraphicThemeSlot } from '~~/shared/types/graphicThemeBindings';
 import type { CardBreakdownEntry } from '~~/shared/types/metagame';
 import type { ModeConfigsMap } from '~~/shared/types/screenConfig';
-import type { ScreenOutputFeatureMatchDeckListResponse, ScreenOutputFeatureMatchResponse, ScreenOutputTalentResponse } from '~~/shared/types/screenOutputReads';
+import type { ScreenOutputCommanderDeckListResponse, ScreenOutputFeatureMatchDeckListResponse, ScreenOutputFeatureMatchResponse, ScreenOutputTalentResponse } from '~~/shared/types/screenOutputReads';
 import type { ScryfallCardFetchResult } from '~/composables/data/useScryfallBatch';
 import type { ScreenOutputReadScope, useScreenOutputReadRepository } from '~/composables/repositories/useScreenOutputReadRepository';
 import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
+import { eventKind } from '~~/shared/config/games';
 import { DEFAULT_EVENT_CANVAS } from '~~/shared/eventCanvas';
-import { OP_FEATURE_MATCH_SAMPLE_ROUND, OP_FEATURE_MATCH_SAMPLE_SIDES } from '~~/shared/featureMatchSampleDataset';
+import { COMMANDER_FEATURE_MATCH_SAMPLE_SEATS, OP_FEATURE_MATCH_SAMPLE_ROUND, OP_FEATURE_MATCH_SAMPLE_SIDES } from '~~/shared/featureMatchSampleDataset';
 import { bindGraphicThemeOwner, DEFAULT_GRAPHIC_THEME_TOKENS, getGraphicItemDefinition } from '~~/shared/modules/graphics';
 import { deriveManualTopCutBracket, deriveTopCutBracket } from '~~/shared/modules/top-cut-bracket';
 import { socialProfileValues } from '~~/shared/socialProfiles';
 import { formatOpColors, opPrintingImageUrl } from '~~/shared/utils/card/op';
+import { commanderDeckIdentity } from '~~/shared/utils/commander';
+import { commanderMainboardCount } from '~~/shared/utils/commanderDeckList';
 import { scryfallNameKey } from '~/composables/data/useScryfallBatch';
 
 /**
  * The Screen Mode Sample Dataset: one fixed canonical set of Event Data a Theme
- * preview renders every Screen Mode against, one per Card Game. The Feature
- * Match Sample Dataset is its prior art.
+ * preview renders every Screen Mode against, one per Card Game and one for a
+ * Commander Event. The Feature Match Sample Dataset is its prior art.
  *
  * It is canonical, not plausible. Two operators judging one Theme see the same
  * preview, and a token edit changes nothing else, so the values are constants
@@ -37,7 +42,9 @@ import { scryfallNameKey } from '~/composables/data/useScryfallBatch';
  * Piece Card Game Event models none of them (ADR-0057), so its sample is one
  * Feature Match Slot whose sides hold Leaders and a Feature Match Deck List,
  * a Printing on Card Spotlight, a participation Metagame and a Manual Bracket
- * (ADR-0074, ADR-0075): what its Screen Modes show.
+ * (ADR-0074, ADR-0075): what its Screen Modes show. A Commander Event has no
+ * Players either: its sample is one Slot seating the Feature Match Sample
+ * Dataset's four, the first holding a Feature Match Deck List (ADR-0087).
  *
  * It reaches a rendering only through a Theme preview's Screen context
  * (`createScreenModeSampleContext`), which no Screen Output builds. Putting
@@ -399,11 +406,14 @@ function cardFace(name: string, cardType: string, colors: string | null): string
 	return `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 
+/** The id a sample card stands at, where it is no real printing. */
+const sampleCardId = (name: string) => `sample-${name.toLowerCase().replace(/\W+/g, '-')}`;
+
 /** A sample card as a Scryfall read gives one, with its face drawn rather than fetched. */
-function sampleCard(name: string, cardType: string, colors: string | null): MtgCard {
+function sampleCard(name: string, cardType: string, colors: string | null, id = sampleCardId(name)): MtgCard {
 	const face = cardFace(name, cardType, colors);
 	return {
-		id: `sample-${name.toLowerCase().replace(/\W+/g, '-')}`,
+		id,
 		name,
 		set: 'sample',
 		layout: 'normal',
@@ -436,21 +446,121 @@ function sampleCard(name: string, cardType: string, colors: string | null): MtgC
 /** Card Spotlight's Screen Card. Untimed, so it stays up as long as the preview does. */
 const SAMPLE_SCREEN_CARD = sampleCard('Lightning Helix', 'Instant', 'RW');
 
-/** Each sample deck card's data, keyed by name as a Scryfall name lookup keys it. */
-const SAMPLE_DECK_CARD_DATA = new Map<string, MtgCard>(SAMPLE_DECK_CARDS.map(([name, cardType, colors]) =>
-	[
-		scryfallNameKey(name),
-		sampleCard(name, cardType, colors),
-	] as const));
+/**
+ * The Commander sample's Seat 1 Deck List: its pair of Commanders, the real
+ * printings its Seat holds, and a Mainboard drawn as the other samples' cards
+ * are. A basic land's copies show its quantity, as a pasted list's do.
+ */
+const [COMMANDER_DECK_SEAT] = COMMANDER_FEATURE_MATCH_SAMPLE_SEATS as readonly [CommanderFeatureMatchSampleSeat, ...CommanderFeatureMatchSampleSeat[]];
+const COMMANDER_DECK_CARDS: readonly CommanderDeckListEntry[] = [
+	...COMMANDER_DECK_SEAT.commanders.map(commander => ({
+		quantity: 1,
+		scryfallId: commander.scryfallId,
+		name: commander.name,
+		setCode: commander.setCode,
+		collectorNumber: commander.collectorNumber,
+		cardType: 'Legendary Creature',
+		colorIdentity: commander.colorIdentity,
+		manaCost: null,
+		manaValue: null,
+	})),
+	...([
+		[
+			'Sol Ring',
+			'Artifact',
+			'',
+			'{1}',
+			1,
+			1,
+		],
+		[
+			'Arcane Signet',
+			'Artifact',
+			'',
+			'{2}',
+			2,
+			1,
+		],
+		[
+			'Swords to Plowshares',
+			'Instant',
+			'W',
+			'{W}',
+			1,
+			1,
+		],
+		[
+			'Counterspell',
+			'Instant',
+			'U',
+			'{U}{U}',
+			2,
+			1,
+		],
+		[
+			'Lightning Bolt',
+			'Instant',
+			'R',
+			'{R}',
+			1,
+			1,
+		],
+		[
+			'Demonic Tutor',
+			'Sorcery',
+			'B',
+			'{1}{B}',
+			2,
+			1,
+		],
+		[
+			'Command Tower',
+			'Land',
+			'',
+			null,
+			0,
+			1,
+		],
+		['Island', 'Basic Land', '', null, 0, 3],
+	] as const).map(([name, cardType, colorIdentity, manaCost, manaValue, quantity]) => ({
+		quantity,
+		scryfallId: sampleCardId(name),
+		name,
+		setCode: 'sample',
+		collectorNumber: null,
+		cardType,
+		colorIdentity,
+		manaCost,
+		manaValue,
+	})),
+];
+
+/**
+ * Each sample deck card's data: a Two-Player deck's keyed by name, as a
+ * Scryfall name lookup keys it, and a Commander Seat's by the printing it holds.
+ */
+const SAMPLE_DECK_CARD_DATA = new Map<string, MtgCard>([
+	...SAMPLE_DECK_CARDS.map(([name, cardType, colors]) =>
+		[
+			scryfallNameKey(name),
+			sampleCard(name, cardType, colors),
+		] as const),
+	...COMMANDER_DECK_CARDS.map(({ name, cardType, colorIdentity, scryfallId }) =>
+		[
+			scryfallId,
+			sampleCard(name, cardType ?? '', colorIdentity || null, scryfallId),
+		] as const),
+]);
 
 /**
  * The card data a Theme preview draws its deck cards with, in place of
- * Scryfall's. It is fixed, so the preview fetches nothing.
+ * Scryfall's: by Scryfall id, or else by name. It is fixed, so the preview
+ * fetches nothing.
  */
-export async function sampleDeckCardData(cards: ReadonlyArray<{ name: string }>): Promise<ScryfallCardFetchResult> {
+export async function sampleDeckCardData(cards: ReadonlyArray<{ name: string; scryfallId?: string | null }>): Promise<ScryfallCardFetchResult> {
 	const found = new Map<string, MtgCard>();
-	for (const { name } of cards) {
-		const key = scryfallNameKey(name);
+	for (const { name, scryfallId } of cards) {
+		const key = scryfallId ?? scryfallNameKey(name);
 		const card = SAMPLE_DECK_CARD_DATA.get(key);
 		if (card)
 			found.set(key, structuredClone(card));
@@ -540,29 +650,34 @@ function sampleLowerThird(name: string, detail: string): BroadcastGraphicConfig 
 /** The leading Player, by their deck and record. */
 const SAMPLE_LOWER_THIRD = sampleLowerThird(LEADER.name, `${deckOf(0).name} · ${LEADER.wins}-${LEADER.losses}-${LEADER.draws}`);
 
-/** The sample Live Session: the lower third on air, long since settled at rest. */
-const SAMPLE_LIVE_SESSION: BroadcastGraphicsLiveSessionResponse = {
-	id: SAMPLE_ID,
-	eventId: SAMPLE_ID,
-	screenId: SAMPLE_ID,
-	status: 'active',
-	currentState: {
-		playout: {
-			[SAMPLE_LOWER_THIRD.id]: {
-				onAir: true,
-				effectiveStartedAt: SAMPLE_TIMESTAMP.getTime(),
-				cut: true,
+/** A sample Live Session: `graphic` on air, long since settled at rest. */
+function sampleLiveSession(graphic: BroadcastGraphicConfig): BroadcastGraphicsLiveSessionResponse {
+	return {
+		id: SAMPLE_ID,
+		eventId: SAMPLE_ID,
+		screenId: SAMPLE_ID,
+		status: 'active',
+		currentState: {
+			playout: {
+				[graphic.id]: {
+					onAir: true,
+					effectiveStartedAt: SAMPLE_TIMESTAMP.getTime(),
+					cut: true,
+				},
 			},
+			inputs: {},
+			sources: {},
 		},
-		inputs: {},
-		sources: {},
-	},
-	recoveryFault: null,
-	sequence: 1,
-	endedAt: null,
-	createdAt: SAMPLE_TIMESTAMP,
-	updatedAt: SAMPLE_TIMESTAMP,
-};
+		recoveryFault: null,
+		sequence: 1,
+		endedAt: null,
+		createdAt: SAMPLE_TIMESTAMP,
+		updatedAt: SAMPLE_TIMESTAMP,
+	};
+}
+
+/** The sample Live Session: the lower third on air. */
+const SAMPLE_LIVE_SESSION = sampleLiveSession(SAMPLE_LOWER_THIRD);
 
 type SampleReadRepository = ReturnType<typeof useScreenOutputReadRepository>;
 
@@ -995,6 +1110,103 @@ const OP_ANSWERS = {
 	},
 };
 
+/**
+ * The Commander sample's Feature Match Slot: the Feature Match Sample
+ * Dataset's four Seats, typed as a Commander Event's are, the first holding
+ * its Deck List. A preview holds it apart from the Feature Match store, as it
+ * does the One Piece sample's.
+ */
+const COMMANDER_SAMPLE_SLOT_ID = 1;
+const COMMANDER_SAMPLE_DECK_LIST_ID = 1;
+
+/** A sample Seat's slot data, as the operator typed and pasted it; the save writes its deck from its Commanders. */
+function commanderSlotData(seat: CommanderFeatureMatchSampleSeat): PlayerSlotData {
+	return {
+		name: seat.name,
+		pronouns: seat.pronouns,
+		lgs: seat.lgs,
+		gameData: {
+			type: 'mtg',
+			...commanderDeckIdentity(seat.commanders),
+			commanders: [...seat.commanders],
+			featureMatchDeckList: seat === COMMANDER_DECK_SEAT
+				? {
+						id: COMMANDER_SAMPLE_DECK_LIST_ID,
+						mainboardCount: commanderMainboardCount(COMMANDER_DECK_CARDS, seat.commanders),
+					}
+				: null,
+		},
+	};
+}
+
+const COMMANDER_SAMPLE_SLOT: FeatureMatchResponse = {
+	...OP_SAMPLE_SLOT,
+	id: COMMANDER_SAMPLE_SLOT_ID,
+	roundName: 'Game 2',
+	player1Data: commanderSlotData(COMMANDER_FEATURE_MATCH_SAMPLE_SEATS[0]!),
+	player2Data: commanderSlotData(COMMANDER_FEATURE_MATCH_SAMPLE_SEATS[1]!),
+	player3Data: commanderSlotData(COMMANDER_FEATURE_MATCH_SAMPLE_SEATS[2]!),
+	player4Data: commanderSlotData(COMMANDER_FEATURE_MATCH_SAMPLE_SEATS[3]!),
+};
+
+/**
+ * Broadcast Graphics' Commander sample: a plate per Seat naming its player and
+ * Commanders, two by two and clockwise from the top left where Commander Table
+ * plates them (ADR-0087), each bound to the Foundation Tokens the lower third is.
+ */
+function sampleCommanderTable(): BroadcastGraphicConfig {
+	const cells = [
+		{ x: 24, y: 432 },
+		{ x: 972, y: 432 },
+		{ x: 972, y: 960 },
+		{ x: 24, y: 960 },
+	];
+	const width = 924;
+	const height = 96;
+	return withThemeBindings({
+		id: 'sample-commander-table',
+		name: 'Sample Commander table',
+		items: COMMANDER_FEATURE_MATCH_SAMPLE_SEATS.flatMap((seat, index) => {
+			const { x, y } = cells[index]!;
+			const id = `sample-seat-${index + 1}`;
+			return [
+				withThemeBindings(sampleShape(`${id}-panel`, { x, y, width, height }), { surfaceStyle: 'panel', geometry: 'panel-shape' }),
+				withThemeBindings(sampleShape(`${id}-accent`, { x, y, width: 14, height }), { 'surfaceStyle.fill': 'accent-fill' }),
+				withThemeBindings(sampleText(`${id}-name`, seat.name, 36, {
+					x: x + 40,
+					y: y + 6,
+					width: width - 64,
+					height: 48,
+				}), { 'typography': 'heading', 'typography.color': 'text-primary' }),
+				withThemeBindings(sampleText(`${id}-deck`, commanderDeckIdentity(seat.commanders).deckName ?? '', 24, {
+					x: x + 40,
+					y: y + 54,
+					width: width - 64,
+					height: 34,
+				}), { 'typography': 'body', 'typography.color': 'text-secondary' }),
+			];
+		}),
+	}, { 'animation.enter': 'motion-enter', 'animation.update': 'motion-update', 'animation.exit': 'motion-exit' });
+}
+
+const COMMANDER_SAMPLE_GRAPHIC = sampleCommanderTable();
+
+/** What the Commander dataset answers for the reads only a Commander Event's Screen Modes make. */
+const COMMANDER_ANSWERS = {
+	liveSession: sampleLiveSession(COMMANDER_SAMPLE_GRAPHIC),
+	featureMatchSlot: {
+		slot: COMMANDER_SAMPLE_SLOT,
+		match: null,
+		round: null,
+		phase: null,
+	} satisfies ScreenOutputFeatureMatchResponse,
+	commanderDeckList: {
+		id: COMMANDER_SAMPLE_DECK_LIST_ID,
+		slotId: COMMANDER_SAMPLE_SLOT_ID,
+		entries: [...COMMANDER_DECK_CARDS],
+	} satisfies ScreenOutputCommanderDeckListResponse,
+};
+
 /** The sample lineup as a full panel, so the preview shows every part of the mode. */
 const SAMPLE_TALENT_CONFIG = {
 	selection: 'lineup',
@@ -1003,13 +1215,14 @@ const SAMPLE_TALENT_CONFIG = {
 	showHeader: true,
 } as const;
 
+const COMMANDER_TABLE = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(template => template.id === 'commander-table')!;
+
 /**
- * Each mode's configuration under each Card Game's sample: what it selects
- * from the dataset, where its defaults select nothing, and Broadcast Graphics'
- * stack.
+ * Each mode's configuration under each sample: what it selects from the
+ * dataset, where its defaults select nothing, and Broadcast Graphics' stack.
  */
-const SCREEN_MODE_SAMPLE_CONFIGS: Record<Game, ModeConfigsMap> = {
-	mtg: {
+const SCREEN_MODE_SAMPLE_CONFIGS: Record<EventKind, ModeConfigsMap> = {
+	'mtg-two-player': {
 		'broadcast-graphics': {
 			graphics: [SAMPLE_LOWER_THIRD],
 		},
@@ -1033,7 +1246,19 @@ const SCREEN_MODE_SAMPLE_CONFIGS: Record<Game, ModeConfigsMap> = {
 			],
 		},
 	},
-	op: {
+	'mtg-commander': {
+		'broadcast-graphics': {
+			graphics: [COMMANDER_SAMPLE_GRAPHIC],
+		},
+		// A Commander Seat's deck: its Commanders apart, ahead of its Mainboard (ADR-0087).
+		'deck': {
+			deckSource: { type: 'featureMatchSlot', slotId: COMMANDER_SAMPLE_SLOT_ID, side: 'player1' },
+		},
+		// The four-Seat built-in (ADR-0087).
+		'feature-match-overlay': { ...COMMANDER_TABLE.config, featureMatchId: null } as ModeConfigsMap['feature-match-overlay'],
+		'talent': SAMPLE_TALENT_CONFIG,
+	},
+	'op': {
 		'broadcast-graphics': {
 			graphics: [OP_SAMPLE_LOWER_THIRD],
 		},
@@ -1046,17 +1271,9 @@ const SCREEN_MODE_SAMPLE_CONFIGS: Record<Game, ModeConfigsMap> = {
 	},
 };
 
-const COMMANDER_TABLE = BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES.find(template => template.id === 'commander-table')!;
-
-/** The sample configuration of `mode` under `game`'s sample, or its defaults where it needs none. */
+/** The sample configuration of `mode` under the sample of `game` and `variant`, or its defaults where it needs none. */
 export function screenModeSampleConfigs(mode: ScreenMode, game: Game, variant?: Variant): ModeConfigsMap {
-	// A Commander Event's Feature Match Overlay previews the four-Seat built-in (ADR-0087).
-	if (mode === 'feature-match-overlay' && variant === 'commander') {
-		return {
-			[mode]: { ...COMMANDER_TABLE.config, featureMatchId: null },
-		} as ModeConfigsMap;
-	}
-	const config = SCREEN_MODE_SAMPLE_CONFIGS[game][mode];
+	const config = SCREEN_MODE_SAMPLE_CONFIGS[eventKind({ game, variant })][mode];
 	return config
 		? { [mode]: config }
 		: {};
@@ -1070,9 +1287,9 @@ function notInSample(resource: string): never {
 const answer = <T>(value: T) => async (_scope: ScreenOutputReadScope): Promise<T> => structuredClone(value);
 const none = (resource: string) => async () => notInSample(resource);
 
-/** Each Card Game's reads: every one answers its dataset, a fresh copy each time. */
-const SAMPLE_READ_REPOSITORIES: Record<Game, SampleReadRepository> = {
-	mtg: {
+/** Each sample's reads: every one answers its dataset, a fresh copy each time. */
+const SAMPLE_READ_REPOSITORIES: Record<EventKind, SampleReadRepository> = {
+	'mtg-two-player': {
 		event: none('Event context'),
 		card: answer(ANSWERS.card),
 		liveSession: answer(ANSWERS.liveSession),
@@ -1093,9 +1310,30 @@ const SAMPLE_READ_REPOSITORIES: Record<Game, SampleReadRepository> = {
 		playerDecks: answer(ANSWERS.playerDecks),
 		opPlayerDeckList: none('One Piece Player'),
 	},
+	// A Commander Event is produced from its Feature Match Slots alone: no Players, Rounds or Metagame (ADR-0087).
+	'mtg-commander': {
+		event: none('Event context'),
+		card: answer(ANSWERS.card),
+		liveSession: answer(COMMANDER_ANSWERS.liveSession),
+		featureMatchSlot: answer(COMMANDER_ANSWERS.featureMatchSlot),
+		featureMatchDeckList: none('One Piece Feature Match Deck List'),
+		commanderDeckList: answer(COMMANDER_ANSWERS.commanderDeckList),
+		playerHistory: none('Player History'),
+		standings: none('Standings'),
+		pairings: none('Pairings'),
+		archetypeSpotlight: none('Archetype'),
+		headToHead: none('Head-to-Head'),
+		talent: answer(SAMPLE_TALENTS),
+		metagame: none('Metagame'),
+		topCards: none('Metagame'),
+		topCut: none('Top Cut'),
+		roundClock: none('Round'),
+		playerDecks: none('Player'),
+		opPlayerDeckList: none('One Piece Player'),
+	},
 	// A One Piece Event models no Rounds or results (ADR-0057); its Metagame reads participation only (ADR-0074),
 	// and its Top Cut is a Manual Bracket (ADR-0075).
-	op: {
+	'op': {
 		event: none('Event context'),
 		card: answer(OP_ANSWERS.card),
 		liveSession: answer(OP_ANSWERS.liveSession),
@@ -1119,9 +1357,10 @@ const SAMPLE_READ_REPOSITORIES: Record<Game, SampleReadRepository> = {
 };
 
 /**
- * The Screen Output read repository a Theme preview of `game` reads from:
- * every read answers that Card Game's dataset, and nothing leaves the browser.
+ * The Screen Output read repository a Theme preview of `game`, and of
+ * `variant` where it has one, reads from: every read answers that sample's
+ * dataset, and nothing leaves the browser.
  */
-export function useSampleScreenOutputReadRepository(game: Game): SampleReadRepository {
-	return SAMPLE_READ_REPOSITORIES[game];
+export function useSampleScreenOutputReadRepository(game: Game, variant?: Variant): SampleReadRepository {
+	return SAMPLE_READ_REPOSITORIES[eventKind({ game, variant })];
 }

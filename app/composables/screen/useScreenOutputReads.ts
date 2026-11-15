@@ -17,9 +17,9 @@ import { SAMPLE_ID, sampleDeckCardData, useSampleScreenOutputReadRepository } fr
  * data its deck cards are drawn with, which a Screen reads from Scryfall.
  */
 export function useScreenOutputReads(context: ScreenContext) {
-	const { screen, eventId, assetCapability, sampleDataset } = context;
+	const { screen, eventId, assetCapability, sampleDataset, sampleVariant } = context;
 	const repository = sampleDataset
-		? useSampleScreenOutputReadRepository(sampleDataset)
+		? useSampleScreenOutputReadRepository(sampleDataset, sampleVariant)
 		: useScreenOutputReadRepository();
 	const cardData = sampleDataset
 		? sampleDeckCardData

@@ -56,16 +56,22 @@ describe('the Theme preview gallery', () => {
 		expect(new Set(tiles.map(tile => tile.attributes('data-preview-game')))).toEqual(new Set([game]));
 	});
 
-	// A Commander Event is a pick beside the Card Games: its Feature Match Overlay seats four (ADR-0087).
-	it('shows a Commander Event\'s Screen Modes, its Feature Match Overlay seating the Commander sample\'s four', async () => {
+	// A Commander Event is a pick beside the Card Games: its Feature Match Overlay seats four,
+	// and its Deck List shows a Seat's Commanders apart from its Mainboard (ADR-0087).
+	it('shows a Commander Event\'s Screen Modes, against the Commander sample', async () => {
 		const gallery = mountGallery();
 		await gallery.get('[data-testid="tab-commander"]').trigger('click');
 
 		expect(gallery.findAll('[data-preview-mode]').map(found => found.attributes('data-preview-mode')))
 			.toEqual(THEME_PREVIEW_SCREEN_MODES.filter(mode => isOfferedToEvent(SCREEN_MODES[mode].offeredTo, 'mtg-commander')));
 		const { player1Name, player4Name } = featureMatchSampleDataset('mtg-commander').tokenValues;
-		await settleUntil(() => tile(gallery, 'feature-match-overlay').text().includes(String(player4Name)));
+		await settleUntil(() => {
+			loadDrawnImages(gallery);
+			return tile(gallery, 'feature-match-overlay').text().includes(String(player4Name))
+				&& tile(gallery, 'deck').find('[data-testid="commanders-section"]').exists();
+		});
 		expect(tile(gallery, 'feature-match-overlay').text()).toContain(String(player1Name));
+		expect(tile(gallery, 'deck').get('[data-testid="deck-player-name"]').text()).toBe(String(player1Name));
 	});
 
 	it.each([

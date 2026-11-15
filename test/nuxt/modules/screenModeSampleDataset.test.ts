@@ -1,5 +1,5 @@
 import type { VueWrapper } from '@vue/test-utils';
-import type { Game, ScreenMode } from '~~/shared/types/enums';
+import type { Game, ScreenMode, Variant } from '~~/shared/types/enums';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +10,7 @@ import { loadDrawnImages } from '~~/test/nuxt/helpers/drawnImages';
 import { stubImageLoading } from '~~/test/nuxt/helpers/imageLoading';
 import PreviewTile from '~/components/Theme/PreviewTile.vue';
 
-// Each Card Game's Screen Mode Sample Dataset fills every plain overlay and Theme
+// Each Card Game's Screen Mode Sample Dataset, and a Commander Event's, fills every plain overlay and Theme
 // preview mode its Events are offered, so a newly themed mode previews unchanged,
 // and fills them alone: a preview makes no request, not even for card data.
 
@@ -39,9 +39,21 @@ const text = (shown: string): Shown => rendering => rendering.text().includes(sh
 const deckCard = (name: string): Shown => rendering => rendering.find(`img[alt="${name}"]`).exists();
 
 const opCard = (number: string): Shown => rendering => rendering.find(`[data-testid="op-deck-card"][data-number="${number}"] img`).exists();
+function inSection(section: string, name: string): Shown {
+	return rendering =>
+		rendering.find(`[data-testid="${section}-section"] img[alt="${name}"]`).exists();
+}
 
-/** What each mode shows of each Card Game's sample, where its defaults alone would show nothing. */
-const SHOWS: Record<Game, Partial<Record<ScreenMode, Shown>>> = {
+/** A sample a Theme preview offers: a Card Game's, or a Commander Event's, a pick beside them (ADR-0087). */
+type SamplePick = Game | 'commander';
+const PICKS: Record<SamplePick, { game: Game; variant?: Variant }> = {
+	mtg: { game: 'mtg' },
+	commander: { game: 'mtg', variant: 'commander' },
+	op: { game: 'op' },
+};
+
+/** What each mode shows of each sample, where its defaults alone would show nothing. */
+const SHOWS: Record<SamplePick, Partial<Record<ScreenMode, Shown>>> = {
 	op: {
 		'card': rendering => rendering.find('[data-testid="spotlight-card"] img[src="https://cards-img.keepr.digital/OP05-119_p1.png"]').exists(),
 		'deck': rendering => opCard('OP09-080')(rendering)
@@ -71,6 +83,25 @@ const SHOWS: Record<Game, Partial<Record<ScreenMode, Shown>>> = {
 		'round-clock': text('50:00'),
 		'talent': text('Sam Okafor'),
 	},
+	commander: {
+		'card': rendering => rendering.find('[data-testid="spotlight-card"] img').exists(),
+		// A Commander Seat's deck: its Commanders apart, ahead of its Mainboard.
+		'deck': rendering => inSection('commanders', 'Tymna the Weaver')(rendering)
+			&& inSection('commanders', 'Kraum, Ludevic\'s Opus')(rendering)
+			&& inSection('mainboard', 'Sol Ring')(rendering)
+			&& text('Oluwaseun Adebayo-Lindqvist')(rendering),
+		// The table's four Seats, each by name and Commanders, as Commander Table seats them (ADR-0087).
+		'broadcast-graphics': rendering => [
+			'Oluwaseun Adebayo-Lindqvist',
+			'Bo Li',
+			'Marguerite Okafor',
+			'Tomás Reyes',
+		]
+			.every(name => text(name)(rendering))
+			&& text('Tymna the Weaver / Kraum, Ludevic\'s Opus')(rendering),
+		'feature-match-overlay': text('Tomás Reyes'),
+		'talent': text('Sam Okafor'),
+	},
 };
 
 const MODES = [
@@ -80,14 +111,15 @@ const MODES = [
 	]),
 ];
 
-const CASES = (['mtg', 'op'] as const).flatMap(game => MODES
-	.filter(mode => isOfferedToEvent(SCREEN_MODES[mode].offeredTo, eventKind({ game })))
-	.map(mode => ({ game, mode })));
+const CASES = (['mtg', 'commander', 'op'] as const).flatMap(pick => MODES
+	.filter(mode => isOfferedToEvent(SCREEN_MODES[mode].offeredTo, eventKind(PICKS[pick])))
+	.map(mode => ({ pick, mode })));
 
 describe('the Screen Mode Sample Dataset', () => {
-	it.each(CASES)('fills the $game $mode display with no request', async ({ game, mode }) => {
-		const shows = SHOWS[game][mode];
-		expect(shows, `name what ${mode} shows of the ${game} sample`).toBeDefined();
+	it.each(CASES)('fills the $pick $mode display with no request', async ({ pick, mode }) => {
+		const { game, variant } = PICKS[pick];
+		const shows = SHOWS[pick][mode];
+		expect(shows, `name what ${mode} shows of the ${pick} sample`).toBeDefined();
 		// One Piece cards are Printing images, loaded off-DOM before they show.
 		if (game === 'op')
 			stubImageLoading();
@@ -95,6 +127,7 @@ describe('the Screen Mode Sample Dataset', () => {
 			props: {
 				mode,
 				game,
+				variant,
 				label: SCREEN_MODES[mode].label,
 				tokens: {},
 			},

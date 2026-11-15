@@ -338,7 +338,7 @@ export function sampleCommander(scryfallId: string, name: string, colorIdentity:
  * Seat at a different life in a game well under way: the second Seat's turn,
  * Commander Damage taken, and the fourth Seat Eliminated.
  */
-const COMMANDER_SAMPLE_SEATS: readonly CommanderFeatureMatchSampleSeat[] = [
+export const COMMANDER_FEATURE_MATCH_SAMPLE_SEATS: readonly CommanderFeatureMatchSampleSeat[] = [
 	{
 		name: 'Oluwaseun Adebayo-Lindqvist',
 		pronouns: 'she/her',
@@ -435,7 +435,7 @@ export function commanderSampleContext(seats: readonly CommanderFeatureMatchSamp
 }
 
 const COMMANDER_SAMPLE_TOKEN_VALUES: Readonly<Record<string, GraphicInputValue>> = {
-	...commanderSeatsTokenValues(COMMANDER_SAMPLE_SEATS),
+	...commanderSeatsTokenValues(COMMANDER_FEATURE_MATCH_SAMPLE_SEATS),
 	// A Commander Event has no Rounds or Phases: its Slot's round is what the operator typed.
 	round: 'Game 2',
 	stage: 'Game 2',
@@ -456,7 +456,7 @@ const SAMPLES: Readonly<Record<EventKind, FeatureMatchSample>> = {
 	'mtg-commander': {
 		kind: 'mtg-commander',
 		tokenValues: COMMANDER_SAMPLE_TOKEN_VALUES,
-		context: commanderSampleContext(COMMANDER_SAMPLE_SEATS, '12:34'),
+		context: commanderSampleContext(COMMANDER_FEATURE_MATCH_SAMPLE_SEATS, '12:34'),
 	},
 	'op': { kind: 'op', tokenValues: OP_SAMPLE_TOKEN_VALUES, context: OP_SAMPLE_CONTEXT },
 };
