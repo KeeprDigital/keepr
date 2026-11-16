@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import workspace from '~~/pnpm-workspace.yaml?raw';
+import workspace from '~~/../../pnpm-workspace.yaml?raw';
 import { GRAPHIC_FONTS } from '~~/shared/modules/graphics/typography';
 
 // The registry names packages; the catalog must install each at an exact version.

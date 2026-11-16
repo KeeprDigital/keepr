@@ -5,7 +5,7 @@
 	"singleQuote": true,
 	"overrides": [
 		{
-			// A reader that strips comments and hands the rest to `JSON.parse` (test/helpers/miniflare-d1.ts)
+			// A reader that strips comments and hands the rest to `JSON.parse` (apps/stream/test/helpers/miniflare-d1.ts)
 			// stops at a trailing comma.
 			"files": ["*.jsonc"],
 			"options": { "trailingComma": "none" }
@@ -16,18 +16,18 @@
 		"**/*.md",
 		// Generated: pnpm's, Drizzle's, Wrangler's (`pnpm types:app --check` compares it byte for byte), release-please's.
 		"pnpm-lock.yaml",
-		"server/db/migrations/**",
+		"apps/stream/server/db/migrations/**",
 		"**/worker-configuration.d.ts",
 		".release-please-manifest.json",
 		// Served as they are: the acceptance pages and their fixtures.
-		"public/**",
+		"apps/stream/public/**",
 		// The design tool's own files.
-		".impeccable/**",
+		"apps/stream/.impeccable/**",
 		// The validator Worker is redeployed when its fingerprint changes, and the fingerprint hashes its
-		// bundle, Docker context and configuration byte for byte (scripts/deploy-promotion.mjs). Format
+		// bundle, Docker context and configuration byte for byte (apps/stream/scripts/deploy-promotion.mjs). Format
 		// it with a change that redeploys it anyway.
-		"workers/silent-video-validator/**",
+		"apps/stream/workers/silent-video-validator/**",
 		// A tsconfig that cannot load, on purpose.
-		"test/helpers/unloadableTsconfig/**"
+		"apps/stream/test/helpers/unloadableTsconfig/**"
 	]
 }

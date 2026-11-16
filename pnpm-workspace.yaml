@@ -1,3 +1,8 @@
+# The workspace: each app, and each package the apps share.
+packages:
+  - apps/*
+  - packages/*
+
 # 24h supply-chain cooldown on new releases. This matches pnpm 11's effective
 # default, pinned explicitly so the gate the exclusion list below relies on
 # cannot vanish with a package-manager default change (#461).

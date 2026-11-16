@@ -12,8 +12,8 @@
 	"ignorePatterns": [
 		"**/migrations/**",
 		"**/worker-configuration.d.ts",
-		// A tsconfig that cannot load, on purpose (test/unit/build/checkoutTsconfig.test.ts).
-		"test/helpers/unloadableTsconfig/**"
+		// A tsconfig that cannot load, on purpose (apps/stream/test/unit/build/checkoutTsconfig.test.ts).
+		"apps/stream/test/helpers/unloadableTsconfig/**"
 	],
 	"rules": {
 		// A Zod schema's methods are bound, and `readValidatedBody(event, schema.parse)` is how every route validates.
@@ -42,7 +42,7 @@
 			// These are the type-aware rules of the `correctness` category. The one that matters is
 			// `typescript/no-floating-promises`, and it guards the code a Worker runs, where a lost
 			// promise loses a write.
-			"files": ["test/**", "scripts/**"],
+			"files": ["apps/stream/test/**", "apps/stream/scripts/**"],
 			"rules": {
 				"typescript/await-thenable": "off",
 				"typescript/no-array-delete": "off",
@@ -62,7 +62,7 @@
 		},
 		{
 			// A fake of a lazy query or a deferred value is an object with a `then`.
-			"files": ["test/**"],
+			"files": ["apps/stream/test/**"],
 			"rules": {
 				"unicorn/no-thenable": "off"
 			}
@@ -71,8 +71,8 @@
 			// A page opened over plain HTTP on a LAN address has no secure context, so no
 			// `crypto.subtle` and no `crypto.randomUUID` (README § Local auth bypass). Code
 			// a browser runs takes a digest from `sha256Hex` and an id from `randomUuid`.
-			"files": ["app/**/*.{ts,vue}", "shared/**/*.ts"],
-			"excludeFiles": ["shared/utils/sha256.ts"],
+			"files": ["apps/stream/app/**/*.{ts,vue}", "apps/stream/shared/**/*.ts"],
+			"excludeFiles": ["apps/stream/shared/utils/sha256.ts"],
 			"rules": {
 				"no-restricted-properties": [
 					"error",
@@ -91,13 +91,13 @@
 			// A live rendering of a Screen follows only its Screen's own channel. Rendering code names
 			// the Event channel through one seam, so nothing a Screen Output runs comes to depend on it.
 			"files": [
-				"app/composables/screen/**/*.ts",
-				"app/modules/screen/**/*.ts",
-				"app/modules/screen-mode/**/*.ts",
-				"app/components/Screen/**/*.vue",
-				"app/pages/event/*/screen/**/*.vue"
+				"apps/stream/app/composables/screen/**/*.ts",
+				"apps/stream/app/modules/screen/**/*.ts",
+				"apps/stream/app/modules/screen-mode/**/*.ts",
+				"apps/stream/app/components/Screen/**/*.vue",
+				"apps/stream/app/pages/event/*/screen/**/*.vue"
 			],
-			"excludeFiles": ["app/modules/screen/renderingChannel.ts"],
+			"excludeFiles": ["apps/stream/app/modules/screen/renderingChannel.ts"],
 			"rules": {
 				"no-restricted-imports": [
 					"error",

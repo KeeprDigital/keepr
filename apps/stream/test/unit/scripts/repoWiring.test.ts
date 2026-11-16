@@ -24,12 +24,17 @@ interface Workflow {
 	jobs: Record<string, { env?: Record<string, string>; steps?: Step[] }>;
 }
 
-const scripts = (
-	JSON.parse(readFileSync('package.json', 'utf8')) as { scripts: Record<string, string> }
-).scripts;
+function scriptsOf(manifest: string) {
+	return (JSON.parse(readFileSync(manifest, 'utf8')) as { scripts: Record<string, string> })
+		.scripts;
+}
+
+const scripts = scriptsOf('package.json');
+/** The workspace's own: the lint is one run over every app and package. */
+const workspaceScripts = scriptsOf('../../package.json');
 
 function workflow(name: string): Workflow {
-	return parse(readFileSync(`.github/workflows/${name}`, 'utf8')) as Workflow;
+	return parse(readFileSync(`../../.github/workflows/${name}`, 'utf8')) as Workflow;
 }
 
 function steps(file: Workflow, job?: string): Step[] {
@@ -133,14 +138,26 @@ describe('verify --quick checks what a checkout changes', () => {
 // A gate outside the pool is one every other worktree's runs cannot see (scripts/slots.mjs).
 describe('every heavy gate takes run slots', () => {
 	it.each([
-		{ script: 'lint', cost: 'lint' },
-		{ script: 'typecheck:app', cost: 'typecheck' },
-		{ script: 'typecheck:test', cost: 'typecheck' },
-		{ script: 'build', cost: 'build' },
-		{ script: 'worker:smoke', cost: 'worker-smoke' },
-	] as const)('pnpm $script runs inside the slots a $cost costs', ({ script, cost }) => {
-		expect(RUN_SLOT_COSTS).toHaveProperty(cost);
-		expect(scripts[script]).toContain(`node scripts/slots.mjs ${cost} -- `);
+		{
+			script: 'lint',
+			cost: 'lint',
+			from: workspaceScripts,
+			slots: 'apps/stream/scripts/slots.mjs',
+		},
+		{ script: 'typecheck:app', cost: 'typecheck', from: scripts, slots: 'scripts/slots.mjs' },
+		{ script: 'typecheck:test', cost: 'typecheck', from: scripts, slots: 'scripts/slots.mjs' },
+		{ script: 'build', cost: 'build', from: scripts, slots: 'scripts/slots.mjs' },
+		{ script: 'worker:smoke', cost: 'worker-smoke', from: scripts, slots: 'scripts/slots.mjs' },
+	] as const)(
+		'pnpm $script runs inside the slots a $cost costs',
+		({ script, cost, from, slots }) => {
+			expect(RUN_SLOT_COSTS).toHaveProperty(cost);
+			expect(from[script]).toContain(`node ${slots} ${cost} -- `);
+		},
+	);
+
+	it("the app's lint is the workspace's, so it takes those slots too", () => {
+		expect(scripts.lint).toBe('pnpm --workspace-root lint');
 	});
 });
 
@@ -186,7 +203,9 @@ describe('the deploy advances its promotion markers only behind every check', ()
 		const install = index((step) => step.run === 'pnpm install --frozen-lockfile');
 		const promote = index(
 			(step) =>
-				step.run?.startsWith('node .deploy-tooling/scripts/deploy-promotion.mjs promote') === true,
+				step.run?.startsWith(
+					'node .deploy-tooling/apps/stream/scripts/deploy-promotion.mjs promote',
+				) === true,
 		);
 
 		it('promotes through tooling from its own commit, after installing the release', () => {
@@ -196,7 +215,7 @@ describe('the deploy advances its promotion markers only behind every check', ()
 			);
 			expect(all[tooling]!.with).toMatchObject({
 				ref: '${{ github.sha }}',
-				'sparse-checkout': 'scripts/deploy-promotion.mjs',
+				'sparse-checkout': 'apps/stream/scripts/deploy-promotion.mjs',
 				'persist-credentials': false,
 			});
 			expect(all.some((step) => step.run === 'echo /.deploy-tooling/ >> .git/info/exclude')).toBe(

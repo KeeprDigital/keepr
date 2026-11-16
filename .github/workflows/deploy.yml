@@ -1,7 +1,7 @@
 # Manually triggered production deploy — the Actions counterpart of running
 # `pnpm deploy:validator` (when needed) and `pnpm run deploy` locally. It exists
 # as an *option*, not a replacement: deploys are never merge-triggered, because
-# deploy day is a human procedure (README.md § Deploy day). This workflow
+# deploy day is a human procedure (apps/stream/README.md § Deploy day). This workflow
 # covers only what those cover — validator promotion, build, Wasm dry run,
 # Worker smoke against the production-env build, D1 migration, Worker
 # promotion, liveness verify. Everything after promotion stays with the
@@ -24,7 +24,7 @@
 # (ADR-0035): `production` for the app and `production-validator` for the
 # validator, each `pending` while its deploy runs and `deployed` once it is
 # confirmed, so a run that fails between the two records exactly that. The
-# promotion runs `scripts/deploy-promotion.mjs` from this workflow's own
+# promotion runs `apps/stream/scripts/deploy-promotion.mjs` from this workflow's own
 # commit (main), not from the release, so rolling back to a release older
 # than the markers still reads and writes them.
 #
@@ -126,7 +126,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           path: .deploy-tooling
-          sparse-checkout: scripts/deploy-promotion.mjs
+          sparse-checkout: apps/stream/scripts/deploy-promotion.mjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
       # Untracked files mark a checkout `dirty` in the markers; this one is
@@ -141,7 +141,7 @@ jobs:
       # Decides the validator against its marker, deploys it first when that
       # says so, then runs `pnpm run deploy`, each between its markers. The
       # step summary records the decision, and on failure what each marker
-      # now says (README.md § Recovering from a partial promotion).
+      # now says (apps/stream/README.md § Recovering from a partial promotion).
       - name: Promote (validator when decided, then build, dry run, smoke, migrate D1, promote, verify)
         env:
           # On this step alone: job-level env would also reach the install's
@@ -149,7 +149,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           INPUT_VALIDATOR: ${{ inputs.validator }}
-        run: node .deploy-tooling/scripts/deploy-promotion.mjs promote "$INPUT_VALIDATOR"
+        run: node .deploy-tooling/apps/stream/scripts/deploy-promotion.mjs promote "$INPUT_VALIDATOR"
       - name: Remind the operator what is still owed
         env:
           # Step outputs derive from dispatch inputs; same env discipline as above.

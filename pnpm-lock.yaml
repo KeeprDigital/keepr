@@ -351,6 +351,18 @@ patchedDependencies:
 importers:
 
   .:
+    devDependencies:
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.78.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.93.0(oxlint-tsgolint@7.0.2007)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 7.0.2007
+
+  apps/stream:
     dependencies:
       '@fontsource/arimo':
         specifier: 'catalog:'
@@ -509,15 +521,6 @@ importers:
       happy-dom:
         specifier: 'catalog:'
         version: 21.0.4
-      oxfmt:
-        specifier: 'catalog:'
-        version: 0.78.0
-      oxlint:
-        specifier: 'catalog:'
-        version: 1.93.0(oxlint-tsgolint@7.0.2007)
-      oxlint-tsgolint:
-        specifier: 'catalog:'
-        version: 7.0.2007
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

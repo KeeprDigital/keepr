@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
 	acquireRunSlots,
+	describeRunSlots,
 	runHoldingSlots,
 	runSlotCount,
 	runSlotLedgerPath,
@@ -411,5 +412,20 @@ describe('a Vitest run held to its run slots', () => {
 		const used = readdirSync(poolIds).map((file) => readFileSync(join(poolIds, file), 'utf8'));
 		expect(used).toHaveLength(8);
 		expect([...new Set(used)].toSorted()).toEqual(['1 of 3', '2 of 3', '3 of 3']);
+	});
+});
+
+// A waiting gate prints who holds the slots. Every checkout's app directory ends alike.
+describe('naming a checkout in the status line', () => {
+	it.each([
+		['the main checkout of the workspace', '/work/keepr/apps/stream', 'keepr'],
+		['a worktree nested in it', '/work/keepr/.claude/worktrees/fix-12/apps/stream', 'fix-12'],
+		['a checkout whose root is the app', '/work/stream-keepr', 'stream-keepr'],
+	])('%s', (_case, checkout, name) => {
+		const holder = { label: 'lint', slots: 3, checkout, pid: 7, since: 0 };
+
+		expect(describeRunSlots({ total: 8, holders: [holder], waiters: [] }, 0)).toBe(
+			`3 of 8 run slots held: lint ×3 (${name}, pid 7, 0s)`,
+		);
 	});
 });

@@ -34,7 +34,7 @@ interface Workflow {
 }
 
 function workflow(name: string): Workflow {
-	return parse(readFileSync(`.github/workflows/${name}`, 'utf8')) as Workflow;
+	return parse(readFileSync(`../../.github/workflows/${name}`, 'utf8')) as Workflow;
 }
 
 /** The `main` ruleset's required status checks: job names, as GitHub reports them. */
@@ -94,7 +94,7 @@ describe('every required check reports in the merge queue as well as on PRs', ()
 
 		expect(job.if).toBeUndefined();
 		expect((job.steps ?? []).every((step) => step.if === undefined)).toBe(true);
-		expect(runs(job)).toBe('node scripts/conventional-title.mjs');
+		expect(runs(job)).toBe('node apps/stream/scripts/conventional-title.mjs');
 		// The title is contributor-controlled, so only the script reads it, from the payload.
 		expect(JSON.stringify(prTitle)).not.toContain('github.event.pull_request.title');
 	});
@@ -105,7 +105,7 @@ describe("the CI scope decides what a merge group can affect against the queue's
 
 	it('runs for every merge group and for ready PRs, through the tested script', () => {
 		expect(scope.if).toBe("github.event_name == 'merge_group' || !github.event.pull_request.draft");
-		expect(runs(scope)).toContain('node scripts/ci-scope.mjs');
+		expect(runs(scope)).toContain('node apps/stream/scripts/ci-scope.mjs');
 	});
 
 	// An output the scope job does not export reads as '', which skips the job asking for it.
@@ -190,7 +190,7 @@ describe('a merge group skips the gates only for a tree a full, green PR run ver
 			"needs.scope.outputs.code == 'true'",
 			"needs.scope.outputs.bundle == 'true'",
 		]);
-		expect(runs(record)).toContain('node scripts/ci-reuse.mjs record');
+		expect(runs(record)).toContain('node apps/stream/scripts/ci-reuse.mjs record');
 	});
 
 	it('only the record job can mint an OIDC token, and nothing in CI can write', () => {
@@ -206,7 +206,7 @@ describe('a merge group skips the gates only for a tree a full, green PR run ver
 
 describe('release-please releases only what the queue verified', () => {
 	const steps = Object.values(releasePlease.jobs).flatMap((job) => job.steps ?? []);
-	const gate = steps.findIndex((step) => step.run === 'node scripts/release-gate.mjs');
+	const gate = steps.findIndex((step) => step.run === 'node apps/stream/scripts/release-gate.mjs');
 	const release = steps.findIndex((step) =>
 		step.uses?.startsWith('googleapis/release-please-action@'),
 	);

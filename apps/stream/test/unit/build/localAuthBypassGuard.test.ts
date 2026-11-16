@@ -23,8 +23,10 @@ const forbiddenFiles = [
 	'wrangler.jsonc',
 	'wrangler.dev.jsonc',
 	'workers/silent-video-validator/wrangler.jsonc',
-	...readdirSync(join(repositoryRoot, '.github/workflows')).map(
-		(name) => `.github/workflows/${name}`,
+	// The workspace's: its own scripts, and every workflow.
+	'../../package.json',
+	...readdirSync(join(repositoryRoot, '../../.github/workflows')).map(
+		(name) => `../../.github/workflows/${name}`,
 	),
 ];
 

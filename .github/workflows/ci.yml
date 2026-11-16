@@ -1,6 +1,6 @@
 # The self-contained test set: everything that needs nothing beyond Node,
 # Chrome, and workerd. The suites that stay local — and why — are tabled in
-# README.md § Testing (ingestion needs a running preview worker, the validator
+# apps/stream/README.md § Testing (ingestion needs a running preview worker, the validator
 # needs Docker pre-flight, fonts:library needs a real library store). The six
 # `pnpm accept deployed` gates run on deploy day only: they provision real
 # Events in production and spend Ably free-plan quota (#189).
@@ -11,7 +11,7 @@
 #     tests the group's head, the exact combined tree main moves to, so two
 #     PRs that each passed against an old main cannot land an untested
 #     combination. main then fast-forwards to that commit, and release-please
-#     tags only a commit that passed here (scripts/release-gate.mjs).
+#     tags only a commit that passed here (apps/stream/scripts/release-gate.mjs).
 #   - On PRs, for feedback and because the queue admits only a PR whose
 #     required checks passed. Not on push to main: what main moves to already
 #     passed in the queue.
@@ -22,11 +22,11 @@
 #     (`pnpm verify:docs`, in the `checks` job); no Worker build for tests or
 #     the other workflows alone. The `scope` job decides, measuring a PR
 #     against its base and a merge group against the queue's base
-#     (scripts/ci-scope.mjs); anything it cannot measure runs everything.
+#     (apps/stream/scripts/ci-scope.mjs); anything it cannot measure runs everything.
 #   - Not twice on the same tree. A merge group whose tree is byte-identical
 #     to one a full, green PR run verified (one PR, main unchanged since that
 #     run) skips every gate: the `record` job of that PR run left GitHub's
-#     signed word for which commit it ran (scripts/ci-reuse.mjs). Any doubt
+#     signed word for which commit it ran (apps/stream/scripts/ci-reuse.mjs). Any doubt
 #     runs everything.
 #   - A newer push cancels the PR run it supersedes. Every merge-group entry
 #     has its own ref, so the queue's runs never cancel each other.
@@ -35,6 +35,10 @@
 # always reports, whatever was skipped, so a docs-only change is never left
 # waiting on a check that cannot arrive; a workflow-level `paths-ignore` would
 # do exactly that, and in the queue would hold the group until it timed out.
+#
+# The app is `apps/stream` (ADR-0091). Each job that runs its scripts runs them
+# there (`defaults.run.working-directory`); a `uses:` step, the setup action's
+# install among them, runs at the repository's root.
 
 name: CI
 
@@ -68,7 +72,7 @@ jobs:
     permissions:
       contents: read
       # In a merge group: the PR runs' records, their jobs, and the commits
-      # they name (scripts/ci-reuse.mjs).
+      # they name (apps/stream/scripts/ci-reuse.mjs).
       actions: read
     outputs:
       code: ${{ steps.scope.outputs.code }}
@@ -89,10 +93,10 @@ jobs:
       - id: scope
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/ci-scope.mjs
+        run: node apps/stream/scripts/ci-scope.mjs
 
   # Every gate `pnpm test` runs (verify.mjs --tests) appears below as its own step
-  # (test/unit/scripts/repoWiring.test.ts holds that), split across parallel
+  # (apps/stream/test/unit/scripts/repoWiring.test.ts holds that), split across parallel
   # jobs so the longest one, not the sum, sets the wall time. Lint, typecheck
   # and the two suites were one job of 11 to 18 minutes, three times the next
   # longest; each is its own job now, and the Nuxt suite sets the wall time.
@@ -104,6 +108,9 @@ jobs:
     if: needs.scope.outputs.code == 'true' || needs.scope.outputs.docs == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/stream
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -126,6 +133,8 @@ jobs:
           # Dependabot does not see it: bump the two together by hand.
           ACTIONLINT_VERSION: 1.7.12
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        # The workflows are the repository's, not the app's.
+        working-directory: ${{ github.workspace }}
         run: |
           archive="$RUNNER_TEMP/actionlint.tar.gz"
           curl --fail --silent --show-error --location --retry 3 --output "$archive" \
@@ -139,7 +148,7 @@ jobs:
       # so this one pin is both and Dependabot moves it. Offline, so the result
       # depends on this tree alone; without `advanced-security`, which would
       # upload the findings rather than fail on them. Not dependabot.yml: a
-      # change to it alone is outside the code (scripts/ci-scope.mjs), so a
+      # change to it alone is outside the code (apps/stream/scripts/ci-scope.mjs), so a
       # finding there would fail the next change instead.
       - if: needs.scope.outputs.code == 'true'
         uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
@@ -151,7 +160,7 @@ jobs:
       # follows every document's links: unchecked, a broken one would fail the
       # next code change instead (#1028). A step of
       # this job, not a job of its own, so that a full run still has no skipped
-      # job: a merge group reuses only such a run (scripts/ci-reuse.mjs).
+      # job: a merge group reuses only such a run (apps/stream/scripts/ci-reuse.mjs).
       - if: needs.scope.outputs.docs == 'true'
         run: pnpm verify:docs
 
@@ -161,6 +170,9 @@ jobs:
     if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/stream
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -170,7 +182,7 @@ jobs:
       # fails when either committed worker-configuration.d.ts is stale.
       - run: pnpm typecheck
 
-  # With --coverage, so the thresholds in vitest.shared.ts fail these jobs when
+  # With --coverage, so the thresholds in apps/stream/vitest.shared.ts fail these jobs when
   # coverage drops below them (#469).
   unit:
     name: Unit suite
@@ -178,6 +190,9 @@ jobs:
     if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/stream
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -191,6 +206,9 @@ jobs:
     if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/stream
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -204,6 +222,9 @@ jobs:
     if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/stream
     strategy:
       fail-fast: true
       matrix:
@@ -224,6 +245,9 @@ jobs:
     if: needs.scope.outputs.code == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/stream
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -245,6 +269,9 @@ jobs:
     if: needs.scope.outputs.bundle == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/stream
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -267,7 +294,7 @@ jobs:
 
   # A PR run that ran every gate and passed leaves a record of the tree it
   # verified, so its merge group can skip running them again on exactly that
-  # tree (scripts/ci-reuse.mjs). The record is an OIDC token GitHub signs for
+  # tree (apps/stream/scripts/ci-reuse.mjs). The record is an OIDC token GitHub signs for
   # this job, naming the commit the run executed; the job's own code chooses
   # only the artifact's name, which nothing trusts. A fork's PR gets no token:
   # its group runs everything. Recording never fails `CI passed`; without a
@@ -289,7 +316,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
-            scripts/ci-reuse.mjs
+            apps/stream/scripts/ci-reuse.mjs
             package.json
           sparse-checkout-cone-mode: false
           persist-credentials: false
@@ -297,7 +324,7 @@ jobs:
         with:
           node-version-file: package.json
       - id: record
-        run: node scripts/ci-reuse.mjs record
+        run: node apps/stream/scripts/ci-reuse.mjs record
       - if: steps.record.outputs.name != ''
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

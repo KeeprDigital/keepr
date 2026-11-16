@@ -234,11 +234,21 @@ function age(since, now) {
 	return seconds < 90 ? `${seconds}s` : `${Math.round(seconds / 60)}m`;
 }
 
+/**
+ * What a checkout is called in a status line. Each records its app's directory,
+ * `…/<checkout>/apps/stream` in the workspace, and it is the checkout that
+ * tells one worktree's run from another's.
+ */
+function checkoutName(directory) {
+	const inWorkspace = /([^/]+)\/apps\/[^/]+$/.exec(directory);
+	return inWorkspace ? inWorkspace[1] : basename(directory);
+}
+
 /** One line per holder and waiter, as the status command and a waiting gate print it. */
 export function describeRunSlots({ total, holders, waiters }, now = Date.now()) {
 	const held = holders.reduce((sum, row) => sum + row.slots, 0);
 	const line = (row) =>
-		`${row.label} ×${row.slots} (${basename(row.checkout)}, pid ${row.pid}, ${age(row.since, now)})`;
+		`${row.label} ×${row.slots} (${checkoutName(row.checkout)}, pid ${row.pid}, ${age(row.since, now)})`;
 	return [
 		`${held} of ${total} run slots held${
 			holders.length ? `: ${holders.map(line).join(', ')}` : ''
