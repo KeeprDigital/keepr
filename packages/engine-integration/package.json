@@ -11,9 +11,9 @@
 		"@keepr/engine-core": "workspace:*",
 		"@keepr/pairing": "workspace:*",
 		"@keepr/standings": "workspace:*",
-		"@types/node": "catalog:",
-		"fast-check": "catalog:",
-		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"@types/node": "catalog:tooling",
+		"fast-check": "catalog:test",
+		"typescript": "catalog:tooling",
+		"vitest": "catalog:test"
 	}
 }

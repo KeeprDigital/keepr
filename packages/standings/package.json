@@ -17,8 +17,8 @@
 	},
 	"devDependencies": {
 		"@keepr/testkit": "workspace:*",
-		"fast-check": "catalog:",
-		"typescript": "catalog:",
-		"vitest": "catalog:"
+		"fast-check": "catalog:test",
+		"typescript": "catalog:tooling",
+		"vitest": "catalog:test"
 	}
 }

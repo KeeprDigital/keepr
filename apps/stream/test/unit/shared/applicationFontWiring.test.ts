@@ -4,21 +4,23 @@ import { parse } from 'yaml';
 import workspace from '~~/../../pnpm-workspace.yaml?raw';
 import { GRAPHIC_FONTS } from '~~/shared/modules/graphics/typography';
 
-// The registry names packages; the catalog must install each at an exact version.
+// The registry names packages; the named catalog each names must install it at an exact version.
 const manifest = JSON.parse(readFileSync('package.json', 'utf8')) as {
 	dependencies: Record<string, string>;
 };
-const { catalog = {}, overrides = {} } = parse(workspace) as {
-	catalog?: Record<string, string>;
+const { catalogs = {}, overrides = {} } = parse(workspace) as {
+	catalogs?: Record<string, Record<string, string>>;
 	overrides?: Record<string, string>;
 };
+/** The version `specifier` resolves to: `catalog:<name>` read from that named catalog. */
+const pinned = (name: string, specifier = '') =>
+	catalogs[/^catalog:(.+)$/.exec(specifier)?.[1] ?? '']?.[name];
 const packages = GRAPHIC_FONTS.flatMap((font) => (font.package ? [font.package] : []));
 
 describe('application font packaging', () => {
 	it('installs every packaged family at an exact version', () => {
 		for (const { name } of packages) {
-			expect(manifest.dependencies[name], name).toBe('catalog:');
-			expect(catalog[name], name).toMatch(/^\d+\.\d+\.\d+$/);
+			expect(pinned(name, manifest.dependencies[name]), name).toMatch(/^\d+\.\d+\.\d+$/);
 		}
 	});
 
@@ -35,9 +37,8 @@ describe('application font packaging', () => {
 
 	// Nuxt UI depends on its own range of Nuxt Fonts; the override must hold it to the catalog's pin, or a bump is silently held back.
 	it('overrides @nuxt/fonts to the version the catalog pins', () => {
-		expect(manifest.dependencies['@nuxt/fonts']).toBe('catalog:');
-		expect(overrides['@nuxt/fonts']).toBe('catalog:');
-		expect(catalog['@nuxt/fonts']).toMatch(/^\d+\.\d+\.\d+$/);
+		expect(overrides['@nuxt/fonts']).toBe(manifest.dependencies['@nuxt/fonts']);
+		expect(pinned('@nuxt/fonts', overrides['@nuxt/fonts'])).toMatch(/^\d+\.\d+\.\d+$/);
 	});
 
 	// `cssFamily` names `--font-<id>`; the stylesheet must declare it as the registry's stack, and only the UI roles besides.

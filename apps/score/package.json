@@ -17,17 +17,17 @@
 		"@keepr/nuxt-layer": "workspace:*",
 		"@keepr/pairing": "workspace:*",
 		"@keepr/standings": "workspace:*",
-		"nuxt": "catalog:",
-		"vue": "catalog:",
-		"vue-router": "catalog:"
+		"nuxt": "catalog:framework",
+		"vue": "catalog:framework",
+		"vue-router": "catalog:framework"
 	},
 	"devDependencies": {
-		"@nuxt/test-utils": "catalog:",
-		"@vue/test-utils": "catalog:",
-		"happy-dom": "catalog:",
-		"typescript": "catalog:",
-		"vitest": "catalog:",
-		"vue-tsc": "catalog:",
-		"wrangler": "catalog:"
+		"@nuxt/test-utils": "catalog:test",
+		"@vue/test-utils": "catalog:test",
+		"happy-dom": "catalog:test",
+		"typescript": "catalog:tooling",
+		"vitest": "catalog:test",
+		"vue-tsc": "catalog:tooling",
+		"wrangler": "catalog:cloudflare"
 	}
 }
