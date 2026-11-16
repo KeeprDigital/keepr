@@ -24,6 +24,12 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
   shared layer's named modules. Each app has a glossary of its own, and
   `GLOSSARY-MAP.md` says where each is and how they meet. A shared term is
   defined once, at the root.
+- A glossary says what a word means, `RULES.md` what is true now, and a
+  decision why (ADR-0095). Each sits beside the code it governs: the
+  workspace's decisions are files in the root `docs/adr`, and an app's or
+  package's are in its own. A decision is written once, numbered in one
+  sequence for the workspace; a later one that changes it leaves it only an
+  `Amended by` or `Superseded by` line.
 - The root holds what every app and package shares: the dependency catalog
   (`pnpm-workspace.yaml`), the lockfile, the lint and format configuration
   (`.oxlintrc.json`, `.oxfmtrc.json`), the packages' compiler options
