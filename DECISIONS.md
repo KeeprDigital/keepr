@@ -3283,7 +3283,7 @@ Accepted · 2026-11-15. Changes ADR-0039, ADR-0079 and ADR-0082 where each named
 - Three rules of the `correctness` category are off for what they misread here: a Zod schema's bound `parse` passed as a callback, an awaited Drizzle statement, and a copy taken before a loop that changes what it walks.
 - Nothing mechanical holds the conventions listed above. A change that breaks one is caught by a test where one exists, and by review otherwise.
 - Markdown is not linted or formatted. `pnpm verify:docs` is the documentation link test alone.
-- Oxfmt is a beta (0.78), pinned exactly: a new version can format differently, so a bump is a commit that reformats. It needed a second pass to settle five files of the first reformat.
+- Oxfmt is a beta (0.78), pinned exactly: a new version can format differently, so a bump is a commit that reformats. It needed a second pass to settle five files of the first reformat. A commit that reformats is listed in `.git-blame-ignore-revs`, so blame reads past it to the commit that wrote the line.
 
 ### Rejected alternatives
 
