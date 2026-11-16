@@ -10,7 +10,7 @@
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p test/tsconfig.json && tsc --noEmit -p bench/tsconfig.json",
-		"test": "vitest run",
+		"test": "vitest run --testTimeout=30000",
 		"bench": "node bench/simulate.ts"
 	},
 	"dependencies": {

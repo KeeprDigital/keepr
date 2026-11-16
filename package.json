@@ -8,7 +8,7 @@
 		"lint:fix": "node apps/stream/scripts/slots.mjs lint -- oxlint --fix && oxfmt",
 		"format": "oxfmt",
 		"typecheck:packages": "pnpm --filter \"./packages/*\" typecheck",
-		"test:packages": "pnpm --filter \"./packages/*\" test",
+		"test:packages": "pnpm --filter \"./packages/*\" --workspace-concurrency=1 test",
 		"bench:packages": "pnpm --filter @keepr/pairing bench 10001 15 --check && pnpm --filter @keepr/pairing bench 20001 15 --check",
 		"verify": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/stream verify",
 		"verify:quick": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/stream verify:quick"
