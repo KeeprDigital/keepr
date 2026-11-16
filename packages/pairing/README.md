@@ -78,5 +78,6 @@ In this directory:
 pnpm test                       # vitest run
 pnpm test -u                    # re-record scenario answers after an intended change
 pnpm typecheck
+pnpm bench:check                # the speed targets: 15 rounds at 10,001 and 20,001 Entrants
 pnpm bench 10001 15 --check     # time a simulated event of <entrants> <rounds>
 ```
