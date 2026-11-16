@@ -163,10 +163,30 @@ settings:
   excludeLinksFromLockfile: false
 
 catalogs:
-  default:
+  charts:
+    '@types/three':
+      specifier: 0.187.0
+      version: 0.187.0
+    echarts:
+      specifier: 6.1.0
+      version: 6.1.0
+    nuxt-echarts:
+      specifier: 1.1.0
+      version: 1.1.0
+    three:
+      specifier: 0.187.0
+      version: 0.187.0
+    vue-echarts:
+      specifier: 8.3.2
+      version: 8.3.2
+  cloudflare:
     '@cloudflare/containers':
       specifier: 0.3.7
       version: 0.3.7
+    wrangler:
+      specifier: 4.161.0
+      version: 4.161.0
+  fonts:
     '@fontsource/arimo':
       specifier: 5.3.0
       version: 5.3.0
@@ -212,51 +232,57 @@ catalogs:
     '@iconify-json/simple-icons':
       specifier: 1.2.102
       version: 1.2.102
-    '@jsquash/jpeg':
-      specifier: 1.6.0
-      version: 1.6.0
-    '@jsquash/webp':
-      specifier: 1.5.0
-      version: 1.5.0
-    '@libsql/client':
-      specifier: 0.18.0
-      version: 0.18.0
+    fontkitten:
+      specifier: 1.0.3
+      version: 1.0.3
+    mana-font:
+      specifier: 1.18.0
+      version: 1.18.0
+  framework:
     '@nuxt/image':
       specifier: 2.2.1
       version: 2.2.1
-    '@nuxt/test-utils':
-      specifier: 4.4.0
-      version: 4.4.0
     '@nuxt/ui':
       specifier: 4.12.0
       version: 4.12.0
     '@pinia/nuxt':
       specifier: 1.0.3
       version: 1.0.3
-    '@scryfall/api-types':
-      specifier: 1.0.0-alpha.4
-      version: 1.0.0-alpha.4
-    '@types/node':
-      specifier: 26.6.6
-      version: 26.6.6
-    '@types/three':
-      specifier: 0.187.0
-      version: 0.187.0
-    '@vitest/coverage-v8':
-      specifier: 5.1.0
-      version: 5.1.0
-    '@vitest/ui':
-      specifier: 5.1.0
-      version: 5.1.0
-    '@vue/test-utils':
-      specifier: 2.5.1
-      version: 2.5.1
     '@vueuse/core':
       specifier: 15.0.0
       version: 15.0.0
     '@vueuse/nuxt':
       specifier: 15.0.0
       version: 15.0.0
+    nuxt:
+      specifier: 4.6.4
+      version: 4.6.4
+    pinia:
+      specifier: 4.1.0
+      version: 4.1.0
+    tailwindcss:
+      specifier: 4.3.5
+      version: 4.3.5
+    vue:
+      specifier: 3.5.45
+      version: 3.5.45
+    vue-draggable-plus:
+      specifier: 0.6.1
+      version: 0.6.1
+    vue-router:
+      specifier: 5.5.0
+      version: 5.5.0
+  images:
+    '@jsquash/jpeg':
+      specifier: 1.6.0
+      version: 1.6.0
+    '@jsquash/webp':
+      specifier: 1.5.0
+      version: 1.5.0
+  server:
+    '@scryfall/api-types':
+      specifier: 1.0.0-alpha.4
+      version: 1.0.0-alpha.4
     ably:
       specifier: 2.30.0
       version: 2.30.0
@@ -272,30 +298,44 @@ catalogs:
     drizzle-zod:
       specifier: 0.8.3
       version: 0.8.3
-    echarts:
-      specifier: 6.1.0
-      version: 6.1.0
-    esbuild:
-      specifier: 0.28.2
-      version: 0.28.2
+    zod:
+      specifier: 4.6.7
+      version: 4.6.7
+  test:
+    '@libsql/client':
+      specifier: 0.18.0
+      version: 0.18.0
+    '@nuxt/test-utils':
+      specifier: 4.4.0
+      version: 4.4.0
+    '@vitest/coverage-v8':
+      specifier: 5.1.0
+      version: 5.1.0
+    '@vitest/ui':
+      specifier: 5.1.0
+      version: 5.1.0
+    '@vue/test-utils':
+      specifier: 2.5.1
+      version: 2.5.1
     fast-check:
       specifier: 4.10.2
       version: 4.10.2
-    fontkitten:
-      specifier: 1.0.3
-      version: 1.0.3
     happy-dom:
       specifier: 21.0.4
       version: 21.0.4
-    mana-font:
-      specifier: 1.18.0
-      version: 1.18.0
-    nuxt:
-      specifier: 4.6.4
-      version: 4.6.4
-    nuxt-echarts:
-      specifier: 1.1.0
-      version: 1.1.0
+    vitest:
+      specifier: 5.1.0
+      version: 5.1.0
+    yaml:
+      specifier: 2.9.1
+      version: 2.9.1
+  tooling:
+    '@types/node':
+      specifier: 26.6.6
+      version: 26.6.6
+    esbuild:
+      specifier: 0.28.2
+      version: 0.28.2
     oxfmt:
       specifier: 0.78.0
       version: 0.78.0
@@ -305,45 +345,12 @@ catalogs:
     oxlint-tsgolint:
       specifier: 7.0.2007
       version: 7.0.2007
-    pinia:
-      specifier: 4.1.0
-      version: 4.1.0
-    tailwindcss:
-      specifier: 4.3.5
-      version: 4.3.5
-    three:
-      specifier: 0.187.0
-      version: 0.187.0
     typescript:
       specifier: 6.0.3
       version: 6.0.3
-    vitest:
-      specifier: 5.1.0
-      version: 5.1.0
-    vue:
-      specifier: 3.5.45
-      version: 3.5.45
-    vue-draggable-plus:
-      specifier: 0.6.1
-      version: 0.6.1
-    vue-echarts:
-      specifier: 8.3.2
-      version: 8.3.2
-    vue-router:
-      specifier: 5.5.0
-      version: 5.5.0
     vue-tsc:
       specifier: 3.3.13
       version: 3.3.13
-    wrangler:
-      specifier: 4.161.0
-      version: 4.161.0
-    yaml:
-      specifier: 2.9.1
-      version: 2.9.1
-    zod:
-      specifier: 4.6.7
-      version: 4.6.7
 
 overrides:
   '@nuxt/fonts': 1.2.0
@@ -356,13 +363,13 @@ importers:
   .:
     devDependencies:
       oxfmt:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 0.78.0
       oxlint:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 1.93.0(oxlint-tsgolint@7.0.2007)
       oxlint-tsgolint:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 7.0.2007
 
   apps/score:
@@ -377,35 +384,35 @@ importers:
         specifier: workspace:*
         version: link:../../packages/standings
       nuxt:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 4.6.4(fa6c123b107dcdf2ef98b5a7e89a188e)
       vue:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 3.5.45(typescript@6.0.3)
       vue-router:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 5.5.0(@vue/compiler-sfc@3.5.45)(esbuild@0.28.2)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.45(typescript@6.0.3)))(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))(vue@3.5.45(typescript@6.0.3))
     devDependencies:
       '@nuxt/test-utils':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 4.4.0(@nuxt/schema@4.6.4)(@oxc-project/types@0.156.0)(@vitest/ui@5.1.0)(@vue/test-utils@2.5.1(@vue/compiler-dom@3.5.45)(@vue/server-renderer@3.5.45)(vue@3.5.45(typescript@6.0.3)))(confbox@0.3.1)(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.3.1)(h3@2.0.2(crossws@0.4.15(srvx@1.0.5)))(happy-dom@21.0.4)(jiti@2.7.0)(mlly@1.8.2)(nuxt@4.6.4(fa6c123b107dcdf2ef98b5a7e89a188e))(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))(vitest@5.1.0)(vue@3.5.45(typescript@6.0.3))
       '@vue/test-utils':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 2.5.1(@vue/compiler-dom@3.5.45)(@vue/server-renderer@3.5.45)(vue@3.5.45(typescript@6.0.3))
       happy-dom:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 21.0.4
       typescript:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 6.0.3
       vitest:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
       vue-tsc:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 3.3.13(typescript@6.0.3)
       wrangler:
-        specifier: 'catalog:'
+        specifier: catalog:cloudflare
         version: 4.161.0(@types/node@26.6.6)
 
   apps/stream:
@@ -414,191 +421,191 @@ importers:
         specifier: workspace:*
         version: link:../../packages/nuxt-layer
       '@fontsource/arimo':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/barlow-condensed':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/ibm-plex-sans':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/inter':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/jetbrains-mono':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/montserrat':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/open-sans':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/oswald':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/poppins':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/roboto':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/roboto-condensed':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/saira-condensed':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.0
       '@fontsource/source-serif-4':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 5.3.1
       '@jsquash/jpeg':
-        specifier: 'catalog:'
+        specifier: catalog:images
         version: 1.6.0
       '@jsquash/webp':
-        specifier: 'catalog:'
+        specifier: catalog:images
         version: 1.5.0
       '@nuxt/fonts':
         specifier: 1.2.0
         version: 1.2.0(@nuxt/schema@4.6.4)(cac@7.1.0)(confbox@0.3.1)(db0@0.3.4(@libsql/client@0.18.0)(drizzle-orm@0.45.4(@libsql/client@0.18.0)(kysely@0.29.5)))(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.3.1)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lightningcss@1.33.0)(magic-string@1.4.3)(mlly@1.8.2)(postcss@8.5.32)(rolldown@1.2.19)(rollup@4.68.2)(srvx@1.0.5)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
       '@nuxt/image':
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 2.2.1(@nuxt/schema@4.6.4)(@types/node@26.6.6)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.19)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1)))(unstorage@1.17.6(db0@0.3.4(@libsql/client@0.18.0)(drizzle-orm@0.45.4(@libsql/client@0.18.0)(kysely@0.29.5)))(ioredis@5.11.1(supports-color@10.2.2)))
       '@nuxt/ui':
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 4.12.0(6f175227d4fb2990a8a606f02e1434f4)
       '@pinia/nuxt':
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 1.0.3(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.45(typescript@6.0.3)))(rolldown@1.2.19)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1)))
       '@vueuse/core':
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 15.0.0(vue@3.5.45(typescript@6.0.3))
       '@vueuse/nuxt':
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 15.0.0(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(nuxt@4.6.4(fa6c123b107dcdf2ef98b5a7e89a188e))(rolldown@1.2.19)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1)))(vue@3.5.45(typescript@6.0.3))
       ably:
-        specifier: 'catalog:'
+        specifier: catalog:server
         version: 2.30.0
       better-auth:
-        specifier: 'catalog:'
+        specifier: catalog:server
         version: 1.7.22(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@libsql/client@0.18.0)(kysely@0.29.5))(vitest@5.1.0)(vue@3.5.45(typescript@6.0.3))
       drizzle-orm:
-        specifier: 'catalog:'
+        specifier: catalog:server
         version: 0.45.4(@libsql/client@0.18.0)(kysely@0.29.5)
       drizzle-zod:
-        specifier: 'catalog:'
+        specifier: catalog:server
         version: 0.8.3(drizzle-orm@0.45.4(@libsql/client@0.18.0)(kysely@0.29.5))(zod@4.6.7)
       echarts:
-        specifier: 'catalog:'
+        specifier: catalog:charts
         version: 6.1.0
       fontkitten:
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 1.0.3
       mana-font:
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 1.18.0
       nuxt:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 4.6.4(fa6c123b107dcdf2ef98b5a7e89a188e)
       nuxt-echarts:
-        specifier: 'catalog:'
+        specifier: catalog:charts
         version: 1.1.0(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(echarts@6.1.0)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(rolldown@1.2.19)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1)))(vue-echarts@8.3.2(echarts@6.1.0)(vue@3.5.45(typescript@6.0.3)))
       pinia:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.45(typescript@6.0.3))
       tailwindcss:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 4.3.5
       three:
-        specifier: 'catalog:'
+        specifier: catalog:charts
         version: 0.187.0
       vue:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 3.5.45(typescript@6.0.3)
       vue-draggable-plus:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 0.6.1(@types/sortablejs@1.15.9)
       vue-echarts:
-        specifier: 'catalog:'
+        specifier: catalog:charts
         version: 8.3.2(echarts@6.1.0)(vue@3.5.45(typescript@6.0.3))
       vue-router:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 5.5.0(@vue/compiler-sfc@3.5.45)(esbuild@0.28.2)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.45(typescript@6.0.3)))(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))(vue@3.5.45(typescript@6.0.3))
       zod:
-        specifier: 'catalog:'
+        specifier: catalog:server
         version: 4.6.7
     devDependencies:
       '@cloudflare/containers':
-        specifier: 'catalog:'
+        specifier: catalog:cloudflare
         version: 0.3.7
       '@iconify-json/lucide':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 1.2.154
       '@iconify-json/simple-icons':
-        specifier: 'catalog:'
+        specifier: catalog:fonts
         version: 1.2.102
       '@libsql/client':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 0.18.0
       '@nuxt/test-utils':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 4.4.0(@nuxt/schema@4.6.4)(@oxc-project/types@0.156.0)(@vitest/ui@5.1.0)(@vue/test-utils@2.5.1(@vue/compiler-dom@3.5.45)(@vue/server-renderer@3.5.45)(vue@3.5.45(typescript@6.0.3)))(confbox@0.3.1)(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.3.1)(h3@2.0.2(crossws@0.4.15(srvx@1.0.5)))(happy-dom@21.0.4)(jiti@2.7.0)(mlly@1.8.2)(nuxt@4.6.4(fa6c123b107dcdf2ef98b5a7e89a188e))(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))(vitest@5.1.0)(vue@3.5.45(typescript@6.0.3))
       '@scryfall/api-types':
-        specifier: 'catalog:'
+        specifier: catalog:server
         version: 1.0.0-alpha.4(patch_hash=effeb642c3b1fc4edb3947e1d95dbd0077b294c683c84ed87a3e97016361a6cc)
       '@types/node':
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 26.6.6
       '@types/three':
-        specifier: 'catalog:'
+        specifier: catalog:charts
         version: 0.187.0
       '@vitest/coverage-v8':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(vitest@5.1.0)
       '@vitest/ui':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(vitest@5.1.0)
       '@vue/test-utils':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 2.5.1(@vue/compiler-dom@3.5.45)(@vue/server-renderer@3.5.45)(vue@3.5.45(typescript@6.0.3))
       drizzle-kit:
-        specifier: 'catalog:'
+        specifier: catalog:server
         version: 0.31.11
       esbuild:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 0.28.2
       happy-dom:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 21.0.4
       typescript:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 6.0.3
       vitest:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
       vue-tsc:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 3.3.13(typescript@6.0.3)
       wrangler:
-        specifier: 'catalog:'
+        specifier: catalog:cloudflare
         version: 4.161.0(@types/node@26.6.6)
       yaml:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 2.9.1
 
   packages/engine-core:
     devDependencies:
       '@types/node':
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 26.6.6
       fast-check:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 4.10.2
       typescript:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 6.0.3
       vitest:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
 
   packages/engine-integration:
@@ -613,65 +620,65 @@ importers:
         specifier: workspace:*
         version: link:../standings
       '@types/node':
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 26.6.6
       fast-check:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 4.10.2
       typescript:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 6.0.3
       vitest:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
 
   packages/nuxt-layer:
     dependencies:
       '@nuxt/ui':
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 4.12.0(6f175227d4fb2990a8a606f02e1434f4)
       '@vueuse/core':
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 15.0.0(vue@3.5.45(typescript@6.0.3))
       '@vueuse/nuxt':
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 15.0.0(@nuxt/schema@4.6.4)(confbox@0.3.1)(dotenv@17.4.2)(giget@3.3.1)(jiti@2.7.0)(magic-string@1.4.3)(mlly@1.8.2)(nuxt@4.6.4(fa6c123b107dcdf2ef98b5a7e89a188e))(rolldown@1.2.19)(unplugin@3.4.0(esbuild@0.28.2)(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1)))(vue@3.5.45(typescript@6.0.3))
       drizzle-orm:
-        specifier: 'catalog:'
+        specifier: catalog:server
         version: 0.45.4(@libsql/client@0.18.0)(kysely@0.29.5)
       nuxt:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 4.6.4(fa6c123b107dcdf2ef98b5a7e89a188e)
       tailwindcss:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 4.3.5
       vue:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 3.5.45(typescript@6.0.3)
     devDependencies:
       '@nuxt/test-utils':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 4.4.0(@nuxt/schema@4.6.4)(@oxc-project/types@0.156.0)(@vitest/ui@5.1.0)(@vue/test-utils@2.5.1(@vue/compiler-dom@3.5.45)(@vue/server-renderer@3.5.45)(vue@3.5.45(typescript@6.0.3)))(confbox@0.3.1)(dotenv@17.4.2)(esbuild@0.28.2)(giget@3.3.1)(h3@2.0.2(crossws@0.4.15(srvx@1.0.5)))(happy-dom@21.0.4)(jiti@2.7.0)(mlly@1.8.2)(nuxt@4.6.4(fa6c123b107dcdf2ef98b5a7e89a188e))(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))(vitest@5.1.0)(vue@3.5.45(typescript@6.0.3))
       '@types/node':
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 26.6.6
       '@vue/test-utils':
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 2.5.1(@vue/compiler-dom@3.5.45)(@vue/server-renderer@3.5.45)(vue@3.5.45(typescript@6.0.3))
       happy-dom:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 21.0.4
       typescript:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 6.0.3
       vitest:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
       vue-router:
-        specifier: 'catalog:'
+        specifier: catalog:framework
         version: 5.5.0(@vue/compiler-sfc@3.5.45)(esbuild@0.28.2)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.45(typescript@6.0.3)))(rolldown@1.2.19)(rollup@4.68.2)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))(vue@3.5.45(typescript@6.0.3))
       vue-tsc:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 3.3.13(typescript@6.0.3)
 
   packages/pairing:
@@ -684,16 +691,16 @@ importers:
         specifier: workspace:*
         version: link:../testkit
       '@types/node':
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 26.6.6
       fast-check:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 4.10.2
       typescript:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 6.0.3
       vitest:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
 
   packages/standings:
@@ -706,25 +713,25 @@ importers:
         specifier: workspace:*
         version: link:../testkit
       fast-check:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 4.10.2
       typescript:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 6.0.3
       vitest:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
 
   packages/testkit:
     devDependencies:
       '@types/node':
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 26.6.6
       typescript:
-        specifier: 'catalog:'
+        specifier: catalog:tooling
         version: 6.0.3
       vitest:
-        specifier: 'catalog:'
+        specifier: catalog:test
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.23.12)(yaml@2.9.1))
 
 packages:

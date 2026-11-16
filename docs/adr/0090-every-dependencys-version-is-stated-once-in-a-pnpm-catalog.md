@@ -1,6 +1,6 @@
 # ADR-0090: Every dependency's version is stated once, in a pnpm catalog
 
-Accepted · 2026-11-15.
+Accepted · 2026-11-15 · Amended by ADR-0109: the catalog is split into named catalogs, one per group, and `package.json` names each dependency as `catalog:<group>`
 
 ### Decision
 

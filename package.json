@@ -14,9 +14,9 @@
 		"verify:quick": "pnpm typecheck:packages && pnpm test:packages && pnpm --filter @keepr/score verify && pnpm --filter @keepr/stream verify:quick"
 	},
 	"devDependencies": {
-		"oxfmt": "catalog:",
-		"oxlint": "catalog:",
-		"oxlint-tsgolint": "catalog:"
+		"oxfmt": "catalog:tooling",
+		"oxlint": "catalog:tooling",
+		"oxlint-tsgolint": "catalog:tooling"
 	},
 	"devEngines": {
 		"runtime": {

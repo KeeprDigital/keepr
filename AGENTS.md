@@ -51,9 +51,10 @@ Realtime integration tests are the exception: CI has no Ably key, so they run
 only against your local `apps/stream/.env`. A change touching realtime needs
 `pnpm test:integration --run` green in `apps/stream` before you mark it
 ready. Reach for `pnpm verify` to reproduce a CI failure locally. A
-dependency's version lives in the catalog in `pnpm-workspace.yaml`, and each
-`package.json` names it as `catalog:`; `pnpm add`, run in the app or package
-that needs it, writes both. Commit `pnpm-lock.yaml` with any change to either
+dependency's version lives in the named catalog of its group in
+`pnpm-workspace.yaml`, and each `package.json` names it as `catalog:<group>`;
+`pnpm add --save-catalog-name=<group>`, run in the app or package that needs
+it, writes both. Commit `pnpm-lock.yaml` with any change to either
 that affects dependency resolution.
 
 ## Landing on main

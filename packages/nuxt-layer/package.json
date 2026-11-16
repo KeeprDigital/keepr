@@ -10,22 +10,22 @@
 		"postinstall": "nuxt prepare"
 	},
 	"dependencies": {
-		"@nuxt/ui": "catalog:",
-		"@vueuse/core": "catalog:",
-		"@vueuse/nuxt": "catalog:",
-		"drizzle-orm": "catalog:",
-		"nuxt": "catalog:",
-		"tailwindcss": "catalog:",
-		"vue": "catalog:"
+		"@nuxt/ui": "catalog:framework",
+		"@vueuse/core": "catalog:framework",
+		"@vueuse/nuxt": "catalog:framework",
+		"drizzle-orm": "catalog:server",
+		"nuxt": "catalog:framework",
+		"tailwindcss": "catalog:framework",
+		"vue": "catalog:framework"
 	},
 	"devDependencies": {
-		"@nuxt/test-utils": "catalog:",
-		"@types/node": "catalog:",
-		"@vue/test-utils": "catalog:",
-		"happy-dom": "catalog:",
-		"typescript": "catalog:",
-		"vitest": "catalog:",
-		"vue-router": "catalog:",
-		"vue-tsc": "catalog:"
+		"@nuxt/test-utils": "catalog:test",
+		"@types/node": "catalog:tooling",
+		"@vue/test-utils": "catalog:test",
+		"happy-dom": "catalog:test",
+		"typescript": "catalog:tooling",
+		"vitest": "catalog:test",
+		"vue-router": "catalog:framework",
+		"vue-tsc": "catalog:tooling"
 	}
 }
