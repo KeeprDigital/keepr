@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GraphicsAssetLibraryError } from '~~/server/modules/graphics-asset-library';
 import { GraphicsObjectInputError } from '~~/server/modules/graphics-asset-library/object-store';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 
 // Every graphics route answers library failures through this one mapping, so
 // the per-route tests no longer repeat it.

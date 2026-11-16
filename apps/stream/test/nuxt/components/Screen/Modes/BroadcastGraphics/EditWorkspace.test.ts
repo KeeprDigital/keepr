@@ -9,7 +9,7 @@ import { createInitialBroadcastGraphicsLiveState } from '~~/shared/modules/broad
 import { onAirWith } from '~~/test/helpers/broadcastGraphicsLiveState';
 import { shape, surfaceStyle, text } from '~~/test/helpers/graphicsComposition';
 import { liveSessionSelectors } from '~~/test/nuxt/helpers/broadcastGraphicsLiveSessionReads';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import EditWorkspace from '~/components/Screen/Modes/BroadcastGraphics/EditWorkspace.vue';
 
 enableAutoUnmount(afterEach);

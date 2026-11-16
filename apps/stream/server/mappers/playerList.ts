@@ -1,5 +1,5 @@
 import type { DbPlayerList } from '~~/server/db/schema';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 
 interface DbPlayerListWithCount extends DbPlayerList {
 	memberCount: number;

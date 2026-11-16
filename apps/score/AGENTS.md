@@ -20,7 +20,9 @@ it will run on and how to run it.
 
 ## What belongs where
 
-- What both apps need goes in `packages/nuxt-layer`, in the change that moves
-  Stream Keepr onto it (ADR-0093). Do not copy a file from `apps/stream`.
+- What both apps need is in `packages/nuxt-layer`, or moves there in the
+  change that moves Stream Keepr onto it (ADR-0093). Do not copy a file from
+  `apps/stream`. The layer registers no route and no middleware: this app
+  states its own.
 - The app is the engines' Consumer: it stores, syncs and shows. A rule of
   pairing, standings or the tournament's record belongs in an engine package.

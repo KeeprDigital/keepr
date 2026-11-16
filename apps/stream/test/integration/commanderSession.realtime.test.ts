@@ -3,7 +3,7 @@ import Ably from 'ably';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eventRealtimeChannel } from '../../shared/utils/realtimeChannels';
 import { ATRAXA, KRAUM, TYMNA, typedSeat } from '../helpers/commanders';
-import { LOAD_TOLERANT_WAIT_MS } from '../helpers/loadTolerantBounds';
+import { LOAD_TOLERANT_WAIT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
 import { $fetch } from './client';
 import {
 	commandId,

@@ -1,8 +1,8 @@
 import type { RealtimePresenceData } from '~/types/realtime';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { screenCommandMessageTypes } from '~~/shared/types/messages';
 import { screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 interface ScreenRealtimeSessionOptions {
 	onRefresh: () => void;

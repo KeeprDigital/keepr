@@ -2,10 +2,10 @@ import type { TcgPlusImportAnswer, TcgPlusImportPreview } from '~~/shared/types/
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
-import { transportFailure } from '~~/test/helpers/transportFailure';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import TcgPlusImport from '~/components/Sync/TcgPlusImport.vue';
 
 // An OP Event's Sync page: the TCG+ Import's preview, confirm and failure states.

@@ -3,7 +3,7 @@ import type {
 	SaveFeatureMatchAssignmentInput,
 	UpdateFeatureMatchAssignmentInput,
 } from '~/types';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import {
 	applySavedFeatureMatchAssignment,
 	applyUpdatedFeatureMatchAssignment,

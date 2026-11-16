@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // POST /api/events over real SQL: an Event is stored with its Feature Match Slots or

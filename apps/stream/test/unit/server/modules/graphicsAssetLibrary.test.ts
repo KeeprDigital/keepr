@@ -13,7 +13,7 @@ import {
 	GraphicsObjectInputError,
 } from '~~/server/modules/graphics-asset-library/object-store';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 
 // The API boundary imports the asking user for its actor resolution, which builds the
 // Better Auth instance over `~~/server/db` — a binding no unit run has. Nothing here asks it

@@ -1,9 +1,9 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockEvent, createMockPlayer, createMockUiArchetype } from '~~/test/helpers/fixtures';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 import { realtimeHandlersFor } from '~~/test/nuxt/helpers/realtimeEventSession';
 
 const { mockFetch } = vi.hoisted(() => ({

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { screenOutputAssetDeliveryForEvent } from '~~/server/modules/screen-output-assets/runtime';
-import { TemporarilyUnavailableError } from '~~/server/utils/errors';
+import { TemporarilyUnavailableError } from '@keepr/nuxt-layer/server/utils/errors';
 import { bearerScreenOutputCapability } from '~~/server/utils/screenOutputCapabilityAuthorization';
 import { screenOutputAssetCapabilityCookieName } from '~~/shared/utils/graphicsAssetReferences';
 

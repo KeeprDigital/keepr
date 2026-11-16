@@ -4,8 +4,8 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, ref } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import TemplateLibrary from '~/components/Graphics/BroadcastGraphicTemplateLibrary.vue';
 

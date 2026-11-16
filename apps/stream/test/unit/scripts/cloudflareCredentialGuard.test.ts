@@ -10,7 +10,7 @@ it("the unit suite starts holding only a Cloudflare token that authenticates not
 	);
 
 	const { BLOCKED_CLOUDFLARE_API_TOKEN } =
-		await import('../../helpers/blockCloudflareCredentials.ts');
+		await import('@keepr/nuxt-layer/test/helpers/blockCloudflareCredentials.ts');
 
 	expect(atStart).toEqual([['CLOUDFLARE_API_TOKEN', BLOCKED_CLOUDFLARE_API_TOKEN]]);
 });

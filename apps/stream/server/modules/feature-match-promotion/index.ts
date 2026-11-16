@@ -19,7 +19,7 @@ import {
 	matchService,
 } from '~~/server/services/match';
 import { playerFeatureMatchSyncService } from '~~/server/services/playerFeatureMatchSync';
-import { StateConflictError } from '~~/server/utils/errors';
+import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import {
 	hasExactNoteDiscardConfirmation,
 	throwFeatureMatchNoteDiscardRequired,

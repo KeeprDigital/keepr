@@ -1,7 +1,7 @@
-import type { Deferred } from '~~/test/helpers/deferred';
+import type { Deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startLocalCron } from '~~/server/utils/localCron';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 
 /*
  * A local launcher's stand-in for a Cloudflare cron trigger: it fires at once and

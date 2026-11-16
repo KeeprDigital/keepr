@@ -20,7 +20,7 @@ import {
 	buildClearDeckSourcePlayersQuery,
 	buildReleaseManualBracketPlayersQuery,
 } from '~~/server/services/screen';
-import { BroadcastDeckListsInUseError } from '~~/server/utils/errors';
+import { BroadcastDeckListsInUseError } from '~~/server/utils/deckSourceErrors';
 import { eventKind, getMatchFormatDefaults } from '~~/shared/config/games';
 import { fromFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
 

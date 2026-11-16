@@ -2,12 +2,12 @@ import type {
 	GraphicsAuthoringLeaseOutcome,
 	GraphicsAuthoringLeaseReading,
 } from '~~/shared/modules/graphics-authoring-lease';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import {
 	GRAPHICS_AUTHORING_LEASE_DEFAULT_HEARTBEAT_MS,
 	graphicsAuthoringLeaseTtlMs,
 } from '~~/shared/modules/graphics-authoring-lease';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 /**
  * One editor session's Graphics Authoring Lease on the artifact it has open.

@@ -5,7 +5,7 @@ import { defineComponent, h } from 'vue';
 import { stubPointerCapture } from '~~/test/nuxt/helpers/pointerCapture';
 import NumberField from '~/components/Graphics/NumberField.vue';
 import { NUMBER_SCRUB_GESTURE } from '~/modules/graphics/numberScrubGesture';
-import { nuxtUiStubs } from '../../helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 // A graphics inspector's number field: its label drags the value, its input stays the
 // keyboard's way in, and a read-only panel's field does neither.

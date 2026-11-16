@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ServiceConfigurationError } from '~~/server/utils/errors';
+import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 
 vi.mock('~~/server/db', () => ({
 	db: { $client: {} },

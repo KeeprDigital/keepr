@@ -46,7 +46,7 @@ mockNuxtImport('useFeatureMatchStateStore', () => () => mockFeatureMatchStateSto
 mockNuxtImport('useOverlay', () => () => mockOverlay);
 mockNuxtImport('useToast', () => () => mockToast);
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		getServerTime: () => Date.now() + SERVER_AHEAD_MS,
 	})),
 );

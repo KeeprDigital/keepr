@@ -1,23 +1,32 @@
 import { fileURLToPath } from 'node:url';
 
+// A layer's own files are named from where they are: a relative path in its
+// configuration, and `~` in its code, belong to the app that extends it.
+const here = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+
 /**
- * What every Keepr app is before it is anything else (ADR-0093): a client-rendered
- * Nuxt app with Nuxt UI, served by a Cloudflare Worker. An app extends this and adds
- * only its own. Anything else two apps share joins this layer when the second app
- * needs it, in the change that moves the first app onto it.
+ * What every Keepr app is built on (ADR-0093): a client-rendered Nuxt app with
+ * Nuxt UI, served by a Cloudflare Worker, and the server, client and test
+ * foundation the apps share. An app extends this and adds only its own.
+ *
+ * It registers no route and no middleware. An app's API surface, and the order
+ * its middleware runs in, are stated in the app.
  */
 export default defineNuxtConfig({
 	ssr: false,
 
-	modules: ['@nuxt/ui'],
+	modules: ['@nuxt/ui', '@vueuse/nuxt'],
 
-	// A layer's own files are named by where they are: `~` is the app that extends it.
-	css: [fileURLToPath(new URL('./app/assets/css/base.css', import.meta.url))],
-
-	// `fallback` is what the page is when no system preference can be read at all.
+	// `@nuxtjs/color-mode` reads these from Nuxt config and only from here: the
+	// same block in an `app.config.ts` is inert. `fallback` is what the
+	// pre-hydration script returns when no system preference can be read at all.
 	colorMode: {
 		preference: 'system',
 		fallback: 'dark',
+	},
+
+	imports: {
+		dirs: [here('./app/composables/core'), here('./app/composables/ui')],
 	},
 
 	nitro: {

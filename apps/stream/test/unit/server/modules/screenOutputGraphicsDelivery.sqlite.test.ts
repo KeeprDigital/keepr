@@ -2,7 +2,7 @@ import type { SqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { createScreenOutputGraphicsDelivery } from '~~/server/modules/screen-output-assets/graphics-delivery';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { evidenceOf } from '~~/test/helpers/graphicsEvidence';
 import { digestOf, pixelPng } from '~~/test/helpers/graphicsFixtures';
 import {

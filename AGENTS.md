@@ -13,8 +13,9 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
   (`pairing`, `standings`), what both use (`engine-core`), and their test
   support (`testkit`, `engine-integration`). Each has a `typecheck` and a
   `test` script; `pnpm typecheck:packages` and `pnpm test:packages` at the
-  root run them all. `nuxt-layer` is the Nuxt layer every app extends: what
-  two apps share goes there, not into a second copy.
+  root run them all. `nuxt-layer` is the Nuxt layer every app extends, with the
+  server, client and test foundation the apps share: what a second app needs
+  moves there, never into a second copy. Its `README.md` has its rules.
 - `apps/score`: Score Keepr (`@keepr/score`), scaffolded and not built, with
   the engines' specs, decisions and `GLOSSARY.md`: use its words in the
   packages. `apps/score/AGENTS.md` adds its own rules.

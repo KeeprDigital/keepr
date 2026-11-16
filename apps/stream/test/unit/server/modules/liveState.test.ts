@@ -3,7 +3,7 @@ import type { SequencedLiveStatePort } from '~~/server/modules/live-state';
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockDb, resetDbMocks } from '~~/test/helpers/db-mock';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 
 vi.mock('~~/server/db', () => ({ db: mockDb }));
 

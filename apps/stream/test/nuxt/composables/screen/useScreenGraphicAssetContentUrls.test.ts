@@ -3,7 +3,7 @@ import type { ScreenContext } from '~/composables/screen/useScreenContext';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SCREEN_MODE_REREAD_MS } from '~/modules/screen-mode/freshness';
-import { deferred } from '../../../helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 
 const reference: GraphicAssetReference = {
 	assetId: 'video-asset' as never,

@@ -2,7 +2,7 @@ import type { GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRAPHICS_MULTIPART_PART_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { requestsMadeTo, sourceOfByteLength } from '~~/test/helpers/ingestionTransferRequests';
 
 const { mockFetch, realtime } = vi.hoisted(() => ({

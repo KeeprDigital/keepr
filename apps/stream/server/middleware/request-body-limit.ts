@@ -1,6 +1,9 @@
-import { MAX_API_REQUEST_BODY_BYTES, payloadTooLarge } from '~~/server/utils/payloadLimits';
-import { boundedRawMutationPolicy } from '~~/server/utils/rawMutationRoutes';
-import { MUTATION_BODY_METHODS } from '~~/shared/utils/requestBodyLimits';
+import {
+	MAX_API_REQUEST_BODY_BYTES,
+	payloadTooLarge,
+} from '@keepr/nuxt-layer/server/utils/payloadLimits';
+import { boundedRawMutationPolicy } from '@keepr/nuxt-layer/server/utils/rawMutationRoutes';
+import { MUTATION_BODY_METHODS } from '@keepr/nuxt-layer/shared/utils/requestBodyLimits';
 
 const PAYLOAD_METHODS = new Set<string>(MUTATION_BODY_METHODS);
 

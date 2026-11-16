@@ -3,7 +3,7 @@ import {
 	assertPasswordWithinBounds,
 	normalizeAccountEmail,
 } from '~~/server/utils/betterAuthCredentials';
-import { requireSharedSecret } from '~~/server/utils/sharedSecretSurface';
+import { requireSharedSecret } from '@keepr/nuxt-layer/server/utils/sharedSecretSurface';
 
 /**
  * The first-admin bootstrap (#394, ADR-0010): the one way an installation with

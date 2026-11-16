@@ -20,7 +20,7 @@ import { phaseService } from '~~/server/services/phase';
 import { playerRoundStandingsService } from '~~/server/services/playerRoundStandings';
 import { roundService } from '~~/server/services/round';
 import { findMatchesByRound } from '~~/server/services/roundMatches';
-import { inJsonArray } from '~~/server/utils/db';
+import { inJsonArray } from '@keepr/nuxt-layer/server/utils/db';
 import {
 	deriveManualTopCutBracket,
 	deriveTopCutBracket,

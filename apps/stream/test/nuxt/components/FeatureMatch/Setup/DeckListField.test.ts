@@ -5,8 +5,8 @@ import type {
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import DeckListField from '~/components/FeatureMatch/Setup/DeckListField.vue';
 
 // A Slot side's Feature Match Deck List: paste, preview, save. The routes are faked at `$fetch`.

@@ -6,7 +6,7 @@ import * as schema from '~~/server/db/schema';
 import * as authSchema from '~~/server/db/schema/auth';
 import { BUILT_IN_FEATURE_MATCH_LAYOUT_TEMPLATES } from '~~/shared/builtInFeatureMatchLayoutTemplates';
 import { isFourSeatFeatureMatchLayout } from '~~/shared/featureMatchLayoutSeats';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // The Feature Match Layout Template library lists the built-in layouts beside the

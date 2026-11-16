@@ -4,7 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ATRAXA, KRAUM, scryfallCardOf, TYMNA } from '~~/test/helpers/commanders';
 import { ANIMAR, ASHLING, deckListEntryOf, MOXFIELD_CARDS } from '~~/test/helpers/magicDeckText';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import CommanderFields from '~/components/FeatureMatch/Setup/CommanderFields.vue';
 
 // A Seat's Commander picker (ADR-0087). Scryfall's card search is faked at `$fetch`.

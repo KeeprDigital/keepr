@@ -11,7 +11,7 @@ import {
 	bandaiKeeprCollectionSchema,
 } from '~~/server/schemas/external/bandaiKeepr';
 import { opPrintingImageUrl } from '~~/shared/utils/card/op';
-import { readConfiguredSecret } from './configuredSecret';
+import { readConfiguredSecret } from '@keepr/nuxt-layer/server/utils/configuredSecret';
 
 /**
  * The client of bandai-keepr, the One Piece card API (ADR-0057). It needs a

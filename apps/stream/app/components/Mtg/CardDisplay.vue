@@ -2,7 +2,7 @@
 import type { ScreenCard } from '~~/shared/types/card/mtg';
 import { isOpScreenCard } from '~~/shared/utils/card/op';
 import { modeMotionVars, useScreenModeReady } from '~/modules/screen-mode';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { preloadImages } from '~/utils/preloadImage';
 
 const props = defineProps<{

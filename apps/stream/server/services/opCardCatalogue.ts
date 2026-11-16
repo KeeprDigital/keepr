@@ -4,7 +4,7 @@ import type { OpCardColor, OpCardSummary, OpCatalogueCard } from '~~/shared/type
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { cards } from '~~/server/db/schema';
-import { chunkJsonRows, inJsonArray, selectForInsert } from '~~/server/utils/db';
+import { chunkJsonRows, inJsonArray, selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 import { OP_CARD_COLORS } from '~~/shared/types/card/op';
 
 /**

@@ -23,7 +23,8 @@ import {
 	graphicsAuthoringLeaseFenceClause,
 	graphicsAuthoringLeaseModule,
 } from '~~/server/modules/graphics-authoring-lease';
-import { mapDeckSourceConflict, StateConflictError } from '~~/server/utils/errors';
+import { mapDeckSourceConflict } from '~~/server/utils/deckSourceErrors';
+import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import { storedThemeTokenGraphicAssetReferences } from '~~/shared/themeAssetReferences';
 import { mergeScreenModeConfig } from '~~/shared/types/screenConfig';
 import {

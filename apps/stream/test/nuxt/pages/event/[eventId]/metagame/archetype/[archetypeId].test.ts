@@ -3,7 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { reactive, ref } from 'vue';
 import { createMockArchetypeDetailResponse } from '~~/test/helpers/fixtures';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 const route = reactive({
 	params: { archetypeId: '7' },

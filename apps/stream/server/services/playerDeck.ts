@@ -26,7 +26,7 @@ import {
 	inJsonArray,
 	SAFE_INARRAY_SIZE,
 	selectForInsert,
-} from '~~/server/utils/db';
+} from '@keepr/nuxt-layer/server/utils/db';
 
 export type UpsertMeleePlayerDeck = Omit<
 	DbPlayerDeckInsert,

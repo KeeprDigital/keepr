@@ -9,7 +9,7 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, nextTick } from 'vue';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
-import { USelectStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { USelectStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import {
 	fakeScreenThemeNetwork,

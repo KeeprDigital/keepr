@@ -15,7 +15,7 @@ import {
 	runSlotStatus,
 	suiteSlotCeiling,
 } from '../../../scripts/slots.mjs';
-import { LOAD_TOLERANT_TEST_TIMEOUT_MS } from '../../helpers/loadTolerantBounds';
+import { LOAD_TOLERANT_TEST_TIMEOUT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
 
 const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const GIB = 1024 ** 3;

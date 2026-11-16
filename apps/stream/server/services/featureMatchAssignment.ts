@@ -7,7 +7,7 @@ import type {
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { featureMatchAssignments } from '~~/server/db/schema';
-import { selectForInsert } from '~~/server/utils/db';
+import { selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 
 /**
  * Build the displacement/move/create statements for an Assignment without

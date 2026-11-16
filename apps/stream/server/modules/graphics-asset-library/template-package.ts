@@ -34,7 +34,7 @@ import {
 	TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
 	templatePackageContentEntry,
 } from '~~/shared/types/templatePackage';
-import { isPlainObject } from '~~/shared/utils/plainObject';
+import { isPlainObject } from '@keepr/nuxt-layer/shared/utils/plainObject';
 
 /**
  * The provider-independent half of Template Package export: what a Template

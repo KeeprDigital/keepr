@@ -7,14 +7,14 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ATRAXA } from '~~/test/helpers/commanders';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import {
 	ANIMAR,
 	deckListEntryOf,
 	MOXFIELD_CARDS,
 	MOXFIELD_COPY,
 } from '~~/test/helpers/magicDeckText';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import CommanderDeckListField from '~/components/FeatureMatch/Setup/CommanderDeckListField.vue';
 
 // A Commander Seat's Feature Match Deck List (ADR-0087): paste, preview, confirm the

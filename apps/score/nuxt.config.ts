@@ -4,6 +4,8 @@ const workerName = 'score';
 export default defineNuxtConfig({
 	extends: ['@keepr/nuxt-layer'],
 
+	css: ['~/assets/css/main.css'],
+
 	nitro: {
 		cloudflare: {
 			wrangler: {

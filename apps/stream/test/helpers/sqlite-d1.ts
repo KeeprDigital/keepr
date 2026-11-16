@@ -40,27 +40,13 @@ import {
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 import { createClient } from '@libsql/client';
 
 /**
- * Resolved from this file where that is possible, and from the repository root
- * where it is not: Vitest's Nuxt environment does not give this module a `file:`
- * URL, and every Vitest run has the repository root as its working directory.
+ * The migrations of the app under test. Every Vitest run has that app's
+ * directory as its working directory, whichever package this file is in.
  */
-function resolveMigrationsDirectory(): string {
-	try {
-		return fileURLToPath(new URL('../../server/db/migrations/sqlite', import.meta.url));
-	} catch (failure) {
-		// Only the one condition this fallback exists for. Anything else here is a
-		// real breakage, and swallowing it into a path guess would turn a broken
-		// harness into a confusing "no migrations found" much further along.
-		if ((failure as NodeJS.ErrnoException)?.code !== 'ERR_INVALID_URL_SCHEME') throw failure;
-		return resolve(process.cwd(), 'server/db/migrations/sqlite');
-	}
-}
-
-const migrationsDirectory = resolveMigrationsDirectory();
+const migrationsDirectory = resolve(process.cwd(), 'server/db/migrations/sqlite');
 
 interface PreparedStatement {
 	sql: string;

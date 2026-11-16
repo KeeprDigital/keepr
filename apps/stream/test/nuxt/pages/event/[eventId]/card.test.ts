@@ -5,7 +5,7 @@ import { defineComponent, reactive, ref } from 'vue';
 import { ATRAXA, TYMNA, typedSeat } from '~~/test/helpers/commanders';
 import { NAMI, opDeckListEntry, opSlotSide, ZORO } from '~~/test/helpers/opCards';
 import { createFollowedFeatureMatchSessions } from '~~/test/nuxt/helpers/followedFeatureMatchSession';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 const { mockFetch } = vi.hoisted(() => ({
 	mockFetch: vi.fn(),

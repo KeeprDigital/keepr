@@ -51,7 +51,7 @@ relies on breaks, and staying green through a refactor.
 - Expose component state through ARIA or `data-*` and assert that, plus message
   codes and key tokens.
 - Assert an optimistic update while its request is pending
-  (`test/helpers/deferred.ts`).
+  (`packages/nuxt-layer/test/helpers/deferred.ts`).
 - Write cases as `it.each` tables in which every row can fail alone: it reaches
   a branch, bound or declaration no other row does. A table generated from a
   catalogue (every Screen Mode, field or token) gets a row per distinct branch,

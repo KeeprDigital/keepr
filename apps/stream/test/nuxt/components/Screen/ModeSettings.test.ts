@@ -17,7 +17,7 @@ import {
 	nuxtUiStubs,
 	UFormFieldBesideStub,
 	UInputMenuStub,
-} from '~~/test/nuxt/helpers/nuxtUiStubs';
+} from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import {
 	fakeScreenThemeNetwork,
 	overrideWrites,
@@ -67,7 +67,7 @@ mockNuxtImport('useModeConfigUpdate', () => () => ({
 	retry: vi.fn(),
 }));
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		getServerTime: () => 1_000_000,
 	})),
 );

@@ -14,8 +14,8 @@ import {
 	localAuthBypassEnabled,
 } from '~~/shared/utils/localDeveloperAuth';
 import { authStaticOptions } from './authOptions';
-import { readConfiguredSecret } from './configuredSecret';
-import { ServiceConfigurationError } from './errors';
+import { readConfiguredSecret } from '@keepr/nuxt-layer/server/utils/configuredSecret';
+import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 
 /** The environment name behind `runtimeConfig.betterAuthSecret`, as the operator sets it. */
 const BETTER_AUTH_SECRET_SETTING = 'NUXT_BETTER_AUTH_SECRET';

@@ -6,7 +6,7 @@ import {
 	graphicsAdministratorActor,
 	rethrowGraphicsAssetApiError,
 } from '~~/server/utils/graphicsAssetApi';
-import { getBoundedRequestBodyStream } from '~~/server/utils/payloadLimits';
+import { getBoundedRequestBodyStream } from '@keepr/nuxt-layer/server/utils/payloadLimits';
 import { MAX_SILENT_VIDEO_INGESTION_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
 
 /**

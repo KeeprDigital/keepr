@@ -9,8 +9,9 @@
  * second definition that silently rots, so the harness loads the
  * installation's own default layout and the package fixture writer the
  * Template Package tests already use. Node strips the types; the hook below
- * only teaches it the extensionless relative specifiers and `~~/` root alias
- * that the rest of the repository is built with.
+ * only teaches it the extensionless relative specifiers, the `~~/` root alias
+ * and the shared layer's `@keepr/nuxt-layer/` paths that the rest of the
+ * repository is built with.
  */
 
 import { existsSync } from 'node:fs';
@@ -18,12 +19,17 @@ import { registerHooks } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repositoryRoot = new URL('../../', import.meta.url);
+/** The workspace's shared Nuxt layer, which the app's own TypeScript imports by this name. */
+const LAYER = '@keepr/nuxt-layer/';
+const layerRoot = new URL('../../packages/nuxt-layer/', repositoryRoot);
 
 registerHooks({
 	resolve(specifier, context, next) {
 		const aliased = specifier.startsWith('~~/')
 			? new URL(specifier.slice(3), repositoryRoot).href
-			: specifier;
+			: specifier.startsWith(LAYER)
+				? new URL(specifier.slice(LAYER.length), layerRoot).href
+				: specifier;
 		if (!/^(?:[./]|file:)/.test(aliased)) return next(specifier, context);
 		const base = new URL(aliased, context.parentURL);
 		const path = fileURLToPath(base);

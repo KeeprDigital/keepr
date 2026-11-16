@@ -1,9 +1,9 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope } from 'vue';
-import { STATE_CONFLICT_CODE } from '~~/shared/utils/stateConflict';
+import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
 import { createMockScreen } from '~~/test/helpers/fixtures';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 import { createMockRealtime } from '~~/test/helpers/realtime-mock';
 import { realtimeHandlersFor } from '~~/test/nuxt/helpers/realtimeEventSession';
 

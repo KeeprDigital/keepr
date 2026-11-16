@@ -25,8 +25,8 @@ import {
 	opCatalogueRowFor,
 	toOpCatalogueCard,
 } from '~~/server/services/opCardCatalogue';
-import { chunkRowsWithinParameterBudget, inJsonArray } from '~~/server/utils/db';
-import { runCompensation } from '~~/server/utils/errors';
+import { chunkRowsWithinParameterBudget, inJsonArray } from '@keepr/nuxt-layer/server/utils/db';
+import { runCompensation } from '@keepr/nuxt-layer/server/utils/errors';
 import { getOpGameData } from '~~/shared/utils/gameData';
 
 /** The Deck List a Seat's slot data references, if any: a One Piece Seat's, or a Commander Seat's (ADR-0087). */

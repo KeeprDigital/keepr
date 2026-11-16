@@ -1,5 +1,5 @@
 import type { Ref } from 'vue';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { readonly, ref } from 'vue';
 import { DECK_CARD_DATA_REFETCH_MS } from '~/composables/data/useScryfallBatch';
 

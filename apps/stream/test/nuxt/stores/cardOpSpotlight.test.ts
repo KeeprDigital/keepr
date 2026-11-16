@@ -1,7 +1,7 @@
 import type { OpCardDetail, OpCardSummary } from '~~/shared/types/card/op';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 
 // Card Spotlight on a One Piece Card Game Event. The server's `op-cards` routes are
 // faked at `$fetch`; the Card save is the Card repository's, whose request is the contract.
@@ -18,7 +18,7 @@ const { mockFetch, mockSaveScreenCard, SERVER_NOW, serverNow } = vi.hoisted(() =
 });
 mockNuxtImport('$fetch', () => mockFetch);
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		getServerTime: () => serverNow.value ?? Date.now(),
 	})),
 );

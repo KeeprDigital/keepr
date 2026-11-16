@@ -3,7 +3,7 @@ import type { DbScreen } from '~~/server/db/schema';
 import { screenOutputAssetCapabilityDigest } from '~~/server/modules/screen-output-assets/capability';
 import { optionalUserSession } from '~~/server/utils/auth';
 import { bearerScreenOutputCapability } from '~~/server/utils/screenOutputCapabilityAuthorization';
-import { secretTokensMatch } from '~~/server/utils/secretTokenComparison';
+import { secretTokensMatch } from '@keepr/nuxt-layer/server/utils/secretTokenComparison';
 
 /** Which credential admitted a Screen Output read. */
 export type ScreenOutputReader = 'capability' | 'session';

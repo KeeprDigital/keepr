@@ -5,7 +5,7 @@ import { computed, onScopeDispose, toValue, watch } from 'vue';
 import { tryUseRealtime } from '~/composables/core/useRealtime';
 import { useReconnectResync } from '~/composables/core/useReconnectResync';
 import { useBroadcastDisplayData } from '~/composables/screen/useBroadcastDisplayData';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 /**
  * How often a mode re-reads while realtime cannot tell it about changes, or

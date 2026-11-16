@@ -4,7 +4,7 @@ import type {} from 'nitropack/presets/cloudflare/types';
 import { startLocalLiveResultsSchedule } from '~~/server/modules/melee-sync/liveResults/localSchedule';
 import { runDueLiveResultsTicks } from '~~/server/modules/melee-sync/liveResults/runner';
 import { LIVE_RESULTS_CRON } from '~~/server/utils/cronSchedules';
-import { errorNameOf } from '~~/server/utils/errorLogFields';
+import { errorNameOf } from '@keepr/nuxt-layer/server/utils/errorLogFields';
 
 /**
  * Runs the due Melee Live Results ticks on the Worker's minute trigger. Nitro's

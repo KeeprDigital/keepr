@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { createFakeNitroApp, installNitroPlugin } from '~~/test/helpers/nitroApp';
+import { createFakeNitroApp, installNitroPlugin } from '@keepr/nuxt-layer/test/helpers/nitroApp';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 /*

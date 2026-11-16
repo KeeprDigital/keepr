@@ -2,7 +2,7 @@ import type { VueWrapper } from '@vue/test-utils';
 import type { Component, ComputedRef } from 'vue';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
-import { useUnsavedChanges } from '~/composables/ui/useUnsavedChanges';
+import { useUnsavedChanges } from '@keepr/nuxt-layer/app/composables/ui/useUnsavedChanges';
 
 export interface PageGuardMountOptions {
 	/** Props for the component under test, not for the page around it. */

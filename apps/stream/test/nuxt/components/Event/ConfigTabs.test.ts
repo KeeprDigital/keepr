@@ -3,7 +3,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { reactive } from 'vue';
-import { nuxtUiStubs, UNavigationMenuStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs, UNavigationMenuStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ConfigTabs from '~/components/Event/ConfigTabs.vue';
 
 const mockEventStore = reactive({

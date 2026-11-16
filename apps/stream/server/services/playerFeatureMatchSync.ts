@@ -14,8 +14,8 @@ import {
 import { observedSlotPairing } from '~~/server/services/featureMatch';
 import { linkedOpSideGameData } from '~~/server/services/featureMatchSlotLeader';
 import { featureMatchStateService } from '~~/server/services/featureMatchState';
-import { chunkJsonRows, inJsonArray } from '~~/server/utils/db';
-import { isStateConflictFailure } from '~~/server/utils/errors';
+import { chunkJsonRows, inJsonArray } from '@keepr/nuxt-layer/server/utils/db';
+import { isStateConflictFailure } from '@keepr/nuxt-layer/server/utils/errors';
 import { applyMatchDeckSnapshot, selectMatchDeck } from '~~/server/utils/matchDeckSelection';
 import { randomCommandId } from '~~/shared/utils/uuid';
 

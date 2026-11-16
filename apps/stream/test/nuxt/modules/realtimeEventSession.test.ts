@@ -6,7 +6,7 @@ import {
 	createWireMockEvent,
 	createWireMockPlayer,
 } from '~~/test/helpers/fixtures';
-import { settleUntilStill } from '~~/test/helpers/settle';
+import { settleUntilStill } from '@keepr/nuxt-layer/test/helpers/settle';
 import { realtimeHandlersFor } from '~~/test/nuxt/helpers/realtimeEventSession';
 import { tryUseRealtime } from '~/composables/core/useRealtime';
 import { usePlayerDeckCache } from '~/composables/data/usePlayerDeckCache';

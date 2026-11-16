@@ -6,7 +6,7 @@ import type {
 } from '~~/shared/types/graphicsAsset';
 import type { GraphicAssetPickerScope } from '~/composables/useGraphicAssetPickerScope';
 import { graphicAssetReferenceStatusOrUnavailable } from '~/utils/graphicAssetReferenceStatus';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 const props = withDefaults(
 	defineProps<{

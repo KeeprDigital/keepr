@@ -4,11 +4,11 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { createMockEvent } from '~~/test/helpers/fixtures';
 import { clock } from '~~/test/nuxt/helpers/featureMatchStateHarness';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import Clock from '~/components/FeatureMatch/State/Clock.vue';
 
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(),
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(),
 );
 mockNuxtImport('useEventStore', () => () => ({
 	eventId: 1,

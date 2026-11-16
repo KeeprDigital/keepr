@@ -5,7 +5,7 @@
  * own requests. `test/nuxt/setup.test.ts` holds this file to that contract.
  *
  * A suite that tests a stubbed surface takes the stub off in its own file, which
- * registers later and wins (`vi.unmock('~/composables/core/useServerTime')`, or its
+ * registers later and wins (`vi.unmock('@keepr/nuxt-layer/app/composables/core/useServerTime')`, or its
  * own `vi.mock('ably')`).
  *
  * The factories import nothing on purpose: `mockNuxtImport` would eagerly import the
@@ -16,7 +16,7 @@ import { vi } from 'vitest';
 import { readonly, ref } from 'vue';
 
 /** Never synced, offset zero: the state every suite saw against a mocked `$fetch`. */
-vi.mock('~/composables/core/useServerTime', () => {
+vi.mock('@keepr/nuxt-layer/app/composables/core/useServerTime', () => {
 	const serverTimeOffset = readonly(ref(0));
 	const isSynced = readonly(ref(false));
 	const lastSyncedAt = readonly(ref<number | null>(null));

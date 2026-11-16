@@ -1,4 +1,4 @@
-import type { BroadcastDeckListsInUseError } from '~~/server/utils/errors';
+import type { BroadcastDeckListsInUseError } from '~~/server/utils/deckSourceErrors';
 import { count, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';

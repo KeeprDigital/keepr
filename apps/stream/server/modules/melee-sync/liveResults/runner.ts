@@ -1,5 +1,5 @@
 import { eventService } from '~~/server/services/event';
-import { errorNameOf } from '~~/server/utils/errorLogFields';
+import { errorNameOf } from '@keepr/nuxt-layer/server/utils/errorLogFields';
 import { runLiveResultsTick } from './tick';
 
 /**

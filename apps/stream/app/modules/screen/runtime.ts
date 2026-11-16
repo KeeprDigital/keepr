@@ -1,5 +1,5 @@
 import type { ModeConfigsMap, ScreenModeConfigPatch } from '~~/shared/types/screenConfig';
-import type { useAsyncAction } from '~/composables/core/useAsyncAction';
+import type { useAsyncAction } from '@keepr/nuxt-layer/app/composables/core/useAsyncAction';
 import type {
 	CreateScreenInput,
 	Screen,
@@ -9,13 +9,13 @@ import type {
 } from '~/types';
 import type { MessageData, RealtimePresenceMessage } from '~/types/realtime';
 import type { ScreenPresenceData } from '~/types/screen';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { toRaw } from 'vue';
 import { getDefaultConfigForMode, toModeConfigPatch } from '~~/shared/types/screenConfig';
 import { screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { isStateConflictFetchFailure } from '~~/shared/utils/stateConflict';
+import { isStateConflictFetchFailure } from '@keepr/nuxt-layer/shared/utils/stateConflict';
 import { createCancelableDebounce } from '~/utils/cancelableDebounce';
-import { createKeyedGuardedSequence } from '~/utils/guardedSequence';
+import { createKeyedGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { createKeyedQueue } from '~/utils/keyedQueue';
 
 /** The `executeAction` seam a caller hands this Module, and wraps to report through. */

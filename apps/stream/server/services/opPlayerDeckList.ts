@@ -25,7 +25,7 @@ import {
 	opCatalogueRowFor,
 	toOpCatalogueCard,
 } from '~~/server/services/opCardCatalogue';
-import { chunkJsonRows, selectForInsert } from '~~/server/utils/db';
+import { chunkJsonRows, selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 import { formatOpColors } from '~~/shared/utils/card/op';
 
 /**

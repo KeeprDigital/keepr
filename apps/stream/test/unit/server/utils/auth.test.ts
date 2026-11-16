@@ -11,7 +11,7 @@ import {
 	LOCAL_DEVELOPER_USER_ID,
 	LOCAL_DEVELOPER_USER_NAME,
 } from '~~/shared/utils/localDeveloperAuth';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 
 /**
  * The refusal a blank `NUXT_BETTER_AUTH_SECRET` produces, and the one thing about

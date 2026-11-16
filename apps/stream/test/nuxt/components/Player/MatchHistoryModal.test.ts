@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, reactive, ref } from 'vue';
 import { createMockEvent, createMockPlayer, createMockPlayerList } from '~~/test/helpers/fixtures';
-import { nuxtUiStubs, UTableStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs, UTableStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import MatchHistoryModal from '~/components/Player/MatchHistoryModal.vue';
 
 const { openPlayerMatchHistory, openPlayerEdit, openPlayerDeckList, sendHeadToHead } = vi.hoisted(

@@ -3,7 +3,7 @@
 import type {} from 'nitropack/presets/cloudflare/types';
 import type { NitroApp } from 'nitropack/types';
 import { LIVE_RESULTS_CRON, LIVE_RESULTS_CRON_INTERVAL_MS } from '~~/server/utils/cronSchedules';
-import { errorNameOf } from '~~/server/utils/errorLogFields';
+import { errorNameOf } from '@keepr/nuxt-layer/server/utils/errorLogFields';
 import { startLocalCron } from '~~/server/utils/localCron';
 
 /**

@@ -7,7 +7,7 @@ import type { MessageData } from '~/types/realtime';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toFeatureMatchDefaults } from '~~/shared/types/featureMatchDefaults';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockFeatureMatchState } from '~~/test/helpers/fixtures';
 
 /*

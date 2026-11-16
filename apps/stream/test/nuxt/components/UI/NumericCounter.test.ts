@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
-import { UButtonStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { UButtonStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import NumericCounter from '~/components/UI/NumericCounter.vue';
 
 // The counter blurs and selects through the input's exposed `inputRef`, which

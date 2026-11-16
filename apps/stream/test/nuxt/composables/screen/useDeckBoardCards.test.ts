@@ -6,7 +6,7 @@ import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope, reactive, ref } from 'vue';
 import { ATRAXA, storedSeat, TYMNA } from '~~/test/helpers/commanders';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { opSlotSide } from '~~/test/helpers/opCards';
 import {
 	createFollowedFeatureMatchSessions,

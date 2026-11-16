@@ -2,7 +2,7 @@ import type { BroadcastGraphicConfig, MediaGraphicItemConfig } from '~~/shared/t
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { settleUntil } from '~~/test/helpers/settle';
+import { settleUntil } from '@keepr/nuxt-layer/test/helpers/settle';
 import { useScreenStore } from '~/stores/screen';
 
 /**

@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3';
 import type { TemplatePackageExportOutcome } from '~~/server/modules/graphics-asset-library';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { publicServerFailure } from '~~/test/helpers/publicServerFailure';
 
 const { mockSetResponseHeader, mockSetResponseHeaders } = vi.hoisted(() => ({

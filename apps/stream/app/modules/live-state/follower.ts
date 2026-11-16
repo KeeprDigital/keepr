@@ -1,4 +1,4 @@
-import { createKeyedGuardedSequence } from '~/utils/guardedSequence';
+import { createKeyedGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 /**
  * Live State Follower: the client half of Sequenced Live State.

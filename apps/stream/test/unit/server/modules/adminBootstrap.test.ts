@@ -1,6 +1,6 @@
 import type { AdminBootstrapAccount, AdminBootstrapPort } from '~~/server/modules/admin-bootstrap';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { refusalFrom } from '~~/test/helpers/publicServerFailure';
 
 const { mockRuntimeConfig, mockRequestHeader } = vi.hoisted(() => ({
@@ -63,7 +63,7 @@ describe('the first-admin bootstrap guard', () => {
 
 		const failure = await refusalFrom(requireAdminBootstrapToken(stubH3Event()));
 		// Imported after resetModules so `instanceof` sees the guard's copy of the class.
-		const { ServiceConfigurationError } = await import('~~/server/utils/errors');
+		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
 		expect(failure).toMatchObject({
 			statusCode: 503,
@@ -83,7 +83,7 @@ describe('the first-admin bootstrap guard', () => {
 		const { requireAdminBootstrapToken } = await adminBootstrap();
 
 		const failure = await refusalFrom(requireAdminBootstrapToken(stubH3Event()));
-		const { ServiceConfigurationError } = await import('~~/server/utils/errors');
+		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
 		expect(failure).toMatchObject({
 			statusCode: 503,

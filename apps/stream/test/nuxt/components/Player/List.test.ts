@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, ref } from 'vue';
 import { createMockPlayer } from '~~/test/helpers/fixtures';
-import { nuxtUiStubs, UTableStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs, UTableStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import PlayerList from '~/components/Player/List.vue';
 
 const { openPlayerMatchHistory } = vi.hoisted(() => ({

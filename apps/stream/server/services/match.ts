@@ -7,7 +7,7 @@ import { and, eq, inArray, ne, notInArray, or, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { featureMatchAssignments, featureMatches, matches, rounds } from '~~/server/db/schema';
 import { observedSlotPairing } from '~~/server/services/featureMatch';
-import { chunkJsonRows, inJsonArray, selectForInsert } from '~~/server/utils/db';
+import { chunkJsonRows, inJsonArray, selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 import { pickManualWritable } from '~~/server/utils/provenance';
 
 /** A Match as Melee Sync writes one: with its result, which no manual write carries (ADR-0047). */

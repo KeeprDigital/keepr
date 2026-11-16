@@ -2,7 +2,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, reactive } from 'vue';
-import { useUnsavedChanges } from '~/composables/ui/useUnsavedChanges';
+import { useUnsavedChanges } from '@keepr/nuxt-layer/app/composables/ui/useUnsavedChanges';
 
 const handleSubmit = vi.fn();
 mockNuxtImport('useEventConfigSubmit', () => () => ({ handleSubmit }));

@@ -23,7 +23,7 @@ import {
 	normalizeImportedCardName,
 	normalizeImportedSetCode,
 } from '~~/server/utils/cardNameNormalization';
-import { chunkArray, SAFE_INARRAY_SIZE, selectForInsert } from '~~/server/utils/db';
+import { chunkArray, SAFE_INARRAY_SIZE, selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 import { throwRetryableUpstreamRefusal } from '~~/server/utils/retryableUpstreamRefusal';
 import { fetchScryfallCardById } from '~~/server/utils/scryfall';
 

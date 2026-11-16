@@ -1,5 +1,5 @@
 import { useDebounceFn } from '@vueuse/core';
-import { createKeyedGuardedSequence } from '~/utils/guardedSequence';
+import { createKeyedGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { createKeyedQueue } from '~/utils/keyedQueue';
 
 export interface FlushEntry<S, P> {

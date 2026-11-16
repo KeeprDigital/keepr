@@ -8,7 +8,7 @@ import {
 	LOCAL_DEVELOPER_USER_ID,
 	LOCAL_DEVELOPER_USER_NAME,
 } from '~~/shared/utils/localDeveloperAuth';
-import { UNavigationMenuStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { UNavigationMenuStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 vi.mock('~/composables/workflows/useEventLiveRefresh', () => ({
 	useEventLiveRefresh: vi.fn(),

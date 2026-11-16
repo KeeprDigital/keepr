@@ -1,4 +1,4 @@
-import { secretTokensMatch } from '~~/server/utils/secretTokenComparison';
+import { secretTokensMatch } from '@keepr/nuxt-layer/server/utils/secretTokenComparison';
 import { screenOutputSigningMac } from './capability';
 
 /**

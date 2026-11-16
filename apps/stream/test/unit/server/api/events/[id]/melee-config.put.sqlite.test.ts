@@ -6,7 +6,7 @@ import * as schema from '~~/server/db/schema';
 import { encryptMeleeCredential } from '~~/server/utils/meleeCredentialCrypto';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // PUT /api/events/:id/melee-config over real SQL and the real credential keyring:

@@ -11,7 +11,7 @@ import { opDeckLayout } from '~~/shared/utils/opDeckLayout';
 import { playerDisplayName } from '~~/shared/utils/playerName';
 import { useScreenModeFreshness } from '~/modules/screen-mode/freshness';
 import { useScreenModeHearing } from '~/modules/screen-mode/hearing';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { preloadImages } from '~/utils/preloadImage';
 
 const DECK_LOAD_FAILED = 'Failed to load deck';

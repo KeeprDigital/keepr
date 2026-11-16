@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, reactive, ref } from 'vue';
 import { ATRAXA, typedSeat } from '~~/test/helpers/commanders';
 import { opSlotSide } from '~~/test/helpers/opCards';
-import { UInputMenuStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { UInputMenuStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import DeckSourceField from '~/components/Screen/DeckSourceField.vue';
 
 // The Deck Source picker (ADR-0032): a tab per source its Event's Card Game offers,

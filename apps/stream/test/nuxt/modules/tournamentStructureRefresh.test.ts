@@ -7,7 +7,7 @@ import {
 	createMockPhase,
 	createMockRound,
 } from '~~/test/helpers/fixtures';
-import { settleUntil, settleUntilStill } from '~~/test/helpers/settle';
+import { settleUntil, settleUntilStill } from '@keepr/nuxt-layer/test/helpers/settle';
 import { realtimeHandlersFor } from '~~/test/nuxt/helpers/realtimeEventSession';
 
 /*

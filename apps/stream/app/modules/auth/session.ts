@@ -7,7 +7,7 @@
  * session is this browser's claim to be them.
  */
 
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { authClient } from './client';
 
 /** Who this browser is signed in as, as much of it as any surface here needs. */

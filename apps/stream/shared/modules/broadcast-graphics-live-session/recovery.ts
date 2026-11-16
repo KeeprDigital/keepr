@@ -7,7 +7,7 @@ import {
 	SUPPORTED_SOCIAL_NETWORK_BY_KEY,
 	SUPPORTED_SOCIAL_NETWORK_KEYS,
 } from '../../socialProfiles';
-import { isPlainRecord } from '../../utils/plainObject';
+import { isPlainRecord } from '@keepr/nuxt-layer/shared/utils/plainObject';
 import { createInitialBroadcastGraphicInputsState } from './inputs';
 import { createInitialBroadcastGraphicsLiveState } from './playout';
 import { MAX_SOCIAL_PROFILE_PRESENTATION_LAYERS } from './socialProfiles';

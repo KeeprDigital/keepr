@@ -3,7 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { chunkRowsWithinParameterBudget } from '~~/server/utils/db';
+import { chunkRowsWithinParameterBudget } from '@keepr/nuxt-layer/server/utils/db';
 import { createMiniflareD1Harness } from '~~/test/helpers/miniflare-d1';
 
 // Opening Sessions for more than a hundred Slots stays within D1's bound-parameter limit (#728).

@@ -3,7 +3,7 @@ import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TOP_CUT_BRACKET_SIZES } from '~~/shared/screenModeConfigs/topCut';
 import { screenModeConfigContract } from '~~/shared/screenModes';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import BracketSizeField from '~/components/Screen/Modes/TopCut/BracketSizeField.vue';
 
 // A Top Cut Bracket's size: sized from its first Round until one is picked, a set size only enlarging it.

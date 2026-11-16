@@ -16,14 +16,13 @@
 
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
+import process from 'node:process';
 import { getPlatformProxy } from 'wrangler';
 
-const migrationsDirectory = fileURLToPath(
-	new URL('../../server/db/migrations/sqlite', import.meta.url),
-);
-const wranglerConfigPath = fileURLToPath(new URL('../../wrangler.jsonc', import.meta.url));
+// Of the app under test: every Vitest run has that app's directory as its working directory.
+const migrationsDirectory = resolve(process.cwd(), 'server/db/migrations/sqlite');
+const wranglerConfigPath = resolve(process.cwd(), 'wrangler.jsonc');
 
 /**
  * The deployed runtime's compatibility date, read from the real config so this

@@ -6,7 +6,7 @@ import { createBoundedByteStream } from '~~/server/modules/graphics-asset-librar
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
 import { requireUserId } from '~~/server/utils/auth';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
-import { getBoundedRequestBodyStream } from '~~/server/utils/payloadLimits';
+import { getBoundedRequestBodyStream } from '@keepr/nuxt-layer/server/utils/payloadLimits';
 import { GRAPHICS_MULTIPART_PART_BYTES } from '~~/shared/utils/graphicsAssetCompatibility';
 
 export default defineEventHandler(async (event) => {

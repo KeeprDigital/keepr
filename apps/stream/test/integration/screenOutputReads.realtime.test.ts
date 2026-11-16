@@ -3,7 +3,7 @@ import type { ScreenResponse } from '~~/shared/api';
 import Ably from 'ably';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { screenRealtimeChannel } from '../../shared/utils/realtimeChannels';
-import { LOAD_TOLERANT_WAIT_MS } from '../helpers/loadTolerantBounds';
+import { LOAD_TOLERANT_WAIT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
 import { $fetch, anonymousFetch } from './client';
 import { integrationRealtimeConfigured } from './realtimeKey';
 

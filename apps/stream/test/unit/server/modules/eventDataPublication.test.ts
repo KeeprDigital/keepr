@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_REALTIME_MESSAGE_BYTES, realtimeMessageBytes } from '~~/shared/types/messages';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 
 /** The storage ceiling a Screen's `modeConfigs` is bounded by, from the Screen schema. */
 const MAX_MODE_CONFIGS_BYTES = 512 * 1024;

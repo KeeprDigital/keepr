@@ -1,6 +1,6 @@
 import type { DbEventTalent } from '~~/server/db/schema';
 import type { TalentResponse } from '~~/shared/api';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 
 export function mapTalentToResponse(talent: DbEventTalent): TalentResponse {
 	const {

@@ -12,7 +12,7 @@ import {
 	createCommandIdSequence,
 	seedBroadcastGraphicsScreen,
 } from '~~/test/helpers/broadcastGraphicsScreen';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // A Broadcast Graphics Live Session command through its route, over real SQL: what the

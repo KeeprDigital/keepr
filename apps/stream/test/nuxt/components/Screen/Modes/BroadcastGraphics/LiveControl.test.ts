@@ -16,7 +16,7 @@ import {
 	graphicInputTraces,
 } from '~~/shared/modules/broadcast-graphics-live-session';
 import { createEmptyGraphicBindingDataSet } from '~~/shared/modules/graphics';
-import { UInputMenuStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { UInputMenuStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import LiveControl from '~/components/Screen/Modes/BroadcastGraphics/LiveControl.vue';
 

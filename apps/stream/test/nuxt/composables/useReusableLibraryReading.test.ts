@@ -1,7 +1,7 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 import { GRAPHICS_AUTHOR_SIGNED_OUT_MESSAGE } from '~/composables/useGraphicsAuthorship';
 
 const { mockLoad, mockNavigateTo, mockRoute } = vi.hoisted(() => ({

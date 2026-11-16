@@ -3,10 +3,10 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { mapMeleePlayersToDb } from '~~/server/mappers/melee';
-import { stubH3Event } from '~~/test/helpers/h3Event';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 import { meleeCompetitor, meleeMatch, meleePlayer } from '~~/test/helpers/meleeFixtures';
-import { providerRefusal } from '~~/test/helpers/providerRefusal';
+import { providerRefusal } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 /*

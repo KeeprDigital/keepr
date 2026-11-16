@@ -25,7 +25,7 @@ import {
 	storedGraphicAssets,
 	storedRevisionContent,
 } from '~~/test/helpers/graphicsLibrary';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { publicServerFailure } from '~~/test/helpers/publicServerFailure';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 

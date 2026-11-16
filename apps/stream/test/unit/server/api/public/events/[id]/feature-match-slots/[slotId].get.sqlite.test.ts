@@ -9,7 +9,7 @@ import * as schema from '~~/server/db/schema';
 import { createInitialFeatureMatchState } from '~~/shared/types/featureMatchState';
 import { scryfallCardImageUrl } from '~~/shared/utils/scryfallCardImage';
 import { ATRAXA, KRAUM, TYMNA, typedSeat } from '~~/test/helpers/commanders';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { fakeOpCardBulkLookup, mockOpWriteBoundaries } from '~~/test/helpers/opCards';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 

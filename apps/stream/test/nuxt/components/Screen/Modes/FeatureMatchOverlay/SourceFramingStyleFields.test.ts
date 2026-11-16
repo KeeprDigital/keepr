@@ -1,7 +1,7 @@
 import type { FeatureMatchSourceFramingStyle } from '~~/shared/types/screenConfig';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
-import { nuxtUiStubs, UFormFieldBesideStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs, UFormFieldBesideStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import SourceFramingStyleFields from '~/components/Screen/Modes/FeatureMatchOverlay/SourceFramingStyleFields.vue';
 
 // A Source Item edits its shape: corner radii, through the shared corner editor,

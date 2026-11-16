@@ -10,7 +10,7 @@ import {
 } from '~~/server/services/match';
 import { diffRoundMatches, standingsDiffer } from '~~/server/services/meleeRoundDiff';
 import { buildMarkRoundSyncedQuery } from '~~/server/services/round';
-import { chunkJsonRows, selectForInsert } from '~~/server/utils/db';
+import { chunkJsonRows, selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 
 export interface MeleeRoundSnapshotInput {
 	eventId: number;

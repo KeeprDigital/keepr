@@ -16,7 +16,7 @@ import {
 } from '~~/shared/screenModeConfigs/fields';
 import { SCREEN_MODES, screenModeConfigContract } from '~~/shared/screenModes';
 import { placeScreenThemeTokens } from '~~/shared/screenThemeOverrides';
-import { isPlainRecord } from '~~/shared/utils/plainObject';
+import { isPlainRecord } from '@keepr/nuxt-layer/shared/utils/plainObject';
 
 /**
  * A Screen Mode's settings page as its contract and Mode Tokens describe it

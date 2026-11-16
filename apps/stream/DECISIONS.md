@@ -1399,7 +1399,7 @@ The #612 three-way merge keeps a local edit over a conflicting baseline. After a
 - A guarded modal renders its own close button in the header's `actions` slot with `:close="false"`. Nuxt UI wraps its built-in close in reka-ui's `DialogClose`, which closes the dialog whatever the button's `onClick` does, so it cannot wait for `confirmDiscard`.
 - A guarded modal renders its own close button in the header's `actions` slot with `:close="false"`. Nuxt UI wraps its built-in close in reka-ui's `DialogClose`, which closes the dialog whatever the button's `onClick` does, so it cannot wait for `confirmDiscard`.
 - Talents keep their reset after a save. A staged Talent with no id merges in beside the one the save created (#612), so the card resets to the Event rather than settling.
-- `test/nuxt/composables/ui/useForm.test.ts` and `useEventConfigForm.test.ts` cover the settle. The Feature Match panel, Event Controls and Event settings card tests have the mocked store write back a normalized answer, and the form must read clean.
+- `packages/nuxt-layer/test/nuxt/composables/ui/useForm.test.ts` and `useEventConfigForm.test.ts` cover the settle. The Feature Match panel, Event Controls and Event settings card tests have the mocked store write back a normalized answer, and the form must read clean.
 
 ### Rejected alternatives
 
@@ -3194,7 +3194,7 @@ A projection on the device's own time is taken again the moment the first sync l
 
 **No clock projection holds a timer of its own.** The rule of each stays where it was (`shared/modules/page-rotation`, `shared/modules/talent-screen`, `shared/utils/card/timeout.ts`, `shared/utils/roundClock.ts`, `shared/utils/clock.ts`); only what calls it, and when, moved. A Page Rotation's pages and a Social Profile Rotation's steps are counted on one interval rule (`shared/utils/interval.ts`); what a step means stays with each.
 
-**A sync trusts its tightest sample, and eases a small correction in.** `useServerTime` (`app/composables/core/useServerTime.ts`) takes the offset of the sample with the shortest round trip, since a round trip bounds its sample's error to half of itself and an average only adds the looser samples' error. A sample over the round trip ceiling still counts only while no offset is held.
+**A sync trusts its tightest sample, and eases a small correction in.** `useServerTime` (`packages/nuxt-layer/app/composables/core/useServerTime.ts`) takes the offset of the sample with the shortest round trip, since a round trip bounds its sample's error to half of itself and an average only adds the looser samples' error. A sample over the round trip ceiling still counts only while no offset is held.
 
 | Correction                                          | Applied                                                            |
 | --------------------------------------------------- | ------------------------------------------------------------------ |
@@ -3222,11 +3222,11 @@ A correction applied as a step moves server time by its whole size between two r
 - The Broadcast Graphics playout clock and Graphic Animation timing are not clock projections of this kind and keep their own timing. Playout changes on every frame, so it is read on a frame clock (`useFrameClock`, `app/composables/core/useFrameClock.ts`): server time read again each animation frame while anything is in motion, and no frame once all of it has settled. Every Broadcast Graphics surface's playout clock is one.
 - A Feature Match Session clock running out, which starts overtime, and the Edit Match State clock field read the clock's projection on server time, so neither disagrees with the clock display beside it on a device whose clock is off.
 - While a correction is eased in, two outputs of one clock can differ by up to what is left of it, at most the threshold and for at most five seconds. Before, they differed by the whole correction until each next synced.
-- A wait timed while a correction is eased in is as long on the device as server time takes to reach the change (`deviceDelayFor`), rounded up to the millisecond, so a change lands on its server instant during a correction as it does outside one. A fake of `useServerTime` that the scheduler runs on answers `deviceDelayFor` too; `test/nuxt/helpers/serverTime.ts` is the one such fake.
+- A wait timed while a correction is eased in is as long on the device as server time takes to reach the change (`deviceDelayFor`), rounded up to the millisecond, so a change lands on its server instant during a correction as it does outside one. A fake of `useServerTime` that the scheduler runs on answers `deviceDelayFor` too; `packages/nuxt-layer/test/nuxt/helpers/serverTime.ts` is the one such fake.
 - "Synced" still means an offset is held. A missed re-sync keeps the offset held, and a correction under way runs to its end.
 - A device whose clock is changed by more than half a second is put right within a few seconds, or once the server answers; by less, at the next sync, eased in like any small correction ([#1203](https://github.com/KeeprDigital/stream-keepr/issues/1203)).
 - The thresholds are starting values chosen so an eased correction completes within five seconds; tune them if an artefact shows on air.
-- Tests: `test/nuxt/composables/core/useServerTime.test.ts` holds the sync's rules. `test/nuxt/composables/core/useClockProjection.test.ts` holds the scheduler's rules. Each consumer keeps one case that it passes its projection and shows the answer: `useClockDisplay.test.ts`, `useRoundClockModeData.test.ts`, `screenModePagination.test.ts`, `useTalentModeData.test.ts` and `stores/card.test.ts`.
+- Tests: `packages/nuxt-layer/test/nuxt/composables/core/useServerTime.test.ts` holds the sync's rules. `test/nuxt/composables/core/useClockProjection.test.ts` holds the scheduler's rules. Each consumer keeps one case that it passes its projection and shows the answer: `useClockDisplay.test.ts`, `useRoundClockModeData.test.ts`, `screenModePagination.test.ts`, `useTalentModeData.test.ts` and `stores/card.test.ts`.
 
 ### Rejected alternatives
 
@@ -3378,34 +3378,45 @@ Accepted · 2026-11-16.
 - **The history brought across with the files.** Thirty-two commits whose paths, package names and tooling match nothing here; the repository they are in stays readable.
 - **Their tests run from one root Vitest configuration.** Each package runs its own with no configuration at all, and a package is then whole in its directory.
 
-## ADR-0093: An app extends one shared Nuxt layer, which grows only when a second app needs what the first has
+## ADR-0093: Every app extends one shared Nuxt layer, which holds the foundation Stream Keepr had that is no product's own
 
 Accepted · 2026-11-16.
 
 ### Decision
 
-**`packages/nuxt-layer` (`@keepr/nuxt-layer`) is the Nuxt layer every app of the workspace extends.** It holds what an app is before it is anything else: client rendering, Nuxt UI and its colours, the colour mode, strict TypeScript, and the Cloudflare Workers target.
+**`packages/nuxt-layer` (`@keepr/nuxt-layer`) is the Nuxt layer every app of the workspace extends.** It holds what an app is before it is anything else: client rendering, Nuxt UI, VueUse, the colour mode, strict TypeScript and the Cloudflare Workers target.
 
-**Anything else two apps share joins the layer when the second app needs it, in the change that moves the first app onto it.** Nothing is copied from one app to another, and nothing is extracted ahead of a second use.
+**It also holds the foundation Stream Keepr had built that is not about streaming: moved there in one pass, before Score Keepr needed any of it.**
 
-**Score Keepr is scaffolded on it, not built.** `apps/score` is a Nuxt app with one page, which names the Pairing and Standings Engines and the version each reports. It has no sign-in, no database and no deployment.
+- Server: the errors a route reports (`StateConflictError`, `ServiceConfigurationError`, `TemporarilyUnavailableError`), the D1 parameter helpers, the request-body ceiling and its route rule, shared-secret checks, error-log fields.
+- Client: the request-feedback, form, unsaved-changes and async-action composables, the store helpers, server time, the failure sentences, and the confirm, empty, loading, search and tab components.
+- Tests: the Nuxt UI stubs, `deferred`, the h3 event, the load-tolerant waits, the credential guard, and the Vitest pieces both apps' configurations name.
+
+**A file keeps the path it had, under the layer.** The server's errors module is `packages/nuxt-layer/server/utils/errors.ts`, so Nuxt and Nitro auto-import it as before, and code that names it imports `@keepr/nuxt-layer/server/utils/errors`.
+
+**The layer registers no route and no middleware.** An app states its own API surface and the order its middleware runs in, calling the layer's code from a file of its own.
+
+**The layer stands alone.** Its typecheck and its tests run in its own directory, as an app with nothing but itself, and each rule's tests moved with the rule.
 
 ### Why
 
-- **A second app would otherwise begin as a copy of the first's configuration**, and the two would drift from the day it was made.
-- **What Stream Keepr could share is not yet separable from what is its own.** Its sign-in names its host, its error mapping imports its graphics errors, its user administration sits behind its graphics token. Extracting one of them is a change to a deployed app, worth making when Score Keepr needs that piece and can prove the extraction by using it.
-- **The scaffold proves the workspace before anything is built on it.** Score Keepr is the first app to import a package: its typecheck, its tests and its Worker build all read the engines' source, `.ts`-suffixed imports included (ADR-0092).
+- **Score Keepr starts on what Stream Keepr learned, not beside it.** Extracted later, piece by piece, each piece would have been copied first and reconciled after; extracted once, there is one of each from Score Keepr's first route.
+- **A layer that typechecks alone cannot lean on an app.** That run found the one hidden dependency of the move, a component using VueUse through Stream Keepr's module list, which no import statement showed.
+- **Routes and middleware stay in the app because their meaning is in their company.** Stream Keepr's body ceiling runs after its session check, and its count of public routes is a decision record (ADR-0010) held by a test that reads the routes on disk. A route arriving from a layer would be in neither.
 
 ### Consequences
 
-- Stream Keepr does not extend the layer yet. Its configuration states the same shell itself, until the change that moves it across re-proves its build, its Worker smoke and the validator's fingerprint.
-- A layer's own files are named from the layer's directory: `~` is the app that extends it.
-- CI has a `Score Keepr` job (typecheck, tests, build), and `pnpm verify` and `pnpm verify:quick` at the root run the same before Stream Keepr's gates. Its build and typecheck take run slots through Stream Keepr's script, by path, until those scripts move to the root (ADR-0091).
-- A change to Score Keepr runs every gate of Stream Keepr, and a `feat` or `fix` to it counts toward Stream Keepr's version, until CI's scope and the release are per app (ADR-0091).
-- The new importers of the lockfile name the versions Stream Keepr already resolves, so adding the app changed no dependency of Stream Keepr's.
+- Stream Keepr's build is the same with the shell in the layer: the files that differ from a build before it are the ones that differ between any two builds.
+- What is generic in purpose but still written around Stream Keepr stayed, each for a named reason: sign-in (its host, its bypass and its tables are Stream Keepr's), the `/api` session boundary (its exemptions are routes), the Nitro error mapping (it imports graphics and Melee errors), realtime (channels are an Event's), and the D1 and R2 test harnesses (typed by an app's Worker bindings, which the layer has none of).
+- Two modules were split to move their generic half: the Deck-source errors are `server/utils/deckSourceErrors.ts`, and the TCG+ ceiling is `shared/utils/tcgPlusImportLimits.ts`.
+- Neither app sets Nuxt UI's colours. Stream Keepr's `app.config.ts` was at the app's root, where Nuxt 4 does not read it, so the app has always shown the defaults; the file is gone, and the palette is a decision still to make.
+- The lockfile's new importers name the versions Stream Keepr already resolves, so no dependency of Stream Keepr's changed.
+- The layer's typecheck and tests run with the packages' (`pnpm typecheck:packages`, `pnpm test:packages`), in CI's `Packages` job.
+- A change to the layer or to Score Keepr runs every gate of Stream Keepr, until CI's scope is per app (ADR-0091).
 
 ### Rejected alternatives
 
-- **The layer filled now with everything generic in Stream Keepr.** Each piece would move without a second user to say what its seam should be, through a change to the deployed app that nothing yet needs.
+- **Extraction on demand**, each piece moving when Score Keepr first needed it. It was the first decision here, reversed the same day: it defers the cost without reducing it, and leaves the second app to be built against a foundation that is not there yet.
 - **Score Keepr started from a copy of Stream Keepr.** It would inherit more than fifty tables, a realtime plugin and a deploy procedure for a product it is not.
+- **Routes and middleware registered by the layer.** Convenient for the second app, and invisible in the first: see Why.
 - **A layer inside one app, or a `layers/` directory at the root.** The workspace already has one place for what apps share, and a package there is linked, versioned and linted like the others.

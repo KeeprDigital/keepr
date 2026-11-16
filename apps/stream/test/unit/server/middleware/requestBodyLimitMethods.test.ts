@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MAX_API_REQUEST_BODY_BYTES } from '~~/server/utils/payloadLimits';
-import { MUTATION_BODY_METHODS } from '~~/shared/utils/requestBodyLimits';
+import { MAX_API_REQUEST_BODY_BYTES } from '@keepr/nuxt-layer/server/utils/payloadLimits';
+import { MUTATION_BODY_METHODS } from '@keepr/nuxt-layer/shared/utils/requestBodyLimits';
 
 // Which requests the body limit bounds, and at which limit: every mutation
 // method at the general one, and a route's own only for the method it names.

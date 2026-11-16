@@ -1,7 +1,7 @@
 import type { Component } from 'vue';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import BackgroundLayersTokenInput from '~/components/Theme/BackgroundLayersTokenInput.vue';
 import FillTokenInput from '~/components/Theme/FillTokenInput.vue';
 import SurfaceStyleTokenInput from '~/components/Theme/SurfaceStyleTokenInput.vue';

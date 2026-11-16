@@ -1,6 +1,6 @@
 import type { DbPlayer } from '~~/server/db/schema';
 import type { PlayerResponse } from '~~/shared/api';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 
 export function mapPlayerToResponse(player: DbPlayer): PlayerResponse {
 	const {

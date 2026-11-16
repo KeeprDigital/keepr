@@ -15,7 +15,7 @@ import {
 	publishedRevision,
 	seedGraphicAssetRevision,
 } from '~~/test/helpers/graphicsLibrary';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // A Theme's and a Screen Theme Override's library content, over the real routes,

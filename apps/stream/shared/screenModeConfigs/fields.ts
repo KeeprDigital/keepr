@@ -1,7 +1,7 @@
 import type { EventListResponse } from '../api';
 import type { EventReferenceKind } from './eventReferences';
 import { z } from 'zod';
-import { isPlainRecord } from '../utils/plainObject';
+import { isPlainRecord } from '@keepr/nuxt-layer/shared/utils/plainObject';
 
 /**
  * The cards of a Screen's settings page, in the order it shows them (#1060):

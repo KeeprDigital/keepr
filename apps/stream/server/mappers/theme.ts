@@ -1,6 +1,6 @@
 import type { DbTheme } from '~~/server/db/schema';
 import type { ScreenOutputTheme, ThemeResponse, ThemeSummary } from '~~/shared/types/theme';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 
 export function mapThemeToResponse(theme: DbTheme): ThemeResponse {
 	return mapTimestamps({

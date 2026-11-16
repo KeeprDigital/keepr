@@ -3,7 +3,7 @@ import type {
 	BroadcastDeckListResponse,
 	BroadcastDeckListSummaryResponse,
 } from '~~/shared/types/broadcastDeckList';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 
 export interface BroadcastDeckListAggregate extends DbBroadcastDeckList {
 	entries: DbBroadcastDeckListEntry[];

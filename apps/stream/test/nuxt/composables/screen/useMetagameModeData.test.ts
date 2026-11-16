@@ -73,7 +73,7 @@ mockNuxtImport('useScreenModeConfig', () => () => computed(() => mutableConfig))
 const mockIsSynced = ref(true);
 let mockServerNow = 1_000_000;
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		isSynced: mockIsSynced,
 		getServerTime: () => mockServerNow,
 	})),

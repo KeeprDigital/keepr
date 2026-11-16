@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { screenOutputAssetCapabilityManagerForEvent } from '~~/server/modules/screen-output-assets/runtime';
-import { TemporarilyUnavailableError } from '~~/server/utils/errors';
+import { TemporarilyUnavailableError } from '@keepr/nuxt-layer/server/utils/errors';
 import { screenOutputReadNotFound } from '~~/server/utils/screenOutputRead';
 
 const bodySchema = z

@@ -23,7 +23,7 @@ import {
 	squareShapeGeometry,
 } from '~~/shared/modules/graphics';
 import { applicationGraphicFont } from '~~/shared/types/graphics';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { graphic, text } from '~~/test/helpers/graphicsComposition';
 import { liveSessionSelectors } from '~~/test/nuxt/helpers/broadcastGraphicsLiveSessionReads';
 import { stubDocumentFonts } from '~~/test/nuxt/helpers/fontFaces';

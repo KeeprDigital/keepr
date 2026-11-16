@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { selectForInsert } from '~~/server/utils/db';
+import { selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 
 /**
  * #467: `db.insert(t).select(sql`…`)` emits its column list from the table's

@@ -4,7 +4,7 @@ import type { BroadcastDeckListResponse } from '~~/shared/types/broadcastDeckLis
 import Ably from 'ably';
 import { describe, expect, it } from 'vitest';
 import { eventRealtimeChannel } from '../../shared/utils/realtimeChannels';
-import { LOAD_TOLERANT_WAIT_MS } from '../helpers/loadTolerantBounds';
+import { LOAD_TOLERANT_WAIT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
 import { $fetch, anonymousFetch, fetch } from './client';
 import { queryIntegrationD1 } from './integrationD1';
 import { INTEGRATION_ABLY_API_KEY, integrationRealtimeConfigured } from './realtimeKey';

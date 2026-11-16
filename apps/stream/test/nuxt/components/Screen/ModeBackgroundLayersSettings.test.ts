@@ -5,7 +5,7 @@ import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, ref } from 'vue';
 import { createMockScreen } from '~~/test/helpers/fixtures';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import { screenSettingsPage } from '~~/test/nuxt/helpers/screenThemeOverrides';
 import Settings from '~/components/Screen/ModeBackgroundLayersSettings.vue';
