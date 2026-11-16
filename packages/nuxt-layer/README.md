@@ -1,6 +1,6 @@
 # @keepr/nuxt-layer
 
-The Nuxt layer every Keepr app extends (ADR-0093 in `apps/stream/DECISIONS.md`).
+The Nuxt layer every Keepr app extends (ADR-0093, in the root `docs/adr`).
 
 ```ts
 export default defineNuxtConfig({

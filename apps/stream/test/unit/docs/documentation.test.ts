@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -9,7 +9,13 @@ function readDocument(name: string): string {
 }
 
 /** The documents agents and maintainers navigate between. CHANGELOG.md is generated. */
-const NAVIGATED_DOCUMENTS = ['README.md', 'GLOSSARY.md', 'RULES.md', 'DECISIONS.md', 'AGENTS.md'];
+const NAVIGATED_DOCUMENTS = [
+	'README.md',
+	'GLOSSARY.md',
+	'RULES.md',
+	'AGENTS.md',
+	...readdirSync(join(repositoryRoot, 'docs/adr')).map((name) => `docs/adr/${name}`),
+];
 
 /** Markdown without its fenced code blocks, which hold no heading or link. */
 function withoutFences(markdown: string): string {

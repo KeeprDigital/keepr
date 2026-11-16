@@ -70,4 +70,4 @@ CI runs the typecheck, the tests and the speed targets in its `Packages` job (`.
 - `pairing` and `standings` each depend on `engine-core` only. Importing one from the other does not resolve: the workspace does not hoist its own packages (`hoistWorkspacePackages` in `pnpm-workspace.yaml`).
 - Source is compiled against the language library alone. `console`, `fetch`, `process` and the DOM do not typecheck, so engine code cannot do I/O by accident. A package's tests are a second program (`test/tsconfig.json`) that may use Node.
 - Every export in a package states its types in full (isolated declarations). The typecheck fails otherwise, and the lint flags exported functions that leave them out.
-- Packages are consumed as TypeScript source. Nothing is built or published (ADR-0092 in `apps/stream/DECISIONS.md`).
+- Packages are consumed as TypeScript source. Nothing is built or published (ADR-0092, in the root `docs/adr`).

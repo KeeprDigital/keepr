@@ -11,9 +11,9 @@ Every point here has been agreed. The Standings Engine is specified in `docs/sta
 - **Out of scope**:
   - Pairings of more than two Entrants.
   - Presets named after a publisher. Several publishers do not publish their algorithm.
-  - Statistically uniform random draws (ADR 0005).
+  - Statistically uniform random draws (ADR-0100).
   - Table numbers.
-  - Results, point values and tiebreakers (ADR 0001). These belong to the Standings Engine.
+  - Results, point values and tiebreakers (ADR-0096). These belong to the Standings Engine.
   - Drops, Late Entries, Awarded Byes, pods, age divisions and locked Pairings. The Consumer handles these by choosing which Entrants to pass, one call per subset.
 
 ## Package
@@ -21,7 +21,7 @@ Every point here has been agreed. The Standings Engine is specified in `docs/sta
 - TypeScript, ESM, no third-party runtime dependencies. Runs in a browser or on a server, offline. Private for now.
 - One repository, three packages: pairing, standings, and a small shared package. Pairing and standings do not depend on each other.
 - Three synchronous pure functions: one per kind of Pairing System, and one that checks Pairings made by hand. Input and output are plain JSON.
-- No clock, no I/O, no unseeded randomness, no Consumer-supplied functions (ADR 0002).
+- No clock, no I/O, no unseeded randomness, no Consumer-supplied functions (ADR-0097).
 - Never throws. Invalid input returns an error value and no Pairings.
 - The same input gives the same output, whatever order the Entrants or any list inside the input arrive in.
 
@@ -77,14 +77,14 @@ The v1 catalogue. A Constraint left out of the Configuration is not applied at a
 
 - A broken yes/no Constraint is reported as a Violation.
 - A measured Constraint is never a Violation. A Pair-down is reported as a note on its Pairing, with the Score gap.
-- Shuffle Positions always decide last and are not part of the Configuration (ADR 0005).
+- Shuffle Positions always decide last and are not part of the Configuration (ADR-0100).
 - "No rematch" is yes or no per Pairing. Two earlier meetings count the same as one.
 - With an odd count, the pair-by-Rank Constraints leave out the Bye recipient and pair the rest.
 - The exact formula for every measure is in `packages/pairing/RULES.md`.
 
 ### Priority
 
-Strict (ADR 0003). A higher Constraint is never traded against any number of lower ones. The order in the Configuration is the whole story.
+Strict (ADR-0098). A higher Constraint is never traded against any number of lower ones. The order in the Configuration is the whole story.
 
 ### Starting Configuration
 
@@ -115,7 +115,7 @@ A result holds:
 - Whether the result is proven best.
 - The round number and the engine version.
 
-"Proven best" means no other set of Pairings does better under the priority order (ADR 0004). A proven Violation count is the lowest possible given every higher Constraint. It does not mean those particular Entrants had to be the ones.
+"Proven best" means no other set of Pairings does better under the priority order (ADR-0099). A proven Violation count is the lowest possible given every higher Constraint. It does not mean those particular Entrants had to be the ones.
 
 **The built-in ceiling.** With no work limit given, a field is allowed 50,000 steps plus 2,000 for each Entrant times the number of binary digits in the count. It exists so a fault inside the matcher can never hang a call; the worst outcome is a result marked not proven. Every loop in the matcher that could run away counts a step. It is far above anything measured: whole events of up to 20,001 Entrants stay under a twentieth of it, and the heaviest single round found stays under a hundredth. A Consumer who wants more, or less, passes a work limit.
 
@@ -329,7 +329,7 @@ The Pairing Engine grows four ways, none of which breaks existing input:
 - a new Pairing System
 - a new function
 
-It never grows by seeing results (ADR 0001). Examples: sides or colours are a "times played first" fact plus a "balance sides" Constraint; Pair-down history is a "Pair-downs received" fact plus a Constraint.
+It never grows by seeing results (ADR-0096). Examples: sides or colours are a "times played first" fact plus a "balance sides" Constraint; Pair-down history is a "Pair-downs received" fact plus a Constraint.
 
 Known limits of what exists:
 
@@ -342,7 +342,7 @@ These would need a redesign, not an addition:
 - More than two Entrants per Pairing.
 - Constraints that judge the round as a whole. Every Constraint must be scoreable one Pairing at a time, so "make the single worst gap as small as possible" cannot be expressed.
 - Looking ahead to later rounds. The engine decides one round at a time.
-- Weighted trade-offs between Constraints (ADR 0003).
+- Weighted trade-offs between Constraints (ADR-0098).
 
 Chess to official federation rules fits as a new Pairing System, but is a large piece of work, not a catalogue entry.
 

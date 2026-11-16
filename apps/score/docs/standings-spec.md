@@ -183,5 +183,5 @@ Same promises as the Pairing Engine, each enforced by tests:
 
 ## Decision records
 
-- ADR 0006: the Standings Engine owns all points logic and calculates exactly.
-- ADR 0007: Presets are dated and never change.
+- ADR-0101: the Standings Engine owns all points logic and calculates exactly.
+- ADR-0102: Presets are dated and never change.

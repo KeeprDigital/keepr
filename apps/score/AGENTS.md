@@ -8,19 +8,20 @@ it will run on and how to run it.
 ## Domain docs
 
 - Before exploring, read `GLOSSARY.md` and the `docs/` sections touching your
-  area: the engines' specs, and their decision records in `docs/adr`.
+  area: the engines' specs, and the decisions in this app's `docs/adr` and
+  each engine package's.
 - Name domain concepts with `GLOSSARY.md` terms, never its `_Avoid_` synonyms,
   in this app and in the engine packages. A missing term is either invented
   language (reconsider) or a real gap (add it).
 - Stream Keepr's `GLOSSARY.md` is a different vocabulary for a different
   product: an Event there is not a Tournament here. Use each in its own app;
   the root `GLOSSARY-MAP.md` says how the two meet.
-- A decision about the engines is a new file in `docs/adr`, numbered from the
-  workspace's one sequence (ADR-0095): 0096 to 0106 are held for this app's
-  eleven, so the next is 0107 or later. A decision about the workspace or
-  about this app's place in it is a file in the root `docs/adr`. A decision is
-  written once; one that changes it leaves it only an `Amended by` or
-  `Superseded by` line.
+- A decision is a new file, numbered from the workspace's one sequence
+  (ADR-0095), beside the code it governs: an engine's in its package's
+  `docs/adr`, the Tournament Engine's in this app's `docs/adr` until it is a
+  package. A decision about the workspace or about this app's place in it is a
+  file in the root `docs/adr`. A decision is written once; one that changes it
+  leaves it only an `Amended by` or `Superseded by` line.
 
 ## What belongs where
 
