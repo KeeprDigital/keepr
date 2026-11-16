@@ -2,7 +2,7 @@
 
 Tournament engines: one decides who plays whom, one works out the standings. Both are pure functions with no runtime dependencies outside this repository.
 
-The app that runs a tournament with them is not built yet. This directory holds what it will be built from: the engines' specs, the decisions behind them, and the vocabulary. The engines themselves are packages of the Keepr workspace, in `packages/` at the repository's root, so any app can use them.
+The app that runs a tournament with them is scaffolded, not built: a Nuxt app (`@keepr/score`) on the workspace's shared layer, with one page that names the engines it reads. This directory also holds what it will be built from: the engines' specs, the decisions behind them, and the vocabulary. The engines themselves are packages of the Keepr workspace, in `packages/` at the repository's root, so any app can use them.
 
 ## Layout
 
@@ -22,8 +22,24 @@ Paths beginning `packages/` are from the repository's root; the rest are from th
 | `docs/adr/` | Decision records for the engines. |
 | `GLOSSARY.md` | The engines' vocabulary. Use these words. |
 | `docs/prototype-matcher/` | Throwaway prototype of the matcher. Not linted, formatted or run. |
+| `app/`, `test/`, `nuxt.config.ts` | The app's scaffold. |
+| `packages/nuxt-layer` | `@keepr/nuxt-layer`: what every Keepr app starts from. |
 
 Both engines are built. `docs/spec.md` and `docs/standings-spec.md` say what is measured and what is not. A third, the Tournament Engine, is designed in `docs/tournament-spec.md` and not yet built: it turns the record of a tournament into its current state and calls the other two.
+
+## The app
+
+In this directory:
+
+```
+pnpm dev          # the placeholder, on Nuxt's dev server
+pnpm typecheck
+pnpm test         # one page test, in the Nuxt environment
+pnpm build        # the Worker bundle; nothing deploys it yet
+pnpm verify       # the three above, as CI's `Score Keepr` job runs them
+```
+
+It extends `packages/nuxt-layer` (Nuxt UI, the colour mode, the Cloudflare Workers target) and adds only its own. It has no sign-in, no database and no deployment.
 
 ## Commands
 
