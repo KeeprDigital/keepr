@@ -2,6 +2,15 @@
 
 How the Pairing Engine decides which set of Pairings is best. This is the exact definition; `docs/spec.md` says why. Words are defined in `GLOSSARY.md`.
 
+## What the engine is given
+
+- For each present Entrant, finished facts only: its Score, the opponents it has faced, its Byes received, its Group Labels, and its Rank, which every Entrant needs when a Constraint uses Rank. The engine never sees Results, point values or Tiebreakers.
+- The Consumer keeps the facts consistent. The engine refuses only what they show to be wrong: two Entrants with one id, an Entrant listing itself as an opponent, or a present Entrant listing another present Entrant as an opponent who does not list it back.
+- The Configuration is data: Constraints from the tables below, in priority order, with their settings. A Constraint the tables do not hold is an input error.
+- A Configuration applies to the one call it comes with. No Constraint looks at the round number, so rules that change by round are a different Configuration in each call.
+- The engine ships no Presets.
+- The order of Entrants in the input never changes the result.
+
 ## Best
 
 Every set of Pairings gets one whole number per level. Lower is better. Sets are compared level by level, in order, and the first level that differs decides.
@@ -59,11 +68,21 @@ The last level, always.
 
 With no Constraint in play this is "shuffle, then pair neighbours".
 
+Among sets of Pairings the Constraints rate as equal, the choice is fixed by the Random Seed but is not a uniform pick: some come up more often than others.
+
+A change to how Shuffle Positions are made is a major release.
+
 ## The result
 
 - Within a Pairing: higher Score first, then better Rank when every Entrant has one, then lower Shuffle Position.
 - Between Pairings: by the higher Score, then the lower Score, then the best Rank in the Pairing when every Entrant has one, then the lowest Shuffle Position in the Pairing.
 - Violations are listed in Configuration order.
+- A result marked proven is a best set of Pairings as defined above, so each yes-or-no Constraint has the fewest Violations possible without scoring worse on a Constraint above it.
+- If the proof cannot be completed, or the work limit is hit, a simple pairing in Score order comes back instead, marked not proven.
+
+## Single Elimination
+
+The whole structure comes back from one call. A Slot after the first round names the winner of an earlier Pairing by its number, and the Consumer fills in winners: the engine never sees a Result here either.
 
 ## Limits today
 
@@ -72,5 +91,5 @@ With no Constraint in play this is "shuffle, then pair neighbours".
 - Those two limits keep the score of every Pairing an exact number.
 - Fields of up to 8 Entrants are solved by trying every set of Pairings.
 - With no work limit given, a field is allowed 50,000 steps plus 2,000 for each Entrant times the number of binary digits in the count.
-- Larger fields are solved by the matcher, which carries a proof that is checked on every call. If the proof cannot be completed, or the work limit is hit, a simple pairing in Score order comes back instead, marked not proven.
+- Larger fields are solved by the matcher, which carries a proof that is checked on every call.
 - If two sets of Pairings tie on every level, the engine's choice is fixed for a given version but is not defined here. With distinct positions this is not expected to happen.

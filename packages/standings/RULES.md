@@ -62,6 +62,8 @@ Higher is better unless stated.
 | `extra-score-total` | an Extra Score added up: scored `for`, scored `against` (**lower is better**), or the `difference` |
 | `later-losses` | the round number of each loss, squared, added up |
 
+Each value is returned twice: exact, as a fraction in lowest terms, and as a plain number for display only.
+
 Averages over opponents:
 
 - An opponent counts once per meeting, so one faced twice counts twice.
@@ -100,3 +102,7 @@ Each reproduces one dated rules document, and lists what that document leaves op
 - `pokemon-2026-09-01`: Play! Pokémon Tournament Rules Handbook, sections 5.3.3.1, 5.5.2.1 and 5.6.1.
 
 The worked examples in both documents are reproduced in `test/presets.test.ts`.
+
+A Preset never changes. A publisher's new rules get a new Preset beside the old one, and none is removed.
+
+The engine applies no Preset on its own. The Consumer passes the chosen Preset's Configuration and stores which Preset an event uses.
