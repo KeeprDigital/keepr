@@ -1,15 +1,43 @@
 # Pairing rules
 
-How the Pairing Engine decides which set of Pairings is best. This is the exact definition; `docs/spec.md` says why. Words are defined in `GLOSSARY.md`.
+What the Pairing Engine promises its callers, and exactly how it decides which set of Pairings is best. This is the exact definition. The reasons are in `docs/adr`; words are defined in `apps/score/GLOSSARY.md`, from the repository's root.
+
+## The calls
+
+- `pairRound` pairs one Swiss round, `buildStructure` lays out a whole Single Elimination, and `checkPairings` describes Pairings made by hand.
+- Each reads no clock, does no I/O and makes no random choice the Random Seed does not fix. The same input gives the same result at the same engine version.
+- None throws. Invalid input comes back as `ok: false` with every error found and no Pairings. A failure inside the engine comes back as the error `internal-error`.
+- Every result carries the engine version.
 
 ## What the engine is given
 
 - For each present Entrant, finished facts only: its Score, the opponents it has faced, its Byes received, its Group Labels, and its Rank, which every Entrant needs when a Constraint uses Rank. The engine never sees Results, point values or Tiebreakers.
 - The Consumer keeps the facts consistent. The engine refuses only what they show to be wrong: two Entrants with one id, an Entrant listing itself as an opponent, or a present Entrant listing another present Entrant as an opponent who does not list it back.
-- The Configuration is data: Constraints from the tables below, in priority order, with their settings. A Constraint the tables do not hold is an input error.
+- An opponent or a listed pair that names an Entrant not present is ignored.
+- The Configuration is data: Constraints from the tables below, in priority order, with their settings. A Constraint the tables do not hold is an input error. A Constraint not in the Configuration is not applied.
 - A Configuration applies to the one call it comes with. No Constraint looks at the round number, so rules that change by round are a different Configuration in each call.
-- The engine ships no Presets.
-- The order of Entrants in the input never changes the result.
+- The engine ships no Presets. It exports one Starting Configuration, `startingConfiguration`: `no-rematch`, `bye-cap` (max 1), `bye-to-lowest-score`, `pair-close-in-score`, `keep-top-clean`. It uses no Rank. The engine never applies it on its own: every call states its Configuration.
+- The round number feeds Shuffle Positions and is echoed back. Nothing else depends on it.
+- A work limit, when given, counts steps, never time.
+- The order of the Entrants, of the opponents each lists and of the listed pairs never changes the result. The order of the Configuration is its priority.
+
+## Input errors
+
+Every error found comes back, each with a code, a sentence for a person and the Entrants involved, in an order the input's order does not change. For a Swiss round, in `pairRound` and `checkPairings`:
+
+| Code | When |
+|---|---|
+| `duplicate-id` | Two Entrants have one id. |
+| `self-opponent` | An Entrant lists itself as an opponent. |
+| `one-sided-history` | A present Entrant lists another present Entrant as an opponent who does not list it back. |
+| `missing-rank` | An Entrant has no Rank and a Constraint uses Rank: `bye-to-lowest-rank`, either pair-by-Rank Constraint, or `pair-down-choice` with `from` or `opponent` other than `random`. |
+| `missing-configuration` | The Configuration is left out. |
+| `unknown-constraint` | A Constraint the tables do not hold. |
+| `missing-setting` | A Constraint leaves out one of its settings. Nothing is assumed. |
+| `duplicate-constraint` | A Constraint appears twice. A Group Label Constraint may appear once per kind. |
+| `unknown-field` | A field the engine does not know, at any level. |
+| `too-many-entrants` | More Entrants than one call can hold (§ Limits today). |
+| `invalid-input` | Any other malformed input, such as a Score outside its limits, a round number or `bye-cap` max below 1, or a pair to avoid naming one Entrant twice. |
 
 ## Best
 
@@ -39,6 +67,8 @@ Each scores 1 when broken and 0 otherwise. A broken one is reported as a Violati
 | `avoid-listed-pairs` | the two are a listed pair, either way round | never |
 
 ## Measured Constraints
+
+A measured Constraint is never reported as a Violation.
 
 | Constraint | A Pairing scores | The Bye scores |
 |---|---|---|
@@ -74,15 +104,37 @@ A change to how Shuffle Positions are made is a major release.
 
 ## The result
 
+- Every present Entrant appears exactly once: in a Pairing of two, or as the Bye. There is one Bye when N is odd and none when it is even. No Entrants gives an empty result, not an error; one Entrant gets the Bye.
+- A valid input is never refused. When the Constraints cannot all be met, the Pairings come back with their Violations, each naming the Constraint and the Entrants affected.
+- Each Pairing carries its gap. A gap above 0 marks a Pair-down.
 - Within a Pairing: higher Score first, then better Rank when every Entrant has one, then lower Shuffle Position.
 - Between Pairings: by the higher Score, then the lower Score, then the best Rank in the Pairing when every Entrant has one, then the lowest Shuffle Position in the Pairing.
-- Violations are listed in Configuration order.
-- A result marked proven is a best set of Pairings as defined above, so each yes-or-no Constraint has the fewest Violations possible without scoring worse on a Constraint above it.
-- If the proof cannot be completed, or the work limit is hit, a simple pairing in Score order comes back instead, marked not proven.
+- Violations are listed in Configuration order, and within one Constraint in the order of the Pairings, then the Bye.
+- A result marked proven is a best set of Pairings as defined above, so each yes-or-no Constraint has the fewest Violations possible without scoring worse on a Constraint above it. It does not mean those particular Entrants had to be the ones.
+- If the proof cannot be completed, or the work limit is hit, a simple pairing in Score order comes back instead, marked not proven. Its Violations are listed but are not claimed to be the fewest possible.
+- The round number comes back as given.
+
+## Checking hand-made Pairings
+
+- `checkPairings` takes a Swiss round's input, the Pairings and Byes to check, and whether to compare them with the best. It never refuses a set and never changes one. Only an invalid round input, or Pairings and Byes that are not lists of ids, are errors.
+- Coverage lists the present Entrants in no Pairing and no Bye, those appearing more than once, the ids that are not present Entrants, and how many Byes a complete set has: 1 when N is odd, otherwise 0. A half-finished set is described, not refused.
+- The Pairings between present Entrants come back in the order given, each with the higher Score first and its gap.
+- Violations are scored as in a pairing result, in Configuration order, and within one Constraint in the order of the Pairings given, then the Byes.
+- The comparison comes back only when asked for and the coverage is clean: nothing missing, repeated or unknown, and the right number of Byes. It costs a full pairing run.
+- The comparison gives, for each level in Configuration order, the score of the given set and of the best set. `pair-down-choice` gives two, marked `from` and `opponent`. Shuffle Positions are left out, so a hand-made set can be as good as the best.
+- `asGoodAsBest` is exact even where the scores are too large to be exact numbers. `provenBest` is false when the best could not be proven.
+- Checking a proven result against the input that made it finds the same Violations, and finds it as good as the best.
 
 ## Single Elimination
 
 The whole structure comes back from one call. A Slot after the first round names the winner of an earlier Pairing by its number, and the Consumer fills in winners: the engine never sees a Result here either.
+
+- Each Entrant brings an id and a Rank. Ranks must all differ; gaps are fine, only their order matters. No Configuration, Random Seed or history is used, so Entrants who have met before may meet again.
+- Places follow Rank, so the two best can meet only in the final. For eight: 1v8 and 4v5 feed one semi-final, 2v7 and 3v6 the other.
+- Any count from two up. When it is not a power of two, the best Ranks have no opponent in round one: they are listed as round one's Byes, best Rank first, and placed directly in round-two Slots.
+- Pairings are numbered from 1 across the whole structure, round by round.
+- There is no third-place Pairing, and never a Violation.
+- Errors: `shared-rank`, `duplicate-id`, `unknown-field`, `too-few-entrants` (fewer than two, when nothing else is wrong), and `invalid-input` for anything else malformed, a missing Rank included.
 
 ## Limits today
 

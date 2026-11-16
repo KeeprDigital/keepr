@@ -1,6 +1,6 @@
 # Tournament Engine v1 spec
 
-Turns the record of what happened in a tournament into the tournament as it stands, and makes the next entry in that record. Words are defined in `GLOSSARY.md`. Pairing is in `docs/spec.md`, Standings in `docs/standings-spec.md`.
+Turns the record of what happened in a tournament into the tournament as it stands, and makes the next entry in that record. Words are defined in `GLOSSARY.md`. Pairing is in `packages/pairing`, Standings in `packages/standings`: each package's `RULES.md` and `README.md`.
 
 Designed, not built. Every point here has been agreed.
 

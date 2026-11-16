@@ -6,7 +6,7 @@ Keepr has three vocabularies. Use each in its own code, and the shared one every
 
 - [Keepr](./GLOSSARY.md): what every app shares. Identity and access, and the shared layer's named modules.
 - [Stream Keepr](./apps/stream/GLOSSARY.md): producing the broadcast of a tournament. Its rules are in `apps/stream/RULES.md`.
-- [Score Keepr](./apps/score/GLOSSARY.md): running a tournament. The engine packages (`packages/pairing`, `packages/standings`, `packages/engine-core`) speak it too. Its rules are the specs in `apps/score/docs`.
+- [Score Keepr](./apps/score/GLOSSARY.md): running a tournament. The engine packages (`packages/pairing`, `packages/standings`, `packages/engine-core`) speak it too. Its rules are in `apps/score/RULES.md` and each engine package's `RULES.md`.
 
 ## Rules
 

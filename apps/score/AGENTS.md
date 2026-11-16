@@ -8,8 +8,8 @@ it will run on and how to run it.
 ## Domain docs
 
 - Before exploring, read `GLOSSARY.md` and the `docs/` sections touching your
-  area: the engines' specs, and the decisions in this app's `docs/adr` and
-  each engine package's.
+  area: `RULES.md` here and in each engine package, the Tournament Engine's
+  spec, and the decisions in this app's `docs/adr` and each engine package's.
 - Name domain concepts with `GLOSSARY.md` terms, never its `_Avoid_` synonyms,
   in this app and in the engine packages. A missing term is either invented
   language (reconsider) or a real gap (add it).
