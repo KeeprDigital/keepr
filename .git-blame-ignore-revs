@@ -1,0 +1,6 @@
+# Commits `git blame` reads past: the ones that only reformat.
+# GitHub reads this file by itself. For a local `git blame`:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style: Oxfmt formats the repository, and pnpm lint checks the formatting (#1221)
+1951fc986eb2b96599553981457044d2465e1d98
