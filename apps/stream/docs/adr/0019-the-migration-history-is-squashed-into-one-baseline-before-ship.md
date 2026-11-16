@@ -1,6 +1,6 @@
 # ADR-0019: The migration history is squashed into one baseline before ship
 
-Accepted · 2026-10-13, amended under #621 · Done a second time by ADR-0083, whose `0000_baseline_2.sql` replaces the `0000_baseline.sql` named here
+Accepted · 2026-10-13, amended under #621 · Amended by ADR-0083: the history is squashed again, into `0000_baseline_2.sql`, which replaces the `0000_baseline.sql` named here, so the wipe was not one-time and a database that applied `0000_baseline` is emptied rather than migrated
 
 ### Decision
 

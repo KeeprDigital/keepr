@@ -1,6 +1,6 @@
 # ADR-0016: One polymorphic Background Screen replaces Idle
 
-Accepted · 2026-08-24 · [#473](https://github.com/KeeprDigital/stream-keepr/issues/473) · Amended 2026-11-11: a Screen's stack starts as a copy of its Theme's · [#1086](https://github.com/KeeprDigital/stream-keepr/issues/1086)
+Accepted · 2026-08-24 · [#473](https://github.com/KeeprDigital/stream-keepr/issues/473) · Amended 2026-11-11: a Screen's stack starts as a copy of its Theme's · [#1086](https://github.com/KeeprDigital/stream-keepr/issues/1086) · Amended by ADR-0050: a Theme's media layers may take a Graphics Asset Library reference (#828)
 
 ### Decision
 

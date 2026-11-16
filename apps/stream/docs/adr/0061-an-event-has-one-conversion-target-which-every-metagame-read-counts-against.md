@@ -1,6 +1,6 @@
 # ADR-0061: An Event has one Conversion Target, which every Metagame read counts against
 
-Accepted · 2026-11-03 · [#908](https://github.com/KeeprDigital/stream-keepr/issues/908), settling [#783](https://github.com/KeeprDigital/stream-keepr/issues/783) Q13–Q16. Amends ADR-0022's list of what a Screen Output read derives.
+Accepted · 2026-11-03 · [#908](https://github.com/KeeprDigital/stream-keepr/issues/908), settling [#783](https://github.com/KeeprDigital/stream-keepr/issues/783) Q13–Q16. Amends ADR-0022's list of what a Screen Output read derives. · Amended by ADR-0074: a One Piece Card Game Event's Metagame has no standings, so it shows no Conversion Target or Conversion Rate
 
 ### Decision
 

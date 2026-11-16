@@ -2,7 +2,7 @@
 
 Was Score Keepr's ADR 0004 until ADR-0095 renumbered it.
 
-Swiss returns the best possible Pairings under the Constraint priority order and checks its own proof on every call, so a Violation it reports is one no other pairing could have avoided. We chose this over the usual approach of pairing each Score Group in turn and carrying leftovers down, because that approach cannot tell an unavoidable Violation from one it simply failed to avoid. Existing matching libraries were 100x too slow at 20,000 Entrants, so the engine carries its own matcher.
+Swiss returns the best possible Pairings under the Constraint priority order and checks its own proof on every call. A proven result's Violation count is the lowest possible given every higher Constraint; a result whose proof fails or hits the work limit is marked not proven. We chose this over the usual approach of pairing each Score Group in turn and carrying leftovers down, because that approach cannot tell an unavoidable Violation from one it simply failed to avoid. Existing matching libraries were 100x too slow at 20,000 Entrants, so the engine carries its own matcher.
 
 ## Considered Options
 

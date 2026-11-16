@@ -11,7 +11,7 @@ Each Preset reproduces one dated rules document. When a publisher changes its ru
 
 ## Consequences
 
-- A Preset exists only where its document specifies every setting. Any assumption is listed with the Preset.
+- A Preset exists only where its document settles the points and the Tiebreaker order. Every setting the document leaves open is chosen and listed with the Preset.
 - The Pairing Engine still ships no publisher Presets.
 - The list of Presets only grows.
 - The Consumer chooses which dated Preset an event uses and stores that choice.

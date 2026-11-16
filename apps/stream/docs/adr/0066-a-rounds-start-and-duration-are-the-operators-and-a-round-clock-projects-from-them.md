@@ -1,6 +1,6 @@
 # ADR-0066: A Round's start and duration are the operator's, and a Round Clock projects from them
 
-Accepted · 2026-11-04 · [#916](https://github.com/KeeprDigital/stream-keepr/issues/916). Records N1 b from [#783](https://github.com/KeeprDigital/stream-keepr/issues/783). Extends ADR-0040 and ADR-0046; follows ADR-0009 and ADR-0022 · Amended 2026-11-06 (ADR-0076): a Round Clock's Screen may count up after the end, to an optional limit
+Accepted · 2026-11-04 · [#916](https://github.com/KeeprDigital/stream-keepr/issues/916). Records N1 b from [#783](https://github.com/KeeprDigital/stream-keepr/issues/783). Extends ADR-0040 and ADR-0046; follows ADR-0009 and ADR-0022 · Amended 2026-11-06 (ADR-0076): a Round Clock's Screen may count up after the end, to an optional limit · Amended by ADR-0049 (#1077): the Round Clock reads its surface, type and Round name's colour from Foundation Tokens directly, and keeps only its pending, running and ended clock colours as Mode Tokens
 
 ### Decision
 

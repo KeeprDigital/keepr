@@ -1,6 +1,6 @@
 # ADR-0014: Animation Effects are rebuilt in-house on three.js
 
-Accepted · 2026-08-23, amended under #621 · [#473](https://github.com/KeeprDigital/stream-keepr/issues/473)
+Accepted · 2026-08-23, amended under #621 · [#473](https://github.com/KeeprDigital/stream-keepr/issues/473) · Amended by ADR-0049: a Theme stores Foundation Tokens only, so the frame effect is a Screen's Mode Token, set as its Screen Theme Override
 
 ### Decision
 

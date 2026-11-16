@@ -1,6 +1,6 @@
 # ADR-0030: A Graphics Authoring Lease is decided by the Screen write module and fenced at the commit
 
-Accepted · 2026-10-20 · [#607](https://github.com/KeeprDigital/stream-keepr/issues/607) · Amended 2026-11-03: the Feature Match Layout is leased and fenced too · [#738](https://github.com/KeeprDigital/stream-keepr/issues/738) · Amended 2026-11-11: both editors drop unsaved edits on losing the lease the same way · [#1100](https://github.com/KeeprDigital/stream-keepr/issues/1100)
+Accepted · 2026-10-20 · [#607](https://github.com/KeeprDigital/stream-keepr/issues/607) · Amended 2026-11-03: the Feature Match Layout is leased and fenced too · [#738](https://github.com/KeeprDigital/stream-keepr/issues/738) · Amended 2026-11-11: both editors drop unsaved edits on losing the lease the same way · [#1100](https://github.com/KeeprDigital/stream-keepr/issues/1100) · Amended by ADR-0032 and ADR-0060: deleting a Player, Phase, Round or Archetype writes its Screens outside the Screen write module
 
 ### Decision
 

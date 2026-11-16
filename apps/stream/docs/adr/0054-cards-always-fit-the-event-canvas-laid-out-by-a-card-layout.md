@@ -1,6 +1,6 @@
 # ADR-0054: Cards always fit the Event Canvas, laid out by a Card Layout
 
-Accepted · 2026-10-28 · Amended 2026-11-11: Card Sizing, Fixed width or Fit to screen, gave way to the Card Layout, and nothing leaves the Event Canvas; the sideboard takes the mainboard's layout unless customised · Amended 2026-11-12: a Deck board's columns are bounded by its Deck Source's card count · [#1087](https://github.com/KeeprDigital/stream-keepr/issues/1087), [#1088](https://github.com/KeeprDigital/stream-keepr/issues/1088), [#1089](https://github.com/KeeprDigital/stream-keepr/issues/1089), [#1091](https://github.com/KeeprDigital/stream-keepr/issues/1091), [#1109](https://github.com/KeeprDigital/stream-keepr/issues/1109)
+Accepted · 2026-10-28 · Amended 2026-11-11: Card Sizing, Fixed width or Fit to screen, gave way to the Card Layout, and nothing leaves the Event Canvas; the sideboard takes the mainboard's layout unless customised · Amended 2026-11-12: a Deck board's columns are bounded by its Deck Source's card count · [#1087](https://github.com/KeeprDigital/stream-keepr/issues/1087), [#1088](https://github.com/KeeprDigital/stream-keepr/issues/1088), [#1089](https://github.com/KeeprDigital/stream-keepr/issues/1089), [#1091](https://github.com/KeeprDigital/stream-keepr/issues/1091), [#1109](https://github.com/KeeprDigital/stream-keepr/issues/1109) · Amended by ADR-0037 (#1107): no field Card Sizing replaced is a former field, and a write naming one is refused as an unknown key
 
 ### Decision
 

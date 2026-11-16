@@ -1,6 +1,6 @@
 # ADR-0031: A resolved Unresolved Deck Card announces the Deck Lists it rewrote, and re-projects nothing
 
-Accepted · 2026-10-20 · [#648](https://github.com/KeeprDigital/stream-keepr/issues/648)
+Accepted · 2026-10-20 · [#648](https://github.com/KeeprDigital/stream-keepr/issues/648) · Amended by ADR-0074: on a One Piece Card Game Event a resolution re-projects, and each rewritten Deck List is announced as its own write does
 
 ### Decision
 
@@ -12,7 +12,7 @@ Accepted · 2026-10-20 · [#648](https://github.com/KeeprDigital/stream-keepr/is
 
 **Operator browsers drop what they cached.** An operator browser drops those Players' cached Deck Lists and invalidates its Metagame pages. The resolving browser does the same itself, since it skips its own message. A read in flight when its Player's entry is dropped is not cached when it lands.
 
-**Reconnect Resync drops the whole Player deck cache.** Contradicts Reconnect Resync's "a resync re-reads and never clears" (RULES.md, ADR-0028) — worth it because the deck cache is a read-through cache, not held Event Data: it renders nothing of its own, and every reader fetches through it. It is keyed by Player revision, which a missed resolution never moves, so nothing else would ever re-read it. Melee sync refreshes already drop it the same way.
+**Reconnect Resync drops the whole Player deck cache.** Contradicts Reconnect Resync's "a resync re-reads and never clears" (RULES.md) — worth it because the deck cache is a read-through cache, not held Event Data: it renders nothing of its own, and every reader fetches through it. It is keyed by Player revision, which a missed resolution never moves, so nothing else would ever re-read it. Melee sync refreshes already drop it the same way.
 
 ### Why
 

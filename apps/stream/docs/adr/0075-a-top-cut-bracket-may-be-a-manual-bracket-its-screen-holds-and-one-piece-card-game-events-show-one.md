@@ -1,6 +1,6 @@
 # ADR-0075: A Top Cut Bracket may be a Manual Bracket its Screen holds, and One Piece Card Game Events show one
 
-Accepted · 2026-11-05 · Changes ADR-0057 and ADR-0074 · Compatible with ADR-0047
+Accepted · 2026-11-05 · Changes ADR-0057 and ADR-0074 · Compatible with ADR-0047 · Amended by ADR-0077: a Player shows by name or by Nickname, as the Screen's `Show Players by` setting picks · Amended by ADR-0087: Top Cut Bracket is not offered to a Commander Event
 
 A One Piece Card Game Event's top cut runs in Bandai TCG+, which exports no pairings or results (ADR-0057, ADR-0074), so Stream Keepr holds no Phase to derive its Top Cut Bracket from. Operators still want the graphic on air, filled in as the cut is announced and played. A Magic Event not run on Melee.gg has the same gap.
 

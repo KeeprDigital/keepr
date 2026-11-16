@@ -1,6 +1,6 @@
 # ADR-0047: A Match Result is Melee's alone, and holds its Game Score whole
 
-Accepted · 2026-10-26
+Accepted · 2026-10-26 · Amended by ADR-0083: migration `0001_since_v1_5_0` is gone, squashed into `0000_baseline_2`
 
 ### Decision
 
