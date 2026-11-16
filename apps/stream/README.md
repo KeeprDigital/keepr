@@ -18,7 +18,7 @@ operating Stream Keepr. The other docs:
 | -------------- | -------------------------------------------------------------------- |
 | `GLOSSARY.md`  | The domain glossary. Use its terms in code, tests, issues, and docs. |
 | `RULES.md`     | What each glossary term must do, and how the terms hold together.    |
-| `DECISIONS.md` | Settled architecture decisions and why (cited as ADR-NNNN).          |
+| `docs/adr`     | Settled decisions and why, one file each (cited as ADR-NNNN).        |
 | `AGENTS.md`    | Rules for coding agents working in this app.                         |
 
 Stream Keepr is `apps/stream` in the Keepr workspace (ADR-0091). Every path and
@@ -79,7 +79,7 @@ here, is auto-imported the same way, and is named in an import as
 ## Subsystem map
 
 Where each subsystem is operated here, named in `GLOSSARY.md`, and decided in
-`DECISIONS.md`. The linked sections are the sources of truth; this map only
+`docs/adr`. The linked sections are the sources of truth; this map only
 points at them.
 
 - **Authentication**: Users, their Sessions, the Graphics Administrator
@@ -92,10 +92,10 @@ points at them.
   - Terms: [Identity and access](GLOSSARY.md#identity-and-access),
     [Access](RULES.md#access).
   - Decisions:
-    [ADR-0010](DECISIONS.md#adr-0010-authentication-replaces-the-anonymous-author-session),
-    [ADR-0012](DECISIONS.md#adr-0012-environment-dependent-library-behaviour-is-stated-tested-or-recorded),
-    [ADR-0017](DECISIONS.md#adr-0017-the-local-auth-bypass-is-one-launcher-owned-name),
-    [ADR-0018](DECISIONS.md#adr-0018-a-lan-bypassed-launcher-is-an-accepted-local-exposure).
+    [ADR-0010](docs/adr/0010-authentication-replaces-the-anonymous-author-session.md),
+    [ADR-0012](docs/adr/0012-environment-dependent-library-behaviour-is-stated-tested-or-recorded.md),
+    [ADR-0017](docs/adr/0017-the-local-auth-bypass-is-one-launcher-owned-name.md),
+    [ADR-0018](docs/adr/0018-a-lan-bypassed-launcher-is-an-accepted-local-exposure.md).
   - Code: `server/utils/authOptions.ts`, `server/middleware/api-session.ts`,
     `server/modules/user-administration/`.
 - **Event Data and realtime**: Event Data, Realtime Subscriptions, Reconnect
@@ -106,12 +106,12 @@ points at them.
   - Terms:
     [Client and live-state infrastructure](GLOSSARY.md#client-and-live-state-infrastructure).
   - Decisions:
-    [ADR-0004](DECISIONS.md#adr-0004-a-live-session-notification-carries-the-difference),
-    [ADR-0023](DECISIONS.md#adr-0023-a-realtime-subscription-is-held-until-disposed-and-its-events-recovery-re-attempts-while-one-waits),
-    [ADR-0024](DECISIONS.md#adr-0024-an-event-scoped-writes-continuation-belongs-to-its-event-lifetime-not-its-event-id),
-    [ADR-0026](DECISIONS.md#adr-0026-a-live-aggregates-epochs-are-ordered-by-its-id),
-    [ADR-0028](DECISIONS.md#adr-0028-reconnect-resync-re-reads-the-event-data-its-consumers-name-and-a-revisit-re-reads-what-was-missed),
-    [ADR-0029](DECISIONS.md#adr-0029-sequenced-live-state-opens-and-closes-epochs-and-announces-only-what-a-commit-changed).
+    [ADR-0004](docs/adr/0004-a-live-session-notification-carries-the-difference.md),
+    [ADR-0023](docs/adr/0023-a-realtime-subscription-is-held-until-disposed-and-its-events-recovery-re-attempts-while-one-waits.md),
+    [ADR-0024](docs/adr/0024-an-event-scoped-writes-continuation-belongs-to-its-event-lifetime-not-its-event-id.md),
+    [ADR-0026](docs/adr/0026-a-live-aggregates-epochs-are-ordered-by-its-id.md),
+    [ADR-0028](docs/adr/0028-reconnect-resync-re-reads-the-event-data-its-consumers-name-and-a-revisit-re-reads-what-was-missed.md),
+    [ADR-0029](docs/adr/0029-sequenced-live-state-opens-and-closes-epochs-and-announces-only-what-a-commit-changed.md).
   - Code: `app/composables/core/useRealtime.ts`,
     `app/composables/core/useReconnectResync.ts`, `server/modules/live-state/`,
     `server/modules/event-data-publication/`.
@@ -125,16 +125,16 @@ points at them.
   - Terms: [Screens](GLOSSARY.md#screens),
     [Screens and outputs](RULES.md#screens-and-outputs).
   - Decisions:
-    [ADR-0009](DECISIONS.md#adr-0009-the-current-page-of-a-page-rotation-is-a-clock-projection-not-persisted-state),
-    [ADR-0016](DECISIONS.md#adr-0016-one-polymorphic-background-screen-replaces-idle),
-    [ADR-0020](DECISIONS.md#adr-0020-chromium-is-the-only-supported-engine-for-transparent-video),
-    [ADR-0021](DECISIONS.md#adr-0021-a-screen-media-source-is-for-a-screens-own-media-graphics-content-stays-library-only),
-    [ADR-0022](DECISIONS.md#adr-0022-a-screen-output-reads-what-its-screen-publishes-through-its-screen),
-    [ADR-0027](DECISIONS.md#adr-0027-the-key-output-keys-every-glow-at-its-own-opacity),
-    [ADR-0030](DECISIONS.md#adr-0030-a-graphics-authoring-lease-is-decided-by-the-screen-write-module-and-fenced-at-the-commit),
-    [ADR-0037](DECISIONS.md#adr-0037-a-screen-modes-config-has-one-contract-and-a-default-lives-only-in-it),
-    [ADR-0038](DECISIONS.md#adr-0038-a-screen-mode-definition-declares-its-event-references-and-the-screen-write-derives-its-checks-from-them),
-    [ADR-0039](DECISIONS.md#adr-0039-a-paginated-screen-mode-definition-declares-its-page-rotation-and-one-rule-decides-its-shape-changes).
+    [ADR-0009](docs/adr/0009-the-current-page-of-a-page-rotation-is-a-clock-projection-not-persisted-state.md),
+    [ADR-0016](docs/adr/0016-one-polymorphic-background-screen-replaces-idle.md),
+    [ADR-0020](docs/adr/0020-chromium-is-the-only-supported-engine-for-transparent-video.md),
+    [ADR-0021](docs/adr/0021-a-screen-media-source-is-for-a-screens-own-media-graphics-content-stays-library-only.md),
+    [ADR-0022](docs/adr/0022-a-screen-output-reads-what-its-screen-publishes-through-its-screen.md),
+    [ADR-0027](docs/adr/0027-the-key-output-keys-every-glow-at-its-own-opacity.md),
+    [ADR-0030](docs/adr/0030-a-graphics-authoring-lease-is-decided-by-the-screen-write-module-and-fenced-at-the-commit.md),
+    [ADR-0037](docs/adr/0037-a-screen-modes-config-has-one-contract-and-a-default-lives-only-in-it.md),
+    [ADR-0038](docs/adr/0038-a-screen-mode-definition-declares-its-event-references-and-the-screen-write-derives-its-checks-from.md),
+    [ADR-0039](docs/adr/0039-a-paginated-screen-mode-definition-declares-its-page-rotation-and-one-rule-decides-its-shape-changes.md).
   - Code: `server/modules/screen-write/`, `server/modules/screen-output-assets/`,
     `server/api/screen-output/`, `app/composables/screen/`.
 - **Melee Sync**: imports Event structure, Players, Deck Lists, Round
@@ -146,9 +146,9 @@ points at them.
   - Terms: [Event](GLOSSARY.md#event),
     [Event and Feature Match production](RULES.md#event-and-feature-match-production).
   - Decisions:
-    [ADR-0031](DECISIONS.md#adr-0031-a-resolved-unresolved-deck-card-announces-the-deck-lists-it-rewrote-and-re-projects-nothing),
-    [ADR-0032](DECISIONS.md#adr-0032-deleting-a-player-releases-every-deck-source-that-selects-them),
-    [ADR-0052](DECISIONS.md#adr-0052-live-results-polls-the-current-round-and-melee-sync-announces-only-what-changed).
+    [ADR-0031](docs/adr/0031-a-resolved-unresolved-deck-card-announces-the-deck-lists-it-rewrote-and-re-projects-nothing.md),
+    [ADR-0032](docs/adr/0032-deleting-a-player-releases-every-deck-source-that-selects-them.md),
+    [ADR-0052](docs/adr/0052-live-results-polls-the-current-round-and-melee-sync-announces-only-what-changed.md).
   - Code: `server/modules/melee-sync/`, `server/services/melee*.ts`.
 - **Feature Match production**: Feature Match Slots, Feature Match
   Assignments, Feature Match Sessions and Feature Match Slot Promotion, shown by
@@ -157,8 +157,8 @@ points at them.
   - Terms: [Feature Match production](GLOSSARY.md#feature-match-production),
     [Feature Match Overlay](GLOSSARY.md#feature-match-overlay).
   - Decisions:
-    [ADR-0015](DECISIONS.md#adr-0015-live-overlay-showhide-rides-feature-match-session-state),
-    [ADR-0033](DECISIONS.md#adr-0033-a-feature-match-slot-promotion-decides-its-outcome-purely-then-publishes-once).
+    [ADR-0015](docs/adr/0015-live-overlay-showhide-rides-feature-match-session-state.md),
+    [ADR-0033](docs/adr/0033-a-feature-match-slot-promotion-decides-its-outcome-purely-then-publishes-once.md).
   - Code: `server/modules/feature-match-promotion/`,
     `server/modules/feature-match-session/`,
     `server/modules/feature-match-slot-write/`.
@@ -172,21 +172,21 @@ points at them.
   - Terms: [Graphics Asset Library](GLOSSARY.md#graphics-asset-library),
     [Library operations](GLOSSARY.md#library-operations).
   - Decisions:
-    [ADR-0005](DECISIONS.md#adr-0005-static-font-v1s-server-side-checks-are-a-floor-the-browser-is-the-gate),
-    [ADR-0021](DECISIONS.md#adr-0021-a-screen-media-source-is-for-a-screens-own-media-graphics-content-stays-library-only),
-    [ADR-0034](DECISIONS.md#adr-0034-every-graphics-template-write-requires-each-of-its-references-to-be-selectable-fenced-at-the-commit),
-    [ADR-0035](DECISIONS.md#adr-0035-the-app-and-the-validator-each-carry-a-promotion-marker-and-the-validator-deploys-on-a-build-fingerprint).
+    [ADR-0005](docs/adr/0005-static-font-v1s-server-side-checks-are-a-floor-the-browser-is-the-gate.md),
+    [ADR-0021](docs/adr/0021-a-screen-media-source-is-for-a-screens-own-media-graphics-content-stays-library-only.md),
+    [ADR-0034](docs/adr/0034-every-graphics-template-write-requires-each-of-its-references-to-be-selectable-fenced-at-the-commit.md),
+    [ADR-0035](docs/adr/0035-the-app-and-the-validator-each-carry-a-promotion-marker-and-the-validator-deploys-on-a-build.md).
   - Code: `server/modules/graphics-asset-library/`,
     `workers/silent-video-validator/`.
 
 Releases and deploys are decided in
-[ADR-0019](DECISIONS.md#adr-0019-the-migration-history-is-squashed-into-one-baseline-before-ship)
+[ADR-0019](docs/adr/0019-the-migration-history-is-squashed-into-one-baseline-before-ship.md)
 and
-[ADR-0083](DECISIONS.md#adr-0083-the-history-is-squashed-into-one-baseline-again-before-the-next-ship-under-a-new-name)
+[ADR-0083](docs/adr/0083-the-history-is-squashed-into-one-baseline-again-before-the-next-ship-under-a-new-name.md)
 (migrations),
-[ADR-0035](DECISIONS.md#adr-0035-the-app-and-the-validator-each-carry-a-promotion-marker-and-the-validator-deploys-on-a-build-fingerprint)
+[ADR-0035](docs/adr/0035-the-app-and-the-validator-each-carry-a-promotion-marker-and-the-validator-deploys-on-a-build.md)
 (promotion markers) and
-[ADR-0036](DECISIONS.md#adr-0036-the-merge-queue-verifies-the-exact-revision-that-lands-and-only-such-a-revision-is-released)
+[ADR-0036](docs/adr/0036-the-merge-queue-verifies-the-exact-revision-that-lands-and-only-such-a-revision-is-released.md)
 (merge queue and release gate).
 
 ## Setup
@@ -1381,7 +1381,7 @@ only through the `SILENT_VIDEO_PLAYBACK_VALIDATOR` service binding (no
   `GRAPHIC_FONT_IDS`, so a font out of its category's run fails it.
   `pnpm worker:dry-run` (so `pnpm verify` and CI) then holds the build to every
   declared weight and style, and to no remote or `local()` font source
-  ([ADR-0086](DECISIONS.md#adr-0086-application-fonts-are-packaged-by-nuxt-fonts-from-pinned-static-fontsource-packages-with-no-remote-provider-at-build)).
+  ([ADR-0086](docs/adr/0086-application-fonts-are-packaged-by-nuxt-fonts-from-pinned-static-fontsource-packages-with-no-remote.md)).
 - **Feature Match Overlay runs on the Graphics Composition Model.** The legacy
   widget / widget-group / z-index model was deleted without a migration.
   `test/unit/shared/builtInFeatureMatchLayoutTemplates.test.ts` pins the invariants of

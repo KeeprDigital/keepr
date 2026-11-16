@@ -29,13 +29,13 @@ Designed, not built. Every point here has been agreed.
 ## Package
 
 - `@keepr/tournament`. Synchronous pure functions, plain JSON in and out, no clock, no I/O, no Consumer-supplied functions, never throws.
-- It depends on the Pairing Engine, the Standings Engine and the shared package, and calls them (ADR 0010). None of them depends on it.
+- It depends on the Pairing Engine, the Standings Engine and the shared package, and calls them (ADR-0105). None of them depends on it.
 - No runtime dependencies outside this repository.
 - The same Log gives the same tournament on every Device, whatever order its Actions arrived in.
 
 ## The Log
 
-The Log is the only truth (ADR 0008). Everything else is worked out from it and may be cached.
+The Log is the only truth (ADR-0103). Everything else is worked out from it and may be cached.
 
 - The Log is a set of Actions. Actions are added, never edited or removed.
 - Every Action carries:
@@ -148,7 +148,7 @@ Standings cover the whole Phase and can be filtered by Section.
 - **Hand-made Pairings** are recorded the same way, with the Pairing Engine's assessment: Violations, and whether they are as good as the best.
 - **A round is complete** when every Pairing in it has a Result. Pairing the next round before that is allowed and flagged.
 - **An unplayed round** counts as nothing until an "Unplayed round recorded" Action says otherwise. This covers Late Entries and Entrants who sat a round out.
-- **No device is special.** Nothing limits which Device may pair a round (ADR 0008). The Consumer warns when someone pairs while out of contact with the others.
+- **No device is special.** Nothing limits which Device may pair a round (ADR-0103). The Consumer warns when someone pairs while out of contact with the others.
 
 ## Tables
 
@@ -167,13 +167,13 @@ A table is changed by hand by recording the round again with the same Pairings.
 ## Results and Corrections
 
 - A Result names its Pairing. A later Result for the same Pairing, from a Device that had seen the earlier one, is a Correction and replaces it.
-- **Calculated things ripple** (ADR 0011). Standings, Tiebreakers and who fills a Single Elimination Slot always reflect the Results as they now stand.
+- **Calculated things ripple** (ADR-0106). Standings, Tiebreakers and who fills a Single Elimination Slot always reflect the Results as they now stand.
 - **Decided things hold.** Pairings already made, who entered a Phase and how Sections were formed are recorded and never rewritten. Each one made from Standings that have since changed is flagged. The Organiser can redo it with a new Action, or leave it.
 - **Standings as they stood**: Standings can be worked out as any Action saw them, which reproduces the input of any earlier pairing call.
 
 ## Clashes
 
-A Clash is two Actions about the same thing where neither had seen the other. Nothing is refused and nothing is discarded (ADR 0009). Every Device applies the same rule.
+A Clash is two Actions about the same thing where neither had seen the other. Nothing is refused and nothing is discarded (ADR-0104). Every Device applies the same rule.
 
 | Clash | Rule |
 |---|---|
@@ -217,7 +217,7 @@ It only advises. The Action that starts a Phase states the numbers.
 
 ## What is refused
 
-Only what cannot be recorded at all (ADR 0009). Each comes back as an error value, like the other engines:
+Only what cannot be recorded at all (ADR-0104). Each comes back as an error value, like the other engines:
 
 - An Action naming an unknown Entrant, Phase, Section or Pairing.
 - A Result naming an Entrant who was never in that Pairing.
@@ -290,7 +290,7 @@ To be enforced by tests when built:
 
 ## Decision records
 
-- ADR 0008: the Log is the only truth, and any Devices can combine theirs.
-- ADR 0009: the Tournament Engine refuses only what cannot be recorded, and flags the rest.
-- ADR 0010: the Tournament Engine calls the other engines and records what they return.
-- ADR 0011: calculated things ripple, decided things hold.
+- ADR-0103: the Log is the only truth, and any Devices can combine theirs.
+- ADR-0104: the Tournament Engine refuses only what cannot be recorded, and flags the rest.
+- ADR-0105: the Tournament Engine calls the other engines and records what they return.
+- ADR-0106: calculated things ripple, decided things hold.

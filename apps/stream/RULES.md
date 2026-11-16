@@ -1,6 +1,6 @@
 # Stream Keepr rules
 
-What each term in `GLOSSARY.md` must do. An entry opens with what the thing is and then states its rules; the Relationships after them say how the terms hold together. Name things with the glossary's terms. Decisions cited as ADR-NNNN are in `DECISIONS.md`.
+What each term in `GLOSSARY.md` must do. An entry opens with what the thing is and then states its rules; the Relationships after them say how the terms hold together. Name things with the glossary's terms. Decisions cited as ADR-NNNN are files in `docs/adr`, or in the root `docs/adr` for the workspace's.
 
 ## Terms
 

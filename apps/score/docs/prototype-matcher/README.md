@@ -28,7 +28,7 @@ Target was 2 s at 10,000 and 10 s at 20,000. Measured on an Apple M4 under Node 
 
 The tiebreak is defined per entrant, not per pair. Each entrant gets a seeded position on a line and a pairing costs the squared distance between positions. With nothing else in play this is "shuffle, then pair neighbours". The speed above depends on it. A per-pair random number was measured too: less skewed per pairing (about 1.5x), same per entrant, but not shown to be fast.
 
-Accepted as the engine's definition of random: see `docs/adr/0005-random-choices-use-a-position-per-entrant.md`.
+Accepted as the engine's definition of random: see ADR-0100 (`packages/pairing/docs/adr`).
 
 ## How it works
 

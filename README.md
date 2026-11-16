@@ -31,4 +31,5 @@ pnpm dev
 `pnpm verify:quick` also run from the root, where the two verifies check the
 packages as well (`pnpm typecheck:packages`, `pnpm test:packages`). Everything else about setup,
 testing, releasing and deploying is in [apps/stream/README.md](apps/stream/README.md),
-and the decisions behind it in [apps/stream/DECISIONS.md](apps/stream/DECISIONS.md).
+and the decisions behind it in [apps/stream/docs/adr](apps/stream/docs/adr). The
+workspace's own decisions are in [docs/adr](docs/adr).

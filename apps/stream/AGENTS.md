@@ -13,19 +13,18 @@ operations. Paths in this file are relative to `apps/stream`.
 
 ## Domain docs
 
-- Before exploring, read `GLOSSARY.md`, then the `RULES.md` and `DECISIONS.md`
-  sections touching your area. `GLOSSARY.md` says what each thing is;
-  `RULES.md` says what it must do, under the same headings.
+- Before exploring, read `GLOSSARY.md`, then the `RULES.md` sections touching
+  your area and the decisions in `docs/adr` they cite. `GLOSSARY.md` says what
+  each thing is; `RULES.md` says what it must do, under the same headings.
 - Name domain concepts with `GLOSSARY.md` terms, never its `_Avoid_` synonyms. A
   missing term is either invented language (reconsider) or a real gap (add it).
 - If your output contradicts a decision, say so explicitly ("Contradicts
   ADR-NNNN — worth reopening because…") rather than silently overriding it.
-- A rule that changes is edited in `RULES.md`. Record why as a new section at
-  the end of `DECISIONS.md`, with the next number free in the workspace, and
+- A rule that changes is edited in `RULES.md`. Record why as a new file,
+  `docs/adr/NNNN-slug.md`, with the next number free in the workspace, and
   give each decision it changes an `Amended by ADR-NNNN` or
   `Superseded by ADR-NNNN` line. Edit a decision's body only to correct an
-  error in what it recorded (ADR-0095). Skills that default to
-  `docs/adr/NNNN-*.md` files write here until `DECISIONS.md` is split.
+  error in what it recorded (ADR-0095).
 
 ## Writing tests
 
