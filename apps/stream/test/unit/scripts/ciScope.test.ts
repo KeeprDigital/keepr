@@ -14,7 +14,10 @@ describe('what a change can affect', () => {
 	it.each([
 		[
 			'docs only',
-			['README.md', 'apps/stream/docs/adr/0001-graphic-style-sets-reference-application-fonts-only.md'],
+			[
+				'README.md',
+				'apps/stream/docs/adr/0001-graphic-style-sets-reference-application-fonts-only.md',
+			],
 			{ code: false, bundle: false, docs: true },
 		],
 		[
