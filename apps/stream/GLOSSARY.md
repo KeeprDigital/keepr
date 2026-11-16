@@ -366,7 +366,7 @@ A consumer's standing request to the realtime transport: a room handler, a chann
 _Avoid_: registration.
 
 **Reconnect Resync**:
-The client-side module owning the invariant "losing message continuity is itself a reason to re-read authoritative state." Realtime messages are notifications and the server holds authority, so a resync re-reads and never clears.
+The client-side module owning the invariant "losing message continuity is itself a reason to re-read authoritative state."
 _Avoid_: reconnect handler, resubscribe hook.
 
 **Event Data Resync**:

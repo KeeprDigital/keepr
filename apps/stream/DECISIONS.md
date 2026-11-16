@@ -1883,7 +1883,7 @@ An Event is producing its Feature Match graphics in vMix rather than with a Feat
 
 **A Commander Slot's row holds its four Seats and no game win** (ADR-0087, [#1179](https://github.com/KeeprDigital/stream-keepr/issues/1179)). Its tokens are the four Seats', each with its Commanders' images and no record, and its live state is `player{N}Life` and `player{N}Eliminated` for Seats 1 to 4. Eliminated is a colour, as a game win is: `#FFFFFFFF` while the Seat is Eliminated and `#00000000` otherwise. It has no `player{N}GameWins` or `player{N}Game{N}Win`, because a Commander Session plays one game. The row names the same fields however many Seats are filled, so a vMix title's bindings hold as Seats fill: an empty Seat's tokens and life are empty strings, and it reads as not Eliminated whatever state the Session holds for it. A Two-Player or One Piece Card Game Event's row is field for field what it was.
 
-**It applies the Overlay's display rules by sharing their code.** The token values moved from the app into `shared/featureMatchOverlayValues.ts`, and the clock's rendering into `projectFeatureMatchClock` in `shared/utils/clock.ts`, which `useClockDisplay` now calls. The row itself is `featureMatchPublicRow`'s (`server/utils/featureMatchPublicRow.ts`), which reads who sits in a Seat as the tokens do (`featureMatchSidePlayer`, ADR-0058). The clock is read at request time: a countdown's remaining time, its overtime when it counts up after, an Untimed Match's Untimed Label (empty while blank), and `0:00` with no Session, as the Overlay shows it. A Slot without a Session starts none.
+**It applies the Overlay's display rules by sharing their code.** The token values moved from the app into `shared/featureMatchOverlayValues.ts`, and the clock's rendering into `projectFeatureMatchClock` in `shared/utils/clock.ts`, which `useClockDisplay` now calls. The row itself is `featureMatchPublicRow`'s (`server/utils/featureMatchPublicRow.ts`), which reads who sits in a Seat as the tokens do (`featureMatchSidePlayer`, ADR-0058). The clock is read at request time: a countdown's remaining time, its count-up time when it counts up after, an Untimed Match's Untimed Label (empty while blank), and `0:00` with no Session, as the Overlay shows it. A Slot without a Session starts none.
 
 ### Why
 
@@ -2743,7 +2743,7 @@ Every clock showed whole seconds by rounding down. A 50:00 countdown so read `49
 
 ### Decision
 
-**A countdown shows the time remaining rounded up to the whole second; elapsed time and overtime are rounded down, as before.** This holds for a Feature Match Session Clock and a Round Clock alike. `formatCountdownTime` (`shared/utils/clock.ts`) is the rule for time remaining, and `projectFeatureMatchClock` and `projectRoundClock` apply it, so the operator's clock, every Screen Output and the public Feature Match read agree. `formatClockTime` still rounds down, for a count-up clock, overtime, the time since a Round's end, and a length of time such as a duration.
+**A countdown shows the time remaining rounded up to the whole second; elapsed time and count-up time are rounded down, as before.** This holds for a Feature Match Session Clock and a Round Clock alike. `formatCountdownTime` (`shared/utils/clock.ts`) is the rule for time remaining, and `projectFeatureMatchClock` and `projectRoundClock` apply it, so the operator's clock, every Screen Output and the public Feature Match read agree. `formatClockTime` still rounds down, for a count-up clock, count-up time, the time since a Round's end, and a length of time such as a duration.
 
 **A countdown's display changes as each whole second remaining is reached, its last at the end itself.** `countdownNextChangeInMs` names that moment for both clocks, so a rendering re-evaluates exactly then.
 
@@ -2756,13 +2756,13 @@ A clock should read its full duration when it starts and `0:00` when it ends. Ro
 - A clock that holds at its end reads `0:01` through its last second and `0:00` from the moment it runs out.
 - A clock that counts up after reads `0:01`, then `0:00` for one second (the end through the first second past it), then `0:01` again counting up. At a count-up limit it holds from the moment it reaches the limit (ADR-0076), as before.
 - A countdown stopped part-way through a second shows the second it is in: 4:59.6 remaining reads `5:00`.
-- Adjusting a clock stays exact to the millisecond (`applyClockAdjustment`). A whole-second `+` or `−` moves what the clock shows by exactly that, across the end too, since overtime is time remaining below zero and rounding it down is rounding the time remaining up. A set-to shows the time set through its first second.
+- Adjusting a clock stays exact to the millisecond (`applyClockAdjustment`). A whole-second `+` or `−` moves what the clock shows by exactly that, across the end too, since count-up time is time remaining below zero and rounding it down is rounding the time remaining up. A set-to shows the time set through its first second.
 - Tests: `test/unit/shared/clock.test.ts` and `test/unit/shared/roundClock.test.ts` hold the rule and each boundary; `test/nuxt/composables/featureMatch/useClockDisplay.test.ts`, `test/nuxt/composables/screen/useRoundClockModeData.test.ts` and `test/nuxt/components/FeatureMatch/State/EditStateModal.test.ts` that each rendering takes it.
 
 ### Rejected alternatives
 
 - **Rounding to the nearest second.** The clock would read `0:00` with half a second left, and change digit half a second off every other clock.
-- **Rounding overtime up as well.** It would skip `0:00` and read `0:01` the instant after the end.
+- **Rounding count-up time up as well.** It would skip `0:00` and read `0:01` the instant after the end.
 
 ## ADR-0079: Settings surfaces are built from one of each shared primitive
 
