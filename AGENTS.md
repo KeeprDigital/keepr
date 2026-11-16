@@ -1,6 +1,6 @@
 Keepr is one pnpm workspace (ADR-0091): each app is in `apps/`, and what apps
 share is in `packages/`. This file holds what an agent must follow everywhere
-in it; `apps/stream/AGENTS.md` adds Stream Keepr's own.
+in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
 `apps/stream/README.md` is the guide to setup, testing, deploy, and operations.
 
 ## Layout
@@ -13,8 +13,11 @@ in it; `apps/stream/AGENTS.md` adds Stream Keepr's own.
   (`pairing`, `standings`), what both use (`engine-core`), and their test
   support (`testkit`, `engine-integration`). Each has a `typecheck` and a
   `test` script; `pnpm typecheck:packages` and `pnpm test:packages` at the
-  root run them all. `apps/score` holds the engines' specs, decisions and
-  `GLOSSARY.md`: use its words in the packages.
+  root run them all. `nuxt-layer` is the Nuxt layer every app extends: what
+  two apps share goes there, not into a second copy.
+- `apps/score`: Score Keepr (`@keepr/score`), scaffolded and not built, with
+  the engines' specs, decisions and `GLOSSARY.md`: use its words in the
+  packages. `apps/score/AGENTS.md` adds its own rules.
 - The root holds what every app and package shares: the dependency catalog
   (`pnpm-workspace.yaml`), the lockfile, the lint and format configuration
   (`.oxlintrc.json`, `.oxfmtrc.json`), the packages' compiler options

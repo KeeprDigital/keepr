@@ -1,0 +1,33 @@
+{
+	"name": "@keepr/score",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "nuxt dev",
+		"build": "node ../stream/scripts/slots.mjs build -- nuxt build",
+		"typecheck": "nuxt prepare && node ../stream/scripts/slots.mjs typecheck -- vue-tsc --noEmit",
+		"test": "vitest run",
+		"verify": "pnpm typecheck && pnpm test && pnpm build",
+		"postinstall": "nuxt prepare",
+		"lint": "pnpm --workspace-root lint",
+		"lint:fix": "pnpm --workspace-root lint:fix",
+		"format": "pnpm --workspace-root format"
+	},
+	"dependencies": {
+		"@keepr/nuxt-layer": "workspace:*",
+		"@keepr/pairing": "workspace:*",
+		"@keepr/standings": "workspace:*",
+		"nuxt": "catalog:",
+		"vue": "catalog:",
+		"vue-router": "catalog:"
+	},
+	"devDependencies": {
+		"@nuxt/test-utils": "catalog:",
+		"@vue/test-utils": "catalog:",
+		"happy-dom": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"vue-tsc": "catalog:",
+		"wrangler": "catalog:"
+	}
+}

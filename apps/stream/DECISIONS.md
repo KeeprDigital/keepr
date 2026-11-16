@@ -3377,3 +3377,35 @@ Accepted · 2026-11-16.
 - **A second repository, published to a registry.** Every change to an engine would be a release, a version bump in each app and a window in which the two apps run different engines.
 - **The history brought across with the files.** Thirty-two commits whose paths, package names and tooling match nothing here; the repository they are in stays readable.
 - **Their tests run from one root Vitest configuration.** Each package runs its own with no configuration at all, and a package is then whole in its directory.
+
+## ADR-0093: An app extends one shared Nuxt layer, which grows only when a second app needs what the first has
+
+Accepted · 2026-11-16.
+
+### Decision
+
+**`packages/nuxt-layer` (`@keepr/nuxt-layer`) is the Nuxt layer every app of the workspace extends.** It holds what an app is before it is anything else: client rendering, Nuxt UI and its colours, the colour mode, strict TypeScript, and the Cloudflare Workers target.
+
+**Anything else two apps share joins the layer when the second app needs it, in the change that moves the first app onto it.** Nothing is copied from one app to another, and nothing is extracted ahead of a second use.
+
+**Score Keepr is scaffolded on it, not built.** `apps/score` is a Nuxt app with one page, which names the Pairing and Standings Engines and the version each reports. It has no sign-in, no database and no deployment.
+
+### Why
+
+- **A second app would otherwise begin as a copy of the first's configuration**, and the two would drift from the day it was made.
+- **What Stream Keepr could share is not yet separable from what is its own.** Its sign-in names its host, its error mapping imports its graphics errors, its user administration sits behind its graphics token. Extracting one of them is a change to a deployed app, worth making when Score Keepr needs that piece and can prove the extraction by using it.
+- **The scaffold proves the workspace before anything is built on it.** Score Keepr is the first app to import a package: its typecheck, its tests and its Worker build all read the engines' source, `.ts`-suffixed imports included (ADR-0092).
+
+### Consequences
+
+- Stream Keepr does not extend the layer yet. Its configuration states the same shell itself, until the change that moves it across re-proves its build, its Worker smoke and the validator's fingerprint.
+- A layer's own files are named from the layer's directory: `~` is the app that extends it.
+- CI has a `Score Keepr` job (typecheck, tests, build), and `pnpm verify` and `pnpm verify:quick` at the root run the same before Stream Keepr's gates. Its build and typecheck take run slots through Stream Keepr's script, by path, until those scripts move to the root (ADR-0091).
+- A change to Score Keepr runs every gate of Stream Keepr, and a `feat` or `fix` to it counts toward Stream Keepr's version, until CI's scope and the release are per app (ADR-0091).
+- The new importers of the lockfile name the versions Stream Keepr already resolves, so adding the app changed no dependency of Stream Keepr's.
+
+### Rejected alternatives
+
+- **The layer filled now with everything generic in Stream Keepr.** Each piece would move without a second user to say what its seam should be, through a change to the deployed app that nothing yet needs.
+- **Score Keepr started from a copy of Stream Keepr.** It would inherit more than fifty tables, a realtime plugin and a deploy procedure for a product it is not.
+- **A layer inside one app, or a `layers/` directory at the root.** The workspace already has one place for what apps share, and a package there is linked, versioned and linted like the others.

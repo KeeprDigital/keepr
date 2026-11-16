@@ -48,7 +48,7 @@
 		},
 		{
 			// A focused or skipped test is not committed.
-			"files": ["packages/**/*.test.ts"],
+			"files": ["packages/**/*.test.ts", "apps/score/**/*.test.ts"],
 			"plugins": ["vitest"],
 			"rules": {
 				"vitest/no-focused-tests": "error",
