@@ -30,7 +30,8 @@
  * Commands (`node scripts/deploy-promotion.mjs <command>`):
  *
  * - `promote <auto|always|never>`: the Deploy workflow's run, from the
- *   workflow's own commit against the release checkout in the working directory.
+ *   workflow's own commit against the release checkout in the working directory,
+ *   wherever that release keeps the app (`appDirectory`).
  * - `deploy-validator`: `pnpm deploy:validator`.
  * - `mark-app <pending|deployed>`: inside `pnpm run deploy`.
  * - `status`: `pnpm deploy:status`, both markers and the decision for this checkout.
@@ -38,7 +39,14 @@
 
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+	appendFileSync,
+	existsSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import process from 'node:process';
@@ -51,9 +59,27 @@ const FINGERPRINT = /^sha256:[0-9a-f]{64}$/;
 /** The Deploy workflow's `validator` input choices. */
 const MODES = ['auto', 'always', 'never'];
 
+/** Where a release keeps the app since the workspace (ADR-0091); one from before it keeps it at its root. */
+const WORKSPACE_APP_DIRECTORY = 'apps/stream';
+
+/** Both are relative to the app's directory. */
 const VALIDATOR_CONFIG = 'workers/silent-video-validator/wrangler.jsonc';
 /** The Docker build context: the Dockerfile's directory, as wrangler.jsonc's `image` leaves it. */
 const VALIDATOR_CONTAINER_CONTEXT = 'workers/silent-video-validator/container';
+
+/**
+ * The app's directory in the checkout being deployed, which every path and
+ * command here is relative to. `pnpm` runs this script there already. The
+ * Deploy workflow runs it at the root of a release checkout, and it deploys
+ * any release: one cut before the workspace has the app at that root.
+ *
+ * @param {string} cwd the working directory
+ * @param {(path: string) => boolean} [exists]
+ */
+export function appDirectory(cwd, exists = existsSync) {
+	const inWorkspace = join(cwd, WORKSPACE_APP_DIRECTORY);
+	return exists(join(inWorkspace, 'package.json')) ? inWorkspace : cwd;
+}
 
 function sha256(bytes) {
 	return createHash('sha256').update(bytes).digest('hex');
@@ -444,7 +470,7 @@ const USAGE = `usage: node scripts/deploy-promotion.mjs <command>
   status                       print both markers and whether this checkout's validator would deploy`;
 
 function main(argv, env) {
-	const root = process.cwd();
+	const root = appDirectory(process.cwd());
 	const store = gitMarkerStore({ cwd: root });
 	const fingerprint = () => fingerprintValidator({ root });
 	const deployValidator = () =>

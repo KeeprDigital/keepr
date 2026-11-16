@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+	appDirectory,
 	decideValidatorDeploy,
 	describeMarker,
 	fingerprintValidator,
@@ -660,6 +661,28 @@ describe('describing a marker', () => {
 		expect(describeMarker('stream-keepr promotion marker\n\ncomponent: validator\n')).not.toContain(
 			'undefined',
 		);
+	});
+});
+
+// The Deploy workflow runs this tooling, from main, at the root of whichever release it deploys.
+describe("where a release's app is", () => {
+	it.each([
+		[
+			'a workspace release, from its root',
+			['apps/stream/package.json', 'package.json'],
+			'apps/stream',
+		],
+		['a release from before the workspace', ['package.json'], ''],
+	])('%s', (_case, files, expected) => {
+		const exists = (path: string) => files.some((file) => path === join('/release', file));
+
+		expect(appDirectory('/release', exists)).toBe(join('/release', expected));
+	});
+
+	it('is the working directory when pnpm already runs there', () => {
+		const exists = (path: string) => path === '/release/apps/stream/package.json';
+
+		expect(appDirectory('/release/apps/stream', exists)).toBe('/release/apps/stream');
 	});
 });
 

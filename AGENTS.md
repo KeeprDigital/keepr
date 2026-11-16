@@ -1,5 +1,21 @@
-`README.md` is the guide to setup, testing, deploy, and operations. This file
-holds only what an agent must follow.
+Keepr is one pnpm workspace (ADR-0091): each app is in `apps/`, and what apps
+share is in `packages/`. This file holds what an agent must follow everywhere
+in it; `apps/stream/AGENTS.md` adds Stream Keepr's own.
+`apps/stream/README.md` is the guide to setup, testing, deploy, and operations.
+
+## Layout
+
+- `apps/stream`: Stream Keepr (`@keepr/stream`), a Nuxt app on Cloudflare
+  Workers. Its scripts run from its directory: `cd apps/stream`, then
+  `pnpm dev`, `pnpm test:unit` and the rest of its README.
+- `packages/`: what more than one app uses, each named `@keepr/<name>`. None
+  yet.
+- The root holds what every app and package shares: the dependency catalog
+  (`pnpm-workspace.yaml`), the lockfile, the lint and format configuration
+  (`.oxlintrc.json`, `.oxfmtrc.json`) and the workflows (`.github/`).
+- `pnpm lint`, `pnpm lint:fix`, `pnpm format`, `pnpm verify` and
+  `pnpm verify:quick` run from the root as well as from an app. The lint and
+  the format are one run over the whole workspace.
 
 ## Before pushing
 
@@ -10,33 +26,26 @@ changed. CI is the full gate, and runs everything. Open the PR
 as a draft, which CI skips, and mark it ready when the branch is done: that
 runs every gate `pnpm verify` runs, Worker build and workerd smoke included.
 Realtime integration tests are the exception: CI has no Ably key, so they run
-only against your local `.env`. A change touching realtime needs
-`pnpm test:integration --run` green before you mark it ready. Reach for
-`pnpm verify` to reproduce a CI failure locally. A dependency's
-version lives in the catalog in `pnpm-workspace.yaml`, and `package.json` names
-it as `catalog:`; `pnpm add` writes both. Commit `pnpm-lock.yaml` with any
-change to either that affects dependency resolution.
+only against your local `apps/stream/.env`. A change touching realtime needs
+`pnpm test:integration --run` green in `apps/stream` before you mark it
+ready. Reach for `pnpm verify` to reproduce a CI failure locally. A
+dependency's version lives in the catalog in `pnpm-workspace.yaml`, and each
+`package.json` names it as `catalog:`; `pnpm add`, run in the app or package
+that needs it, writes both. Commit `pnpm-lock.yaml` with any change to either
+that affects dependency resolution.
 
 ## Landing on main
 
 Every change reaches `main` as a squash-merged PR whose title is a Conventional
 Commit (`fix(scope): summary`); release-please reads that one commit, and CI
 runs only on PRs and in the merge queue. Open the PR from your branch and leave
-`main` itself to the merge queue. Why: README.md § Releases.
-
-## Local auth bypass
-
-- `STREAM_KEEPR_LOCAL_AUTH_BYPASS` is written only in the `package.json`
-  `:bypass` scripts. Keep it out of `.env`, `.env.example`, `wrangler.jsonc`,
-  CI, and Worker vars: a deployed installation carrying it serves the app
-  unauthenticated.
-- Nothing needs it set. No build, suite, or gate depends on it; a task that
-  seems to has been misread.
+`main` itself to the merge queue. Why: `apps/stream/README.md` § Releases.
 
 ## Worktrees and processes
 
-- A new worktree has no `.env`, `node_modules`, or `.nuxt`: `cp .env` in from
-  the main checkout, then `pnpm install --frozen-lockfile`. Missing `.env`
+- A new worktree has no `.env`, `node_modules`, or `.nuxt`: copy
+  `apps/stream/.env` from the main checkout to the same place, then
+  `pnpm install --frozen-lockfile`. Missing `.env`
   produces 503s and skipped realtime tests, not branch defects.
 - Stop dev servers with SIGINT/SIGTERM. `pnpm reap` safely removes orphaned
   `workerd`; scope any manual kill to your worktree's path
@@ -47,63 +56,6 @@ runs only on PRs and in the merge queue. Open the PR from your branch and leave
   the line with `pnpm slots`. Start a suite or `pnpm verify` in the background
   rather than under a short timeout, and never start a second copy of a run
   that is waiting.
-
-## Domain docs
-
-- Before exploring, read `CONTEXT.md` and the `DECISIONS.md` sections touching
-  your area.
-- Name domain concepts with `CONTEXT.md` terms, never its `_Avoid_` synonyms. A
-  missing term is either invented language (reconsider) or a real gap (add it).
-- If your output contradicts a decision, say so explicitly ("Contradicts
-  ADR-NNNN — worth reopening because…") rather than silently overriding it.
-- Record a new decision as a new section at the end of `DECISIONS.md` with the
-  next number. Change an existing decision by editing its section. Skills that
-  default to `docs/adr/NNNN-*.md` files write here instead.
-
-## Writing tests
-
-A test earns its place by going red when behaviour a user, operator or caller
-relies on breaks, and staying green through a refactor.
-
-- Test each rule at its **home**, the one module that owns it. A consumer gets
-  one **wiring** test (passes the right input, shows the result). A change
-  that moves a rule into a shared module takes its consumers' tests of it down
-  to that one case.
-- An integration test proves what only a running server can: routing and the
-  API boundary, body limits and streaming, real D1 and R2, state across
-  requests, and one wiring pass per feature. A rule's branches stay at its home.
-- A test that mounts nothing and uses no Nuxt import belongs in `test/unit`,
-  where it costs no Nuxt boot.
-- Drive real code through a public seam and fake only the boundary: network,
-  Ably, clock, object storage. Persistence runs on `createSqliteD1Harness` with
-  the real migrations.
-- Assert outcomes: stored rows, returned values, emitted events, visible text,
-  ARIA state. Call arguments are the assertion only at a port whose call is the
-  contract.
-- Glue, pass-through repositories, re-exports and field-copy mappers are
-  covered by the test of what they wire.
-- A schema test names a rule the schema adds (refinement, transform,
-  back-compat, cross-path parity) and covers both sides of each bound it tests.
-  Literals, defaults, option lists and return shapes belong to the type system.
-- Expose component state through ARIA or `data-*` and assert that, plus message
-  codes and key tokens.
-- Assert an optimistic update while its request is pending
-  (`test/helpers/deferred.ts`).
-- Write cases as `it.each` tables in which every row can fail alone: it reaches
-  a branch, bound or declaration no other row does. A table generated from a
-  catalogue (every Screen Mode, field or token) gets a row per distinct branch,
-  not a row per member. Build setup from the kits in `test/helpers/`
-  and `test/nuxt/helpers/` (Nuxt UI stubs, graphics fixtures, realtime fakes),
-  extending a kit when it lacks something.
-- Test comments state the invariant in at most three lines; issue history
-  belongs in the commit and PR.
-- An invariant that resists a behavioural test goes, in order, to a type, a
-  rule Oxlint already has (`.oxlintrc.json`), a parsed config, or an
-  off-the-shelf linter.
-
-Models: `test/unit/server/api/cardExpiry.sqlite.test.ts`,
-`test/nuxt/stores/broadcastGraphicsLiveSessionProtocol.test.ts`,
-`test/nuxt/components/Screen/Modes/settingsEditorFields.test.ts`.
 
 ## Issue tracker
 

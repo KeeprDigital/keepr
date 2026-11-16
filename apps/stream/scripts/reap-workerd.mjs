@@ -19,7 +19,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import {
@@ -142,6 +142,11 @@ export async function reapLeakedAcceptanceChrome({ psOutput, checkoutRoots, kill
  * tool's own directory outside it, and a reap fired from any of them covers
  * orphans the others left behind. Each root is also kept as its real path,
  * because the executable path workerd runs under has its symlinks resolved.
+ *
+ * `cwd` is the app's directory, which is not the checkout's root in a
+ * workspace (`apps/stream`). workerd runs from the workspace's
+ * `node_modules`, under the checkout's root; an acceptance browser's profile
+ * is named after the app's directory. So each checkout answers with both.
  */
 export function discoverCheckoutRoots(cwd) {
 	const git = (...args) =>
@@ -159,11 +164,14 @@ export function discoverCheckoutRoots(cwd) {
 	};
 	const roots = [cwd];
 	try {
+		// Where `cwd` is below its checkout's root: `apps/stream/`, or nothing at the root.
+		const below = git('rev-parse', '--show-prefix').trim();
 		roots.push(
 			...git('worktree', 'list', '--porcelain', '-z')
 				.split('\0')
 				.filter((field) => field.startsWith('worktree '))
-				.map((field) => field.slice('worktree '.length)),
+				.map((field) => field.slice('worktree '.length))
+				.flatMap((root) => (below ? [root, join(root, below).replace(/\/$/, '')] : [root])),
 		);
 	} catch {
 		// Git before 2.36 has no `-z` here; the main checkout still covers the

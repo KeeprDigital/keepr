@@ -12,7 +12,11 @@ const EVERYTHING = { code: true, bundle: true, docs: false };
 
 describe('what a change can affect', () => {
 	it.each([
-		['docs only', ['README.md', 'DECISIONS.md'], { code: false, bundle: false, docs: true }],
+		[
+			'docs only',
+			['README.md', 'apps/stream/DECISIONS.md'],
+			{ code: false, bundle: false, docs: true },
+		],
 		[
 			'editor settings and dependabot',
 			['.vscode/settings.json', '.github/dependabot.yml'],
@@ -36,11 +40,11 @@ describe('what a change can affect', () => {
 		// The code gates lint every document and run the documentation test themselves.
 		[
 			'tests and docs',
-			['test/unit/scripts/ciScope.test.ts', 'README.md'],
+			['apps/stream/test/unit/scripts/ciScope.test.ts', 'README.md'],
 			{ code: true, bundle: false, docs: false },
 		],
-		['server code', ['server/api/time.get.ts'], EVERYTHING],
-		['a script', ['scripts/ci-scope.mjs'], EVERYTHING],
+		['server code', ['apps/stream/server/api/time.get.ts'], EVERYTHING],
+		['a script', ['apps/stream/scripts/ci-scope.mjs'], EVERYTHING],
 		['CI itself', ['.github/workflows/ci.yml'], EVERYTHING],
 		['the shared setup action', ['.github/actions/setup/action.yml'], EVERYTHING],
 		[
@@ -126,7 +130,7 @@ describe('which revisions the change is measured between', () => {
 describe("the scope job's command line", () => {
 	/** The two squashed PRs each merge group queues above main, by the file each changes. */
 	const QUEUED = {
-		codeThenDocs: ['server/api/time.get.ts', 'docs/second.md'],
+		codeThenDocs: ['apps/stream/server/api/time.get.ts', 'docs/second.md'],
 		docsOnly: ['docs/first.md', 'docs/second.md'],
 	} as const;
 

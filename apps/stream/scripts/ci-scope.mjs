@@ -52,9 +52,11 @@ const OUTSIDE_CODE = /\.md$|^\.vscode\/|^\.github\/dependabot\.yml$/;
 const DOCUMENT = /\.md$/;
 /**
  * Neither a test, a workflow other than CI's own, nor anything outside the
- * code can change the uploaded Worker bundle or how CI builds it.
+ * code can change the uploaded Worker bundle or how CI builds it. Paths are
+ * the repository's, so this app's begin `apps/stream/`.
  */
-const OUTSIDE_BUNDLE = /^test\/|^\.github\/workflows\/(?:deploy|pr-title|release-please)\.yml$/;
+const OUTSIDE_BUNDLE =
+	/^apps\/stream\/test\/|^\.github\/workflows\/(?:deploy|pr-title|release-please)\.yml$/;
 
 const COMMIT_ID = /^[0-9a-f]{40}$/;
 

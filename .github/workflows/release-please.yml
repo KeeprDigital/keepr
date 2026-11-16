@@ -25,7 +25,7 @@
 # title) in an approval-required state (`action_required`) rather than
 # starting them: that is how it stops a workflow triggering itself. A
 # maintainer selects "Approve workflows to run" on the Release PR before
-# queueing it (README.md § Releases). A GitHub App token passed as `token:`
+# queueing it (apps/stream/README.md § Releases). A GitHub App token passed as `token:`
 # would start them without the approval.
 
 name: Release Please
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           sparse-checkout: |
-            scripts/release-gate.mjs
+            apps/stream/scripts/release-gate.mjs
             package.json
           sparse-checkout-cone-mode: false
           persist-credentials: false
@@ -67,7 +67,7 @@ jobs:
       - name: Refuse a release the merge queue did not verify
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/release-gate.mjs
+        run: node apps/stream/scripts/release-gate.mjs
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json

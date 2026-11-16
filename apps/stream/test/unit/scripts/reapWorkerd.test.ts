@@ -297,6 +297,17 @@ describe("discovering this repository's checkout roots", () => {
 			expect(discoverCheckoutRoots(checkout).sort()).toEqual([main, nested, external].sort());
 	});
 
+	// A workspace: the reap runs from the app's directory, below the checkout's root.
+	it("answers with each checkout's root and its app directory when run from the app's", () => {
+		const { main, nested, external } = checkouts;
+		const app = (checkout: string) => join(checkout, 'apps/stream');
+		mkdirSync(app(nested), { recursive: true });
+
+		expect(discoverCheckoutRoots(app(nested)).sort()).toEqual(
+			[main, nested, external].flatMap((checkout) => [checkout, app(checkout)]).sort(),
+		);
+	});
+
 	it('leaves out unrelated repositories', () => {
 		const { main, unrelated } = checkouts;
 

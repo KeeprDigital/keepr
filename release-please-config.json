@@ -14,6 +14,12 @@
 		{ "type": "build", "section": "Build", "hidden": true }
 	],
 	"packages": {
-		".": {}
+		".": {
+			"package-name": "stream-keepr",
+			"component": "stream-keepr",
+			"extra-files": [
+				{ "type": "json", "path": "apps/stream/package.json", "jsonpath": "$.version" }
+			]
+		}
 	}
 }
