@@ -1,6 +1,6 @@
 # ADR-0051: A Screen holds no look of its own, and the Event Canvas is a coordinate space
 
-Accepted · 2026-10-27 · [#812](https://github.com/KeeprDigital/stream-keepr/issues/812) · Amended 2026-10-28: only overlay Screen Modes scale the Event Canvas, and Standings and Metagame's last look fields are Mode Tokens · [#851](https://github.com/KeeprDigital/stream-keepr/issues/851)
+Accepted · 2026-10-27 · [#812](https://github.com/KeeprDigital/stream-keepr/issues/812) · Amended 2026-10-28: only overlay Screen Modes scale the Event Canvas, and Standings and Metagame's last look fields are Mode Tokens · [#851](https://github.com/KeeprDigital/stream-keepr/issues/851) · Amended by ADR-0049: no Mode Token holds type, which a display reads from Foundation Tokens · Amended by ADR-0054: a size or spacing one display alone reads is its mode's config, not a Mode Token
 
 ### Decision
 

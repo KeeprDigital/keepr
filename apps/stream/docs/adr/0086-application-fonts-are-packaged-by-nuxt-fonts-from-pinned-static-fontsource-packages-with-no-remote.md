@@ -1,6 +1,6 @@
 # ADR-0086: Application fonts are packaged by Nuxt Fonts from pinned static Fontsource packages, with no remote provider at build
 
-Accepted · 2026-11-13 · [#1168](https://github.com/KeeprDigital/stream-keepr/issues/1168) · Supersedes the deferral recorded in [#453](https://github.com/KeeprDigital/stream-keepr/issues/453)
+Accepted · 2026-11-13 · [#1168](https://github.com/KeeprDigital/stream-keepr/issues/1168) · Supersedes the deferral recorded in [#453](https://github.com/KeeprDigital/stream-keepr/issues/453) · Amended by ADR-0090: each pin is in the catalog in `pnpm-workspace.yaml`, and the `@nuxt/fonts` override names the catalog, so it cannot differ from the pin
 
 ### Decision
 

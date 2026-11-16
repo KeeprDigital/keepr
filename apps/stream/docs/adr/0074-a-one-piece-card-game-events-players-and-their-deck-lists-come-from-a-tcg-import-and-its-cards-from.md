@@ -1,6 +1,6 @@
 # ADR-0074: A One Piece Card Game Event's Players and their Deck Lists come from a TCG+ Import, and its cards from one catalogue keyed by card number
 
-Accepted · 2026-11-04 · [#1000](https://github.com/KeeprDigital/stream-keepr/issues/1000) · Changes ADR-0057. · Amended 2026-11-05 by ADR-0075, which offers OP Events Top Cut Bracket. · Amended 2026-11-15 ([#1013](https://github.com/KeeprDigital/stream-keepr/issues/1013)): an Unresolved Deck Card's resolution is remembered for the Event
+Accepted · 2026-11-04 · [#1000](https://github.com/KeeprDigital/stream-keepr/issues/1000) · Changes ADR-0057. · Amended 2026-11-05 by ADR-0075, which offers OP Events Top Cut Bracket. · Amended 2026-11-15 ([#1013](https://github.com/KeeprDigital/stream-keepr/issues/1013)): an Unresolved Deck Card's resolution is remembered for the Event · Amended by ADR-0087: what stays MTG-only is `TWO_PLAYER_MAGIC_ONLY`, not offered to a Commander Event either
 
 ### Decision
 

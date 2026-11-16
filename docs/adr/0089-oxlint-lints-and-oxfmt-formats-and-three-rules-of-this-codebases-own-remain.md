@@ -1,6 +1,6 @@
 # ADR-0089: Oxlint lints and Oxfmt formats, and three rules of this codebase's own remain
 
-Accepted · 2026-11-15. Changes ADR-0039, ADR-0079 and ADR-0082 where each named an ESLint rule.
+Accepted · 2026-11-15. Changes ADR-0039, ADR-0079 and ADR-0082 where each named an ESLint rule. · Amended by ADR-0092: two more rules apply to `packages/`: an export states its types, and no focused or skipped test is committed
 
 ### Decision
 

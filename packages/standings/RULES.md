@@ -24,7 +24,7 @@ Every number here is exact. Fractions are kept as fractions and never rounded.
 
 - Score goes up by the Configuration's points for it.
 - The record gains a loss.
-- It counts as played and lost, or is left out of every rate, as the Configuration says.
+- If the Configuration says an Unplayed Loss counts as played, the round counts as played and lost, and its stated game score is added. If not, the round is left out of every rate.
 
 ## Points methods
 

@@ -14,6 +14,6 @@ When the Constraints rate several sets of Pairings as equally good, Swiss choose
 - Round one is indistinguishable from a uniform pick. In later rounds the most-picked best set of Pairings comes up to about 2x as often as the least-picked (measured on fields of 8 to 12).
 - How often a given Entrant gets a Pair-down or Bye is not materially different from a uniform pick.
 - "Random" in this engine means seeded and unpredictable, not statistically uniform. Consumers should not promise uniform.
-- A Shuffle Position depends only on the Random Seed, the round number and the Entrant's id, so input order never matters.
+- A Shuffle Position depends on the Random Seed, the round number and the Entrant's id, and, where two positions collide, on which ids are present, since collisions are settled in id order (`packages/pairing/RULES.md` § Shuffle Positions). Input order never matters.
 - Positions must be distinct. The prototype's can collide; the engine's must not.
 - This definition decides Pairings, so changing it is a major release.

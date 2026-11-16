@@ -1,6 +1,6 @@
 # ADR-0080: Feature Match Overlay presets are built-in Feature Match Layout Templates
 
-Accepted · 2026-11-11 · [#1097](https://github.com/KeeprDigital/stream-keepr/issues/1097) · Amends ADR-0030 and ADR-0063
+Accepted · 2026-11-11 · [#1097](https://github.com/KeeprDigital/stream-keepr/issues/1097) · Amends ADR-0030 and ADR-0063 · Amended by ADR-0037 (#1107): `presetId` is no former field, and a write naming it is refused as an unknown key · Amended by ADR-0087: on a Commander Event, "Reset mode settings" writes Commander Table
 
 The Feature Match Overlay editor replaced a layout two ways: a preset select with its own Reset, and placing a Feature Match Layout Template. A Screen also stored the `presetId` its layout started from, which nothing read but that select (#1060).
 

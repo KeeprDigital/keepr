@@ -12,7 +12,7 @@ Accepted · 2026-11-03 · [#907](https://github.com/KeeprDigital/stream-keepr/is
 
 **A Feature Match Slot delete releases every `featureMatchSlot` Event Reference the same way** (amended 2026-11-10): Card Spotlight, Feature Match Controls, Feature Match Overlay and Head-to-Head `featureMatchId`. Both paths that delete Slots run the query after the delete, in its batch: deleting one Slot, and lowering the Event's Slot count. It runs beside ADR-0057's Deck Source clear, which still runs ahead of the delete, and a Screen both rewrote is announced once, at the later version. The field is set to null, not removed: Feature Match Controls and the Overlay require it, and null is their no-Slot state. A Screen Output following its own Screen channel is told `screen:updated`, re-reads its Screen and shows that state; told only that the Slot changed, it would re-read a Slot that answers 404 and hold the deleted Slot on air (Screen Mode Data Freshness keeps the last answer).
 
-**Contradicts ADR-0030, which says every Screen write passes through `screenWriteModule()`,** as ADR-0032 does and for the same reason: the release has to commit in the delete's batch. It also skips the ADR-0038 reference check every Screen write runs; it only removes Event References, so it cannot name anything outside the Event.
+**It writes the Screens outside `screenWriteModule()`,** as ADR-0032 does and for the same reason: the release has to commit in the delete's batch. It also skips the ADR-0038 reference check every Screen write runs; it only removes Event References, so it cannot name anything outside the Event.
 
 ### Why
 

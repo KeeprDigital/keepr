@@ -1,6 +1,6 @@
 # ADR-0015: Live overlay show/hide rides feature-match session state
 
-Accepted · 2026-08-24, amended under #621 · [#486](https://github.com/KeeprDigital/stream-keepr/issues/486) (decided under spec #485 / #479, #480, #481)
+Accepted · 2026-08-24, amended under #621 · [#486](https://github.com/KeeprDigital/stream-keepr/issues/486) (decided under spec #485 / #479, #480, #481) · Amended by ADR-0087: a Seat Indicator Graphic Item plays its enter and exit through the same host-local trigger, so a Sideboard reveal is no longer the one exception
 
 ### Decision
 

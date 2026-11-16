@@ -1,6 +1,6 @@
 # ADR-0058: A Feature Match Session owns which side each player sits on
 
-Accepted · 2026-11-03 · [#886](https://github.com/KeeprDigital/stream-keepr/issues/886). Settles the rule 41bfa662 (#314) left in code comments; extends ADR-0056.
+Accepted · 2026-11-03 · [#886](https://github.com/KeeprDigital/stream-keepr/issues/886). Settles the rule 41bfa662 (#314) left in code comments; extends ADR-0056. · Amended by ADR-0087: the Session-only swap is a Two-Player Event's; a Commander Slot's Swap Seats exchanges its Seats in the Slot itself
 
 ### Decision
 
@@ -18,7 +18,7 @@ Two owners disagreed (#886). The Session owned side order, while the setup form 
 
 - A Slot's sides, and a Slot-side Feature Match Deck List or Leader (ADR-0057), never move on a swap. The Session's snapshot carries them with their player.
 - A new Session opens in Slot order: a swap lasts as long as its Session.
-- A Deck List Screen whose Deck Source is a Slot side follows that Slot side's player, whichever side the Session shows them on. Every surface that shows a Slot's two sides shows them in the Session's order; with no active Session it shows Slot order. A Head-to-Head re-reads when the Session seats its Players on the other sides, and the Card Spotlight Screen's matchup Deck Lists reload. A Match picked by Round keeps Match order, because a Match has no Session.
+- A Deck List Screen whose Deck Source is a Slot side shows the player the Session seats on that side, so a swap shows the other player's Deck List (ADR-0057). Every surface that shows a Slot's two sides shows them in the Session's order; with no active Session it shows Slot order. A Head-to-Head re-reads when the Session seats its Players on the other sides, and the Card Spotlight Screen's matchup Deck Lists reload. A Match picked by Round keeps Match order, because a Match has no Session.
 - The Overlay's player values now come from the snapshot, which merges a seated Player's data under the Slot's overrides, as Graphic Input Bindings already did.
 - A Session swapped and then saved before this decision holds its snapshot back in Slot order while its state stays swapped. Resetting the match realigns it, and so does any new Session.
 - Neither ADR-0045 nor ADR-0015 changes. A setup save still writes a seated Player's identity edits through, by the Slot side's Player, and sideboard reveal still rides Session state per side.

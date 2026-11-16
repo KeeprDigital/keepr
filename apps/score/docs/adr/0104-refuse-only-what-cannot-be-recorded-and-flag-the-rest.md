@@ -2,7 +2,7 @@
 
 Was Score Keepr's ADR 0009 until ADR-0095 renumbered it.
 
-The Tournament Engine refuses an Action only when it cannot be recorded at all, such as a Result naming an Entrant who was never in that Pairing. Everything unusual is allowed and raises a Flag: pairing a round while Results are missing, hand-made Pairings that break a Constraint, and every Clash between Devices. For a Clash the engine applies a fixed rule, discards nothing, and keeps the Flag up until someone settles it. We chose this because an Organiser at a venue must never be blocked by the software, and because nothing entered on any Device may be lost.
+The Tournament Engine refuses an Action only when it cannot be recorded at all, such as a Result naming an Entrant who was never in that Pairing. Everything unusual is allowed and raises a Flag: pairing a round while Results are missing, hand-made Pairings that break a Constraint, and every Clash whose Actions differ. For a Clash the engine applies a fixed rule, discards nothing, and keeps the Flag up until someone settles it. We chose this because an Organiser at a venue must never be blocked by the software, and because nothing entered on any Device may be lost.
 
 ## Considered Options
 
