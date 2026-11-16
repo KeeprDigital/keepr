@@ -48,7 +48,7 @@ From the repository's root:
 pnpm install
 pnpm typecheck:packages   # every package's types, its tests' included
 pnpm test:packages        # every package's tests
-pnpm bench:packages       # the Pairing Engine's speed targets, at 10,001 and 20,001 entrants
+pnpm bench:packages       # each package's speed targets (`bench:check`); today the Pairing Engine's
 pnpm lint                 # format and lint, the whole workspace
 pnpm verify:quick         # all of the above but the speed targets, then Stream Keepr's quick gates
 ```
@@ -59,6 +59,7 @@ In one package's directory:
 pnpm test                 # vitest run
 pnpm test -u              # re-record scenario answers after an intended change
 pnpm typecheck
+pnpm bench:check              # packages/pairing: its speed targets
 pnpm bench 10001 15 --check   # packages/pairing: time a simulated event
 ```
 
