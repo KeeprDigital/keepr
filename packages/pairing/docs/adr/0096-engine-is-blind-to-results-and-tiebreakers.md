@@ -1,6 +1,6 @@
 # ADR-0096: The Pairing Engine is blind to match results and tiebreakers
 
-Was Score Keepr's ADR 0001 until ADR-0095 renumbered it.
+Was Score Keepr's ADR 0001 until ADR-0095 renumbered it. Amended by ADR-0092: the Standings Engine is `@keepr/standings`, a package of the Keepr workspace.
 
 The Pairing Engine never sees wins, losses, draws, point values or tiebreakers. The Consumer gives it finished facts per Entrant: Score, opponents already faced, Byes received, and Rank when a Constraint needs it. We chose this so pairing stays a small, separately testable black box that works for any game's scoring, and so there is one source of truth for Scores rather than the engine re-deriving them from results.
 

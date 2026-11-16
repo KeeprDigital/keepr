@@ -15,17 +15,16 @@ Paths beginning `packages/` are from the repository's root; the rest are from th
 | `packages/engine-core` | `@keepr/engine-core`: types, the seeded-random routine and mapping functions both engines use. |
 | `packages/testkit` | `@keepr/testkit`: test helpers, scenario files with recorded answers. |
 | `packages/engine-integration` | `@keepr/engine-integration`: whole events played through both engines. |
-| `packages/*/RULES.md` | The exact rules each engine follows. |
-| `docs/spec.md` | Pairing Engine spec. |
-| `docs/standings-spec.md` | Standings Engine spec. |
+| `packages/*/RULES.md` | The exact rules each engine follows; `packages/*/README.md` says how to call it. |
+| `RULES.md` | The Tournament Engine's settled rules, and what this app must do as the engines' Consumer. |
 | `docs/tournament-spec.md` | Tournament Engine spec. Designed, not built. |
-| `docs/adr/` | Decision records for the engines. |
+| `docs/adr/` | The Tournament Engine's decisions. Each engine's are in its package's `docs/adr`. |
 | `GLOSSARY.md` | The engines' vocabulary. Use these words. |
 | `docs/prototype-matcher/` | Throwaway prototype of the matcher. Not linted, formatted or run. |
 | `app/`, `test/`, `nuxt.config.ts` | The app's scaffold. |
 | `packages/nuxt-layer` | `@keepr/nuxt-layer`: what every Keepr app starts from. |
 
-Both engines are built. `docs/spec.md` and `docs/standings-spec.md` say what is measured and what is not. A third, the Tournament Engine, is designed in `docs/tournament-spec.md` and not yet built: it turns the record of a tournament into its current state and calls the other two.
+Both engines are built. Each package's README says what is measured and what is not. A third, the Tournament Engine, is designed in `docs/tournament-spec.md` and not yet built: it turns the record of a tournament into its current state and calls the other two.
 
 ## The app
 

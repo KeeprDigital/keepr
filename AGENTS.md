@@ -17,7 +17,7 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
   server, client and test foundation the apps share: what a second app needs
   moves there, never into a second copy. Its `README.md` has its rules.
 - `apps/score`: Score Keepr (`@keepr/score`), scaffolded and not built, with
-  the engines' specs and `GLOSSARY.md`: use its words in the packages. Each
+  the Tournament Engine's spec and `GLOSSARY.md`: use its words in the packages. Each
   engine's decisions are in its package's `docs/adr`. `apps/score/AGENTS.md` adds its own rules.
 - `GLOSSARY.md` at the root holds the words every app shares: who a person is
   and what they may use (User, Session, Organisation, App role), and the

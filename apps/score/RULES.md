@@ -1,6 +1,6 @@
 # Tournament rules
 
-What the Tournament Engine's decisions settle about a tournament's Log, its Flags and its Corrections. The engine is not built; `docs/tournament-spec.md` holds the rest of its design. Words are defined in `GLOSSARY.md`.
+What the Tournament Engine's decisions settle about a tournament's Log, its Flags and its Corrections, and what Score Keepr must do as the engines' Consumer. The Tournament Engine is not built; `docs/tournament-spec.md` holds the rest of its design. Words are defined in `GLOSSARY.md`, reasons in `docs/adr` and each engine package's.
 
 ## The Log
 
@@ -40,3 +40,23 @@ What the Tournament Engine's decisions settle about a tournament's Log, its Flag
 - Each decision made from Standings that have since changed is flagged. The Organiser may redo it with a new Action or leave it; the engine never redoes one by itself. (ADR-0106)
 - In Single Elimination, a Correction that moves a different Entrant into a later Pairing that already has a Result is flagged, not resolved. (ADR-0106)
 - Standings can be worked out as any Action saw them, which reproduces the input of any past decision. (ADR-0106)
+
+## What the Consumer must do
+
+Score Keepr, in `apps/score`, is the Consumer of the engines (ADR-0092). It stores each tournament as its Log (ADR-0103), whose Actions keep every pairing call's input and output (ADR-0105). The engines' own promises are in `packages/pairing/RULES.md` and `packages/standings/RULES.md`.
+
+- Supply consistent facts. The engine checks their shape and refuses only facts that contradict each other, never ones that are merely untrue.
+- Keep each Entrant's id the same for the whole tournament: its Shuffle Positions come from it.
+- Store the Random Seed with the tournament. Keep it secret until pairing when Pairings must be unpredictable, and change it to re-roll a round.
+- Promise seeded, unpredictable choices, never statistically uniform ones. (ADR-0100)
+- Choose who is paired: Drops, Late Entries, Awarded Byes, Pods and Pairings kept from a hand-made set are the Consumer passing only the Entrants to pair, one call per group.
+- Stop a pairing call that runs too long by ending its worker. The engine's work limit counts steps, never time.
+- Decide whether Pairings with Violations, or not proven best, are acceptable. The engine never refuses a valid round.
+- Store the final Pairings after a hand-made change. The engine keeps no memory of a check, and the next round's opponents faced follow from what was played.
+- Let any Device pair a round, the same round on two Devices apart included. Each set of Pairings is an Action, and the Clash rule decides which stands. (ADR-0103)
+- In Single Elimination, fill in each winner and record a drop or a no-show as a Result: the structure never changes once made. For a random draw, supply shuffled Ranks.
+- Pass every Entrant to the Standings Engine, one with no Results included, and rank the whole field in one call. Divisions are rows filtered after it, never separate calls.
+- For Standings during a tournament, pass the rounds completed so far as the planned rounds. Standings as of round N are a call with only the Results of rounds 1 to N; after a Correction, call again.
+- Combine a Team's Players' Results into the one Entrant the Team is.
+- Make sure no two Entrants in a Top Cut share a Rank, for example with `random` as the last Tiebreaker: `topCutFrom` refuses a shared Rank.
+- Run any play-off match yourself; the engines never schedule one.
