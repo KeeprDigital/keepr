@@ -38,7 +38,7 @@ export const ANONYMOUS_ERA_ACTOR_NAME = 'anonymous era';
  * row, and calling such an id 'anonymous era' would be a false claim about *when*
  * the work was done. It renders as the id — visibly odd, which is the right
  * amount of odd for a state nothing can currently produce. A ticket that adds
- * account deletion is the one that owes this a third label and `CONTEXT.md` the
+ * account deletion is the one that owes this a third label and `RULES.md` the
  * word for it.
  */
 const ANONYMOUS_ERA_ACTOR = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

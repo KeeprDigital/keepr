@@ -514,7 +514,7 @@ export interface GraphicsCommanderDamageCount {
  */
 export interface GraphicsFeatureMatchContext {
 	/**
-	 * The active Feature Match Session clock, already formatted by its owner. Null
+	 * The active Feature Match Session Clock, already formatted by its owner. Null
 	 * when there is no clock to show (untimed, blank Untimed Label): a Clock Graphic
 	 * Item then renders nothing, surface included.
 	 */
@@ -2886,7 +2886,7 @@ function renderedContent(
  * nothing on screen. So every owner is asked about its own content, and an owner whose
  * content is unchanged is animated by nothing at all: there would be no old rendering
  * to cross it with, and running its update recipe anyway would dip or slide it on
- * program with no counterpart. That is `CONTEXT.md:545` for an item and `:546` for the
+ * program with no counterpart. That is `RULES.md` (Graphic Animation) for an item and for the
  * graphic, and the graphic's case is the one that would have been most visible — a
  * whole composed graphic dipping to half opacity and back for an input nothing draws.
  *

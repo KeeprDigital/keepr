@@ -622,7 +622,7 @@ describe('graphicsCompositionRenderModel', () => {
 			return model.graphics[0]!.items[0]!;
 		}
 
-		it('renders the Feature Match Session clock the host resolved', () => {
+		it('renders the Feature Match Session Clock the host resolved', () => {
 			const rendered = contextItem(clock('clock-1'));
 
 			expect(rendered.kind).toBe('clock');
@@ -1906,7 +1906,7 @@ describe('graphicsCompositionRenderModel Graphic Animation', () => {
 			// An update phase starts on any changed *input value*, and a value no Text
 			// Graphic Item renders changes nothing on screen. So an update recipe must not
 			// fire for it: there is no old rendering to cross, and firing anyway would dip or
-			// slide the item on program with no counterpart. CONTEXT.md:545.
+			// slide the item on program with no counterpart. RULES.md.
 			const model = updating([
 				headlineGraphic([
 					shape('panel', {
@@ -1926,7 +1926,7 @@ describe('graphicsCompositionRenderModel Graphic Animation', () => {
 		it('leaves the whole graphic still when an update changed nothing it renders', () => {
 			// The same failure one level up, and the worse one: with nothing crossing, a
 			// whole-graphic update recipe would dip the entire composed graphic to half
-			// opacity and back, on program. CONTEXT.md:546.
+			// opacity and back, on program. RULES.md.
 			const model = resolveGraphicsCompositionRenderModel({
 				output: 'overlay',
 				graphics: [

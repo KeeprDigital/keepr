@@ -399,7 +399,7 @@ const featureMatchSourceItemConfigSchema = featureMatchOverlayRectSchema
 	.strict() satisfies z.ZodType<FeatureMatchSourceItemConfig>;
 
 /* ────────────────────────────────────────────────
- * Shared Graphics Foundation vocabulary
+ * Graphics Composition Model vocabulary
  * ──────────────────────────────────────────────── */
 
 const graphicAnchorPointSchema = z.enum(GRAPHIC_ANCHOR_POINT_VALUES);
@@ -1654,8 +1654,8 @@ const broadcastGraphicsStackSchema = z
  * shared item tree. The server's schema for the Feature Match Overlay config
  * contract's `layout` field.
  *
- * It sits here, after the Shared Graphics Foundation section, because that tree is
- * the Shared Graphics Foundation vocabulary above. Every cap lives on its own array
+ * It sits here, after the Graphics Composition Model section, because that tree is
+ * the Graphics Composition Model vocabulary above. Every cap lives on its own array
  * for the same reason every Broadcast Graphics cap does.
  *
  * Named and exported because it is the boundary of the portable artifact as well

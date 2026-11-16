@@ -94,7 +94,7 @@ mockNuxtImport('useGraphicsAuthoringLease', () => (options: { enabled?: () => bo
 		release: vi.fn(),
 	};
 });
-// The hoisted Live Session sync (#373): loaded here so the Program monitor and the Edit workspace's
+// The hoisted Live Session sync (#373): loaded here so the Program Monitor and the Edit workspace's
 // on-air marks project from a loaded session whichever workspace is open.
 const mockPlayoutDisconnected = ref(false);
 mockNuxtImport('useBroadcastGraphicsLiveSessionSync', () => () => ({
@@ -296,7 +296,7 @@ describe('broadcastGraphicsSettings', () => {
 
 	// ADR-0051: the canvas is the Event's, set in Event Presentation Settings, not here.
 	it.each(['live', 'edit'])(
-		'composes the %s workspace and the Program monitor in the Event Canvas',
+		'composes the %s workspace and the Program Monitor in the Event Canvas',
 		async (workspace) => {
 			mockRoute.query = { workspace };
 
@@ -434,10 +434,10 @@ describe('broadcastGraphicsSettings', () => {
 		expect(mockLeaseEnabled.value).toBe(false);
 	});
 
-	// Story 23 (#60, carried as #335): a persistent Program monitor in BOTH workspaces, so the
+	// Story 23 (#60, carried as #335): a persistent Program Monitor in BOTH workspaces, so the
 	// operator always knows what is on air — an Edit-workspace change can reach program instantly…
-	describe('the persistent Program monitor', () => {
-		it('shows the Program monitor in the Live workspace, at full size', async () => {
+	describe('the persistent Program Monitor', () => {
+		it('shows the Program Monitor in the Live workspace, at full size', async () => {
 			const wrapper = await mountComponent();
 			await flushPromises();
 

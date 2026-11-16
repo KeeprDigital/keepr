@@ -87,7 +87,7 @@ export const useBroadcastGraphicsLiveSessionStore = defineStore(
 		 * one. It already compensates for round-trip time across three samples with the worst
 		 * discarded and re-syncs every sixty seconds, so its residual error is smaller than
 		 * anything a single snapshot read could establish — and one clock for the whole
-		 * application means the Feature Match Session clock and Broadcast Graphics playout can
+		 * application means the Feature Match Session Clock and Broadcast Graphics playout can
 		 * never disagree about what time it is.
 		 */
 		const { getServerTime, isSynced: isClockSynced } = useServerTime();
@@ -418,7 +418,7 @@ export const useBroadcastGraphicsLiveSessionStore = defineStore(
 		 * The lifecycle phases and elapsed times each on-air Broadcast Graphic renders.
 		 *
 		 * Keyed by Broadcast Graphic id, in exactly the shape the compositor takes, so every
-		 * output and the Program monitor resolve one frame from one authoritative instant.
+		 * output and the Program Monitor resolve one frame from one authoritative instant.
 		 *
 		 * More than one phase per graphic, because an exit interrupting an update or
 		 * on-screen cycling has to continue from the state that was rendered rather than

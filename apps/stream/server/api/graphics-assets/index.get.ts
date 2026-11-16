@@ -6,7 +6,7 @@ import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 /**
  * Discovery across the whole Graphics Asset Library.
  *
- * The listing is installation-wide by design — `CONTEXT.md` has graphics
+ * The listing is installation-wide by design — `RULES.md` has graphics
  * authors discovering and referencing every Graphic Asset — so the session is
  * asked for as authentication and never consulted again. #172 closed the
  * asymmetry #90 left: writing to the library required a session while reading

@@ -156,7 +156,7 @@ export interface PaginatedScreenModeOptions<M extends PageRotationMode, TRow> {
  * itself.
  *
  * A page selection is written only from an interactive surface, such as the
- * Program monitor; a Screen Output never writes, so it cannot move the
+ * Program Monitor; a Screen Output never writes, so it cannot move the
  * Rotation Anchor (ADR-0009).
  */
 export function usePaginatedScreenMode<M extends PageRotationMode, TRow>(

@@ -233,7 +233,7 @@ describe('cardService event scoping', () => {
 			card: expect.objectContaining({ id: 'card-two' }),
 			revision: 1,
 		});
-		// Nor its Card revision: the wrong Event reads as a Screen never written.
+		// Nor its Card Revision: the wrong Event reads as a Screen never written.
 		expect(await service.getScreenCard(one.eventId, two.screenId)).toEqual({
 			card: null,
 			revision: 0,

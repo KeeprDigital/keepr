@@ -2,7 +2,7 @@
  * The session this browser holds, client-side: who it belongs to, whether
  * there is one, and the two operations that change the answer.
  *
- * `CONTEXT.md` defines the **User** and the **Session** as of the cutover (#398),
+ * `RULES.md` defines the **User** and the **Session** as of the cutover (#398),
  * which is what this reads and changes: the user is who owns work, and the
  * session is this browser's claim to be them.
  */

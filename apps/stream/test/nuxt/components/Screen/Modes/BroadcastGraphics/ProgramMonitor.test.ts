@@ -128,7 +128,7 @@ describe('broadcastGraphicsProgramMonitor', () => {
 		});
 	});
 
-	it('gives the Program monitor a capability, so it can resolve media at all', async () => {
+	it('gives the Program Monitor a capability, so it can resolve media at all', async () => {
 		// The monitor renders as a live output does, not as a preview: without a
 		// capability in its URL it renders every graphic except its media, silently.
 		const wrapper = await mountComponent();
@@ -140,7 +140,7 @@ describe('broadcastGraphicsProgramMonitor', () => {
 
 	// The monitor is the operator's own view of program, not one of the Screen's outputs, and says
 	// so in its URL.
-	it('opens the Program monitor as a monitor, so it is not counted as an output', async () => {
+	it('opens the Program Monitor as a monitor, so it is not counted as an output', async () => {
 		const wrapper = await mountComponent();
 
 		const src = wrapper.get('[data-testid="program-monitor"]').attributes('src')!;
@@ -148,7 +148,7 @@ describe('broadcastGraphicsProgramMonitor', () => {
 		expect(src).not.toContain('embed=preview');
 	});
 
-	it('fits the Program monitor to the canvas ratio and offers fixed zoom controls', async () => {
+	it('fits the Program Monitor to the canvas ratio and offers fixed zoom controls', async () => {
 		const wrapper = await mountComponent();
 		const monitor = wrapper.get('[data-testid="program-monitor"]');
 		const canvas = monitor.element.parentElement;
@@ -219,7 +219,7 @@ describe('broadcastGraphicsProgramMonitor', () => {
 	});
 
 	// Story 23 asks for a *persistent* monitor: one the operator always has, in both workspaces.
-	it('offers no collapse: a Program monitor that can be hidden is not persistent', async () => {
+	it('offers no collapse: a Program Monitor that can be hidden is not persistent', async () => {
 		const wrapper = await mountComponent();
 
 		expect(wrapper.getComponent(ScreenSettingsSectionStub).props('collapsible')).toBe(false);
@@ -236,7 +236,7 @@ describe('broadcastGraphicsProgramMonitor', () => {
 		expect(style).toContain('aspect-ratio: 1920 / 1080');
 	});
 
-	// The Program monitor resolves media through the same capability a Screen Output does and
+	// The Program Monitor resolves media through the same capability a Screen Output does and
 	// always holds one, so it cannot show an operator what a capture browser opened without one is…
 	describe('outputs that cannot resolve this Screen’s media', () => {
 		const branded: BroadcastGraphicConfig = {

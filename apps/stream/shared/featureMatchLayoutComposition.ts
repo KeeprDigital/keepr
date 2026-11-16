@@ -16,7 +16,7 @@ import type { FeatureMatchLayoutConfig } from './types/screenConfig';
  * declares no Graphic Inputs, belongs to no Graphic Channel, and is never taken on
  * or off air. It carries the same authored fields — an id, a name, a Graphic Layer
  * Order, and optional whole-composition animation — because those are what the
- * Shared Graphics Foundation is.
+ * Graphics Composition Model is.
  */
 
 /**

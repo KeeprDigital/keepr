@@ -19,6 +19,11 @@ in it; `apps/stream/AGENTS.md` and `apps/score/AGENTS.md` add each app's own.
 - `apps/score`: Score Keepr (`@keepr/score`), scaffolded and not built, with
   the engines' specs, decisions and `GLOSSARY.md`: use its words in the
   packages. `apps/score/AGENTS.md` adds its own rules.
+- `GLOSSARY.md` at the root holds the words every app shares: who a person is
+  and what they may use (User, Session, Organisation, App role), and the
+  shared layer's named modules. Each app has a glossary of its own, and
+  `GLOSSARY-MAP.md` says where each is and how they meet. A shared term is
+  defined once, at the root.
 - The root holds what every app and package shares: the dependency catalog
   (`pnpm-workspace.yaml`), the lockfile, the lint and format configuration
   (`.oxlintrc.json`, `.oxfmtrc.json`), the packages' compiler options

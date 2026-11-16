@@ -64,7 +64,7 @@ interface ActiveCardRuntimeState {
  * `DELETE` succeeds, so a failed one has nothing to roll back, and whatever
  * the store accepted meanwhile stands (#726).
  *
- * Every Card state is ordered by its Card revision (#734), which the server
+ * Every Card state is ordered by its Card Revision (#734), which the server
  * advances on each save and Clear: a save's and a Clear's answer, a read's
  * answer, and `card:updated` and `card:cleared` all carry it. The selected
  * Screen's Card applies only a state at least as new as the one it holds, so a
@@ -89,7 +89,7 @@ export function useActiveCardScreenRuntime(state: ActiveCardRuntimeState) {
 	let screenOutputRead: (() => Promise<ScreenCardState>) | null = null;
 	const reads = createGuardedSequence();
 	/**
-	 * The Card revision of the state held for the selected Screen; `null` until
+	 * The Card Revision of the state held for the selected Screen; `null` until
 	 * one is accepted, when anything is at least as new (#734).
 	 */
 	let heldRevision: number | null = null;

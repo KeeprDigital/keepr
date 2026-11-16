@@ -17,7 +17,7 @@ import { anotherUser } from './identities';
  * `apiBoundary.test.ts` is where that is proved.
  *
  * **What is left here is the half the boundary cannot state.** The Graphics Asset
- * Library is deliberately installation-wide: `CONTEXT.md` says graphics authors
+ * Library is deliberately installation-wide: `RULES.md` says graphics authors
  * may discover and reference every Graphic Asset, and #90 preserved that — its
  * guarantee is authentication, not ownership. So every read below is made by a
  * different person* from the one who published the subject. A suite that only

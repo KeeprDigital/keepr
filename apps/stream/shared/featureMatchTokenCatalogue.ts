@@ -24,7 +24,7 @@ import { seatLabel } from './utils/featureMatchSidePlayer';
  * The legacy model put the side on the item — a `playerSide` beside a `{name}`
  * token — so one token key meant two different values depending on which item
  * rendered it. A shared Text Graphic Item has no side, and giving it one would
- * fork the shared vocabulary that `CONTEXT.md` says a Feature Match Layout speaks:
+ * fork the shared vocabulary that `RULES.md` says a Feature Match Layout speaks:
  * "Feature Match Layouts use the shared Graphic Item hierarchy rather than a
  * separate Layout Item or Widget hierarchy". So the side moves into the key:
  * `{player1Name}` and `{player2Name}` are two catalogue entries, and a template

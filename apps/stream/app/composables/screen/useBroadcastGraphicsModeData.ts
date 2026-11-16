@@ -102,7 +102,7 @@ export function useBroadcastGraphicsModeData(context: ScreenContext) {
 	 * Nothing under an authoring preview. The Edit workspace's preview composes the
 	 * working stack against the backdrop its own chooser sets — black, white, green,
 	 * or the transparency checkerboard — and an authored background painted over
-	 * that would answer a question the author did not ask. The Program monitor is
+	 * that would answer a question the author did not ask. The Program Monitor is
 	 * not a preview: it embeds the real Overlay Output, so it shows the background
 	 * the way every other output does.
 	 */

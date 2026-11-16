@@ -41,7 +41,7 @@ const offered = (wrapper: Wrapper) =>
 		.findAll('option:not([value="null"])')
 		.map((option) => option.text());
 
-describe('a Talent lineup', () => {
+describe('a Talent Lineup', () => {
 	it('adds to the end from the Talents not yet in it', async () => {
 		const wrapper = mountLineup([CASTER]);
 

@@ -12,8 +12,9 @@ it will run on and how to run it.
 - Name domain concepts with `GLOSSARY.md` terms, never its `_Avoid_` synonyms,
   in this app and in the engine packages. A missing term is either invented
   language (reconsider) or a real gap (add it).
-- Stream Keepr's `CONTEXT.md` is a different vocabulary for a different
-  product: an Event there is not a Tournament here. Use each in its own app.
+- Stream Keepr's `GLOSSARY.md` is a different vocabulary for a different
+  product: an Event there is not a Tournament here. Use each in its own app;
+  the root `GLOSSARY-MAP.md` says how the two meet.
 - A decision about the engines is a new file in `docs/adr`, with the next
   number. A decision about the workspace or about this app's place in it is a
   section of `apps/stream/DECISIONS.md`.

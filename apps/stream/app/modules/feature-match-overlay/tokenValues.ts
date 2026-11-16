@@ -38,7 +38,7 @@ export interface FeatureMatchOverlayHostStateInput extends FeatureMatchTokenValu
 		| null
 		| undefined;
 	matchState: FeatureMatchState | null | undefined;
-	/** The Feature Match Session clock, already formatted by its own composable; null while there is none to show. */
+	/** The Feature Match Session Clock, already formatted by its own composable; null while there is none to show. */
 	displayTime: string | null;
 }
 

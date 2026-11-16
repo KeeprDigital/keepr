@@ -159,7 +159,7 @@ async function stage(clock: ClockState) {
 	};
 }
 
-describe("a Feature Match Session clock stored in today's shape", () => {
+describe("a Feature Match Session Clock stored in today's shape", () => {
 	// Which stored combination reads as what is `readStoredClock`'s own test.
 	it('reads one running past its end, stored before the count-up limit, counting up without limit', async () => {
 		const clock = { ...STORED_BEFORE_THE_LIMIT, isRunning: true, lastStartedAt: NOW - 6_000_000 };

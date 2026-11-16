@@ -26,7 +26,7 @@ describe('createMessage', () => {
 
 // Every holder orders Card states by the revision a write committed (#734).
 describe('the Card announcements', () => {
-	it('carry the Card revision', () => {
+	it('carry the Card Revision', () => {
 		expect(
 			createMessage(1, 'card:updated', { screenId: 2, card: null, revision: 7 }).revision,
 		).toBe(7);

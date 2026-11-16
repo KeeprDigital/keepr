@@ -11,7 +11,7 @@ let sessionActive = false;
  * The Realtime Event Session: the Event room and every Event Data handler.
  *
  * Its room is the operator's Event, or an editor preview's. A Screen Output and
- * a Program monitor join no room and run none of these handlers: each follows
+ * a Program Monitor join no room and run none of these handlers: each follows
  * only its own Screen's channel (`useScreenChannelSession`), which the server
  * tells of exactly what that Screen shows.
  */

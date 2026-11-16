@@ -151,7 +151,7 @@ export function parseTimeInput(input: string): number | null {
 // ──────────────── Clock State Calculations ────────────────
 
 /**
- * A Feature Match Session clock as the app holds it: running from a server
+ * A Feature Match Session Clock as the app holds it: running from a server
  * instant, or stopped with the time it has run. Whether it runs is whether it
  * holds a start, so a clock running with no start, or stopped with one, cannot
  * be built. The stored Session state keeps its own shape (`ClockState`);
@@ -220,7 +220,7 @@ export function clockRunState(clock: FeatureMatchClock): 'running' | 'paused' | 
 }
 
 /**
- * Where a Feature Match Session clock stands. Where its time stands outranks
+ * Where a Feature Match Session Clock stands. Where its time stands outranks
  * whether it is counting: a countdown past its end is `run-out`, or, counting up
  * after, `counting-up` until it is `holding` at its count-up limit, running or
  * not. With time left it is `running`, `paused` once any time has run, or
@@ -250,7 +250,7 @@ export interface FeatureMatchClockProjection {
 }
 
 /**
- * A Feature Match Session clock at `now` (server time): one pure projection, so
+ * A Feature Match Session Clock at `now` (server time): one pure projection, so
  * what a rendering shows, the state it reads and when it next changes cannot
  * disagree. A countdown shows its time remaining, its overtime once run out if
  * it counts up after (holding at its count-up limit, ADR-0076), and any other
@@ -400,7 +400,7 @@ export function applyClockAdjustment(
 // ──────────────── Clock Transitions ────────────────
 
 /**
- * What an operator does to a Feature Match Session clock, each a pure function
+ * What an operator does to a Feature Match Session Clock, each a pure function
  * of the clock and the server instant it happens at. The Session reducer and
  * the operator's optimistic update apply these same functions, so a prediction
  * cannot differ from the answer. Which a Session refuses is the reducer's rule.

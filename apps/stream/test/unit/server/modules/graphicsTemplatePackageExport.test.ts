@@ -561,7 +561,7 @@ describe('the Template Package export contract', () => {
 	});
 
 	it('embeds the assets Media Graphic Items pin, including inside a Graphic Group', async () => {
-		// Media Graphic Items are the Shared Graphics Foundation's asset-bearing
+		// Media Graphic Items are the Graphics Composition Model's asset-bearing
 		// vocabulary. A Broadcast Graphic Template that places one must package the
 		// exact revision it pins, or the package installs a Template with a
 		// dangling field — and a group's children pin them just as its top level does.

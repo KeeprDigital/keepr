@@ -59,7 +59,7 @@ export function cardService() {
 		return written.revision;
 	};
 
-	/** Save a Card, answering the Card revision the save committed (#734). */
+	/** Save a Card, answering the Card Revision the save committed (#734). */
 	const setScreenCard = async (
 		eventId: number,
 		screenId: number,
@@ -87,7 +87,7 @@ export function cardService() {
 	 * `null`, and the stored Card, its revision and its KV copy stay as they are
 	 * until the next save, Clear, or Screen or Event deletion. A read never writes.
 	 *
-	 * The answer carries the Card revision of the row it loaded, so a holder can
+	 * The answer carries the Card Revision of the row it loaded, so a holder can
 	 * order it against the writes and announcements it has already seen (#734).
 	 */
 	const getScreenCard = async (
@@ -111,7 +111,7 @@ export function cardService() {
 	};
 
 	/**
-	 * The operator's explicit Clear, answering the Card revision it committed.
+	 * The operator's explicit Clear, answering the Card Revision it committed.
 	 * Expiry never calls it (ADR-0022).
 	 */
 	const deleteScreenCard = async (eventId: number, screenId: number): Promise<number> => {

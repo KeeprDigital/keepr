@@ -21,7 +21,7 @@ import { MAX_REALTIME_MESSAGE_BYTES, realtimeMessageBytes } from '~~/shared/type
  * clock rather than its own, but `useServerTime` already establishes it installation-wide
  * with round-trip compensation over several samples and a periodic re-sync — which is
  * both more accurate than one snapshot read could be and shared with every other live
- * surface, so the Feature Match Session clock and Broadcast Graphics playout cannot
+ * surface, so the Feature Match Session Clock and Broadcast Graphics playout cannot
  * disagree about what time it is. Restating it here would add bytes to the largest
  * response this feature serves, to worse effect.
  *

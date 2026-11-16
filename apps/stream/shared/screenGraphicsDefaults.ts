@@ -9,7 +9,7 @@ import type {
  * Frame's decorative animation, and a Broadcast Graphics Background take.
  *
  * They live beside `shared/types/screenConfig.ts` rather than in it because the
- * Feature Match Overlay Presets build a whole Frame, and the mode-configuration
+ * built-in Feature Match Layout Templates build a whole Frame, and the mode-configuration
  * module reads its default Feature Match Overlay configuration back from those
  * presets. One of the two directions has to be values-free, and a pair of
  * starting values is the smaller thing to move.

@@ -32,7 +32,7 @@ import {
  * What each graphics template kind requires from a Template Package.
  *
  * Discovery stays with the vocabulary that owns the payload: a Broadcast Graphic
- * Template walks the Shared Graphics Foundation stack, and a Feature Match Layout
+ * Template walks the Graphics Composition Model stack, and a Feature Match Layout
  * Template walks its own layout through its Graphic Item Definitions. Both hand
  * the same shaped requirements to the one Graphics Asset Library export contract,
  * which is what keeps their workflows separate but their packages identical in

@@ -25,7 +25,7 @@ const mockCardRepo = {
 };
 
 /**
- * The stand-in server's Card revision (#734). Ordering tests answer with explicit
+ * The stand-in server's Card Revision (#734). Ordering tests answer with explicit
  * revisions; every other answer is treated as current: writes and announcements
  * advance the revision, reads answer the revision the server is at.
  */
@@ -822,7 +822,7 @@ describe('useCardStore', () => {
 	});
 
 	/**
-	 * The Card revision orders every Card state the store is handed (#734). Each
+	 * The Card Revision orders every Card state the store is handed (#734). Each
 	 * row hands the real store Card states out of order, each carrying the
 	 * revision the server committed it at, and the store must show the newest:
 	 * a save, Clear, read or message older than what it holds lands nothing.

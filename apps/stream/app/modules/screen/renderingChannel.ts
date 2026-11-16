@@ -4,7 +4,7 @@ import { eventRealtimeChannel, screenRealtimeChannel } from '~~/shared/utils/rea
 /**
  * Which realtime channel a rendering of a Screen hears changes on.
  *
- * A live rendering of a saved Screen, a Screen Output or a Program monitor,
+ * A live rendering of a saved Screen, a Screen Output or a Program Monitor,
  * hears only its Screen's own channel: the server tells that channel exactly
  * what the Screen shows, derived from its saved mode and configuration.
  *

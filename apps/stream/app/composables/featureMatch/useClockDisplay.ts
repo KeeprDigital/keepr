@@ -3,7 +3,7 @@ import type { ClockState } from '~~/shared/types/featureMatchState';
 import { projectFeatureMatchClock, readStoredClock } from '~~/shared/utils/clock';
 
 /**
- * A Feature Match Session clock as a rendering shows it: its projection, kept
+ * A Feature Match Session Clock as a rendering shows it: its projection, kept
  * current. It answers with the clock's state and whether it runs; the colour
  * each takes is its component's to choose.
  *

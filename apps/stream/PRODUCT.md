@@ -67,7 +67,7 @@ manual re-keying, and any graphic a broadcast needs can be built.
   consumes no Theme Token.
 - No self-signup and no email; accounts and Password Reset Links are handed
   out by a Graphics Administrator.
-- Domain language is binding: name concepts with `CONTEXT.md` terms, never its
+- Domain language is binding: name concepts with `GLOSSARY.md` terms, never its
   _Avoid_ synonyms. Settled decisions live in `DECISIONS.md`.
 
 ## Brand Commitments

@@ -13,9 +13,10 @@ operations. Paths in this file are relative to `apps/stream`.
 
 ## Domain docs
 
-- Before exploring, read `CONTEXT.md` and the `DECISIONS.md` sections touching
-  your area.
-- Name domain concepts with `CONTEXT.md` terms, never its `_Avoid_` synonyms. A
+- Before exploring, read `GLOSSARY.md`, then the `RULES.md` and `DECISIONS.md`
+  sections touching your area. `GLOSSARY.md` says what each thing is;
+  `RULES.md` says what it must do, under the same headings.
+- Name domain concepts with `GLOSSARY.md` terms, never its `_Avoid_` synonyms. A
   missing term is either invented language (reconsider) or a real gap (add it).
 - If your output contradicts a decision, say so explicitly ("Contradicts
   ADR-NNNN — worth reopening because…") rather than silently overriding it.

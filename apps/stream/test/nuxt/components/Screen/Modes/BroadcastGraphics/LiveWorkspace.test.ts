@@ -561,7 +561,7 @@ describe('broadcastGraphicsLiveWorkspace', () => {
 			const wrapper = await mountComponent([lowerThird]);
 
 			// What must not happen is a revision-status request for a graphic that
-			// pins nothing. (The Program monitor's capability request is no longer
+			// pins nothing. (The Program Monitor's capability request is no longer
 			// made from here — the monitor is hoisted above the workspace switch.)
 			const statusRequests = mockApiFetch.mock.calls
 				.map(([path]) => String(path))

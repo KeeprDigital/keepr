@@ -398,7 +398,7 @@ describe.each([
 	['the Screen Output Screen read by id', async () => await getOutputScreen(request())],
 	['the Screen Output Screen read by slug', async () => await getOutputScreenBySlug(request())],
 ])('%s', (_route, readScreen) => {
-	it('carries no Card and no Card revision, expired or not (scenario 9)', async () => {
+	it('carries no Card and no Card Revision, expired or not (scenario 9)', async () => {
 		await putCard(request(card('bolt', D)));
 
 		const live = await readScreen();
@@ -414,11 +414,11 @@ describe.each([
 });
 
 /**
- * The Card revision orders every Card state a holder is handed (#734): each
+ * The Card Revision orders every Card state a holder is handed (#734): each
  * write answers the revision it committed, each announcement carries it, and
  * each read answers the revision of the row it loaded beside the Card.
  */
-describe('the Card revision', () => {
+describe('the Card Revision', () => {
 	it('is answered by each save and Clear, and carried by its announcement', async () => {
 		await expect(putCard(request(card('bolt')))).resolves.toEqual({ success: true, revision: 1 });
 		await expect(deleteCard(request())).resolves.toEqual({ success: true, revision: 2 });

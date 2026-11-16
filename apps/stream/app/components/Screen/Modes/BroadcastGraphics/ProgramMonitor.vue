@@ -6,7 +6,7 @@ import { broadcastGraphicsGraphicAssetReferences } from '~~/shared/utils/graphic
 import { screenOutputPath } from '~~/shared/utils/screenOutput';
 
 /**
- * The persistent Program monitor of a Broadcast Graphics Screen: the operator's own
+ * The persistent Program Monitor of a Broadcast Graphics Screen: the operator's own
  * live rendering of the Screen they drive, embedded beside whichever workspace is
  * open (#335).
  *
@@ -51,7 +51,7 @@ const now = useBroadcastGraphicsPlayoutClock(
 );
 
 /**
- * The Program monitor resolves media exactly as a capture browser does — through a
+ * The Program Monitor resolves media exactly as a capture browser does — through a
  * Screen Output Asset Capability — though it is no output itself. Without one it
  * would show every graphic except its media, which is the one thing a monitor must
  * not do quietly.
@@ -166,7 +166,7 @@ const programBackgroundStyle = computed(() => {
 
 <template>
 	<!--
-		Never collapsible: a Program monitor that can be hidden is not persistent, and
+		Never collapsible: a Program Monitor that can be hidden is not persistent, and
 		absent exactly when the mistake it guards against happens (#335).
 	-->
 	<ScreenSettingsSection title="Program" :collapsible="false">

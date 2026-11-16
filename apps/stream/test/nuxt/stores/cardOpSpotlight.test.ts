@@ -116,7 +116,7 @@ describe('card store on a One Piece Event', () => {
 		mockFetch.mockImplementation(async (path: string) => server(path));
 		mockSaveScreenCard.mockReset();
 		mockEventStoreState.event = { id: 1, game: 'op', cardTimeout: 0 };
-		// Each test starts from the same server: its clock and its Card revision.
+		// Each test starts from the same server: its clock and its Card Revision.
 		revision = 0;
 		serverNow.value = SERVER_NOW;
 		store = useCardStore();
