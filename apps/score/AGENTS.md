@@ -15,9 +15,12 @@ it will run on and how to run it.
 - Stream Keepr's `GLOSSARY.md` is a different vocabulary for a different
   product: an Event there is not a Tournament here. Use each in its own app;
   the root `GLOSSARY-MAP.md` says how the two meet.
-- A decision about the engines is a new file in `docs/adr`, with the next
-  number. A decision about the workspace or about this app's place in it is a
-  section of `apps/stream/DECISIONS.md`.
+- A decision about the engines is a new file in `docs/adr`, numbered from the
+  workspace's one sequence (ADR-0095): 0096 to 0106 are held for this app's
+  eleven, so the next is 0107 or later. A decision about the workspace or
+  about this app's place in it is a file in the root `docs/adr`. A decision is
+  written once; one that changes it leaves it only an `Amended by` or
+  `Superseded by` line.
 
 ## What belongs where
 

@@ -20,9 +20,12 @@ operations. Paths in this file are relative to `apps/stream`.
   missing term is either invented language (reconsider) or a real gap (add it).
 - If your output contradicts a decision, say so explicitly ("Contradicts
   ADR-NNNN — worth reopening because…") rather than silently overriding it.
-- Record a new decision as a new section at the end of `DECISIONS.md` with the
-  next number. Change an existing decision by editing its section. Skills that
-  default to `docs/adr/NNNN-*.md` files write here instead.
+- A rule that changes is edited in `RULES.md`. Record why as a new section at
+  the end of `DECISIONS.md`, with the next number free in the workspace, and
+  give each decision it changes an `Amended by ADR-NNNN` or
+  `Superseded by ADR-NNNN` line. Edit a decision's body only to correct an
+  error in what it recorded (ADR-0095). Skills that default to
+  `docs/adr/NNNN-*.md` files write here until `DECISIONS.md` is split.
 
 ## Writing tests
 

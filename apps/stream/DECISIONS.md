@@ -1,6 +1,6 @@
 # Decisions
 
-One section per settled architectural decision, numbered in the order taken; read the sections that touch an area before working in it, and surface a contradiction rather than silently overriding one. A new decision goes at the end under the next unused number — take it from `origin/main` at merge time, because parallel branches otherwise pick the same one. When a decision changes, edit its section to state what is now true and say in a line what changed; git history keeps the old text, so there are no separate superseded records. Numbers 0003, 0008 and 0013 were superseded and folded into ADR-0010 (0003, 0008) and ADR-0017 (0013); they are not reused.
+One section per settled architectural decision, numbered in the order taken; read the sections that touch an area before working in it, and surface a contradiction rather than silently overriding one. A new decision goes at the end under the next number unused anywhere in the workspace, the root `docs/adr` and each package's included — take it from `origin/main` at merge time, because parallel branches otherwise pick the same one. A decision is written once (ADR-0095): what is true now is in `RULES.md`, a decision that changes an earlier one is a new section, and the earlier one gains only an `Amended by ADR-NNNN` or `Superseded by ADR-NNNN` line. A section's body is edited only to correct an error in what it recorded. ADR-0089 to ADR-0094 are the workspace's, and move to the root `docs/adr` when this file is split into one file per decision. Numbers 0003, 0008 and 0013 were superseded and folded into ADR-0010 (0003, 0008) and ADR-0017 (0013); they are not reused.
 
 ## ADR-0001: Graphic Style Sets reference application fonts only
 
@@ -3423,7 +3423,7 @@ Accepted · 2026-11-16.
 
 ## ADR-0094: Each vocabulary has its own glossary, shared terms are defined once at the root, and a glossary holds no rules
 
-Accepted · 2026-11-16.
+Accepted · 2026-11-16 · Extended by ADR-0095 (`docs/adr` at the root): rules say what is true now, decisions say why, and which keeps a rule both state is decided there.
 
 ### Decision
 
