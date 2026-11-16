@@ -22,6 +22,10 @@ minimumReleaseAgeExclude:
   - wrangler@4.161.0
 trustPolicy: off
 shamefullyHoist: true
+# Dependencies are hoisted for Nuxt; the workspace's own packages are not. One
+# resolves another only by naming it in its `package.json`, so the Pairing and
+# Standings Engines cannot come to import each other.
+hoistWorkspacePackages: false
 shellEmulator: true
 verifyDepsBeforeRun: error
 engineStrict: true
@@ -73,6 +77,7 @@ catalog:
   drizzle-zod: 0.8.3
   echarts: 6.1.0
   esbuild: 0.28.2
+  fast-check: 4.10.2
   fontkitten: 1.0.3
   happy-dom: 21.0.4
   mana-font: 1.18.0

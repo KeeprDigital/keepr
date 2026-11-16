@@ -1,0 +1,26 @@
+{
+	"name": "@keepr/pairing",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Pairing Engine: Swiss, Single Elimination, checking hand-made Pairings.",
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p test/tsconfig.json && tsc --noEmit -p bench/tsconfig.json",
+		"test": "vitest run",
+		"bench": "node bench/simulate.ts"
+	},
+	"dependencies": {
+		"@keepr/engine-core": "workspace:*"
+	},
+	"devDependencies": {
+		"@keepr/testkit": "workspace:*",
+		"@types/node": "catalog:",
+		"fast-check": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

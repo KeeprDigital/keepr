@@ -1,0 +1,19 @@
+{
+	"name": "@keepr/engine-integration",
+	"private": true,
+	"description": "Whole events played through both engines.",
+	"type": "module",
+	"scripts": {
+		"typecheck": "tsc --noEmit -p tsconfig.json",
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"@keepr/engine-core": "workspace:*",
+		"@keepr/pairing": "workspace:*",
+		"@keepr/standings": "workspace:*",
+		"@types/node": "catalog:",
+		"fast-check": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

@@ -406,8 +406,8 @@ How `pnpm verify` runs:
 
 CI (`.github/workflows/ci.yml`) runs the same gates as `pnpm verify` on PRs
 and in the merge queue, split across parallel jobs (lint, typecheck, the unit
-suite, the Nuxt suite, two integration shards, local-auth and browser gates,
-Worker build) so the longest job sets the wall time. The queue's run tests the exact tree that lands
+suite, the Nuxt suite, the workspace's packages, two integration shards,
+local-auth and browser gates, Worker build) so the longest job sets the wall time. The queue's run tests the exact tree that lands
 ([Releases](#releases)). It skips draft PRs (marking one ready runs it) and
 the Worker build when only tests, docs or the other workflows changed. A change
 that touches only docs skips the code gates and runs `pnpm verify:docs`

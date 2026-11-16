@@ -21,6 +21,8 @@
 		".release-please-manifest.json",
 		// Served as they are: the acceptance pages and their fixtures.
 		"apps/stream/public/**",
+		// A throwaway prototype, kept as it was written.
+		"apps/score/docs/prototype-matcher/**",
 		// The design tool's own files.
 		"apps/stream/.impeccable/**",
 		// The validator Worker is redeployed when its fingerprint changes, and the fingerprint hashes its
