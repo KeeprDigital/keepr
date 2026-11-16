@@ -6,8 +6,11 @@ import { eventDataPublicationModule } from '~~/server/modules/event-data-publica
 import { eventService } from '~~/server/services/event';
 import { requireMeleeService } from '~~/server/services/meleeIntegration';
 import { MeleeTransportError } from '~~/server/services/meleeTransport';
-import { errorNameOf } from '~~/server/utils/errorLogFields';
-import { isStateConflictFailure, toPublicOperationalError } from '~~/server/utils/errors';
+import { errorNameOf } from '@keepr/nuxt-layer/server/utils/errorLogFields';
+import {
+	isStateConflictFailure,
+	toPublicOperationalError,
+} from '@keepr/nuxt-layer/server/utils/errors';
 import {
 	acquireMeleeSyncLease,
 	LIVE_RESULTS_COMMAND,

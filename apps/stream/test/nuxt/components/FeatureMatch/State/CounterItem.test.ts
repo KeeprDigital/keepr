@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import CounterItem from '~/components/FeatureMatch/State/CounterItem.vue';
 
 function mountCounterItem(props: Record<string, unknown> = {}) {

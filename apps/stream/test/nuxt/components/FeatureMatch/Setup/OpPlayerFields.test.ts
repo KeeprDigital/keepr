@@ -3,7 +3,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LUFFY, opCardSummary, ZORO } from '~~/test/helpers/opCards';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import OpPlayerFields from '~/components/FeatureMatch/Setup/OpPlayerFields.vue';
 
 // A Slot side's Leader picker. The Event's `op-cards` route is faked at `$fetch`.

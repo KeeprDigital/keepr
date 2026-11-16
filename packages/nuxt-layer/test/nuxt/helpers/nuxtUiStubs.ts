@@ -1,0 +1,802 @@
+/**
+ * Shared stand-ins for Nuxt UI components: plain semantic HTML that keeps each
+ * component's v-model, emits, disabled state and slots, with fall-through attrs
+ * (aria-*, data-*, listeners) on the control. Mount with
+ * `global: { stubs: nuxtUiStubs }`; spread to override one: `{ ...nuxtUiStubs, UModal: MyModal }`.
+ * Overlays (UModal, USlideover, UPopover, UDropdownMenu) render content only while open.
+ */
+import type { PropType } from 'vue';
+import { computed, defineComponent, ref } from 'vue';
+
+/** Look-only props every stub accepts and ignores, so they do not land in the DOM as attributes. */
+const presentation = {
+	color: { type: String, required: false },
+	variant: { type: String, required: false },
+	size: { type: String, required: false },
+	ui: { type: Object, required: false },
+} as const;
+
+type ModelModifiers = Partial<
+	Record<'trim' | 'number' | 'lazy' | 'nullable' | 'optional', boolean>
+>;
+
+/** `UInput`'s own value pipeline: `.trim`, `.number` (or `type="number"`), `.nullable`, `.optional`. */
+function inputValue(raw: string, type: string, modifiers: ModelModifiers = {}): unknown {
+	let value: unknown = modifiers.trim ? raw.trim() : raw;
+	if (modifiers.number || type === 'number') {
+		const number = Number.parseFloat(value as string);
+		value = Number.isNaN(number) ? value : number;
+	}
+	if (value === '' && modifiers.nullable) return null;
+	if (value === '' && modifiers.optional) return undefined;
+	return value;
+}
+
+const textControlProps = {
+	...presentation,
+	modelValue: {
+		type: [String, Number, null] as PropType<string | number | null>,
+		default: undefined,
+	},
+	modelModifiers: {
+		type: Object as PropType<ModelModifiers>,
+		default: () => ({}),
+	},
+	type: { type: String, default: 'text' },
+	disabled: { type: Boolean, default: false },
+} as const;
+
+function textControl(name: 'UInput' | 'UTextarea', tag: 'input' | 'textarea') {
+	return defineComponent({
+		name,
+		inheritAttrs: false,
+		props: textControlProps,
+		emits: ['update:modelValue', 'change', 'blur', 'focus'],
+		setup(props, { emit }) {
+			const update = (event: Event) =>
+				emit(
+					'update:modelValue',
+					inputValue((event.target as HTMLInputElement).value, props.type, props.modelModifiers),
+				);
+			return {
+				onInput: (event: Event) => props.modelModifiers.lazy || update(event),
+				onChange: (event: Event) => {
+					if (props.modelModifiers.lazy) update(event);
+					emit('change', event);
+				},
+			};
+		},
+		template: `<span><slot name="leading" /><${tag} v-bind="$attrs" ${
+			tag === 'input' ? ':type="type"' : ''
+		} :value="modelValue ?? ''" :disabled="disabled" @input="onInput" @change="onChange" @blur="$emit('blur', $event)" @focus="$emit('focus', $event)" /><slot name="trailing" /></span>`,
+	});
+}
+
+export const UInputStub = textControl('UInput', 'input');
+export const UTextareaStub = textControl('UTextarea', 'textarea');
+
+/** `<input type="number">`; emits a number, or `null` when emptied. Does not clamp to min/max. */
+export const UInputNumberStub = defineComponent({
+	name: 'UInputNumber',
+	inheritAttrs: false,
+	props: {
+		...presentation,
+		modelValue: {
+			type: [Number, null] as PropType<number | null>,
+			default: undefined,
+		},
+		min: { type: Number, required: false },
+		max: { type: Number, required: false },
+		step: { type: Number, required: false },
+		formatOptions: { type: Object, required: false },
+		disabled: { type: Boolean, default: false },
+	},
+	emits: ['update:modelValue', 'change', 'blur'],
+	setup(_, { emit }) {
+		return {
+			onInput(event: Event) {
+				const raw = (event.target as HTMLInputElement).value;
+				emit('update:modelValue', raw === '' ? null : Number(raw));
+			},
+		};
+	},
+	template:
+		'<input v-bind="$attrs" type="number" :value="modelValue ?? \'\'" :min="min" :max="max" :step="step" :disabled="disabled" @input="onInput" @change="$emit(\'change\', $event)" @blur="$emit(\'blur\', $event)" />',
+});
+
+/** `<input type="range">`; emits a number. */
+export const USliderStub = defineComponent({
+	name: 'USlider',
+	inheritAttrs: false,
+	props: {
+		...presentation,
+		modelValue: { type: Number, default: undefined },
+		min: { type: Number, default: 0 },
+		max: { type: Number, default: 100 },
+		step: { type: Number, default: 1 },
+		disabled: { type: Boolean, default: false },
+	},
+	emits: ['update:modelValue', 'change'],
+	template:
+		'<input v-bind="$attrs" type="range" :value="modelValue" :min="min" :max="max" :step="step" :disabled="disabled" @input="$emit(\'update:modelValue\', Number($event.target.value))" @change="$emit(\'change\', $event)" />',
+});
+
+/** `<input type="color">`; emits the `#rrggbb` chosen, as Nuxt UI's hex format does. */
+export const UColorPickerStub = defineComponent({
+	name: 'UColorPicker',
+	inheritAttrs: false,
+	props: {
+		...presentation,
+		modelValue: { type: String, default: undefined },
+		format: { type: String, required: false },
+		throttle: { type: Number, required: false },
+		disabled: { type: Boolean, default: false },
+	},
+	emits: ['update:modelValue'],
+	template:
+		'<input v-bind="$attrs" type="color" :value="modelValue" :disabled="disabled" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+});
+
+interface SelectOption {
+	key: string;
+	label: string;
+	value: unknown;
+	disabled: boolean;
+	item: SelectItem;
+	/** The `type: 'label'` item that headed this option, drawn as an `<optgroup>`. */
+	group: string | undefined;
+}
+
+type SelectItem = string | number | boolean | null | Record<string, unknown>;
+
+function selectOptions(
+	items: SelectItem[] | SelectItem[][],
+	valueKey: string | undefined,
+	labelKey: string,
+): SelectOption[] {
+	const options: SelectOption[] = [];
+	let group: string | undefined;
+	const walk = (list: readonly (SelectItem | SelectItem[])[]) => {
+		for (const item of list) {
+			if (Array.isArray(item)) {
+				group = undefined;
+				walk(item);
+			} else if (item === null || typeof item !== 'object') {
+				options.push({
+					key: String(item),
+					label: String(item),
+					value: item,
+					disabled: false,
+					item,
+					group,
+				});
+			} else if (item.type === 'label') {
+				// A label is whatever the test's item carries under its label key.
+				// oxlint-disable-next-line typescript/no-base-to-string
+				group = String(item[labelKey] ?? '');
+			} else if (item.type !== 'separator') {
+				const value = valueKey ? item[valueKey] : item;
+				options.push({
+					key: value !== null && typeof value === 'object' ? String(options.length) : String(value),
+					// oxlint-disable-next-line typescript/no-base-to-string
+					label: String(item[labelKey] ?? ''),
+					value,
+					disabled: Boolean(item.disabled),
+					item,
+					group,
+				});
+			}
+		}
+	};
+	walk(items);
+	return options;
+}
+
+function selectControl(name: 'USelect' | 'USelectMenu', defaultValueKey: string | undefined) {
+	return defineComponent({
+		name,
+		props: {
+			...presentation,
+			modelValue: { type: null as unknown as PropType<unknown>, default: undefined },
+			items: {
+				type: Array as PropType<SelectItem[] | SelectItem[][]>,
+				default: () => [],
+			},
+			valueKey: { type: String, default: defaultValueKey },
+			labelKey: { type: String, default: 'label' },
+			placeholder: { type: String, required: false },
+			multiple: { type: Boolean, default: false },
+			disabled: { type: Boolean, default: false },
+		},
+		emits: ['update:modelValue', 'change'],
+		setup(props, { emit }) {
+			const options = computed(() => selectOptions(props.items, props.valueKey, props.labelKey));
+			const same = (a: unknown, b: unknown) =>
+				a === b || (a !== null && typeof a === 'object' && JSON.stringify(a) === JSON.stringify(b));
+			const isSelected = (option: SelectOption) => {
+				const model: unknown = props.modelValue;
+				return props.multiple
+					? Array.isArray(model) && model.some((value) => same(value, option.value))
+					: same(model, option.value);
+			};
+			return {
+				options,
+				groups: computed(() =>
+					options.value.reduce<{ label: string | undefined; options: SelectOption[] }[]>(
+						(all, option) => {
+							const last = all.at(-1);
+							if (last && last.label === option.group) {
+								last.options.push(option);
+							} else {
+								all.push({
+									label: option.group,
+									options: [option],
+								});
+							}
+							return all;
+						},
+						[],
+					),
+				),
+				isSelected,
+				hasSelection: computed(() => options.value.some(isSelected)),
+				onChange(event: Event) {
+					const select = event.target as HTMLSelectElement;
+					const chosen = options.value.filter((option) =>
+						[...select.selectedOptions].some((selected) => selected.value === option.key),
+					);
+					emit(
+						'update:modelValue',
+						props.multiple ? chosen.map((option) => option.value) : chosen[0]?.value,
+					);
+					emit('change', event);
+				},
+			};
+		},
+		template: `<select :multiple="multiple" :disabled="disabled" @change="onChange">
+			<option v-if="!multiple && !hasSelection" value="" disabled selected hidden>{{ placeholder }}</option>
+			<template v-for="(group, groupIndex) in groups" :key="groupIndex">
+				<optgroup v-if="group.label !== undefined" :label="group.label">
+					<option v-for="option in group.options" :key="option.key" :value="option.key" :selected="isSelected(option)" :disabled="option.disabled"><slot name="item-label" :item="option.item">{{ option.label }}</slot></option>
+				</optgroup>
+				<option v-for="option in group.options" v-else :key="option.key" :value="option.key" :selected="isSelected(option)" :disabled="option.disabled"><slot name="item-label" :item="option.item">{{ option.label }}</slot></option>
+			</template>
+		</select>`,
+	});
+}
+
+/** Native `<select>`; emits the chosen item's typed `value` (not the option's string), as `USelect` does. */
+export const USelectStub = selectControl('USelect', 'value');
+/** As `USelectStub`, but without `value-key` it emits the whole item object, as `USelectMenu` does. */
+export const USelectMenuStub = selectControl('USelectMenu', undefined);
+
+const toggleProps = {
+	...presentation,
+	modelValue: {
+		type: [Boolean, String] as PropType<boolean | 'indeterminate'>,
+		default: false,
+	},
+	label: { type: String, required: false },
+	description: { type: String, required: false },
+	disabled: { type: Boolean, default: false },
+} as const;
+
+function toggleControl(name: 'USwitch' | 'UCheckbox', role: 'switch' | 'checkbox') {
+	return defineComponent({
+		name,
+		inheritAttrs: false,
+		props: toggleProps,
+		emits: ['update:modelValue', 'change'],
+		template: `<div><button v-bind="$attrs" type="button" role="${role}" :aria-checked="modelValue === 'indeterminate' ? 'mixed' : String(modelValue)" :disabled="disabled" @click="$emit('update:modelValue', modelValue !== true); $emit('change', $event)"><slot name="label">{{ label }}</slot></button><p v-if="description || $slots.description"><slot name="description">{{ description }}</slot></p></div>`,
+	});
+}
+
+/** `<button role="switch">`; click emits the toggled value. Its label is the button's text. */
+export const USwitchStub = toggleControl('USwitch', 'switch');
+/** `<button role="checkbox">`, as Nuxt UI renders it; click emits the toggled value. */
+export const UCheckboxStub = toggleControl('UCheckbox', 'checkbox');
+
+/** `<button>` (or `<a>` with `to`/`href`); disabled while `loading`. Clicks reach `@click` natively. */
+export const UButtonStub = defineComponent({
+	name: 'UButton',
+	props: {
+		...presentation,
+		label: { type: String, required: false },
+		icon: { type: String, required: false },
+		trailingIcon: { type: String, required: false },
+		loading: { type: Boolean, default: false },
+		disabled: { type: Boolean, default: false },
+		type: { type: String, default: 'button' },
+		to: {
+			type: [String, Object],
+			required: false,
+		},
+		href: { type: String, required: false },
+		block: { type: Boolean, required: false },
+		square: { type: Boolean, required: false },
+	},
+	setup(props) {
+		return {
+			link: computed(() => (typeof props.to === 'string' ? props.to : props.href)),
+		};
+	},
+	template: `<component :is="link ? 'a' : 'button'" :href="link" :type="link ? undefined : type" :disabled="link ? undefined : disabled || loading" :aria-busy="loading || undefined">
+		<slot name="leading"><span v-if="icon" :data-icon="icon" aria-hidden="true" /></slot>
+		<slot>{{ label }}</slot>
+		<slot name="trailing"><span v-if="trailingIcon" :data-icon="trailingIcon" aria-hidden="true" /></slot>
+	</component>`,
+});
+
+/** Wraps its control in a `<label>`; a string `error` renders as `[data-error]`. Root carries `data-field="<name>"`. */
+export const UFormFieldStub = defineComponent({
+	name: 'UFormField',
+	props: {
+		...presentation,
+		label: { type: String, required: false },
+		name: { type: String, required: false },
+		description: { type: String, required: false },
+		help: { type: String, required: false },
+		hint: { type: String, required: false },
+		error: {
+			type: [String, Boolean],
+			required: false,
+		},
+		required: { type: Boolean, required: false },
+	},
+	template: `<div :data-field="name">
+		<label><span><slot name="label">{{ label }}</slot></span><slot /></label>
+		<p v-if="description || $slots.description"><slot name="description">{{ description }}</slot></p>
+		<p v-if="typeof error === 'string' && error" data-error>{{ error }}</p>
+		<p v-else-if="help">{{ help }}</p>
+	</div>`,
+});
+
+interface StandardSchema {
+	'~standard': {
+		validate: (value: unknown) =>
+			| { value?: unknown; issues?: readonly { message: string; path?: readonly unknown[] }[] }
+			| Promise<{
+					value?: unknown;
+					issues?: readonly { message: string; path?: readonly unknown[] }[];
+			  }>;
+	};
+}
+
+/**
+ * As `UFormFieldStub`, but its label sits beside the control rather than wrapping it, as
+ * Nuxt UI's does. Use it for a control that is a group of buttons (chips, a nine-point
+ * picker): a wrapping `<label>` forwards every click inside it to its first button.
+ * Kept out of `nuxtUiStubs`: spread `{ ...nuxtUiStubs, UFormField: UFormFieldBesideStub }`.
+ */
+export const UFormFieldBesideStub = defineComponent({
+	name: 'UFormField',
+	props: {
+		...presentation,
+		label: { type: String, required: false },
+		description: { type: String, required: false },
+	},
+	template: `<div>
+		<span>{{ label }}</span>
+		<slot />
+		<p v-if="description">{{ description }}</p>
+	</div>`,
+});
+
+/**
+ * `<form>` that, like `UForm`, validates `state` against a Standard Schema
+ * `schema` on submit: `@submit` gets `{ data }` (the parsed output), or
+ * `@error` gets `{ errors: [{ name, message }] }`. Submission is async: `await flushPromises()`.
+ */
+export const UFormStub = defineComponent({
+	name: 'UForm',
+	props: {
+		state: { type: Object, required: false },
+		schema: { type: Object as PropType<StandardSchema>, required: false },
+		onSubmit: {
+			type: Function as PropType<(event: Event & { data: unknown }) => unknown>,
+			required: false,
+		},
+		disabled: { type: Boolean, default: false },
+	},
+	emits: ['error'],
+	setup(props, { emit, expose }) {
+		async function submit(event: Event = new Event('submit')) {
+			const result = props.schema
+				? await props.schema['~standard'].validate(props.state)
+				: { value: props.state };
+			if (result.issues) {
+				emit(
+					'error',
+					Object.assign(event, {
+						errors: result.issues.map((issue) => ({
+							name: issue.path?.join('.'),
+							message: issue.message,
+						})),
+					}),
+				);
+				return;
+			}
+			await props.onSubmit?.(Object.assign(event, { data: result.value }));
+		}
+		expose({ submit });
+		return { submit };
+	},
+	template:
+		'<form @submit.prevent="submit($event)"><fieldset :disabled="disabled" style="display: contents"><slot /></fieldset></form>',
+});
+
+const overlayProps = {
+	...presentation,
+	open: { type: Boolean, default: undefined },
+	defaultOpen: { type: Boolean, default: false },
+} as const;
+
+/** Controlled by `open` when given, otherwise by clicks on the trigger slot, as Nuxt UI's overlays are. */
+function useOpen(
+	props: { open?: boolean; defaultOpen: boolean },
+	emit: (event: 'update:open', open: boolean) => void,
+) {
+	const uncontrolled = ref(props.defaultOpen);
+	const isOpen = computed(() => props.open ?? uncontrolled.value);
+	function setOpen(open: boolean) {
+		uncontrolled.value = open;
+		emit('update:open', open);
+	}
+	return {
+		isOpen,
+		setOpen,
+		close: () => setOpen(false),
+	};
+}
+
+function dialogOverlay(name: 'UModal' | 'USlideover') {
+	return defineComponent({
+		name,
+		inheritAttrs: false,
+		props: {
+			...overlayProps,
+			title: { type: String, required: false },
+			description: { type: String, required: false },
+			/** `false` hides the Close button; an object is its button props, `onClick` included. */
+			close: {
+				type: [Boolean, Object] as PropType<boolean | { onClick?: (event: MouseEvent) => void }>,
+				default: true,
+			},
+			dismissible: { type: Boolean, default: true },
+		},
+		emits: ['update:open'],
+		setup(props, { emit }) {
+			const open = useOpen(props, emit);
+			return {
+				...open,
+				onCloseButton(event: MouseEvent) {
+					if (typeof props.close === 'object') props.close.onClick?.(event);
+					open.close();
+				},
+			};
+		},
+		template: `<span v-if="$slots.default" @click="setOpen(true)"><slot :open="isOpen" /></span>
+		<div v-if="isOpen" v-bind="$attrs" role="dialog" aria-modal="true" :aria-label="title">
+			<slot name="content" :close="close">
+				<slot name="header" :close="close">
+					<h2 v-if="title || $slots.title"><slot name="title">{{ title }}</slot></h2>
+					<p v-if="description || $slots.description"><slot name="description">{{ description }}</slot></p>
+					<button v-if="$props.close" type="button" aria-label="Close" @click="onCloseButton" />
+				</slot>
+				<slot name="body" :close="close" />
+				<slot name="footer" :close="close" />
+			</slot>
+		</div>`,
+	});
+}
+
+/** A `role="dialog"` with title, description, Close button and body/footer slots (each given `{ close }`). */
+export const UModalStub = dialogOverlay('UModal');
+export const USlideoverStub = dialogOverlay('USlideover');
+
+/** Trigger slot, then the `content` slot (given `{ close }`) while open. */
+export const UPopoverStub = defineComponent({
+	name: 'UPopover',
+	props: overlayProps,
+	emits: ['update:open'],
+	setup: (props, { emit }) => useOpen(props, emit),
+	template:
+		'<div><span @click="setOpen(!isOpen)"><slot :open="isOpen" /></span><div v-if="isOpen"><slot name="content" :close="close" /></div></div>',
+});
+
+interface DropdownItem {
+	label?: string;
+	description?: string;
+	type?: 'label' | 'separator' | 'checkbox' | 'link';
+	disabled?: boolean;
+	checked?: boolean;
+	onSelect?: (event: Event) => void;
+	onUpdateChecked?: (checked: boolean) => void;
+	children?: DropdownItem[] | DropdownItem[][];
+}
+
+/**
+ * Trigger slot, then while open a `role="menu"` of `role="menuitem"` buttons
+ * (`menuitemcheckbox` for checkbox items). Choosing calls `onSelect` and closes,
+ * unless `onSelect` calls `event.preventDefault()`. An item's `description` is its
+ * `aria-description`. An item with `children` is an
+ * `aria-haspopup="menu"` item that toggles its own nested `role="menu"`.
+ */
+export const UDropdownMenuStub = defineComponent({
+	name: 'UDropdownMenu',
+	props: {
+		...overlayProps,
+		items: {
+			type: Array as PropType<DropdownItem[] | DropdownItem[][]>,
+			default: () => [],
+		},
+	},
+	emits: ['update:open'],
+	setup(props, { emit }) {
+		const open = useOpen(props, emit);
+		// By position: a menu may build its items afresh on every render.
+		const expanded = ref<number | null>(null);
+		return {
+			...open,
+			expanded,
+			entries: computed(() => (props.items as DropdownItem[]).flat()),
+			childrenOf: (item: DropdownItem) => (item.children as DropdownItem[]).flat(),
+			toggle(index: number) {
+				expanded.value = expanded.value === index ? null : index;
+			},
+			choose(item: DropdownItem, event: Event) {
+				if (item.type === 'checkbox') item.onUpdateChecked?.(!item.checked);
+				item.onSelect?.(event);
+				if (!event.defaultPrevented) open.close();
+			},
+		};
+	},
+	template: `<div><span @click="setOpen(!isOpen)"><slot :open="isOpen" /></span>
+	<div v-if="isOpen" role="menu">
+		<template v-for="(item, index) in entries" :key="index">
+			<hr v-if="item.type === 'separator'">
+			<div v-else-if="item.type === 'label'">{{ item.label }}</div>
+			<div v-else-if="item.children">
+				<button type="button" role="menuitem" aria-haspopup="menu" :aria-expanded="String(expanded === index)" :disabled="item.disabled" @click="toggle(index)">{{ item.label }}</button>
+				<div v-if="expanded === index" role="menu" :aria-label="item.label">
+					<button v-for="(child, childIndex) in childrenOf(item)" :key="childIndex" type="button" role="menuitem" :disabled="child.disabled" @click="choose(child, $event)">{{ child.label }}</button>
+				</div>
+			</div>
+			<button v-else type="button" :role="item.type === 'checkbox' ? 'menuitemcheckbox' : 'menuitem'" :aria-checked="item.type === 'checkbox' ? String(!!item.checked) : undefined" :aria-description="item.description" :disabled="item.disabled" @click="choose(item, $event)"><slot name="item-label" :item="item" :index="index">{{ item.label }}</slot></button>
+		</template>
+	</div></div>`,
+});
+
+/** Renders only its trigger; the tooltip text is exposed as `data-tooltip`, never shown. */
+export const UTooltipStub = defineComponent({
+	name: 'UTooltip',
+	props: {
+		...presentation,
+		text: { type: String, required: false },
+	},
+	template: '<span :data-tooltip="text"><slot /></span>',
+});
+
+export const UCardStub = defineComponent({
+	name: 'UCard',
+	props: presentation,
+	template:
+		'<section><header v-if="$slots.header"><slot name="header" /></header><slot /><footer v-if="$slots.footer"><slot name="footer" /></footer></section>',
+});
+
+/** Title, description and `actions` (button props) rendered; `color` kept as `data-color` for status. */
+export const UAlertStub = defineComponent({
+	name: 'UAlert',
+	props: {
+		...presentation,
+		title: { type: String, required: false },
+		description: { type: String, required: false },
+		icon: { type: String, required: false },
+		actions: {
+			type: Array as PropType<
+				{ label?: string; onClick?: (event: MouseEvent) => void; disabled?: boolean }[]
+			>,
+			default: () => [],
+		},
+	},
+	template: `<div data-alert :data-color="color">
+		<div v-if="title || $slots.title"><slot name="title">{{ title }}</slot></div>
+		<div v-if="description || $slots.description"><slot name="description">{{ description }}</slot></div>
+		<slot name="actions"><button v-for="(action, index) in actions" :key="index" type="button" :disabled="action.disabled" @click="action.onClick?.($event)">{{ action.label }}</button></slot>
+	</div>`,
+});
+
+export const UBadgeStub = defineComponent({
+	name: 'UBadge',
+	props: {
+		...presentation,
+		label: {
+			type: [String, Number],
+			required: false,
+		},
+	},
+	template: '<span :data-color="color"><slot>{{ label }}</slot></span>',
+});
+
+export const UIconStub = defineComponent({
+	name: 'UIcon',
+	props: {
+		name: { type: String, required: false },
+	},
+	template: '<span :data-icon="name" aria-hidden="true" />',
+});
+
+export const UFieldGroupStub = defineComponent({
+	name: 'UFieldGroup',
+	props: presentation,
+	template: '<div><slot /></div>',
+});
+export const UContainerStub = defineComponent({
+	name: 'UContainer',
+	template: '<div><slot /></div>',
+});
+export const USeparatorStub = defineComponent({
+	name: 'USeparator',
+	props: {
+		...presentation,
+		label: { type: String, required: false },
+	},
+	template: '<hr>',
+});
+
+interface InputMenuItemLike {
+	label?: string;
+	[key: string]: unknown;
+}
+
+/**
+ * A `<input role="combobox">` for the search term over `<button role="option">`s, one per item;
+ * clicking one emits its `value-key` value (else the item). Without `ignore-filter` it filters by
+ * label, as `UInputMenu` does. With `clear`, a held value shows a "Clear" button emitting `null`.
+ * Kept out of `nuxtUiStubs`, which suites rendering the real menu spread: pass `{ ...nuxtUiStubs, UInputMenu: UInputMenuStub }`.
+ */
+export const UInputMenuStub = defineComponent({
+	name: 'UInputMenu',
+	inheritAttrs: false,
+	props: {
+		...presentation,
+		modelValue: { type: null as unknown as PropType<unknown>, default: undefined },
+		items: {
+			type: Array as PropType<InputMenuItemLike[]>,
+			default: () => [],
+		},
+		valueKey: { type: String, required: false },
+		searchTerm: { type: String, default: '' },
+		ignoreFilter: { type: Boolean, default: false },
+		placeholder: { type: String, required: false },
+		icon: { type: String, required: false },
+		clear: { type: Boolean, default: false },
+	},
+	emits: ['update:modelValue', 'update:searchTerm'],
+	setup(props) {
+		const term = ref(props.searchTerm);
+		return {
+			term,
+			shown: computed(() =>
+				props.ignoreFilter
+					? props.items
+					: props.items.filter((item) =>
+							(item.label ?? '').toLowerCase().includes(term.value.toLowerCase()),
+						),
+			),
+		};
+	},
+	watch: {
+		searchTerm(value: string) {
+			this.term = value;
+		},
+	},
+	template: `<div>
+		<input v-bind="$attrs" role="combobox" :aria-label="placeholder" :value="term" @input="term = $event.target.value; $emit('update:searchTerm', term)">
+		<button v-for="(item, index) in shown" :key="index" type="button" role="option" @click="$emit('update:modelValue', valueKey ? item[valueKey] : item)">{{ item.label }}</button>
+		<button v-if="clear && modelValue != null" type="button" aria-label="Clear" @click="$emit('update:modelValue', null)" />
+	</div>`,
+});
+
+/** Every stub above, keyed by component name, for `global.stubs`. */
+export const nuxtUiStubs = {
+	UAlert: UAlertStub,
+	UBadge: UBadgeStub,
+	UButton: UButtonStub,
+	UCard: UCardStub,
+	UCheckbox: UCheckboxStub,
+	UColorPicker: UColorPickerStub,
+	UContainer: UContainerStub,
+	UDropdownMenu: UDropdownMenuStub,
+	UFieldGroup: UFieldGroupStub,
+	UForm: UFormStub,
+	UFormField: UFormFieldStub,
+	UIcon: UIconStub,
+	UInput: UInputStub,
+	UInputNumber: UInputNumberStub,
+	UModal: UModalStub,
+	UPopover: UPopoverStub,
+	USelect: USelectStub,
+	USelectMenu: USelectMenuStub,
+	USeparator: USeparatorStub,
+	USlideover: USlideoverStub,
+	USlider: USliderStub,
+	USwitch: USwitchStub,
+	UTextarea: UTextareaStub,
+	UTooltip: UTooltipStub,
+};
+
+interface NavigationItemLike {
+	label?: string;
+	to?: string;
+	onSelect?: () => void;
+	children?: NavigationItemLike[];
+}
+
+/**
+ * A `<nav>` of links, one per item and per child, labelled (also as `data-nav-item`) and
+ * pointing where the item does; clicking one calls its `onSelect`.
+ * Kept out of `nuxtUiStubs`, which suites rendering the real menu spread: pass
+ * `{ ...nuxtUiStubs, UNavigationMenu: UNavigationMenuStub }`.
+ */
+export const UNavigationMenuStub = defineComponent({
+	name: 'UNavigationMenu',
+	props: {
+		items: {
+			type: Array as PropType<NavigationItemLike[]>,
+			default: () => [],
+		},
+	},
+	setup: (props) => ({
+		links: computed(() => props.items.flatMap((item) => [item, ...(item.children ?? [])])),
+	}),
+	template:
+		'<nav><a v-for="(link, index) in links" :key="index" :href="link.to" :data-nav-item="link.label" @click="link.onSelect?.()">{{ link.label }}</a></nav>',
+});
+
+interface TableColumnLike {
+	id?: string;
+	accessorKey?: string;
+}
+
+/**
+ * A `<table>` of `data`, one `<td>` per column: its `<id>-cell` slot (given `{ row: { original } }`),
+ * else the accessor's value. Clicking a row emits `select`, as `UTable` does. Kept out of
+ * `nuxtUiStubs`, which suites rendering the real table spread: pass `{ ...nuxtUiStubs, UTable: UTableStub }`.
+ */
+export const UTableStub = defineComponent({
+	name: 'UTable',
+	props: {
+		data: {
+			type: Array as PropType<Record<string, unknown>[]>,
+			default: () => [],
+		},
+		columns: {
+			type: Array as PropType<TableColumnLike[]>,
+			default: () => [],
+		},
+	},
+	emits: ['select'],
+	setup: (props) => ({
+		columnIds: computed(() => props.columns.map((column) => column.id ?? column.accessorKey ?? '')),
+	}),
+	template: `<table><tbody>
+		<tr v-for="(row, ri) in data" :key="ri" @click="$emit('select', $event, { original: row })">
+			<td v-for="id in columnIds" :key="id" :data-column="id">
+				<slot :name="id + '-cell'" :row="{ original: row }">{{ row[id] }}</slot>
+			</td>
+		</tr>
+	</tbody></table>`,
+});
+
+/**
+ * An `<a>` pointing where the link does. Kept out of `nuxtUiStubs`, which suites
+ * rendering the real link spread: pass `{ ...nuxtUiStubs, NuxtLink: NuxtLinkStub }`.
+ */
+export const NuxtLinkStub = defineComponent({
+	name: 'NuxtLink',
+	props: {
+		to: { type: String, required: true },
+	},
+	template: '<a :href="to"><slot /></a>',
+});

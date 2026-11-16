@@ -1,0 +1,5 @@
+{
+	// The tests are a second program: nothing in the layer imports them.
+	"extends": "../.nuxt/tsconfig.json",
+	"include": ["../.nuxt/nuxt.d.ts", "."]
+}

@@ -4,7 +4,7 @@ import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
 import { flattenGraphicItems } from '~~/shared/modules/graphics';
 import { broadcastGraphicsGraphicAssetReferences } from '~~/shared/utils/graphicsAssetReferences';
 import { graphicAssetReferenceStatusOrUnavailable } from '~/utils/graphicAssetReferenceStatus';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 /**
  * Whether each Broadcast Graphic's pinned Graphic Asset Revisions resolve.

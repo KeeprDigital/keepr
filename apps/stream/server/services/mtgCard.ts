@@ -2,7 +2,7 @@ import type { DbCard, DbCardInsert } from '~~/server/db/schema';
 import { sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { cards } from '~~/server/db/schema';
-import { chunkJsonRows, selectForInsert } from '~~/server/utils/db';
+import { chunkJsonRows, selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 
 export type UpsertCardInput = Omit<DbCardInsert, 'id' | 'createdAt' | 'updatedAt'>;
 

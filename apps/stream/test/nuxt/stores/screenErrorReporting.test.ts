@@ -1,8 +1,8 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { STATE_CONFLICT_CODE } from '~~/shared/utils/stateConflict';
+import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
 import { createMockScreen } from '~~/test/helpers/fixtures';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 
 const mockRepo = {
 	list: vi.fn(),

@@ -15,7 +15,7 @@ import {
 	realtimeMessageBytes,
 	screenCommandMessageTypes,
 } from '../types/messages';
-import { ServiceConfigurationError } from './errors';
+import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 import { publishFailureFields, RealtimePublishError } from './realtimePublishFailure';
 
 /** The environment name behind `runtimeConfig.ablyApiKey`, as the operator sets it. */

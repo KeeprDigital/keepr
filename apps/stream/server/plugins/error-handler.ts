@@ -1,6 +1,6 @@
 import process from 'node:process';
-import { errorLogFields } from '~~/server/utils/errorLogFields';
-import { safeErrorLogPath } from '~~/server/utils/errorLogPath';
+import { errorLogFields } from '@keepr/nuxt-layer/server/utils/errorLogFields';
+import { safeErrorLogPath } from '@keepr/nuxt-layer/server/utils/errorLogPath';
 import { mapPublicNitroError } from '~~/server/utils/nitroErrorMapping';
 
 interface NitroError extends Error {

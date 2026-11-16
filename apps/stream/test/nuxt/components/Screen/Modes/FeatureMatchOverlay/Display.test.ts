@@ -20,7 +20,7 @@ import { featureMatchStressDataset } from '~~/shared/featureMatchStressDataset';
 import { DEFAULT_GRAPHIC_TYPOGRAPHY, getGraphicItemDefinition } from '~~/shared/modules/graphics';
 import { applicationGraphicFont } from '~~/shared/types/graphics';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { withLayersLocked } from '~~/test/helpers/featureMatchLayoutDocument';
 import { clock, shape, text } from '~~/test/helpers/graphicsComposition';
 import { LUFFY } from '~~/test/helpers/opCards';

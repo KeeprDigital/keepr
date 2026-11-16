@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ReviewAssignmentPanel from '~/components/Archetype/ReviewAssignmentPanel.vue';
 
 function mountPanel(props: Record<string, unknown> = {}) {

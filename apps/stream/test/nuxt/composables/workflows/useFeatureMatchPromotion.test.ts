@@ -1,7 +1,7 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockFeatureMatch } from '~~/test/helpers/fixtures';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 
 const mockRepo = {
 	promoteMatch: vi.fn(),

@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils';
 import { createPinia, defineStore, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import OpCardList from '~/components/Op/CardList.vue';
 import OpCardPrinting from '~/components/Op/CardPrinting.vue';
 

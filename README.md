@@ -6,7 +6,7 @@ One pnpm workspace for the Keepr apps and what they share (ADR-0091).
 | ------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `apps/stream` | Stream Keepr (`@keepr/stream`): event management and streaming overlays for tournaments. Its `README.md` is the full guide. |
 | `apps/score`  | Score Keepr (`@keepr/score`). Scaffolded, not built: a placeholder app, and the specs, decisions and glossary of its engines. |
-| `packages/`   | What more than one app uses, each named `@keepr/<name>`: the Pairing and Standings Engines (ADR-0092), and the Nuxt layer every app extends (ADR-0093). |
+| `packages/`   | What more than one app uses, each named `@keepr/<name>`: the Pairing and Standings Engines (ADR-0092), and the Nuxt layer every app extends, with the foundation they share (ADR-0093). |
 
 The root holds what every app and package shares:
 

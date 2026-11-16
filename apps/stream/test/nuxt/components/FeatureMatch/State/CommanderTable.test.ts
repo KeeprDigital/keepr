@@ -13,7 +13,7 @@ import { commanderSnapshot } from '~~/test/helpers/featureMatchSnapshots';
 import { createMockEvent, createMockFeatureMatch } from '~~/test/helpers/fixtures';
 import { matchStatePart } from '~~/test/nuxt/helpers/featureMatchControls';
 import { createSession } from '~~/test/nuxt/helpers/featureMatchStateHarness';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import CommanderTable from '~/components/FeatureMatch/State/CommanderTable.vue';
 
 /*

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMockPlayer } from '~~/test/helpers/fixtures';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 
 const mockRepo = vi.hoisted(() => ({
 	list: vi.fn(),

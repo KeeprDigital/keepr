@@ -24,8 +24,8 @@ import { featureMatchDeckListService } from '~~/server/services/featureMatchDeck
 import { opCardNumberResolutionService } from '~~/server/services/opCardNumberResolution';
 import { opPlayerDeckListService } from '~~/server/services/opPlayerDeckList';
 import { bandaiKeeprConfig } from '~~/server/utils/bandaiKeepr';
-import { inJsonArray } from '~~/server/utils/db';
-import { runCompensation } from '~~/server/utils/errors';
+import { inJsonArray } from '@keepr/nuxt-layer/server/utils/db';
+import { runCompensation } from '@keepr/nuxt-layer/server/utils/errors';
 import { requireOpEvent } from '~~/server/utils/routeGuards';
 import { catalogueOpLeader } from '~~/shared/utils/card/op';
 import { SLOT_SIDE_DATA_KEY, SLOT_SIDE_PLAYER_KEY } from '~~/shared/utils/featureMatchSidePlayer';

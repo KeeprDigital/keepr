@@ -2,7 +2,7 @@ import type { BandaiKeeprConfig } from '~~/server/utils/bandaiKeepr';
 import type { OpCatalogueCard } from '~~/shared/types/card/op';
 import { opCardCatalogueService } from '~~/server/services/opCardCatalogue';
 import { lookUpOpCards } from '~~/server/utils/bandaiKeepr';
-import { ServiceConfigurationError } from '~~/server/utils/errors';
+import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 
 /**
  * Card numbers resolved through the card catalogue (ADR-0074). A number the

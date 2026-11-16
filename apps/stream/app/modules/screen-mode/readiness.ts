@@ -10,7 +10,7 @@ import {
 	toValue,
 	watch,
 } from 'vue';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { preloadImages } from '~/utils/preloadImage';
 
 /**

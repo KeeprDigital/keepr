@@ -6,7 +6,7 @@ import { archetypes, cards, playerDecks, players } from '~~/server/db/schema';
 import { eventDataPublicationModule } from '~~/server/modules/event-data-publication';
 import { opCatalogueRowFor } from '~~/server/services/opCardCatalogue';
 import { buildReleaseScreenEventReferencesQuery } from '~~/server/services/screen';
-import { inJsonArray } from '~~/server/utils/db';
+import { inJsonArray } from '@keepr/nuxt-layer/server/utils/db';
 import { formatOpColors } from '~~/shared/utils/card/op';
 
 /**

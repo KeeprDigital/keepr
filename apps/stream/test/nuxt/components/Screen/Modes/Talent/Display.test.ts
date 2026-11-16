@@ -2,7 +2,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { computed, ref } from 'vue';
-import { UIconStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { UIconStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import Display from '~/components/Screen/Modes/Talent/Display.vue';
 
 const config = ref<any>(null);

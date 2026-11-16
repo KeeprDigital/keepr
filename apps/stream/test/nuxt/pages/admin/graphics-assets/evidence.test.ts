@@ -6,7 +6,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 
 const { mockApiFetch } = vi.hoisted(() => ({
 	mockApiFetch: vi.fn(),

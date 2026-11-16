@@ -4,9 +4,9 @@ import type { MessageData } from '~/types/realtime';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
-import { callsTo } from '~~/test/helpers/lastCallTo';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { callsTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 
 const mockRepository = {
 	getSession: vi.fn(),

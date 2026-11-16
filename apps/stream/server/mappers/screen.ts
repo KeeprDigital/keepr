@@ -1,6 +1,6 @@
 import type { DbScreen } from '~~/server/db/schema';
 import type { ScreenResponse } from '~~/shared/api';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 import { clampStoredModeConfigs } from '~~/shared/types/screenConfig';
 
 /**

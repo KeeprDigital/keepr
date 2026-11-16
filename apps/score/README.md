@@ -39,7 +39,7 @@ pnpm build        # the Worker bundle; nothing deploys it yet
 pnpm verify       # the three above, as CI's `Score Keepr` job runs them
 ```
 
-It extends `packages/nuxt-layer` (Nuxt UI, the colour mode, the Cloudflare Workers target) and adds only its own. It has no sign-in, no database and no deployment.
+It extends `packages/nuxt-layer`: the Nuxt shell, and the server, client and test foundation it shares with Stream Keepr. It adds only its own, and it has no sign-in, no database and no deployment.
 
 ## Commands
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRememberedOpenState } from '~/composables/ui/useRememberedOpenState';
+import { useRememberedOpenState } from '@keepr/nuxt-layer/app/composables/ui/useRememberedOpenState';
 
 /**
  * The one collapsible section of a settings surface: a title, and a body its

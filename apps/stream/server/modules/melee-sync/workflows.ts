@@ -27,7 +27,7 @@ import { phaseService } from '~~/server/services/phase';
 import { playerService } from '~~/server/services/player';
 import { playerFeatureMatchSyncService } from '~~/server/services/playerFeatureMatchSync';
 import { roundService } from '~~/server/services/round';
-import { errorNameOf } from '~~/server/utils/errorLogFields';
+import { errorNameOf } from '@keepr/nuxt-layer/server/utils/errorLogFields';
 import { isMeleeManagedRound } from '~~/shared/utils/roundControl';
 import {
 	buildPlayersWithDeckLists,

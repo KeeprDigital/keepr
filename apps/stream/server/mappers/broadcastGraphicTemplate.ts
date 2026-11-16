@@ -3,7 +3,7 @@ import type {
 	BroadcastGraphicTemplateResponse,
 	BroadcastGraphicTemplateSummary,
 } from '~~/shared/types/broadcastGraphicTemplate';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 import { flattenGraphicItems } from '~~/shared/modules/graphics';
 
 /**

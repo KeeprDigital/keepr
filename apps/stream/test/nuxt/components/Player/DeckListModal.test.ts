@@ -3,7 +3,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, reactive, ref } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockPlayer } from '~~/test/helpers/fixtures';
 import DeckListModal from '~/components/Player/DeckListModal.vue';
 

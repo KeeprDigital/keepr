@@ -25,7 +25,8 @@ import {
 	updateScreenModeConfigWithGraphicAssetReferences,
 	updateScreenThemeOverridesWithGraphicAssetReferences,
 } from '~~/server/modules/screen-graphic-asset-references';
-import { mapDeckSourceConflict, StateConflictError } from '~~/server/utils/errors';
+import { mapDeckSourceConflict } from '~~/server/utils/deckSourceErrors';
+import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import { SCREEN_MODES } from '~~/shared/screenModes';
 import { SCREEN_MODE_VALUES } from '~~/shared/types/enums';
 import { mergeScreenModeConfig } from '~~/shared/types/screenConfig';

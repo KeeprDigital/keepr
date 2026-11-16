@@ -11,7 +11,7 @@ import EditStateModal from '~/components/FeatureMatch/State/EditStateModal.vue';
 const SERVER_AHEAD_MS = 5000;
 
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		getServerTime: () => Date.now() + SERVER_AHEAD_MS,
 	})),
 );

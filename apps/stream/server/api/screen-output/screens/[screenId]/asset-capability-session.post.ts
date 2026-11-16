@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { graphicsCatalogueClient } from '~~/server/modules/graphics-asset-library/runtime';
 import { createD1ScreenOutputAssetAuthorizer } from '~~/server/modules/screen-output-assets/authorizer';
 import { screenOutputAssetCapabilityDigest } from '~~/server/modules/screen-output-assets/capability';
-import { TemporarilyUnavailableError } from '~~/server/utils/errors';
+import { TemporarilyUnavailableError } from '@keepr/nuxt-layer/server/utils/errors';
 import { bearerScreenOutputCapability } from '~~/server/utils/screenOutputCapabilityAuthorization';
 import {
 	screenOutputAssetCapabilityCookieName,

@@ -1,7 +1,7 @@
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import type { ApplicationFontFaceRequest } from '~~/shared/modules/graphics/typography';
 import { getGraphicFontDefinition } from '~~/shared/modules/graphics/typography';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 /** Whether a host's fonts have loaded, or failed; settled once either holds. */
 export interface FontFaceState {

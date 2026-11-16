@@ -7,7 +7,11 @@ import { computed, h, ref } from 'vue';
 import { getDefaultConfigForMode } from '~~/shared/types/screenConfig';
 import { editedScreenModeData } from '~~/test/helpers/editedScreenModeData';
 import { createMockEvent } from '~~/test/helpers/fixtures';
-import { NuxtLinkStub, nuxtUiStubs, UFormFieldBesideStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import {
+	NuxtLinkStub,
+	nuxtUiStubs,
+	UFormFieldBesideStub,
+} from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import {
 	fakeScreenThemeNetwork,
 	screenSettingsPage,
@@ -47,7 +51,7 @@ mockNuxtImport('useModeConfigUpdate', () => () => ({
 	resetConfig: vi.fn(),
 }));
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		getServerTime: () => 1_000_000,
 	})),
 );

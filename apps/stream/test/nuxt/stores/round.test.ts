@@ -1,6 +1,6 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockRound, toWire } from '~~/test/helpers/fixtures';
 
 const { mockFetch } = vi.hoisted(() => ({

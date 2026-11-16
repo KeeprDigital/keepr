@@ -2,7 +2,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, ref } from 'vue';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import FeatureMatchSlotField from '~/components/Screen/FeatureMatchSlotField.vue';
 
 // What the Feature Match Slot picker adds to an Event Reference picker: `detailed`, each side's

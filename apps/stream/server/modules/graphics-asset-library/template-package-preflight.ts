@@ -25,7 +25,7 @@ import {
 	TEMPLATE_PACKAGE_TEMPLATE_ENTRY,
 	templatePackageContentEntry,
 } from '~~/shared/types/templatePackage';
-import { isPlainObject } from '~~/shared/utils/plainObject';
+import { isPlainObject } from '@keepr/nuxt-layer/shared/utils/plainObject';
 import { inspectTemplatePackageCapabilities } from './template-package';
 import { packagedOriginKey } from './template-package-installation';
 import { templatePackagePreflightIssue } from './template-package-preflight-issues';

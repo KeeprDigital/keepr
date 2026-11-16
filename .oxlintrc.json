@@ -49,6 +49,8 @@
 		{
 			// A focused or skipped test is not committed.
 			"files": ["packages/**/*.test.ts", "apps/score/**/*.test.ts"],
+			// The layer's tests came from Stream Keepr's, which the plugin's other rules do not hold.
+			"excludeFiles": ["packages/nuxt-layer/**"],
 			"plugins": ["vitest"],
 			"rules": {
 				"vitest/no-focused-tests": "error",

@@ -2,7 +2,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
 import { TALENT_SCREEN_MAX_LINEUP } from '~~/shared/screenModeConfigs/talent';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import Lineup from '~/components/Screen/Modes/Talent/Lineup.vue';
 
 // A Talent Screen's lineup: the Event's Talents in the order shown, every edit the whole lineup.

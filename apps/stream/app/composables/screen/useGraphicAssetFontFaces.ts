@@ -2,7 +2,7 @@ import type { MaybeRefOrGetter } from 'vue';
 import type { GraphicAssetReference } from '~~/shared/types/graphicsAsset';
 import type { ScreenGraphicAssetReference } from '~~/shared/utils/graphicsAssetReferences';
 import { graphicAssetFontFaceFamily } from '~~/shared/modules/graphics/typography';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 export interface GraphicAssetFontSource {
 	family: string;

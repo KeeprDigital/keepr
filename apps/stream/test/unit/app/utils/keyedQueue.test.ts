@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createKeyedQueue } from '~~/app/utils/keyedQueue';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 
 describe('createKeyedQueue', () => {
 	it('runs actions for the same key in FIFO order', async () => {

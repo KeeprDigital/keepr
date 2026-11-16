@@ -1,7 +1,7 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { reactive } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 
 const modal = {
 	open: vi.fn(),

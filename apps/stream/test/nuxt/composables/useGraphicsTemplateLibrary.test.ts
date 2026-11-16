@@ -2,7 +2,7 @@ import type { GraphicsTemplateSummary } from '~/composables/useGraphicsTemplateL
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 
 const { mockLoad, mockNavigateTo, mockRoute } = vi.hoisted(() => ({
 	mockLoad: vi.fn(),

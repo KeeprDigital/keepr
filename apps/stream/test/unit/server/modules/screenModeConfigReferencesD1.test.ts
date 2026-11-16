@@ -32,7 +32,7 @@ vi.doMock('~~/server/db', () => ({ db }));
 
 const { updateScreenModeConfigWithGraphicAssetReferences } =
 	await import('~~/server/modules/screen-graphic-asset-references');
-const { StateConflictError } = await import('~~/server/utils/errors');
+const { StateConflictError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
 /** Six base parameters plus eight per reference first passed D1's hundred here. */
 const FIRST_UNBINDABLE_REFERENCE_COUNT = 12;

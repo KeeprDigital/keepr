@@ -13,7 +13,7 @@ import { playerService } from '~~/server/services/player';
 import { playerListService } from '~~/server/services/playerList';
 import { roundService } from '~~/server/services/round';
 import { talentService } from '~~/server/services/talent';
-import { ScreenDeckSourceConflictError } from '~~/server/utils/errors';
+import { ScreenDeckSourceConflictError } from '~~/server/utils/deckSourceErrors';
 import { eventKind } from '~~/shared/config/games';
 import { SCREEN_MODES } from '~~/shared/screenModes';
 import { PLAYER_SIDE_VALUES } from '~~/shared/types/enums';

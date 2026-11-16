@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { reactive } from 'vue';
 import { createMockEvent } from '~~/test/helpers/fixtures';
 import { mountUnderPageGuard } from '~~/test/helpers/mountUnderPageGuard';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ConfigCardSpotlight from '~/components/Event/ConfigCardSpotlight.vue';
 import ConfigEventSettings from '~/components/Event/ConfigEventSettings.vue';
 import ConfigFeatureMatchSlots from '~/components/Event/ConfigFeatureMatchSlots.vue';

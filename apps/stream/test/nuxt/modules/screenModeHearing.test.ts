@@ -5,7 +5,7 @@ import type { ScreenModeFreshnessTransport } from '~/modules/screen-mode/freshne
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getDefaultConfigForMode } from '~~/shared/types/screenConfig';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createFakeEventChannel } from '~~/test/helpers/realtime-mock';
 import { screenContextOf } from '~~/test/nuxt/helpers/screenContext';
 import { useScreenModeFreshness } from '~/modules/screen-mode/freshness';

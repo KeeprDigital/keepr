@@ -2,6 +2,10 @@ import { defineConfig } from 'vitest/config';
 import { CHECKOUT_TSCONFIG } from './build/checkoutTsconfig.ts';
 import { wasmModulePlugin } from './build/wasmModulePlugin.ts';
 import {
+	blockCloudflareCredentialsSetup,
+	loadTolerantWaitsSetup,
+} from '@keepr/nuxt-layer/vitest.shared.ts';
+import {
 	heldToRunSlots,
 	hideLoadTolerantWaitFrame,
 	LOAD_TOLERANT_BAIL_AFTER_FAILURES,
@@ -24,10 +28,7 @@ export default defineConfig({
 		include: ['test/unit/**/*.test.ts'],
 		environment: 'node',
 		// No suite here reaches Cloudflare; see the file (#619).
-		setupFiles: [
-			'./test/helpers/blockCloudflareCredentials.ts',
-			'./test/helpers/loadTolerantWaits.ts',
-		],
+		setupFiles: [blockCloudflareCredentialsSetup, loadTolerantWaitsSetup],
 		testTimeout: LOAD_TOLERANT_TEST_TIMEOUT_MS,
 		hookTimeout: LOAD_TOLERANT_HOOK_TIMEOUT_MS,
 		bail: LOAD_TOLERANT_BAIL_AFTER_FAILURES,

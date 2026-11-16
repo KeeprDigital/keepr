@@ -2,10 +2,10 @@ import type { SavedOpPlayerDeckList } from '~~/shared/types/opDeckList';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockPlayer, createWireMockPlayer } from '~~/test/helpers/fixtures';
 import { opCardSummary, opDeckListEntry } from '~~/test/helpers/opCards';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import OpDeckListModal from '~/components/Player/OpDeckListModal.vue';
 
 // The Players page's Deck List editor: prefilled paste box and Leader picker, saved

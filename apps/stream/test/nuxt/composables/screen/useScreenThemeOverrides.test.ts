@@ -8,7 +8,7 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { FOUNDATION_TOKENS } from '~~/shared/modules/theme';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createWireMockScreen } from '~~/test/helpers/fixtures';
 import {
 	fakeScreenThemeNetwork,

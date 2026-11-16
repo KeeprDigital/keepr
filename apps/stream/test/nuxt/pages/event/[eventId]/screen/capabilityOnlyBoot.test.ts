@@ -3,9 +3,9 @@ import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockFeatureMatchState, createWireMockFeatureMatch } from '~~/test/helpers/fixtures';
-import { settleUntil, settleUntilStill } from '~~/test/helpers/settle';
+import { settleUntil, settleUntilStill } from '@keepr/nuxt-layer/test/helpers/settle';
 import { useRouter } from '#app';
 import { tryUseRealtime } from '~/composables/core/useRealtime';
 import {

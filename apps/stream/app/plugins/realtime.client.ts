@@ -13,7 +13,7 @@ import {
 	screenOutputAssetCapabilityFromHash,
 	screenOutputCapabilityHeaders,
 } from '~~/shared/utils/screenOutput';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 type Unsubscribe = () => void;
 

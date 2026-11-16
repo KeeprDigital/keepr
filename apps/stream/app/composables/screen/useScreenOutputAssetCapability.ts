@@ -1,5 +1,5 @@
 import type { MaybeRefOrGetter } from 'vue';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 /**
  * The Screen Output Asset Capability an authoring surface hands to an output it

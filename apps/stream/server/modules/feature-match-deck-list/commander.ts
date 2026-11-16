@@ -23,7 +23,7 @@ import { featureMatchSlotWriteModule } from '~~/server/modules/feature-match-slo
 import { featureMatchService } from '~~/server/services/featureMatch';
 import { featureMatchDeckListService } from '~~/server/services/featureMatchDeckList';
 import { SEAT_DATA_KEYS } from '~~/server/services/featureMatchSlotCommander';
-import { runCompensation } from '~~/server/utils/errors';
+import { runCompensation } from '@keepr/nuxt-layer/server/utils/errors';
 import { eventKind } from '~~/shared/config/games';
 import { COMMANDER_DECK_LIST_INVALID } from '~~/shared/types/featureMatchDeckList';
 import { orderedColourIdentity } from '~~/shared/utils/commander';

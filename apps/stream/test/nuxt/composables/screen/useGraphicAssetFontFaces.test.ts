@@ -3,7 +3,7 @@ import type { ScreenGraphicAssetReference } from '~~/shared/utils/graphicsAssetR
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
 import { useGraphicAssetFontFaces } from '~/composables/screen/useGraphicAssetFontFaces';
 

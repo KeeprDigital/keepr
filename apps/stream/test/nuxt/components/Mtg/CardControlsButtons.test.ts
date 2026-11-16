@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils';
 import { createPinia, defineStore, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import CardControlsButtons from '~/components/Mtg/CardControlsButtons.vue';
 
 function createMockMtgCard(overrides: Partial<MtgCard> = {}): MtgCard {

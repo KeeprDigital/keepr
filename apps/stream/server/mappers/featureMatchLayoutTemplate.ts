@@ -3,7 +3,7 @@ import type {
 	FeatureMatchLayoutTemplateResponse,
 	FeatureMatchLayoutTemplateSummary,
 } from '~~/shared/types/featureMatchLayoutTemplate';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 import { isFourSeatFeatureMatchLayout } from '~~/shared/featureMatchLayoutSeats';
 import { flattenGraphicItems } from '~~/shared/modules/graphics';
 

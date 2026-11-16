@@ -7,7 +7,7 @@ import {
 	rangePermitted,
 	requestedByteRange,
 } from '~~/server/utils/byteRangeContentDelivery';
-import { TemporarilyUnavailableError } from '~~/server/utils/errors';
+import { TemporarilyUnavailableError } from '@keepr/nuxt-layer/server/utils/errors';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 
 /**

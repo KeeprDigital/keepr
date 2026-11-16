@@ -8,7 +8,7 @@ import {
 	UInputMenuStub,
 	UInputStub,
 	USelectStub,
-} from '~~/test/nuxt/helpers/nuxtUiStubs';
+} from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ManualBracketEditor from '~/components/Screen/Modes/TopCut/ManualBracketEditor.vue';
 
 enableAutoUnmount(afterEach);

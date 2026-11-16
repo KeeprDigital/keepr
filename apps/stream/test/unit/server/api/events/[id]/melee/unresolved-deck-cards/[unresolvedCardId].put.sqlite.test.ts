@@ -5,7 +5,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // PUT /api/events/:id/melee/unresolved-deck-cards/:unresolvedCardId over real SQL: the

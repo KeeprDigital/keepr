@@ -10,7 +10,7 @@ import {
 	checkoutProfileMarker,
 } from '../../../scripts/graphics-acceptance/chromium-profile.mjs';
 import { launchChromium } from '../../../scripts/graphics-acceptance/chromium.mjs';
-import { LOAD_TOLERANT_WAIT_MS } from '../../helpers/loadTolerantBounds';
+import { LOAD_TOLERANT_WAIT_MS } from '@keepr/nuxt-layer/test/helpers/loadTolerantBounds';
 import { fakeChrome } from './fixtures/fake-chrome';
 
 /**

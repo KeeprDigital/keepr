@@ -33,7 +33,7 @@ import {
 	withCatalogueLeaders,
 } from '~~/server/services/featureMatchSlotLeader';
 import { publishMessage } from '~~/server/utils/ably';
-import { chunkJsonRows, inJsonArray, selectForInsert } from '~~/server/utils/db';
+import { chunkJsonRows, inJsonArray, selectForInsert } from '@keepr/nuxt-layer/server/utils/db';
 import { eventKind } from '~~/shared/config/games';
 import {
 	applyFeatureMatchSessionEvent,

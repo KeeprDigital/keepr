@@ -3,7 +3,7 @@ import type { ScreenMode } from '~~/shared/types/enums';
 import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { refusalFrom } from '~~/test/helpers/publicServerFailure';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 

@@ -3,9 +3,9 @@ import type { GraphicsAuthoringLeaseReading } from '~~/shared/modules/graphics-a
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRAPHICS_AUTHORING_LEASE_DEFAULT_HEARTBEAT_MS } from '~~/shared/modules/graphics-authoring-lease';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { requestsMadeTo } from '~~/test/helpers/ingestionTransferRequests';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 
 const { mockFetch } = vi.hoisted(() => ({
 	mockFetch: vi.fn(),

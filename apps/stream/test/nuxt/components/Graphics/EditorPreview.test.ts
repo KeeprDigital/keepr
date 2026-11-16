@@ -1,7 +1,7 @@
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { nextTick, ref } from 'vue';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import { stubPointerCapture } from '~~/test/nuxt/helpers/pointerCapture';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import EditorPreview from '~/components/Graphics/EditorPreview.vue';

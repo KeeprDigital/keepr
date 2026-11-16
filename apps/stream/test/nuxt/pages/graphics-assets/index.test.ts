@@ -13,8 +13,8 @@ import {
 	GRAPHICS_MULTIPART_PART_BYTES,
 	MAX_STILL_IMAGE_INGESTION_BYTES,
 } from '~~/shared/utils/graphicsAssetCompatibility';
-import { deferred } from '~~/test/helpers/deferred';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 
 const { mockApiFetch, mockBrowserDecode, mockCapacityRefresh, mockRefresh, mockTransferFetch } =
 	vi.hoisted(() => ({

@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-import { transportFailure } from '~~/test/helpers/transportFailure';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import EventList from '~/components/Event/List.vue';
 
 function mountList(error: Error | null) {

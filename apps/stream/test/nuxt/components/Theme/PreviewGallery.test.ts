@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { eventKind, isOfferedToEvent } from '~~/shared/config/games';
 import { featureMatchSampleDataset } from '~~/shared/featureMatchSampleDataset';
 import { SCREEN_MODES, THEME_PREVIEW_SCREEN_MODES } from '~~/shared/screenModes';
-import { settleUntil } from '~~/test/helpers/settle';
+import { settleUntil } from '@keepr/nuxt-layer/test/helpers/settle';
 import { loadDrawnImages } from '~~/test/nuxt/helpers/drawnImages';
 import PreviewGallery from '~/components/Theme/PreviewGallery.vue';
 

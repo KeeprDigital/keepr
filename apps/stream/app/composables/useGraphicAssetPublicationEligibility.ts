@@ -2,7 +2,7 @@ import type { MaybeRefOrGetter } from 'vue';
 import type { FeatureMatchOverlayModeConfig } from '~~/shared/types/screenConfig';
 import { featureMatchOverlayGraphicAssetReferences } from '~~/shared/utils/graphicsAssetReferences';
 import { graphicAssetReferenceStatusOrUnavailable } from '~/utils/graphicAssetReferenceStatus';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 export type GraphicAssetPublicationEligibility =
 	| { outcome: 'eligible' }

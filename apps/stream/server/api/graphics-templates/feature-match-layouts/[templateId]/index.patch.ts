@@ -17,7 +17,7 @@ import {
 	refuseInstalledFeatureMatchLayoutTemplateWrite,
 } from '~~/server/utils/featureMatchLayoutTemplateWrites';
 import { graphicsTemplateReferenceConflict } from '~~/server/utils/graphicsTemplateReferences';
-import { readJsonPayloadLimited } from '~~/server/utils/payloadLimits';
+import { readJsonPayloadLimited } from '@keepr/nuxt-layer/server/utils/payloadLimits';
 
 /**
  * Revise one Feature Match Layout Template.

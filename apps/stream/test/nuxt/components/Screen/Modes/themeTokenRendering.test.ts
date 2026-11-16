@@ -26,7 +26,7 @@ import { SCREEN_MODES, screenModeTokenName, screenModeTokens } from '~~/shared/s
 import { SCREEN_MODE_VALUES } from '~~/shared/types/enums';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
 import { METAGAME_CHART_MAX_ARCHETYPES } from '~~/shared/utils/metagameChart';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockScreen } from '~~/test/helpers/fixtures';
 import { testGraphicAssetReference } from '~~/test/helpers/graphicsAssetIdentities';
 import { text } from '~~/test/helpers/graphicsComposition';

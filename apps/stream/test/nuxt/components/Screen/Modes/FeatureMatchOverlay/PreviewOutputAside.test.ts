@@ -5,7 +5,7 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import PreviewOutputAside from '~/components/Screen/Modes/FeatureMatchOverlay/PreviewOutputAside.vue';
 import { GRAPHICS_PREVIEW_READY_MESSAGE } from '~/modules/graphics/previewMessages';

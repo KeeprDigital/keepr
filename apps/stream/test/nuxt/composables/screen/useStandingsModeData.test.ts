@@ -2,7 +2,7 @@ import type { EffectScope } from 'vue';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockEvent, createMockPlayer, createMockRound } from '~~/test/helpers/fixtures';
 import { createFakeEventChannel } from '~~/test/helpers/realtime-mock';
 import { screenContextOf } from '~~/test/nuxt/helpers/screenContext';
@@ -115,7 +115,7 @@ const screenContext = screenContextOf({
 mockNuxtImport('useScreenModeConfig', () => () => computed(() => mutableConfig));
 // Server time is the Page Rotation's clock.
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		isSynced: mockIsSynced,
 		getServerTime: () => mockServerNow,
 	})),

@@ -10,7 +10,7 @@ import {
 	ingestImage,
 	publishedRevision,
 } from '~~/test/helpers/graphicsLibrary';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // The Evidence Ledger as a Graphics Administrator queries it: the address names one

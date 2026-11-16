@@ -9,7 +9,7 @@ import {
 	SCREEN_MODES,
 	THEME_PREVIEW_SCREEN_MODES,
 } from '~~/shared/screenModes';
-import { settleUntil } from '~~/test/helpers/settle';
+import { settleUntil } from '@keepr/nuxt-layer/test/helpers/settle';
 import { loadDrawnImages } from '~~/test/nuxt/helpers/drawnImages';
 import { stubImageLoading } from '~~/test/nuxt/helpers/imageLoading';
 import PreviewTile from '~/components/Theme/PreviewTile.vue';

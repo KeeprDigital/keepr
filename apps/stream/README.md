@@ -69,6 +69,12 @@ build/      Nuxt build-time modules and local-configuration checks
 test/       unit, nuxt, integration suites
 ```
 
+The app extends the workspace's shared Nuxt layer, `packages/nuxt-layer` at the
+repository's root (ADR-0093): the Nuxt shell, and the server, client and test
+foundation that is no product's own. A file there has the path it would have
+here, is auto-imported the same way, and is named in an import as
+`@keepr/nuxt-layer/<path>`. The layer registers no route and no middleware.
+
 ## Subsystem map
 
 Where each subsystem is operated here, named in `CONTEXT.md`, and decided in
@@ -491,9 +497,9 @@ Gotchas:
   worker's own event loop stalled.
 - **A loaded machine slows the unit and Nuxt suites; it must not fail them.**
   Their timeouts are hang detectors, set once in
-  `test/helpers/loadTolerantBounds.ts`: 60s a test, 120s a hook, and 20s for
-  `vi.waitFor`/`vi.waitUntil` (`test/helpers/loadTolerantWaits.ts`) and the
-  settle kit (`test/helpers/settle.ts`), which fails rather than giving up
+  `packages/nuxt-layer/test/helpers/loadTolerantBounds.ts`: 60s a test, 120s a hook, and 20s for
+  `vi.waitFor`/`vi.waitUntil` (`packages/nuxt-layer/test/helpers/loadTolerantWaits.ts`) and the
+  settle kit (`packages/nuxt-layer/test/helpers/settle.ts`), which fails rather than giving up
   quietly. Leave a test, hook or wait on those defaults: a number written on
   one can only undercut them. A run
   stops after five failed tests, so a real hang names itself well inside CI's

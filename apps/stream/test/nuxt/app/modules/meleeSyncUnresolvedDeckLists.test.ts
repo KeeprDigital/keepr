@@ -6,8 +6,8 @@ import {
 	groupUnresolvedDeckCards,
 	useMeleeSyncUnresolvedDeckListResolution,
 } from '~~/app/modules/melee-sync/unresolvedDeckLists';
-import { deferred } from '~~/test/helpers/deferred';
-import { callsTo } from '~~/test/helpers/lastCallTo';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { callsTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 
 /** Where the workflow looks a printed card name up (`unresolvedDeckLists.ts`). */
 const SCRYFALL_SEARCH_ENDPOINT = 'https://api.scryfall.com/cards/search';

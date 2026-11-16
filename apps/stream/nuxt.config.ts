@@ -1,4 +1,4 @@
-import type { MutationBodyMethod } from './shared/utils/requestBodyLimits';
+import type { MutationBodyMethod } from '@keepr/nuxt-layer/shared/utils/requestBodyLimits';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { APPLICATION_FONTS_OPTIONS, dropFontAssetsFromManifest } from './build/applicationFonts';
@@ -11,10 +11,8 @@ import {
 	MAX_SILENT_VIDEO_INGESTION_BYTES,
 	MAX_STILL_IMAGE_INGESTION_BYTES,
 } from './shared/utils/graphicsAssetCompatibility';
-import {
-	MUTATION_BODY_METHODS,
-	TCGPLUS_IMPORT_MAX_BODY_BYTES,
-} from './shared/utils/requestBodyLimits';
+import { MUTATION_BODY_METHODS } from '@keepr/nuxt-layer/shared/utils/requestBodyLimits';
+import { TCGPLUS_IMPORT_MAX_BODY_BYTES } from './shared/utils/tcgPlusImportLimits';
 
 const isIntegration = process.env.STREAM_KEEPR_INTEGRATION === 'true';
 const integrationWranglerPersistDir =
@@ -22,7 +20,6 @@ const integrationWranglerPersistDir =
 const integrationMutationDrainHandler = fileURLToPath(
 	new URL('./test/integration/fixtures/drain-request-body.ts', import.meta.url),
 );
-const compatibilityDate = '2026-07-16';
 
 /**
  * Semantic Social Network Icon configurations resolve entirely from bytes shipped
@@ -36,7 +33,9 @@ const supportedSocialNetworkIcons = SUPPORTED_SOCIAL_NETWORKS.map((network) =>
 const workerName = 'stream';
 
 export default defineNuxtConfig({
-	ssr: false,
+	// What every app of the workspace starts from: client rendering, Nuxt UI, the
+	// colour mode, strict TypeScript and the Cloudflare Workers target (ADR-0093).
+	extends: ['@keepr/nuxt-layer'],
 
 	// Nothing but `nuxt prepare` may rewrite `.nuxt` while other gates run:
 	// the root tsconfig extends it, so every Vite and TypeScript consumer reads it.
@@ -74,9 +73,7 @@ export default defineNuxtConfig({
 		// with one woff2 `Mana` face in place of the package's own faces.
 		manaFontModule,
 		'@nuxt/fonts',
-		'@nuxt/ui',
 		'@pinia/nuxt',
-		'@vueuse/nuxt',
 		'@nuxt/image',
 		'@nuxt/test-utils/module',
 		'nuxt-echarts',
@@ -87,16 +84,6 @@ export default defineNuxtConfig({
 		charts: ['BarChart', 'PieChart'],
 		components: ['GridComponent', 'TooltipComponent', 'LegendComponent'],
 		features: ['LabelLayout'],
-	},
-
-	// `@nuxtjs/color-mode` declares `configKey: 'colorMode'`, so it reads these
-	// from Nuxt config and only from here — the same block in `app.config.ts` was
-	// inert, leaving the module on its own `fallback: 'light'` default (#310).
-	// `fallback` is what the pre-hydration script returns when no system
-	// preference can be read at all, which is the state this app wants dark.
-	colorMode: {
-		preference: 'system',
-		fallback: 'dark',
 	},
 
 	css: ['~/assets/css/main.css'],
@@ -130,7 +117,6 @@ export default defineNuxtConfig({
 	},
 
 	nitro: {
-		preset: 'cloudflare_module',
 		// The server program (`.nuxt/tsconfig.server.json`, which `server/tsconfig.json`
 		// extends) is the one the type-aware lint reads for server code. Without the
 		// Worker's generated types in it, every binding (`Env`, D1, R2, KV) is `any`
@@ -235,8 +221,6 @@ export default defineNuxtConfig({
 			},
 		},
 		cloudflare: {
-			deployConfig: true,
-			nodeCompat: true,
 			wrangler: {
 				name: workerName,
 			},
@@ -260,7 +244,6 @@ export default defineNuxtConfig({
 	},
 
 	typescript: {
-		strict: true,
 		typeCheck: !isIntegration,
 	},
 
@@ -289,13 +272,7 @@ export default defineNuxtConfig({
 			}
 		: undefined,
 
-	devtools: {
-		enabled: false,
-	},
-
 	experimental: {
 		typescriptPlugin: true,
 	},
-
-	compatibilityDate,
 });

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { reactive } from 'vue';
 import { createMockPlayer } from '~~/test/helpers/fixtures';
 import { LUFFY, ZORO } from '~~/test/helpers/opCards';
-import { nuxtUiStubs, UInputMenuStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs, UInputMenuStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import PlayerForm from '~/components/FeatureMatch/Setup/PlayerForm.vue';
 import { DEFAULT_PLAYER_DATA } from '~/types';
 

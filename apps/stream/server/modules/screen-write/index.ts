@@ -18,7 +18,7 @@ import { parseModeConfigPatchResult } from '~~/server/schemas/api/screen';
 import { cardService } from '~~/server/services/card';
 import { featureMatchService } from '~~/server/services/featureMatch';
 import { screenService } from '~~/server/services/screen';
-import { canonicalJson } from '~~/server/utils/canonicalJson';
+import { canonicalJson } from '@keepr/nuxt-layer/server/utils/canonicalJson';
 import { assertGraphicsTemplateReferencesSelectable } from '~~/server/utils/graphicsTemplateReferences';
 import {
 	validateScreenModeConfigReferences,

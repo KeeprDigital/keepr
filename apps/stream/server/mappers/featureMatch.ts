@@ -4,7 +4,7 @@ import type {
 	FeatureMatchSessionEventAppliedPayload,
 	FeatureMatchSessionResponse,
 } from '~~/shared/types/featureMatchSession';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 
 export function mapFeatureMatchSessionToResponse(
 	session: DbFeatureMatchSession,

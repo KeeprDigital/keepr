@@ -4,7 +4,7 @@ import { screenWriteModule } from '~~/server/modules/screen-write';
 import { modeConfigParamsSchema, modeConfigPatchSchemaMap } from '~~/server/schemas/api/screen';
 import { getOriginConnectionId } from '~~/server/utils/ably';
 import { optionalBrowserSessionId } from '~~/server/utils/auth';
-import { readJsonPayloadLimited } from '~~/server/utils/payloadLimits';
+import { readJsonPayloadLimited } from '@keepr/nuxt-layer/server/utils/payloadLimits';
 
 const versionedPatchSchema = z
 	.object({

@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue';
-import type { UseFormReturn } from './useForm';
+import type { UseFormReturn } from '@keepr/nuxt-layer/app/composables/ui/useForm';
 import type { UpdateEventInput } from '~/types';
 
 type FormChanges<T extends Record<string, any>> = ReturnType<UseFormReturn<T>['getChanges']>;

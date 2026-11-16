@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createRequestLedger, requestLabel } from '~~/test/integration/requestLedger';
 
 /**

@@ -1,6 +1,6 @@
 import type { FeatureMatchNoteDiscardConflict } from '~~/shared/api';
-import { isPlainRecord } from '~~/shared/utils/plainObject';
-import { failureStatus } from '~/utils/failureStatus';
+import { isPlainRecord } from '@keepr/nuxt-layer/shared/utils/plainObject';
+import { failureStatus } from '@keepr/nuxt-layer/app/utils/failureStatus';
 
 export function featureMatchNoteDiscardConflict(
 	caught: unknown,

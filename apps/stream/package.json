@@ -65,6 +65,7 @@
 		"@fontsource/source-serif-4": "catalog:",
 		"@jsquash/jpeg": "catalog:",
 		"@jsquash/webp": "catalog:",
+		"@keepr/nuxt-layer": "workspace:*",
 		"@nuxt/fonts": "catalog:",
 		"@nuxt/image": "catalog:",
 		"@nuxt/ui": "catalog:",

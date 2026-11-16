@@ -1,3 +1,8 @@
+import {
+	blockCloudflareCredentialsSetup,
+	loadTolerantWaitsSetup,
+	quietSuspenseNoticeSetup,
+} from '@keepr/nuxt-layer/vitest.shared.ts';
 import { defineVitestConfig } from '@nuxt/test-utils/config';
 import { defineConfig } from 'vitest/config';
 import {
@@ -54,9 +59,9 @@ export default defineConfig(async (env) => {
 	// The credential guard first of all, before anything can start a child (#619).
 	// The icon guard also ahead of the entry, so its mock precedes `@nuxt/icon`.
 	config.test!.setupFiles = [
-		'./test/helpers/blockCloudflareCredentials.ts',
-		'./test/helpers/loadTolerantWaits.ts',
-		'./test/nuxt/quietSuspenseNotice.ts',
+		blockCloudflareCredentialsSetup,
+		loadTolerantWaitsSetup,
+		quietSuspenseNoticeSetup,
 		'./test/nuxt/failOnUnbundledIcon.ts',
 		...[config.test!.setupFiles ?? []].flat(),
 	];

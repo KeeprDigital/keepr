@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { mapPublicNitroError } from '~~/server/utils/nitroErrorMapping';
 import { RealtimePublishError } from '~~/server/utils/realtimePublishFailure';
-import { providerRefusal } from '~~/test/helpers/providerRefusal';
+import { providerRefusal } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
 import {
 	diagnoseRealtimePublishFailure,
 	INTEGRATION_ABLY_API_KEY_ENV,

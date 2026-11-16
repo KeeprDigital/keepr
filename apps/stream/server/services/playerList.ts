@@ -3,7 +3,12 @@ import type { CreatePlayerListInput, UpdatePlayerListInput } from '~~/shared/api
 import { and, asc, eq, getTableColumns, inArray, max, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { playerListMembers, playerLists, players } from '~~/server/db/schema';
-import { chunkArray, chunkJsonRows, SAFE_INARRAY_SIZE, selectForInsert } from '~~/server/utils/db';
+import {
+	chunkArray,
+	chunkJsonRows,
+	SAFE_INARRAY_SIZE,
+	selectForInsert,
+} from '@keepr/nuxt-layer/server/utils/db';
 
 export function playerListService() {
 	const validatePlayersBelongToEvent = async (eventId: number, playerIds: number[]) => {

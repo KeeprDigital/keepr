@@ -7,7 +7,7 @@ import type {
 	ShapeEventReferences,
 } from './fields';
 import { z } from 'zod';
-import { isPlainRecord } from '../utils/plainObject';
+import { isPlainRecord } from '@keepr/nuxt-layer/shared/utils/plainObject';
 import {
 	assertFieldGroupsDeclared,
 	clampToShapeBounds,

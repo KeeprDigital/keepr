@@ -57,7 +57,7 @@ mockNuxtImport('useScreenModeConfig', () => () => computed(() => mutableConfig))
 // Server time is the Page Rotation's clock; synced and controllable here.
 let mockServerNow = 1_000_000;
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		getServerTime: () => mockServerNow,
 	})),
 );

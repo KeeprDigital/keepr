@@ -4,7 +4,7 @@ import type { ScreenOutputEvent } from '~~/shared/utils/screenOutputEvent';
 import type { ScreenOutputReadScope } from '~/composables/repositories/useScreenOutputReadRepository';
 import type { ScreenContext } from '~/composables/screen/useScreenContext';
 import type { ScreenCardDataHealth, ScreenPresenceData } from '~/types/screen';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { useIntervalFn } from '@vueuse/core';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 import { eventCanvasOf } from '~~/shared/eventCanvas';
@@ -29,7 +29,7 @@ import { useScreenChannelSession } from '~/modules/screen/screenChannelSession';
 import { useEventStore } from '~/stores/event';
 import { useScreenStore } from '~/stores/screen';
 import { buildFeatureMatchOverlayExportFilename, exportElementPng } from '~/utils/exportElementPng';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 interface ScreenRealtimeDisplaySession {
 	start: (eventId: number, screenId: number) => Promise<void>;

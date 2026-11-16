@@ -2,7 +2,7 @@ import type { VueWrapper } from '@vue/test-utils';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import EventCreateModal from '~/components/Event/CreateModal.vue';
 
 const createEvent = vi.fn(async (_input: Record<string, unknown>) => ({ id: 9 }));

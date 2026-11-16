@@ -3,12 +3,12 @@ import {
 	graphicsCapacityErrorDescriptor,
 } from '~~/server/modules/graphics-asset-library/errors';
 import { meleeKeyringConfigurationFaultSentence } from '~~/server/services/meleeCredentials';
-import { STATE_CONFLICT_CODE } from '~~/shared/utils/stateConflict';
+import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
 import {
 	ServiceConfigurationError,
 	StateConflictError,
 	TemporarilyUnavailableError,
-} from './errors';
+} from '@keepr/nuxt-layer/server/utils/errors';
 import { RealtimePublishError } from './realtimePublishFailure';
 
 export interface MappableNitroError {

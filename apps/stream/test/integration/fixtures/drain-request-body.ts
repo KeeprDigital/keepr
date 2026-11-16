@@ -1,4 +1,4 @@
-import { getBoundedRequestBodyStream } from '../../../server/utils/payloadLimits';
+import { getBoundedRequestBodyStream } from '@keepr/nuxt-layer/server/utils/payloadLimits';
 
 export default defineEventHandler(async (event) => {
 	const stream = getBoundedRequestBodyStream(event);

@@ -13,7 +13,7 @@ import {
 	ingestImage,
 	publishedRevision,
 } from '~~/test/helpers/graphicsLibrary';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // The byte-free actions a Graphics Administrator may take on one Graphics Discrepancy:

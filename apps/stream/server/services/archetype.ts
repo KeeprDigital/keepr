@@ -3,7 +3,7 @@ import type { CreateArchetypeInput, UpdateArchetypeInput } from '~~/shared/api';
 import { and, asc, eq, inArray, notExists } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { archetypes, playerDecks, players } from '~~/server/db/schema';
-import { chunkArray, SAFE_INARRAY_SIZE } from '~~/server/utils/db';
+import { chunkArray, SAFE_INARRAY_SIZE } from '@keepr/nuxt-layer/server/utils/db';
 
 export function archetypeService() {
 	const findByEventId = async (eventId: number): Promise<DbArchetype[]> => {

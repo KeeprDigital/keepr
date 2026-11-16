@@ -34,7 +34,7 @@ mockNuxtImport('$fetch', () => mockFetch);
 mockNuxtImport('tryUseRealtime', () => () => realtime.transport);
 mockNuxtImport('useScreenModeConfig', () => () => computed(() => mutableConfig));
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		...serverTime,
 	})),
 );

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGraphicsAssetDelivery } from '~~/server/modules/graphics-asset-library/delivery';
 import { createInMemoryCanonicalGraphicsObjectStore } from '~~/server/modules/graphics-asset-library/in-memory-object-store';
 import { boundedBytes, canonicalIdentity } from '~~/test/helpers/graphicsLibrary';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { refusalFrom } from '~~/test/helpers/publicServerFailure';
 
 const { library, mockRequireUserId, mockSetResponseHeader } = vi.hoisted(() => ({

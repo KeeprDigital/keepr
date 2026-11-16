@@ -1,8 +1,8 @@
 import type { MtgCard } from '~/types/card/mtg';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { deferred } from '~~/test/helpers/deferred';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 import { realtimeHandlersFor } from '~~/test/nuxt/helpers/realtimeEventSession';
 import { createEventDataResync, storeReloaders } from '~/modules/event-data/resync';
 
@@ -13,7 +13,7 @@ const { mockFetch, mockGetServerTime } = vi.hoisted(() => ({
 mockNuxtImport('$fetch', () => mockFetch);
 
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		getServerTime: mockGetServerTime,
 	})),
 );

@@ -1,9 +1,9 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isReactive } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockScreen } from '~~/test/helpers/fixtures';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 
 /**
  * Put the same Screen id in the cache more than once, by assignment. No door into

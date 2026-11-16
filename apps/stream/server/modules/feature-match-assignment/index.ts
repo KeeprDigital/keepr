@@ -9,7 +9,7 @@ import {
 	featureMatchAssignmentService,
 	isAssignmentDisplacementGuardViolation,
 } from '~~/server/services/featureMatchAssignment';
-import { StateConflictError } from '~~/server/utils/errors';
+import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import {
 	hasExactNoteDiscardConfirmation,
 	throwFeatureMatchNoteDiscardRequired,

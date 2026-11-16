@@ -11,7 +11,7 @@ import {
 	EDITED_GRAPHIC_ID,
 	OTHER_GRAPHIC_ID,
 } from '~~/test/nuxt/helpers/graphicsEditorHosts';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import LayerList from '~/components/Screen/Modes/BroadcastGraphics/LayerList.vue';
 
 /**

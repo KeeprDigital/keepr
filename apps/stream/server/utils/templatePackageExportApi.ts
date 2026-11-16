@@ -3,7 +3,7 @@ import type { TemplatePackageExportOutcome } from '~~/server/modules/graphics-as
 import type { BroadcastGraphicConfig } from '~~/shared/types/graphics';
 import type { FeatureMatchLayoutConfig } from '~~/shared/types/screenConfig';
 import { graphicsAssetLibraryForEvent } from '~~/server/modules/graphics-asset-library/runtime';
-import { TemporarilyUnavailableError } from '~~/server/utils/errors';
+import { TemporarilyUnavailableError } from '@keepr/nuxt-layer/server/utils/errors';
 import { rethrowGraphicsAssetApiError } from '~~/server/utils/graphicsAssetApi';
 import {
 	broadcastGraphicTemplatePackageRequirements,

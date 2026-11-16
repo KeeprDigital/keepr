@@ -8,7 +8,7 @@ import {
 	UDropdownMenuStub,
 	UModalStub,
 	UTooltipStub,
-} from '~~/test/nuxt/helpers/nuxtUiStubs';
+} from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import EditorFocusModeToggle from '~/components/Graphics/EditorFocusModeToggle.vue';
 import ScreenModeSettings from '~/components/Screen/ModeSettings.vue';

@@ -6,8 +6,8 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
-import { transportFailure } from '~~/test/helpers/transportFailure';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 const { mockApiFetch } = vi.hoisted(() => ({
 	mockApiFetch: vi.fn(),

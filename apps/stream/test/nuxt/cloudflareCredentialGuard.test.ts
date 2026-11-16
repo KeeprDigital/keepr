@@ -9,7 +9,8 @@ it('the Nuxt suite starts holding only a Cloudflare token that authenticates not
 		([name]) => name.startsWith('CLOUDFLARE_') || name.startsWith('WRANGLER_'),
 	);
 
-	const { BLOCKED_CLOUDFLARE_API_TOKEN } = await import('../helpers/blockCloudflareCredentials.ts');
+	const { BLOCKED_CLOUDFLARE_API_TOKEN } =
+		await import('@keepr/nuxt-layer/test/helpers/blockCloudflareCredentials.ts');
 
 	expect(atStart).toEqual([['CLOUDFLARE_API_TOKEN', BLOCKED_CLOUDFLARE_API_TOKEN]]);
 });

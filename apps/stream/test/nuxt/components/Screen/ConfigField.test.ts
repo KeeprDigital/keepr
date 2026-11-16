@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent } from 'vue';
 import { screenModeConfigContract } from '~~/shared/screenModes';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ConfigField from '~/components/Screen/ConfigField.vue';
 
 // A Screen Mode config field rendered from its contract metadata (ADR-0037): its control,

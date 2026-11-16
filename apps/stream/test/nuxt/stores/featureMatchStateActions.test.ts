@@ -3,9 +3,9 @@ import type { FeatureMatchState } from '~~/shared/types/featureMatchState';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyFeatureMatchSessionEvent } from '~~/shared/modules/feature-match-session';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockFeatureMatchState } from '~~/test/helpers/fixtures';
-import { transportFailure } from '~~/test/helpers/transportFailure';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
 import {
 	clock,
 	commandResult,

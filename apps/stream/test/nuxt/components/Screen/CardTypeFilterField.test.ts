@@ -2,7 +2,7 @@ import type { CardTypeBucket } from '~~/shared/utils/metagame';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { CARD_TYPE_BUCKET_ORDER } from '~~/shared/utils/metagame';
-import { nuxtUiStubs, UFormFieldBesideStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs, UFormFieldBesideStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import CardTypeFilterField from '~/components/Screen/CardTypeFilterField.vue';
 
 // The card type chips: a pressed chip is a type the ranking includes. Toggling one adds it to,

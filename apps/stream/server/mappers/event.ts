@@ -1,7 +1,7 @@
 import type { DbEvent, DbEventTalent } from '~~/server/db/schema';
 import type { EventListResponse, EventResponse } from '~~/shared/api';
 import { mapTalentToResponse } from '~~/server/mappers/talent';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 
 /** Credentials, the sync lease, and the Live Results poll schedule never leave the server. */
 function publicEventFields(event: DbEvent) {

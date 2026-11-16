@@ -62,7 +62,7 @@ mockNuxtImport('useFeatureMatchStateStore', () => () => ({
 	startOvertime: vi.fn(),
 }));
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(),
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(),
 );
 mockNuxtImport(
 	'usePlayerFeatureMatchData',

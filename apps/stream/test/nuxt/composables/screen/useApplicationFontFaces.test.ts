@@ -2,7 +2,7 @@ import type { ApplicationFontFaceRequest } from '~~/shared/modules/graphics/typo
 import { flushPromises, mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { stubDocumentFonts } from '~~/test/nuxt/helpers/fontFaces';
 import {
 	useApplicationFontFaces,

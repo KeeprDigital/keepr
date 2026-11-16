@@ -26,7 +26,7 @@ import {
 	graphicsAuthorSignedOut,
 } from '~/composables/useGraphicsAuthorship';
 import { graphicAssetReferenceStatus } from '~/utils/graphicAssetReferenceStatus';
-import { createKeyedGuardedSequence } from '~/utils/guardedSequence';
+import { createKeyedGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 /**
  * Generated Live Control for one placed Broadcast Graphic.

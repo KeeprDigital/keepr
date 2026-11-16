@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3';
-import { requireSharedSecret } from '~~/server/utils/sharedSecretSurface';
+import { requireSharedSecret } from '@keepr/nuxt-layer/server/utils/sharedSecretSurface';
 
 /**
  * The environment name, not the runtimeConfig one, because the only reader who can

@@ -12,7 +12,7 @@ let serverTimeRate = 1;
 // The shared clock, faked: server time is this browser's, plus an offset a sync
 // may move, running from `NOW` at `serverTimeRate`.
 mockNuxtImport('useServerTime', async () =>
-	(await import('~~/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
+	(await import('@keepr/nuxt-layer/test/nuxt/helpers/serverTime')).fakeServerTime(() => ({
 		isSynced,
 		serverTimeOffset,
 		getServerTime: () => NOW + (Date.now() - NOW) * serverTimeRate + serverTimeOffset.value,

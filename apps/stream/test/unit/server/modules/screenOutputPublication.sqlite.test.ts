@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import * as schema from '~~/server/db/schema';
 import { eventRealtimeChannel, screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { eventMessageSamples } from '~~/test/helpers/eventMessageSamples';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 

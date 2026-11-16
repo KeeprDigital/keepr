@@ -1,5 +1,5 @@
 import type { Ref } from 'vue';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { computed, ref } from 'vue';
 
 interface EventDataLifecycleRepository<T, TCreate extends object, TUpdate extends object> {

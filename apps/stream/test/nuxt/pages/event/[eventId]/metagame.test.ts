@@ -1,11 +1,11 @@
-import type { Deferred } from '~~/test/helpers/deferred';
+import type { Deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { reactive } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockEvent } from '~~/test/helpers/fixtures';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 
 const { mockFetch, toast } = vi.hoisted(() => ({
 	mockFetch: vi.fn(),

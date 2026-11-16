@@ -1,6 +1,6 @@
 import type { DbArchetype, DbPlayerDeck } from '~~/server/db/schema';
 import type { PlayerDeckSummaryResponse } from '~~/shared/types/metagame';
-import { mapTimestamps } from '~~/server/utils/mapTimestamps';
+import { mapTimestamps } from '@keepr/nuxt-layer/server/utils/mapTimestamps';
 import { isReviewedPlayerDeck } from '~~/shared/utils/playerDeck';
 
 export type PlayerDeckArchetype = Pick<DbArchetype, 'id' | 'name' | 'colors'>;

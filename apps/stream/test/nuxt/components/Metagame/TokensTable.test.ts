@@ -2,7 +2,7 @@ import type { TokenRequirementEntry } from '~~/shared/types/metagame';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import TokensTable from '~/components/Metagame/TokensTable.vue';
 
 const UTableStub = defineComponent({

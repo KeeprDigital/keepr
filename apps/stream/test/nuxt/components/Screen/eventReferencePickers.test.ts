@@ -3,7 +3,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, reactive } from 'vue';
-import { nuxtUiStubs, UInputMenuStub } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs, UInputMenuStub } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ArchetypeField from '~/components/Screen/ArchetypeField.vue';
 import FeatureMatchSlotField from '~/components/Screen/FeatureMatchSlotField.vue';
 import PhaseField from '~/components/Screen/PhaseField.vue';

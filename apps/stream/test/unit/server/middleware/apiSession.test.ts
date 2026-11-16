@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ServiceConfigurationError } from '~~/server/utils/errors';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { serverMiddlewareFiles } from '~~/test/helpers/routeRefusalScan';
 
 /**

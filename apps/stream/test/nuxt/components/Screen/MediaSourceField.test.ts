@@ -2,7 +2,7 @@ import type { ScreenMediaSource } from '~~/shared/types/screenConfig';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
 import { defineComponent } from 'vue';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import MediaSourceField from '~/components/Screen/MediaSourceField.vue';
 
 /**

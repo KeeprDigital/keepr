@@ -22,7 +22,7 @@
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { eventRealtimeChannel } from '~~/shared/utils/realtimeChannels';
-import { callsTo } from '~~/test/helpers/lastCallTo';
+import { callsTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 
 const { mockFetch } = vi.hoisted(() => ({
 	mockFetch: vi.fn(),

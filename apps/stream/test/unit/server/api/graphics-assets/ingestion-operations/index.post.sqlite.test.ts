@@ -3,7 +3,7 @@ import type { GraphicsIngestionOperation } from '~~/shared/types/graphicsAsset';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset-library/catalogue';
 import { createTestGraphicsLibrary } from '~~/test/helpers/graphicsLibrary';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { refusalFrom } from '~~/test/helpers/publicServerFailure';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 

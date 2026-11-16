@@ -1,12 +1,31 @@
 {
 	"name": "@keepr/nuxt-layer",
 	"private": true,
-	"description": "The shell every Keepr app starts from: Nuxt UI, the colour mode and the Cloudflare Workers target.",
+	"description": "What every Keepr app is built on: the Nuxt shell, and the server, client and test foundation the apps share.",
 	"type": "module",
 	"main": "./nuxt.config.ts",
+	"scripts": {
+		"typecheck": "nuxt prepare && vue-tsc --noEmit && vue-tsc --noEmit -p test/tsconfig.json",
+		"test": "vitest run && vitest run --config vitest.nuxt.config.ts",
+		"postinstall": "nuxt prepare"
+	},
 	"dependencies": {
 		"@nuxt/ui": "catalog:",
+		"@vueuse/core": "catalog:",
+		"@vueuse/nuxt": "catalog:",
+		"drizzle-orm": "catalog:",
 		"nuxt": "catalog:",
-		"tailwindcss": "catalog:"
+		"tailwindcss": "catalog:",
+		"vue": "catalog:"
+	},
+	"devDependencies": {
+		"@nuxt/test-utils": "catalog:",
+		"@types/node": "catalog:",
+		"@vue/test-utils": "catalog:",
+		"happy-dom": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:",
+		"vue-router": "catalog:",
+		"vue-tsc": "catalog:"
 	}
 }

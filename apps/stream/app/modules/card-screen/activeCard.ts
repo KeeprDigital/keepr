@@ -1,13 +1,16 @@
 import type { MaybeRefOrGetter, Ref } from 'vue';
 import type { ScreenCard, ScreenCardState } from '~~/shared/types/card/mtg';
-import type { useAsyncAction } from '~/composables/core/useAsyncAction';
+import type { useAsyncAction } from '@keepr/nuxt-layer/app/composables/core/useAsyncAction';
 import type { MtgCard, MtgCardDisplayData } from '~/types/card/mtg';
 import type { MessageData } from '~/types/realtime';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { toValue, watch } from 'vue';
 import { isOpScreenCard } from '~~/shared/utils/card/op';
 import { cardTimeoutRemainingMs } from '~~/shared/utils/card/timeout';
-import { createGuardedSequence, createKeyedGuardedSequence } from '~/utils/guardedSequence';
+import {
+	createGuardedSequence,
+	createKeyedGuardedSequence,
+} from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 /**
  * How a Card read ended. Only `'landed'` holds what it read; Event Data Resync

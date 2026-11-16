@@ -2,7 +2,7 @@ import type { SQL } from 'drizzle-orm';
 import type { BatchItem } from 'drizzle-orm/batch';
 import type { CommandReceipt } from './receipts';
 import { db } from '~~/server/db';
-import { StateConflictError } from '~~/server/utils/errors';
+import { StateConflictError } from '@keepr/nuxt-layer/server/utils/errors';
 import { commandContentKey, commandReceiptStatements, findCommandReceipt } from './receipts';
 
 /** The minimum a command must state to be sequenced. */

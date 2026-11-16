@@ -2,7 +2,7 @@ import { mapEventToResponse } from '~~/server/mappers/event';
 import { createEventSchema } from '~~/server/schemas/api/event';
 import { eventService } from '~~/server/services/event';
 import { featureMatchService } from '~~/server/services/featureMatch';
-import { runCompensation } from '~~/server/utils/errors';
+import { runCompensation } from '@keepr/nuxt-layer/server/utils/errors';
 
 export default defineEventHandler(async (event) => {
 	const body = await readValidatedBody(event, createEventSchema.parse);

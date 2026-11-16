@@ -35,7 +35,7 @@ import {
 	storedGraphicAssets,
 	storedRevisionContent,
 } from '~~/test/helpers/graphicsLibrary';
-import { callsTo } from '~~/test/helpers/lastCallTo';
+import { callsTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 let harness: SqliteD1Harness;

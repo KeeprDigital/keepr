@@ -4,7 +4,7 @@ import type {
 	CreateBroadcastDeckListInput,
 	UpdateBroadcastDeckListInput,
 } from '~/types';
-import type { Flight } from '~/utils/guardedSequence';
+import type { Flight } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 import { normalizeBroadcastDeckListName } from '~~/shared/utils/broadcastDeckList';
 
 interface BroadcastDeckListChangedMessage {

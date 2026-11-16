@@ -3,7 +3,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, defineComponent, h, nextTick, reactive, ref } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
 import { createMockScreen } from '~~/test/helpers/fixtures';
 import { restoreDocumentFonts, stubDocumentFonts } from '~~/test/nuxt/helpers/fontFaces';
 import Renderer from '~/components/Screen/Renderer.vue';

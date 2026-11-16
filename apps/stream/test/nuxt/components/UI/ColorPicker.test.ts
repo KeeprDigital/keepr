@@ -1,7 +1,7 @@
 import type { VueWrapper } from '@vue/test-utils';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { afterEach, describe, expect, it } from 'vitest';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ColorPicker from '~/components/UI/ColorPicker.vue';
 
 // The one colour control: `#rrggbb` when opaque, `rgba()` below 100 % alpha,

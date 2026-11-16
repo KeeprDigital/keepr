@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { effectScope } from 'vue';
 import { modeConfigPatchSchemaMap } from '~~/server/schemas/api/screen';
 import { getDefaultConfigForMode, mergeScreenModeConfig } from '~~/shared/types/screenConfig';
-import { STATE_CONFLICT_CODE } from '~~/shared/utils/stateConflict';
+import { STATE_CONFLICT_CODE } from '@keepr/nuxt-layer/shared/utils/stateConflict';
 import { createMockScreen } from '~~/test/helpers/fixtures';
 
 /**

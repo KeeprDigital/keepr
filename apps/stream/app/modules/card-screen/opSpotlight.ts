@@ -10,7 +10,7 @@ import type {
 import type { OpCardSearchParams } from '~/composables/repositories/useOpCardRepository';
 import { computed, toRaw, toValue } from 'vue';
 import { cardTimeoutStartingAt } from '~~/shared/utils/card/timeout';
-import { createGuardedSequence } from '~/utils/guardedSequence';
+import { createGuardedSequence } from '@keepr/nuxt-layer/app/utils/guardedSequence';
 
 export interface OpCardSearch {
 	/** Part of a card's name or card number, such as `luf` or `OP01-0`. */

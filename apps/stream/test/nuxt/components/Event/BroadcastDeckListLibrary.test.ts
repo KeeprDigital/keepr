@@ -9,8 +9,8 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, reactive } from 'vue';
 import { createMockEvent } from '~~/test/helpers/fixtures';
-import { transportFailure } from '~~/test/helpers/transportFailure';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { transportFailure } from '@keepr/nuxt-layer/test/helpers/transportFailure';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import Component from '~/components/Event/BroadcastDeckListLibrary.vue';
 
 function detail(overrides: Partial<BroadcastDeckListResponse> = {}): BroadcastDeckListResponse {

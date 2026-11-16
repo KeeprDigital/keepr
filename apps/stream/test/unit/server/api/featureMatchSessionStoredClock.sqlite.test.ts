@@ -9,7 +9,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as schema from '~~/server/db/schema';
 import { createInitialFeatureMatchState } from '~~/shared/types/featureMatchState';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // A Session's clock is stored in the shape it always was, whatever the app holds

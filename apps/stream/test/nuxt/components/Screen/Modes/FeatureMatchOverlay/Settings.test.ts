@@ -5,7 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import { computed, defineComponent, nextTick, reactive, ref } from 'vue';
 import { DEFAULT_FEATURE_MATCH_OVERLAY_CONFIG } from '~~/shared/types/screenConfig';
 import { media } from '~~/test/helpers/graphicsComposition';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import { stubPointerCapture } from '~~/test/nuxt/helpers/pointerCapture';
 import { ScreenSettingsSectionStub } from '~~/test/nuxt/helpers/screenSettingsSection';
 import OpacityField from '~/components/Graphics/OpacityField.vue';

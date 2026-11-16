@@ -4,7 +4,7 @@ import { createD1GraphicsAssetCatalogue } from '~~/server/modules/graphics-asset
 import { createR2CanonicalGraphicsObjectStore } from '~~/server/modules/graphics-asset-library/r2-object-store';
 import { graphicsCatalogueClient } from '~~/server/modules/graphics-asset-library/runtime';
 import { screenService } from '~~/server/services/screen';
-import { ServiceConfigurationError } from '~~/server/utils/errors';
+import { ServiceConfigurationError } from '@keepr/nuxt-layer/server/utils/errors';
 import { createScreenOutputAssetDelivery } from '.';
 import { createD1ScreenOutputAssetAuthorizer } from './authorizer';
 import { assertScreenOutputCapabilitySigningKey } from './capability';

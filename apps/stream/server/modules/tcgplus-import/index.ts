@@ -18,7 +18,7 @@ import { playerUpdateModule } from '~~/server/modules/player-update';
 import { opPlayerDeckListService } from '~~/server/services/opPlayerDeckList';
 import { playerService } from '~~/server/services/player';
 import { tcgPlusImportService } from '~~/server/services/tcgPlusImport';
-import { runCompensation } from '~~/server/utils/errors';
+import { runCompensation } from '@keepr/nuxt-layer/server/utils/errors';
 import { requireOpEvent } from '~~/server/utils/routeGuards';
 import { playerLabel, playerMemberNumber } from '~~/shared/utils/playerName';
 import { parseTcgPlusExport, TcgPlusExportError } from './parse';

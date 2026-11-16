@@ -4,7 +4,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { db } from '~~/server/db';
 import { matches, phases, playerRoundStandings, rounds } from '~~/server/db/schema';
 import { buildReleaseScreenEventReferencesQuery } from '~~/server/services/screen';
-import { inJsonArray } from '~~/server/utils/db';
+import { inJsonArray } from '@keepr/nuxt-layer/server/utils/db';
 
 /**
  * Which imported Phases and Rounds a removal covers: the stale ones a Melee

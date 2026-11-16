@@ -6,7 +6,7 @@ import type {
 	TemplatePackageKind,
 	TemplatePackagePreflightMapping,
 } from '~~/shared/types/templatePackage';
-import { isPlainObject } from '~~/shared/utils/plainObject';
+import { isPlainObject } from '@keepr/nuxt-layer/shared/utils/plainObject';
 
 /**
  * The provider-independent half of Template Package installation: which local

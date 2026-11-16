@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import * as schema from '~~/server/db/schema';
 import { screenRealtimeChannel } from '~~/shared/utils/realtimeChannels';
 import { createAblyRestFake } from '~~/test/helpers/ablyRestFake';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { createSqliteD1Harness } from '~~/test/helpers/sqlite-d1';
 
 // POST /api/events/:id/screens/:screenId/command over real SQL: a command goes to the

@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import { defineComponent } from 'vue';
 import { ANIMATION_EFFECT_VALUES } from '~~/shared/animationEffects';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import AnimationEffectFields from '~/components/Screen/AnimationEffectFields.vue';
 
 const UIColorPickerStub = defineComponent({

@@ -1,7 +1,7 @@
 import type { ClockState } from '~~/shared/types/featureMatchState';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it } from 'vitest';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import PanelHeader from '~/components/FeatureMatch/PanelHeader.vue';
 
 function clock(type: ClockState['type']): ClockState {

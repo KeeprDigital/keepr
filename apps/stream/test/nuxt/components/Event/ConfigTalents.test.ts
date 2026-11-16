@@ -4,8 +4,8 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, reactive } from 'vue';
-import { deferred } from '~~/test/helpers/deferred';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { deferred } from '@keepr/nuxt-layer/test/helpers/deferred';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import ConfigTalents from '~/components/Event/ConfigTalents.vue';
 
 function talent(

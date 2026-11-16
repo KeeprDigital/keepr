@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_REALTIME_MESSAGE_BYTES } from '~~/shared/types/messages';
-import { lastCallTo } from '~~/test/helpers/lastCallTo';
-import { ErrorInfoShaped } from '~~/test/helpers/providerRefusal';
+import { lastCallTo } from '@keepr/nuxt-layer/test/helpers/lastCallTo';
+import { ErrorInfoShaped } from '@keepr/nuxt-layer/test/helpers/providerRefusal';
 
 /** The failure line, selected by its own `message`: the size diagnostic logs beside it. */
 function isPublishFailureLine(call: unknown[]): boolean {
@@ -190,7 +190,7 @@ describe('publishMessage', () => {
 		// not announce itself says which environment variable to go and set.
 		vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
 		const { publishMessageStrict } = await import('~~/server/utils/ably');
-		const { ServiceConfigurationError } = await import('~~/server/utils/errors');
+		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
 		const failure = await publishMessageStrict(
 			1,
@@ -562,7 +562,7 @@ describe('publishScreenCommand', () => {
 			vi.mocked(useRuntimeConfig).mockReturnValue({ ablyApiKey: '' } as any);
 			const { publishScreenCommand } = await import('~~/server/utils/ably');
 			const { RealtimePublishError } = await import('~~/server/utils/realtimePublishFailure');
-			const { ServiceConfigurationError } = await import('~~/server/utils/errors');
+			const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
 			const failure = await publishScreenCommand(1, 10, 'identify').then(
 				() => null,

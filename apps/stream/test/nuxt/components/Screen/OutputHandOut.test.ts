@@ -3,7 +3,7 @@ import type { ScreenOutput } from '~~/shared/types/screenConfig';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import OutputHandOut from '~/components/Screen/OutputHandOut.vue';
 
 const toastAdd = vi.fn();

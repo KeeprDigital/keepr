@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { stubH3Event } from '~~/test/helpers/h3Event';
+import { stubH3Event } from '@keepr/nuxt-layer/test/helpers/h3Event';
 import { refusalFrom } from '~~/test/helpers/publicServerFailure';
 
 const { mockRuntimeConfig, mockRequestHeader } = vi.hoisted(() => ({
@@ -55,7 +55,7 @@ describe('the Graphics Administrator guard', () => {
 
 		const failure = await refusalFrom((await requireAdministrator())(stubH3Event()));
 		// Imported after `vi.resetModules()`, so `instanceof` compares the guard's own class.
-		const { ServiceConfigurationError } = await import('~~/server/utils/errors');
+		const { ServiceConfigurationError } = await import('@keepr/nuxt-layer/server/utils/errors');
 
 		expect(failure).toMatchObject({ statusCode: 503, statusMessage: 'Service Unavailable' });
 		expect(failure.message).toContain('NUXT_GRAPHICS_ADMIN_TOKEN');

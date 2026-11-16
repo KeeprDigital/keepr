@@ -7,7 +7,7 @@ import { createInitialOvertimeState } from '~~/shared/types/featureMatchState';
 import { createMockFeatureMatch, createMockFeatureMatchState } from '~~/test/helpers/fixtures';
 import { mountUnderPageGuard } from '~~/test/helpers/mountUnderPageGuard';
 import { matchStatePart, offeredMatchStateParts } from '~~/test/nuxt/helpers/featureMatchControls';
-import { nuxtUiStubs } from '~~/test/nuxt/helpers/nuxtUiStubs';
+import { nuxtUiStubs } from '@keepr/nuxt-layer/test/nuxt/helpers/nuxtUiStubs';
 import FeatureMatchPanel from '~/components/FeatureMatch/Panel.vue';
 
 const mockFeatureMatchStore = reactive({
