@@ -5,7 +5,7 @@
  *
  * Several domain vocabularies are spelled with exactly these nine values and
  * stay distinct concepts: the Graphic Anchor Point and the Graphic Animation
- * Origin (CONTEXT.md), and a Feature Match Overlay Source Item's anchor. What
+ * Origin (RULES.md), and a Feature Match Overlay Source Item's anchor. What
  * they share is the geometry and the control, so the table lives here once and
  * each vocabulary's definitions are typed views of it; that the vocabularies
  * stay spelled alike is pinned in `test/unit/shared/ninePoints.test.ts`.

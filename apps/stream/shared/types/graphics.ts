@@ -6,7 +6,7 @@ import type { GraphicAssetReference } from './graphicsAsset';
 import type { GraphicContainerThemeBindings, GraphicThemeBindings } from './graphicThemeBindings';
 
 /**
- * Shared Graphics Foundation vocabulary.
+ * Graphics Composition Model vocabulary.
  *
  * The Graphic Item, geometry, and styling model that Broadcast Graphics and
  * Feature Match Overlay both speak. It now carries the full static vocabulary
@@ -1061,7 +1061,7 @@ export interface GraphicGroupItemConfig extends GraphicItemConfigBase {
  * instead of substituting a placeholder, which is why they exist at all — a
  * Graphic Text Template resolves a value once per accepted change, and a ticking
  * clock, a life total, or a sideboard is exactly the collection- and time-shaped
- * state `CONTEXT.md` says "require specialised Graphic Items".
+ * state `RULES.md` says "require specialised Graphic Items".
  *
  * The player side lives on Player Life, Game Wins, and Deck List rather than in a
  * token key, which is the mirror image of the Feature Match token catalogue's
@@ -1082,7 +1082,7 @@ export type PlayerLifeAnimation = (typeof PLAYER_LIFE_ANIMATION_VALUES)[number];
 export const MIN_PLAYER_LIFE_ANIMATION_DURATION_MS = 100;
 export const MAX_PLAYER_LIFE_ANIMATION_DURATION_MS = 3000;
 
-/** A Graphic Item that renders the active Feature Match Session clock. */
+/** A Graphic Item that renders the active Feature Match Session Clock. */
 export interface ClockGraphicItemConfig extends GraphicItemConfigBase {
 	type: 'clock';
 	typography: GraphicTypography;

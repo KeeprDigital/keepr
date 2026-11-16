@@ -84,7 +84,7 @@ watch(editLease.lost, (lost) => {
 /**
  * The Broadcast Graphics Live Session, kept honest for both workspaces (#373).
  *
- * The Program monitor is hoisted above the workspace switch, and the facts it
+ * The Program Monitor is hoisted above the workspace switch, and the facts it
  * and the Edit workspace's on-air marks project — playout, rendered input
  * values — come from the Live Session store. Before this, only the Live
  * workspace loaded that store, so an operator landing straight in Edit
@@ -199,7 +199,7 @@ function updateBackground(next: BroadcastGraphicsBackgroundConfig) {
 		</section>
 
 		<!--
-			The Program monitor is hoisted above the workspace switch so it is one
+			The Program Monitor is hoisted above the workspace switch so it is one
 			persistent instance in both workspaces (story 23, #335): the same element
 			across a switch, so program never reloads in front of the operator. It sits
 			first in this container in both layouts, which is what keeps its iframe in

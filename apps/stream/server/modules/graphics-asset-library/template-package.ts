@@ -280,8 +280,8 @@ export function inspectTemplateDocument(document: unknown): TemplateDocumentInsp
  * and `media`, and each advanced its own configuration version, so an identity on
  * its own could not say which version it meant.
  *
- * That is no longer why it exists. Feature Match Overlay now speaks the Shared
- * Graphics Foundation vocabulary, so there is one table of Graphic Item
+ * That is no longer why it exists. Feature Match Overlay now speaks the Graphics
+ * Composition Model vocabulary, so there is one table of Graphic Item
  * Definitions and one configuration version per kind. What remains is narrower and
  * still real: **Source Item is the one Definition the shared vocabulary does not
  * own, and only a Feature Match Layout can place one.** Naming the vocabulary per
@@ -303,7 +303,7 @@ function supportedGraphicItemDefinitionVersion(
 			? FEATURE_MATCH_SOURCE_ITEM_CONFIGURATION_VERSION
 			: undefined;
 	}
-	// The shared Graphics Foundation kinds state their own configuration version on
+	// The Graphics Composition Model's kinds state their own configuration version on
 	// their Graphic Item Definition, so a kind whose stored configuration gains
 	// meaning advances one number and every package check follows it.
 	return (GRAPHIC_ITEM_KINDS as readonly string[]).includes(identity)

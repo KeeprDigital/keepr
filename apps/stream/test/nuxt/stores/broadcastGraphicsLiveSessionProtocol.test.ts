@@ -70,7 +70,7 @@ import { createBroadcastGraphicsRealtimeHandlers } from '~/modules/realtime-even
  * that fetch would converge on the right state while hiding the very disagreement
  * this exists to find — so the snapshot is fetched exactly once, at the start, and
  * every assertion after that is about what the notifications alone achieved. That
- * pairing is the rule itself, from `CONTEXT.md`'s Broadcast Graphics Live State
+ * pairing is the rule itself, from `RULES.md`'s Broadcast Graphics Live State
  * Change: *"A peer holding the sequence immediately before applies it and lands on
  * exactly the state the authoritative side committed; a peer that is offered none
  * reloads the authoritative snapshot."* Landing on the right state by reloading

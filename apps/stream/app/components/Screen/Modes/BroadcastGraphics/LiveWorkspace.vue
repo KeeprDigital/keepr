@@ -13,7 +13,7 @@ import { LazyUIConfirmActionModal } from '#components';
  * The Live workspace of a Broadcast Graphics Screen, and the workspace the
  * Screen configuration page opens on.
  *
- * The Program monitor it operates beside is not here: it is hoisted above the
+ * The Program Monitor it operates beside is not here: it is hoisted above the
  * workspace switch, one persistent instance in both workspaces (story 23, #335),
  * and this component's cards join it in the parent's grid. Its stack lists every
  * placed Broadcast Graphic with the Graphic Playout State the Broadcast Graphics
@@ -60,7 +60,7 @@ const sessionStore = useBroadcastGraphicsLiveSessionStore();
 /**
  * The one authoritative instant everything below is projected at — this
  * workspace's own playout clock, advanced from the same authoritative serverNow
- * the Program monitor beside it derives from.
+ * the Program Monitor beside it derives from.
  */
 const now = useBroadcastGraphicsPlayoutClock(
 	() => props.screen.id,
@@ -327,7 +327,7 @@ async function resetLiveState() {
 <template>
 	<!--
 		`contents`, not a grid of its own: these cards are laid out by the parent's
-		grid, beside the hoisted Program monitor that fills its first cell (#335).
+		grid, beside the hoisted Program Monitor that fills its first cell (#335).
 	-->
 	<div class="contents">
 		<ScreenSettingsSection title="On air" :default-open="true">

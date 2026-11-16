@@ -22,7 +22,7 @@ import type { RealtimeTransport } from '~/types/realtime';
  * Once the channel the consumer listens on is attached again having lost
  * continuity, not when the connection comes back. That channel is the consumer's
  * to name: its Event's for an operator page or an editor preview, its Screen's
- * own for a Screen Output or a Program monitor, which hears nothing else. Ably reattaches channels only
+ * own for a Screen Output or a Program Monitor, which hears nothing else. Ably reattaches channels only
  * after the connection is back, so a read sent then can be answered before
  * anything listens again, and a change published in between is in neither the
  * read nor any message (#641). The channel's own signal also catches a loss on

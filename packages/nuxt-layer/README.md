@@ -26,6 +26,7 @@ export default defineNuxtConfig({
 - **Inside the layer, imports are relative.** `~` and `~~` are the app that extends it.
 - **No route and no middleware.** An app registers its own, in its own order, and calls the layer's code.
 - **Nothing here knows a product.** If it names an Event, a Screen or a Tournament, it belongs in that app.
+- **A named module's term is in the root `GLOSSARY.md`**, under Platform. A module that moves here brings its term in the same change.
 - **It stands alone.** `pnpm typecheck` and `pnpm test` run here, with no app around it. A rule's tests live here with the rule.
 - **Something two apps need moves here, in the change that moves the first app onto it.** Do not copy a file between apps.
 

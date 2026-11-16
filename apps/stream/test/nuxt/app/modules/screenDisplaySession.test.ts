@@ -503,9 +503,9 @@ describe('useScreenDisplaySession', () => {
 		expect(callbacks.getPresenceData(42, 7)).toMatchObject({ cardData: 'complete' });
 	});
 
-	// A Program monitor renders like an output but is the operator's own control surface:
+	// A Program Monitor renders like an output but is the operator's own control surface:
 	// joining presence would count it as a watching client, and commands would flash Identify on it.
-	it('does not start realtime when embed=monitor, so a Program monitor is no output', async () => {
+	it('does not start realtime when embed=monitor, so a Program Monitor is no output', async () => {
 		const harness = createHarness({
 			query: { embed: 'monitor' },
 		});
@@ -519,7 +519,7 @@ describe('useScreenDisplaySession', () => {
 	 * what is on air, which it can only do by loading playout and resolving media as
 	 * an output does — both of which the preview reading of this URL suppresses.
 	 */
-	it('leaves a Program monitor live: not a preview, and no preview backdrop, guides or stress values', async () => {
+	it('leaves a Program Monitor live: not a preview, and no preview backdrop, guides or stress values', async () => {
 		const harness = createHarness({
 			query: {
 				embed: 'monitor',
@@ -1021,7 +1021,7 @@ describe('useScreenDisplaySession', () => {
 				expect(harness.order).toEqual(['refresh:7']);
 			});
 
-			it("finishes a Program monitor's load without entering presence", async () => {
+			it("finishes a Program Monitor's load without entering presence", async () => {
 				const harness = await failedLoad({
 					query: { embed: 'monitor' },
 				});
@@ -1184,7 +1184,7 @@ describe('useScreenDisplaySession', () => {
 			expect(harness.order).toEqual(['refresh:8']);
 		});
 
-		it('re-reads for a Program monitor too, without entering presence', async () => {
+		it('re-reads for a Program Monitor too, without entering presence', async () => {
 			const harness = createHarness({
 				query: { embed: 'monitor' },
 			});
@@ -1244,7 +1244,7 @@ describe('useScreenDisplaySession', () => {
 				preview: false,
 			},
 			{
-				rendering: 'a Program monitor',
+				rendering: 'a Program Monitor',
 				query: { embed: 'monitor' },
 				messages: [MAIN_SCREEN_CHANNEL],
 				resyncs: MAIN_SCREEN_CHANNEL,
@@ -1515,7 +1515,7 @@ describe('useScreenDisplaySession', () => {
 			expect(harness.outputReads.event).toHaveBeenCalledTimes(2);
 		});
 
-		it('recovers for a Program monitor too, without entering presence', async () => {
+		it('recovers for a Program Monitor too, without entering presence', async () => {
 			const harness = createHarness({
 				query: { embed: 'monitor' },
 			});

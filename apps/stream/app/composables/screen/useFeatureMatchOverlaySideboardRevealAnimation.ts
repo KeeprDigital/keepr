@@ -30,7 +30,7 @@ const PLAYER_SIDES = ['player1', 'player2'] as const;
  * reconnect whose re-read finds it flipped is an edge this client observes
  * late, so a client suspended across the flip plays the motion late rather
  * than catching up as the composition-lifecycle phases do; on air that reads
- * as the reveal arriving, not as a defect. CONTEXT.md records this as the
+ * as the reveal arriving, not as a defect. RULES.md records this as the
  * host-local exception to the authoritative-phase invariant (ADR-0015).
  *
  * The edge watch is `sync` so the trigger lands in the same flush as the flag:

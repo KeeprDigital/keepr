@@ -1,21 +1,19 @@
-# Context
+# Stream Keepr rules
 
-Domain vocabulary for Stream Keepr. Use these terms when naming modules, seams, tests, and architecture notes. Decisions cited as ADR-NNNN are in `DECISIONS.md`.
+What each term in `GLOSSARY.md` must do. An entry opens with what the thing is and then states its rules; the Relationships after them say how the terms hold together. Name things with the glossary's terms. Decisions cited as ADR-NNNN are in `DECISIONS.md`.
 
-## Language
+## Terms
 
-### Tournament
+### Event
 
 **Event**:
-A competitive gaming tournament managed by Stream Keepr.
+One tournament as Stream Keepr produces it for broadcast: its Players, Matches, Screens and settings.
 
 **Card Game**:
 The trading card game an Event is played in: Magic: The Gathering or One Piece Card Game. Chosen when the Event is created and never changed; it decides which cards, Deck Lists, match state and presentation the Event can hold.
-_Avoid_: game, game mode, game system, TCG.
 
 **Variant**:
 How a Magic: The Gathering Event's games are played: Two-Player, or Commander, a free-for-all among up to four players in a single game. Chosen when the Event is created and never changed, as its Card Game is; a One Piece Card Game Event has none. A Commander Event is a Magic: The Gathering Event of the Commander Variant. It is produced from its Feature Match Slots alone: it has no Players, Rounds, Matches, Metagame or Archetypes, Melee Sync never runs on one, and each player and deck is typed in on a Slot's **Seat** (ADR-0087).
-_Avoid_: game mode, mode, format (a format is a card pool, and an Event's Match Format is its best-of and clock settings).
 
 **Phase**:
 A segment of an Event structure, such as Swiss or Top Cut.
@@ -25,15 +23,12 @@ A unit of tournament play within a Phase, containing Matches and optional tourna
 
 **Current Round**:
 The latest Melee-managed Round, in the Event's Round order (Phase sort order, round number, id), that has pairings: at least one Match stored from Melee. None before any Round is paired. Derived from stored Matches, never set by an operator (ADR-0052).
-_Avoid_: active Round, live Round.
 
 **Match**:
 A pairing between Players in a Round, with its Match Result and the records used for standings and broadcast workflows. Each side's record is its Player's Round Standings after the Round once it is complete, and going into it (the previous Round's) while it is played (ADR-0052).
-_Avoid_: Feature Match when referring to the pairing.
 
 **Match Result**:
 Whether a Match is reported or a bye, and its game wins and game draws. Only Melee Sync records one; no operator enters, edits or clears it, so a manual Match never has one (ADR-0047).
-_Avoid_: score, for the whole result.
 
 **Game Score**:
 A Match's game wins and game draws read from one of its Players' side, theirs first, in en dashes: 2–1, or 1–1–1 with a game draw. Every reported Match that is not a bye has one; a bye or an unreported Match has none.
@@ -43,14 +38,12 @@ The standings for Players as of a specific Round, including that Round's results
 
 **Position Change**:
 How many positions a Player moved since the previous Round's Round Standings: the nearest earlier Round, in the Event's Round order (Phase sort order, then round number), that holds Round Standings. Current standings stand as the latest Round holding them, so they compare with the one before it. A Player absent from that Round is new; with no such Round, or no position to compare, there is no Position Change. Derived from stored Round Standings, never imported.
-_Avoid_: movement, rank delta.
 
 **Player**:
 A competitor in an Event. A field that shows a Player's name takes the name an operator gave, otherwise their Nickname; an operator screen tells Players apart by Nickname, otherwise name; a Top Cut Bracket shows whichever its Screen picks (ADR-0077). A Magic: The Gathering Player has no Nickname, so needs a name; a One Piece Card Game Player needs a name or a Nickname, and clearing the name brings the Nickname back.
 
 **Nickname**:
 A One Piece Card Game Player's handle in Bandai TCG+, owned by the TCG+ Import and refreshed by each import; an operator types it only for a Player added by hand. It is not the Player's name: the operator gives that for the fields that show a name, and the Nickname fills them while there is none. Giving a name never hides the Nickname from operator screens. Player pickers find a Player by name, Nickname or Bandai member number.
-_Avoid_: name, display name, when meaning the TCG+ handle.
 
 **Deck List**:
 Submitted cards for a game: a Player's (one per Phase on Magic: The Gathering; one per Player on One Piece Card Game, imported or entered by hand), or a Feature Match Deck List.
@@ -60,7 +53,6 @@ The single leader card heading a One Piece Card Game Deck List, held apart from 
 
 **Commander**:
 One of the one or two cards heading a deck on a Commander Event, held apart from its Mainboard. Together they set the deck's colours, by colour identity, and are how the community names the deck. A Feature Match Slot Seat holds the Commanders its operator picked, which its Feature Match Deck List shares.
-_Avoid_: general, EDH; Commander alone for the Variant where it could be read as the card (say Commander Event).
 
 **Mainboard**:
 The starting portion of a Deck List — the cards a Player begins each game with.
@@ -91,37 +83,30 @@ An Archetype no Deck List in its Event is assigned to, whichever Deck List is a 
 
 **Pinned Chart Series**:
 One of the Theme's eight chart series, the Foundation Tokens `series-1` to `series-8`, that an operator gives an Archetype on its Metagame page, so every chart colouring Archetypes gives it that series first and it keeps it whichever others enter or leave. It names a series, never a colour: the Theme decides the look. Two shown Archetypes pinning one series leave it to the one created first. Only an operator writes it; Melee Sync never does (ADR-0069).
-_Avoid_: archetype colour, chart colour (an Archetype's mana colours are its colours).
 
 **Pilot**:
 A Player of an Archetype within the current Metagame scope; an Archetype's pilots are its Players in that scope.
 
 **Conversion Rate**:
 The percentage of an Archetype's Players in the current Metagame scope that reached their Event's **Conversion Target**. The target is a numerator condition evaluated inside the scope; it never narrows the scope itself.
-_Avoid_: top-cut rate, cash rate, qualification rate
 
 **Conversion Target**:
 What a Player must reach to count as converted: a Top N placement (N at least 1) or a minimum match-point total (0 or more), Top 8 by default. Each Event has one, set on the Metagame page; the Metagame page, the Metagame Screen and Archetype Spotlight all count Conversion Rate against it, and a Screen holds none of its own (ADR-0061).
-_Avoid_: conversion threshold, when naming the whole target; cut line.
 
 **Melee Sync**:
 The workflow that imports and refreshes Event structure, Players, Deck Lists, standings, Matches, and Rounds from Melee.gg. An operator runs it from the Sync page; Live Results runs its Round sync on a schedule. One Melee Sync command runs per Event at a time; an operator's command takes over from a Live Results tick instead of waiting for it.
 
 **Live Results**:
 A per-Event setting, off by default and on only while Melee Sync is on, under which Melee Sync polls Melee.gg each minute for the Current Round's Match Results, and for the next Round's pairings once the Current Round is complete. It announces only what changed and switches itself off after 12 hours with no change or when Melee refuses its credentials. Its failures are its own Live Results error, apart from the manual sync's (ADR-0052).
-_Avoid_: auto-sync, polling, when naming the setting.
 
 **TCG+ Import**:
 The workflow that imports a One Piece Card Game Event's Players, their Nicknames and their Deck Lists from a Bandai TCG+ deck list export. An operator uploads the export on the Sync page, previews what it changes, and confirms. A re-import updates Players by their Bandai member number and marks those missing from it inactive; a Deck List an operator edited by hand is kept until the operator takes the import's (ADR-0074).
-_Avoid_: CSV import, deck upload.
 
 **Provenance**:
 The import-owned identity and lifecycle facts on a synced record: its external identity, sync status, activity, and last-seen time. Only Melee Sync and the TCG+ Import write Provenance; manual operator edits never carry it.
-_Avoid_: external fields, sync metadata.
 
 **Manually Edited Field**:
 A Melee-imported Player field, name or pronouns, that an operator has changed by hand, on the Players page or in a Feature Match Slot's setup. Melee Sync stops writing that field for that Player, blank or not, and keeps importing the rest. Writing the value a field already holds is not an edit (ADR-0046).
-_Avoid_: override, local override.
 
 **Talent**:
 An Event-scoped broadcast presenter or commentator who may be selected for production graphics. A Talent may hold a role, free text such as "Host" or "Commentator", and a photo: an ordinary Graphic Asset Reference to one exact image revision from the Graphics Asset Library, or none (ADR-0067).
@@ -131,7 +116,6 @@ One of Twitch, YouTube, X, Instagram, TikTok, or Bluesky: the application-owned,
 
 **Social Profile**:
 A Talent's public identity on one Supported Social Network, identified by a normalized handle from which its profile URL is derived. A Talent has at most one per network; Stream Keepr does not verify the remote account exists.
-_Avoid_: Commentator handle, social link
 
 **Broadcast Deck List**:
 An Event-scoped card list prepared by an operator solely for display on a Deck List Screen. It has no Player, competition, or Metagame identity, and may carry an Archetype Label.
@@ -146,35 +130,30 @@ The required data binding of a Deck List Screen: either one Event-scoped Player 
 
 **Feature Match Slot**:
 A reusable production control lane for showing one featured Match at a time, using mutable display/control snapshot data. A Match occupies at most one Slot.
-_Avoid_: Feature Match when referring to the reusable lane.
 
 **Seat**:
 One player position of a Feature Match Slot, numbered in the Slot's own order: two on a Two-Player Magic: The Gathering or One Piece Card Game Event, up to four on a Commander Event, where a Seat is a place at the table: Seats run clockwise, an operator surface shows each where it sits, and the turn passes in Seat order. A Seat is linked to a Player or holds data its operator typed; on a Commander Event, which has no Players, every Seat is typed: a name, pronouns and LGS where the Event shows them, its Commanders, and an optional Feature Match Deck List. An empty Seat is not in the game.
-_Avoid_: side, player side (a Match keeps its two sides); pod, for a Commander Slot's Seats together.
 
 **Commander Damage**:
 The damage a Seat has taken from one opposing Commander on a Commander Event, counted per Commander, so a Seat facing a pair holds a count for each. Entering it lowers that Seat's life by the same amount.
 
 **Eliminated**:
 A Seat whose player is out of a Commander game. Only an operator sets or clears it: nothing derives it from life, Commander Damage or counters.
-_Avoid_: dead, knocked out, lost.
 
 **Feature Match Assignment**:
 A Round-scoped selection of a Match for a Feature Match Slot. Moving the same Match to another Slot continues the Assignment; replacing it with a different Match ends it.
-_Avoid_: Feature Match when referring to the saved Round selection.
 
 **Feature Match Note**:
 A single mutable plain-text production note belonging to a Feature Match Assignment. It moves with the Assignment between Slots and is discarded when the Assignment ends. Feature Match Notes are off for a new Event; switching them off hides them from production surfaces without deleting any.
 
 **Feature Match Deck List**:
 A Deck List held by one Seat of a Feature Match Slot rather than by a Player, pasted by the operator. Only a Seat with no linked Player holds one; a linked Seat shows its Player's Deck List. It stays until replaced or its Seat is cleared, moves with its player when Seats are swapped, and never counts in the Metagame (ADR-0074). On a Commander Event it holds Magic: The Gathering cards, each the exact printing its pasted line names, its Commanders apart from its Mainboard (ADR-0087).
-_Avoid_: slot deck, match deck.
 
 **Feature Match Session**:
-The live state timeline for a Feature Match Slot. It owns which Seat each player sits in: Swap Players moves them in the Session only, and the Slot keeps its pairing order (ADR-0058). A Commander Event's Session plays one game, with no best-of and no game wins: it tracks each Seat's life, **Commander Damage**, counters and cards kept, which Seats are **Eliminated**, and the turn, which passes in Seat order over empty and Eliminated Seats, its number going up each time it returns to the Seat that went first. It completes when its operator declares a winning Seat or a draw, and nothing outside the Session records the outcome. A Commander Slot has no pairing order to keep, so swapping two of its Seats moves their players in the Slot itself, with all they hold and their live state (ADR-0087).
+The live state timeline for a Feature Match Slot. It owns which Seat each player sits in: Swap Players moves them in the Feature Match Session only, and the Slot keeps its pairing order (ADR-0058). A Commander Event's Feature Match Session plays one game, with no best-of and no game wins: it tracks each Seat's life, **Commander Damage**, counters and cards kept, which Seats are **Eliminated**, and the turn, which passes in Seat order over empty and Eliminated Seats, its number going up each time it returns to the Seat that went first. It completes when its operator declares a winning Seat or a draw, and nothing outside the Feature Match Session records the outcome. A Commander Slot has no pairing order to keep, so swapping two of its Seats moves their players in the Slot itself, with all they hold and their live state (ADR-0087).
 
-**Feature Match Session clock**:
-The clock a Feature Match Session holds for its Match: a countdown from the Match Format's duration, a count up from zero, or none for an Untimed Match. An operator starts, pauses, resets, restarts, adjusts and sets it, on one Slot or on every timed Slot at once; nothing else moves it. What a rendering shows of it is a **Clock projection**, which stands in one state at a time:
+**Feature Match Session Clock**:
+The clock a Feature Match Session holds for its Match: a countdown from the Match Format's duration, a count up from zero, or none for an Untimed Match. An operator starts, pauses, resets, restarts, adjusts and sets it, on one Slot or on every timed Slot at once; nothing else moves it. What a rendering shows of it is a **Clock Projection**, which stands in one state at a time:
 
 - **stopped**: not running, with no time run.
 - **paused**: not running, with time run and time left.
@@ -184,19 +163,16 @@ The clock a Feature Match Session holds for its Match: a countdown from the Matc
 - **holding at its limit**: counting up, stopped by its count-up limit, which it goes on showing (ADR-0076).
 - **untimed**: an Untimed Match's, showing the Untimed Label.
 
-Count-up time is not extra turns: a Session's overtime is the extra turns played after time is called, counted in turns and tracked apart from the clock.
-_Avoid_: match timer, round timer (a Round Clock is a Round's), overtime for count-up time.
+Count-up time is not extra turns: a Feature Match Session's overtime is the extra turns played after time is called, counted in turns and tracked apart from the clock.
 
 **Untimed Match**:
-A Feature Match whose Session clock type is untimed: it has no clock to run and so no extra turns. The type comes from the Event's Match Format when the Session opens. Where its clock would render, it shows the Event's Untimed Label, or nothing while that label is blank.
-_Avoid_: unclocked match, timeless match
+A Feature Match whose Feature Match Session Clock type is untimed: it has no clock to run and so no extra turns. The type comes from the Event's Match Format when the Feature Match Session opens. Where its clock would render, it shows the Event's Untimed Label, or nothing while that label is blank.
 
 **Feature Match Slot Promotion**:
 The workflow that promotes a Match into a Feature Match Slot for production controls and saves the Round-scoped Feature Match Assignment.
 
 **Reverse Sync**:
-The follow-on that copies Players' current data into every Feature Match Slot seating them, and into each such Slot's active Feature Match Session source snapshot. It runs after the Player write, Melee Sync or Feature Match Slot Promotion that caused it has committed, and announces nothing itself: its caller's own messages carry the result. A lost Session race is absorbed, and the next pass finds the same difference; a Slot whose pairing or active Session moved after the pass read it is left as it now stands. A Slot setup edit to a seated Player's name, pronouns or LGS is a Player write, so Reverse Sync carries it rather than undoing it (ADR-0045).
-_Avoid_: player sync, match snapshot refresh.
+The follow-on that copies Players' current data into every Feature Match Slot seating them, and into each such Slot's active Feature Match Session source snapshot. It runs after the Player write, Melee Sync or Feature Match Slot Promotion that caused it has committed, and announces nothing itself: its caller's own messages carry the result. A lost Feature Match Session race is absorbed, and the next pass finds the same difference; a Slot whose pairing or active Feature Match Session moved after the pass read it is left as it now stands. A Slot setup edit to a seated Player's name, pronouns or LGS is a Player write, so Reverse Sync carries it rather than undoing it (ADR-0045).
 
 ### Screens
 
@@ -205,140 +181,111 @@ A broadcast or control surface that can show Feature Match Slot output, decks/ca
 
 **Screen Mode**:
 A rendering mode for a Screen, such as Background, Card Spotlight, Deck List, Standings, Top Cut Bracket, Feature Match Controls, Feature Match Overlay, Broadcast Graphics, Metagame, Most Played Cards, Player History, Pairings, Archetype Spotlight, Head-to-Head, Round Clock, or Talent. Each is named by what it shows or controls. Its key (`card`, `top-cards`, `top-cut`, …) is not its name: renaming a mode leaves its key alone, and a key renamed after release is migrated in storage and still accepted in its former spelling on a Screen write (ADR-0043).
-_Avoid_: Top Cards for the Most Played Cards mode (one word from Top Cut); Feature Match for the control mode (the on-air one is the Feature Match Overlay); Deck Screen and Card Screen for a Screen in Deck List or Card Spotlight mode (say Deck List Screen, Card Spotlight Screen).
 
 **Screen Mode Definition**:
 The definition of a Screen Mode: its defaults and configuration shape (held as one config contract, ADR-0037, which also names its Authored Stacks), data preparation, rendering contract, Screen host contract (overlay or control surface), and what it declares it carries, such as its Mode Tokens, its own Background Layer stack, its Event References, its Page Rotation, or the Output Changes its Screen Output follows. A mode that declares it carries something gets all of that thing's behaviour from the declaration alone. Generic Screen configuration UI policy belongs here rather than on the Screen configuration page.
 
 **Event Reference**:
-A field in a Screen Mode's configuration naming something that must belong to the Screen's Event: a Phase, a Round, a Player, a Player List, a Feature Match Slot, an Archetype, a Talent, a Talent lineup, or a Deck Source. Every Screen Mode Definition declares its Event References, declaring none if it has none, each field naming its kind on its config contract, and a Screen write refuses one naming something outside the Event (ADR-0038). An operator sets one through its kind's one picker, which loads what it lists. Deleting the Phase, Round, Archetype or Talent one names unsets it, deleting a Talent drops it from a lineup, and deleting the Feature Match Slot one names sets it to none (ADR-0060, ADR-0070).
-_Avoid_: data binding (a Graphic Input Binding is a Broadcast Graphics concept), Graphic Asset Reference (an installation-wide library link, not Event data)
+A field in a Screen Mode's configuration naming something that must belong to the Screen's Event: a Phase, a Round, a Player, a Player List, a Feature Match Slot, an Archetype, a Talent, a Talent Lineup, or a Deck Source. Every Screen Mode Definition declares its Event References, declaring none if it has none, each field naming its kind on its config contract, and a Screen write refuses one naming something outside the Event (ADR-0038). An operator sets one through its kind's one picker, which loads what it lists. Deleting the Phase, Round, Archetype or Talent one names unsets it, deleting a Talent drops it from a lineup, and deleting the Feature Match Slot one names sets it to none (ADR-0060, ADR-0070).
 
 **Output Change**:
 A kind of change a Screen Output can show: to its Screen, that Screen's Screen Card or Broadcast Graphics Live Session, its Event or the Event's Theme, or the Event's Players, Player Decks, Phases, Rounds, Matches, Round Standings, Feature Match Slots, Feature Match Sessions, Archetypes, Player Lists, Talents or Broadcast Deck Lists. Every Screen Mode Definition declares the Output Changes its Screen Output follows, declaring none if it follows none, each narrowed to the ids its configuration names; every Screen follows its own Screen, its Event and its Theme. One rule answers from the declaration whether a Screen shows a change. It may answer yes needlessly, which costs a re-read, and never no wrongly, which would leave stale data on air.
-_Avoid_: invalidation, dependency (what one rendering's read depends on is Screen Mode Data Freshness's)
 
 **Head-to-Head**:
 A Screen Mode showing two Players of an Event side by side before their Match: each one's record and points (the Player's own, or their latest Round Standings while they hold none of their own), their Archetype, and the earlier Matches between them at the Event, oldest first, or that this is their first meeting. Its Players come from a Feature Match Slot, following the Slot's current Feature Match Assignment, or are picked directly.
-_Avoid_: meeting, when naming an earlier Match.
 
 **Talent Screen**:
-A Screen in Talent mode, introducing the Event's Talent on air: one Talent, or a **Talent lineup** of up to eight in the order picked, as a lower third or a full panel. Each shows its name, and as the operator chooses its role, its photo, and its Social Profiles on the Supported Social Networks chosen, all at once or one at a time as a Social Profile Rotation. It is offered to Events of every Card Game.
-_Avoid_: desk screen, casters screen
+A Screen in Talent mode, introducing the Event's Talent on air: one Talent, or a **Talent Lineup** of up to eight in the order picked, as a lower third or a full panel. Each shows its name, and as the operator chooses its role, its photo, and its Social Profiles on the Supported Social Networks chosen, all at once or one at a time as a Social Profile Rotation. It is offered to Events of every Card Game.
 
-**Talent lineup**:
+**Talent Lineup**:
 The ordered list of Talents a Talent Screen shows together, at most eight; an Event Reference of its own kind. Deleting a Talent drops it from every lineup, keeping the rest in order (ADR-0070).
-_Avoid_: desk, panel (a full panel is a layout)
 
 **Authored Stack**:
 An ordered list in a Screen Mode's configuration holding authored content with no recovery path: the Background Screen's Background Layers and a Broadcast Graphics Screen's stack of Broadcast Graphics. A display reset leaves one untouched, and an edit may replace one but never delete it (ADR-0037).
 
 **Background Screen**:
-A Screen Mode rendering an ordered stack of Background Layers (ADR-0016).
-_Avoid_: Idle screen, empty state
+A Screen in Background mode, rendering an ordered stack of Background Layers (ADR-0016).
 
 **Background Layer**:
 One entry in an ordered Background Layer stack — a colour, gradient, image, video, or Animation Effect — owning its own enabled state and opacity. The Background Screen's configuration is such a stack, and every mode whose Screen Mode Definition declares one carries its own optional stack behind its content. Every plain overlay mode declares one; the graphics hosts do not, as they own their backgrounds and keep their outputs transparent. A Screen's background has two sources: its own stack, else, while that is empty, its Theme's `background` Foundation Token, a stack of the same layers; no Screen Theme Override supplies one. While a Screen holds none, its settings show its Theme's stack read-only; customising writes a copy of it as the Screen's own, and Reset to Theme empties the Screen's stack again (ADR-0016). A gradient layer holds a Graphic Fill gradient, edited with the one fill control; one stored earlier as a CSS gradient string paints as stored until an edit replaces it.
-_Avoid_: background type, media background (when meaning a layer)
 
 **Screen Media Source**:
 Where a Screen's own image or video comes from: one exact Graphic Asset Revision, referenced like any other Graphic Asset, or a Remote Media URL. Image and video Background Layers, a Theme's `background` stack's included, and the Feature Match Overlay Frame's image and video take one; Graphic Items and Graphic Inputs never do, as their media is Graphics Asset Library content only (ADR-0021).
-_Avoid_: media URL, asset source
 
 **Remote Media URL**:
 A Screen Media Source naming media by URL rather than by library revision, fetched by every rendering: an HTTPS URL to media the installation does not hold, or a root-relative path to media the application serves, which is only under `/video/`, never a route that serves Graphic Asset Content (ADR-0021). It is never a Graphic Asset Reference, so it protects nothing in the library. An HTTPS URL cannot travel in a Template Package; a root-relative path travels as data and resolves against whichever installation renders it.
-_Avoid_: hotlink, external asset
 
 **Animation Effect**:
 A named, autonomously animating background renderer that ships with Stream Keepr, with its own per-effect configuration. Its hosts are the Feature Match Overlay Frame, a Background Layer (on the Background Screen and every plain overlay mode), and the Broadcast Graphics Background; the vocabulary is closed, so a config or package naming an unimplemented effect is refused rather than approximated (ADR-0014).
-_Avoid_: Vanta effect, frame animation, shader background, background effect
 
 **Round Clock**:
 A Screen Mode showing a Round's name and the time left in it, projected from the Round's operator-entered start and duration and server time, so every rendering of the same Round shows the same time. Before the start it shows the full duration, not running; after the end, `0:00`, or, where its Screen counts up, the time since the end, holding at the Screen's limit if it sets one (ADR-0076). Like Card Timeout and Page Rotation, nothing writes as it runs or when it runs out. It shows the Current Round unless its operator picks a Round. Magic: The Gathering only (ADR-0066).
-_Avoid_: round timer (the Feature Match Session clock is a Match's, not a Round's).
 
-**Clock projection**:
-What a clock shows at one instant, as a pure function of its stored state and server time: the value, and how long until that value next changes on its own. A Feature Match Session clock's display, a Round Clock, Page Rotation, a Talent Screen's Social Profile Rotation and Card Timeout are each one. Every rendering computes the same answer, nothing writes as it runs, and one scheduler re-evaluates each exactly when it next changes, when its inputs change and when server time re-syncs (ADR-0088).
-_Avoid_: ticker, timer (nothing ticks; a projection is re-evaluated when it changes).
+**Clock Projection**:
+What a clock shows at one instant, as a pure function of its stored state and server time: the value, and how long until that value next changes on its own. A Feature Match Session Clock's display, a Round Clock, Page Rotation, a Talent Screen's Social Profile Rotation and Card Timeout are each one. Every rendering computes the same answer, nothing writes as it runs, and one scheduler re-evaluates each exactly when it next changes, when its inputs change and when server time re-syncs (ADR-0088).
 
 **Interval**:
 Equal periods counted from an anchor instant: which period is current, and when the next begins, is a pure function of the anchor, the period and server time. A Page Rotation counts its pages on one, and a Social Profile Rotation its steps.
-_Avoid_: cycle, loop (a Graphic Animation loops).
 
-**Frame clock**:
-The instant motion is read at: server time, read again on every animation frame while anything read at it is in motion, and left where it stopped once all of it has settled. Where a Clock projection waits for its next change, motion changes on every frame. Broadcast Graphics playout is read on one.
-_Avoid_: animation timer, render loop.
+**Frame Clock**:
+The instant motion is read at: server time, read again on every animation frame while anything read at it is in motion, and left where it stopped once all of it has settled. Where a Clock Projection waits for its next change, motion changes on every frame. Broadcast Graphics playout is read on one.
 
 **Page Rotation**:
 The deterministic projection of a paginated Screen Mode's current page from its Rotation Anchor and server time, computed identically by every rendering (ADR-0009). A paginated Screen Mode Definition declares it, naming its page size field, which holds a number of rows or, where the mode allows, is absent for Auto: every row on one page. An edit of the page size or page duration changes the rotation's shape, restarting it from page 1 (ADR-0039).
-_Avoid_: Auto-paging when naming the projection itself — auto-page is the operator toggle that turns rotation on.
 
 **Top Cut Bracket**:
 The single-elimination bracket a Top Cut Bracket Screen shows: its **Manual Bracket**, on a One Piece Card Game Event or when its operator chooses one (ADR-0075), else derived from the Phase its operator picks, since nothing marks a Phase as a top cut: one column per Round of that Phase, in order, each Match at the Bracket Position its winner advances from into the next column. The first Round, with any byes it leaves out, sets its size, unless the operator sets a larger one; a set size smaller than the first Round needs is ignored. The first Round is placed by Seed in standard order (1v8, 4v5, 2v7, 3v6 for a bracket of 8), the best Seeds taking any byes it leaves out, and each later Match at the Bracket Position its Players advance from, so no Bracket Position moves as later Rounds are paired; a first Round with no Seeds is placed by the next Round's pairings, else table order. A later Match seating a Player the previous Round knocked out, such as a playoff for third place sharing the Final's Round, takes a Bracket Position only after every Match that seats none. A Bracket Position no Match fills yet is pending, showing the winners advancing into it so far.
-_Avoid_: bracket slot (a Slot is a Feature Match Slot)
 
 **Manual Bracket**:
 A Top Cut Bracket its operator fills in by hand on a Top Cut Bracket Screen, for a top cut Stream Keepr holds no Rounds of: its size, its entrants in Seed order, each a Player of the Event or a typed name, paired in standard order with an empty Seed a bye, and who advanced from each Bracket Position, with an optional game score. Its results are not Match Results: only its Screen reads them (ADR-0075).
-_Avoid_: manual Top Cut, custom bracket
 
-**Entrant**:
-A Player as a Top Cut Bracket shows them at a Bracket Position: their name, and, as its operator chooses, their Seed and archetype. A side naming no Player of the Event, such as a Manual Bracket's typed name, is no Entrant, though the bracket shows its name.
-_Avoid_: competitor, participant
+**Bracket Entrant**:
+Whoever occupies one side of a Bracket Position: a Player of the Event, or a name its operator typed on a Manual Bracket. A Top Cut Bracket shows its name, and, as its operator chooses, its Seed and archetype; a typed name has no archetype.
 
 **Seed**:
 On a Manual Bracket, an entrant's place in its operator's list. Otherwise, a Player's final position before a Top Cut Bracket's Phase began: their position in the Round Standings of the last Round holding Round Standings before that Phase's first Round, in the Event's Round order. A Player absent from that Round, or a Phase no such Round precedes, has none. Derived from stored Round Standings, never imported.
-_Avoid_: rank, bracket position (a Bracket Position is where a Match sits)
 
 **Rotation Anchor**:
 The server timestamp a Page Rotation counts from, written only by an operator surface — when auto-page is enabled, when an edit changes the rotation's shape (a display reset among them), or when an operator selects a page mid-rotation. A Screen Output never writes it.
 
 **Screen Card**:
-The one Card a Screen in Card Spotlight mode shows, set and cleared by an operator. Only the Card read carries it; a Screen read never does (ADR-0022). Its Card revision advances on each save and Clear; every write answer, announcement and Card read carries it, and a holder applies only a state at least as new as the one it holds (ADR-0042).
+The one Card a Screen in Card Spotlight mode shows, set and cleared by an operator. Only the Card read carries it; a Screen read never does (ADR-0022). Its Card Revision advances on each save and Clear; every write answer, announcement and Card read carries it, and a holder applies only a state at least as new as the one it holds (ADR-0042).
 
-**Card revision**:
+**Card Revision**:
 The count a Screen Card's saves and Clears advance, never its expiry. A save's and a Clear's answer, `card:updated`, `card:cleared` and the Card read all carry it, so every holder orders the Card states it is handed and applies only one at least as new as the one it holds (ADR-0042).
 
 **Card Timeout**:
-A Screen Card's optional duration, after which every holder hides it by the shared clock. Expiry is a clock projection, like Page Rotation: no read, client or timer writes it, and nothing announces it (ADR-0022).
-_Avoid_: auto-clear (nothing clears the Card when it runs out)
+A Screen Card's optional duration, after which every holder hides it by the shared clock. Expiry is a Clock Projection, like Page Rotation: no read, client or timer writes it, and nothing announces it (ADR-0022).
 
 **Printing**:
 One release of a One Piece card as bandai-keepr lists it — standard, alt-art or reprint — identified by its Printing id (`OP01-001`, `OP01-001_p1`) and imaged at `cards-img.keepr.digital/<PrintingId>.png`. A One Piece Screen Card is one Printing, chosen in Card Spotlight (ADR-0057). A Magic: The Gathering card has printings too, each one Scryfall card: a **Commander**, and each card of a Commander Event's Feature Match Deck List, is held as the one printing picked or pasted (ADR-0087).
-_Avoid_: variant, parallel, version.
 
 **Screen Output**:
 A live rendering variant exposed by a Screen Mode Definition, such as overlay, fill, or key.
-_Avoid_: Export mode when referring to live Screen rendering.
 
 **Overlay Output**:
 A Screen Output that renders the final composed colour and opacity over transparency.
 
 **Fill Output**:
 A Screen Output that renders the final composed colour flattened over black.
-_Avoid_: Beauty when naming product concepts.
 
 **Key Output**:
 A Screen Output that renders the final composed opacity as a grayscale alpha matte.
-_Avoid_: Black-and-white export, chroma key.
 
 **Card Layout**:
 How a card grid on a Most Played Cards Screen or a Deck List board lays out its cards: columns, max card size and gap, each a number or Auto. The cards always fit the space the grid is given, so none leave the Event Canvas. Auto columns are the count at which the cards are largest, a max card size is the widest a card may be, and an Auto gap follows the card's size, as an Auto card badge size does. A Deck's boards share one card size, and its Sideboard takes the Mainboard's Card Layout and alignment unless customised, keeping its own view and stack reveal (ADR-0054).
-_Avoid_: Card Sizing, Fit, Fixed width, auto columns, card width, dynamic card size.
 
-**Program monitor**:
+**Program Monitor**:
 A control surface's own live rendering of the Screen it drives. It composes what playout has taken, resolving media exactly as a Screen Output does, but is not a Screen Output.
-_Avoid_: Preview — which composes the authored state its embedder pushes in and resolves media as the author. Confidence monitor.
 
 **Screen Output Asset Capability**:
 An opaque, long-lived, revocable right that lets one Screen Output resolve only the exact Graphic Asset Revisions its Screen currently publishes, its resolved Theme Tokens' included — its Theme's Foundation Tokens and its own overrides of its mode's Mode Tokens (ADR-0050) — and, on a Talent Screen showing photos, its Talents' photos (ADR-0070), never Graphics Asset Library discovery. It is also the output's whole identity to the installation: it admits the lookup of its Screen, the reads of what that Screen publishes — its Event context and its mode's data, derived from the Screen's saved configuration — and a realtime grant narrowed to that Screen and its Event, in place of a Session (ADR-0010, ADR-0022).
 
 **Screen Output Link**:
 A short text, about 16 characters, that names one Screen and proves the right to its Screen Output Asset Capability. It is not presented on reads: it is exchanged once for the capability, which then does everything a capability does. It is derived from what the capability is derived from, never stored, so regenerating the capability regenerates the link and the former link stops exchanging. No Session stands in for it.
-_Avoid_: short link, output token, output code, share link.
 
 **Output Hand-out**:
-The one place an operator is handed a Screen Output's URL: Open and Copy URL side by side, each carrying a Screen Output Asset Capability obtained at the moment of the hand-out, and refusing rather than handing out a URL without one. The Screen header, the Feature Match Overlay editor and the Program monitor each show the same one; a graphics host's own Screen Outputs are offered by name behind each control. The Screen's address printed beside it carries no capability and is not a hand-out.
-_Avoid_: Outputs popover, share button.
+The one place an operator is handed a Screen Output's URL: Open and Copy URL side by side, each carrying a Screen Output Asset Capability obtained at the moment of the hand-out, and refusing rather than handing out a URL without one. The Screen header, the Feature Match Overlay editor and the Program Monitor each show the same one; a graphics host's own Screen Outputs are offered by name behind each control. The Screen's address printed beside it carries no capability and is not a hand-out.
 
 ### Client and live-state infrastructure
 
@@ -346,77 +293,57 @@ _Avoid_: Outputs popover, share button.
 The client-side access path for Event-scoped data such as Players, Phases, Rounds, Matches, Feature Match Slots, Feature Match Assignments, Screens, Talents, Archetypes, Player Lists, and Player Decks.
 
 **Realtime Event Session**:
-The client-side subscription for Event messages. An operator's client holds one for its Event, and so does an editor preview, which renders configuration not yet saved. A **Screen Output** or **Program monitor** holds none: it hears only its **Screen**'s own channel.
+The client-side subscription for Event messages. An operator's client holds one for its Event, and so does an editor preview, which renders configuration not yet saved. A **Screen Output** or **Program Monitor** holds none: it hears only its **Screen**'s own channel.
 
 **Realtime Subscription**:
 A consumer's standing request to the realtime transport: a room handler, a channel handler, a presence watch, or a presence entry. The transport holds it from creation until its consumer disposes it, attaching it whenever its **Event** is covered; no failure ends one (ADR-0023).
-_Avoid_: registration.
 
 **Reconnect Resync**:
-The client-side module owning the invariant "losing message continuity is itself a reason to re-read authoritative state." Realtime messages are notifications and the server holds authority, so a resync re-reads and never clears. It re-reads once the channel its consumer listens on is attached again having lost continuity, not when the connection comes back, which is before anything listens again (ADR-0023). That channel is the consumer's to name: its Event's for an operator page or a preview, its **Screen**'s own for a **Screen Output** or **Program monitor**. A consumer listening on no channel yet re-reads when the connection comes back instead. A consumer that read before its channel first attached also re-reads once off that attach, which reports no continuity loss yet followed a window nothing listened in. It exposes the disconnection so a control surface can disable its actions, while an output on program does not.
-_Avoid_: reconnect handler, resubscribe hook.
+The client-side module owning the invariant "losing message continuity is itself a reason to re-read authoritative state." Realtime messages are notifications and the server holds authority, so a resync re-reads and never clears. It re-reads once the channel its consumer listens on is attached again having lost continuity, not when the connection comes back, which is before anything listens again (ADR-0023). That channel is the consumer's to name: its Event's for an operator page or a preview, its **Screen**'s own for a **Screen Output** or **Program Monitor**. A consumer listening on no channel yet re-reads when the connection comes back instead. A consumer that read before its channel first attached also re-reads once off that attach, which reports no continuity loss yet followed a window nothing listened in. It exposes the disconnection so a control surface can disable its actions, while an output on program does not.
 
 **Event Data Resync**:
 The client-side module owning which Event Data this client consumes, so **Reconnect Resync** re-reads exactly that. Besides Event Data collections, it covers the operator's Event and the selected Screen's Card. A consumer names its datasets while mounted, with its own re-read of anything no store holds. Each consumed dataset is re-read once, in place. A held dataset nobody consumed at the resync is behind, and its next consumer re-reads it. The end of an **Event Lifetime** forgets what was behind (ADR-0028).
-_Avoid_: refresh registry, reload list.
 
 **Screen Mode Data Freshness**:
-The client-side module owning the invariant "a Screen Output shows its Screen Mode's current data." A mode states what it reads; what its rendering shows is declared once, as the **Output Changes** its **Screen Mode Definition** follows, and one rule reads that declaration. A **Screen Output** or **Program monitor** hears its **Screen**'s own channel, where the server has applied the rule to the Screen as saved and names the kinds of Output Change that touched it; a preview or settings editor hears its Event's channel and applies the same rule to the configuration it renders. The module owns the initial load, live-follow on what it hears, a slow re-read while realtime is degraded (disconnected, or its subscriptions waiting on a token for the Event the transport covers), the same slow re-read after its latest read failed, a re-read once the channel it hears on first attaches, and **Reconnect Resync**. A message or that first attach heard while a read is in flight asks for one follow-up read once it settles, rather than superseding it, so a burst of messages costs one more read per read in flight. Every re-read holds the last accepted rendering until it answers.
-_Avoid_: mode refresh hook, per-mode live sync.
+The client-side module owning the invariant "a Screen Output shows its Screen Mode's current data." A mode states what it reads; what its rendering shows is declared once, as the **Output Changes** its **Screen Mode Definition** follows, and one rule reads that declaration. A **Screen Output** or **Program Monitor** hears its **Screen**'s own channel, where the server has applied the rule to the Screen as saved and names the kinds of Output Change that touched it; a preview or settings editor hears its Event's channel and applies the same rule to the configuration it renders. The module owns the initial load, live-follow on what it hears, a slow re-read while realtime is degraded (disconnected, or its subscriptions waiting on a token for the Event the transport covers), the same slow re-read after its latest read failed, a re-read once the channel it hears on first attaches, and **Reconnect Resync**. A message or that first attach heard while a read is in flight asks for one follow-up read once it settles, rather than superseding it, so a burst of messages costs one more read per read in flight. Every re-read holds the last accepted rendering until it answers.
 
 **Rendering Readiness**:
 The client-side invariant "program holds what it shows until what replaces it is ready." A Screen Mode rendering is ready once its display has declared its data settled, its fonts (library and application) have loaded or failed, and every image, video and pending part inside it has loaded or failed. A mode change renders the incoming mode hidden and cuts to it once ready, and a change within a mode that brings new images swaps in once they have loaded; a rendering that never settles is shown after a timeout (ADR-0053).
-_Avoid_: preload, loading state, when naming the invariant.
-
-**Guarded Sequence**:
-The client-side module owning the invariant "discard the result of async work that newer work has superseded." Scoped or keyed; issues Flights.
-_Avoid_: generation counter, version guard, latest-wins map.
-
-**Flight**:
-A ticket for one unit of supersedable async work, checked for staleness after each await. Staleness is monotonic.
-_Avoid_: request id, generation.
 
 **Event Lifetime**:
 The span of one Event's client-side state, from the store reset that begins it to the one that ends it. Coming back to an Event begins a new one, because the Event is loaded afresh. A write's continuation — merging its answer, rolling back, follow-up reloads — runs only while the Flight for the lifetime it began in is current; the caller still receives the answer (ADR-0024). The write itself still finishes for its own Event, at the revisions its lifetime last knew (ADR-0041).
-_Avoid_: Event session, Event generation.
 
 **Field Ownership**:
 The set of fields one action may write, derived from the change the action predicts.
 Client-side it is a scope rule: an optimistic action's merges and rollbacks write only its owned fields, and remote updates never overwrite fields another action currently owns.
 Server-side it is an acceptance rule carried as a Field Ownership claim: a Set Input or Set Override states the effective value it believes it replaces (override, then resolving Graphic Input Binding, then working value or default). A claim still describing what its operator saw is applied; an overtaken claim is refused so the loser sees what landed. A command with no claim is applied unconditionally. The claim is re-checked whenever a command is re-reduced onto a newer state.
-_Avoid_: owns array, field mask, declared ownership.
 
 **Sequenced Live State**:
 The server-side module owning the invariant "one authoritative order of accepted commands per live aggregate." It owns monotonic sequencing, compare-and-swap protection, Command Receipts, and the decision to announce a committed command; reducers, merge policies, and notification content stay with the feature. It also owns a live aggregate's epoch lifecycle: closing the active epoch, opening its successor, forgetting the ended epoch's Command Receipts in the same commit, and announcing the change only when the commit actually made one (ADR-0029).
-_Avoid_: event store, event sourcing, command bus, write-ahead log.
 
 **Live State Follower**:
 The client-side module owning the client half of Sequenced Live State: whether what arrives for a followed live aggregate moves the held snapshot forward. Epochs are ordered by aggregate id (ADR-0026). It drops a duplicate notification and anything from an older epoch, refuses a command result from an older sequence or an older epoch, answers a gap, a newer epoch or a notification with no difference by reloading — unless the notification carries its whole snapshot — and supersedes overlapping loads as Flights. A snapshot another resource's read carries is held only when not behind, and supersedes no load. Reconnect Resync re-reads through its load, or through a read of the resource that carries the snapshot (a Feature Match Slot on a Screen Output); neither clears what is held. The feature supplies only where it holds a snapshot and how to apply a full state or a difference.
-_Avoid_: sequence guard, live session sync, client event store.
 
 **Command Receipt**:
 The record that one command ID was already accepted for a live aggregate, holding the command's canonical content so a retry is answered with the current authoritative snapshot and a reused ID with different content is rejected. Retained for a bounded window, not as history.
-_Avoid_: event row, command log, audit record, idempotency key.
 
 **Batch Command**:
 One Feature Match Session command carrying the absolute setter commands of a multi-field operator save, sequenced, receipted, and announced as one so the save lands whole or not at all. Relative commands stay out because wrapping one forfeits its merge-retry semantics.
-_Avoid_: bulk update, transaction, multi-command, command group.
 
 ### Identity and access
+
+User, Session and the roles are defined in the root `GLOSSARY.md`, to the model of Keepr Accounts (issue #1228). These are the rules of Stream Keepr's own sign-in, which stand until it moves onto Keepr Accounts: until then its Graphics Administrator is whoever holds a shared credential, not an App role.
 
 **User**:
 An account a Graphics Administrator created for one person, holding their credential and display name. It is the installation's only durable identity and the one that owns work, so an operation survives the browser that started it. There is no self-signup (ADR-0010).
 An explicitly bypassed local runtime supplies one synthetic **Local Developer User** as the development-only exception: stable identity, no directory row, and present only when a `:bypass` launcher script asked for it by name (ADR-0017).
-_Avoid_: author, graphics author — roles a user acts in, not the identity; account is acceptable when the subject is the credential.
 
 **Session**:
 One signed-in browser: server-side, revocable, and expiring seven days after its last day of use. It admits a request — the deny-by-default boundary over `/api/**` requires one (ADR-0010) — and is the granularity of a Graphics Authoring Lease, because one person in two browsers is two concurrent editors. A Session never owns work.
 While the development bypass is active, each browser receives a synthetic **Local Developer Session**: stable per browser via a local cookie, not persisted, revocable, or expiring, but with the ordinary Session's request-admission and lease semantics (ADR-0017).
-_Avoid_: Graphics Author Session (the retired anonymous identity); login, which names the act.
 
 **Password Reset Link**:
 The single-use, expiring credential a Graphics Administrator hands a person out of band to set their own password — both a new account's first password and a forgotten one's replacement, since the installation sends no email (ADR-0010). It is returned exactly once and never stored; its token travels in the URL fragment. Redeeming it sets the password and ends every Session the account holds, without creating one or lifting a ban. Issuing another, setting the account's password directly, or banning the account voids any still outstanding.
-_Avoid_: invite token, activation link.
 
 **Graphics Administrator**:
 Whoever presents the installation's shared administrator credential, authorised to create and manage User accounts, operate the Operations Cockpit and Operational Queues, and change Graphics Asset Library Capacity limits. The credential alone admits: no Session or User is required, until a roles effort redraws that seam (ADR-0010).
@@ -428,45 +355,36 @@ The exclusive, Session-scoped right to edit one graphics authoring artifact: a S
 
 **Theme**:
 A named, installation-scoped set of Foundation Token values giving every Screen of an Event one look and feel, whatever its Screen Mode. It holds Foundation Tokens only: a Mode Token is set per Screen, so a Theme never styles one Screen Mode differently from another. It holds values, never compositions: it may supply a logo a Broadcast Graphic shows, but the Broadcast Graphic itself is a template's. An Event uses one Theme; a Theme may serve many Events. An edit reaches every Screen using it at once, with no draft or publish step. It themes what Screens render, never the operator app.
-_Avoid_: Style Set, brand, skin, palette (when naming the whole)
 
 **Default Theme**:
 The built-in Theme that ships with Stream Keepr, used by every Event that picks no Theme. It is read-only: it cannot be edited or deleted.
-_Avoid_: base theme, fallback theme
 
 **Theme Token**:
 One named value a Screen may consume from its Theme, such as a colour, font, or Graphic Asset. Stream Keepr owns every token's name, type, and where it may be consumed; users set values, never names. A token Stream Keepr removes is a former token: a write naming one is accepted and the token dropped, and a stored one is read by nothing.
-_Avoid_: variable, style entry
 
 **Foundation Token**:
 A Theme Token naming an application-wide role any Screen Mode may consume, such as the accent colour, the heading font, or the screen inset. Every one has a default value shipped with Stream Keepr. A Screen Mode's display reads one directly for its shared chrome: its type from `heading` and `body`, its title, surface, text and dividers from the colour of that role, as the Metagame chart reads the chart series.
 
 **Mode Token**:
 A Theme Token a Screen Mode Definition declares for an element of its rendering that has no Foundation role, such as Standings' Position Change climb colour or a Pairings result badge's colours. A mode whose every element has a Foundation role declares none, as Head-to-Head and Talent do. Its default is a Foundation Token, so a new Screen Mode follows every existing Theme unchanged. A motion one follows a Foundation motion's timing and keeps its own movement, as the row motion Standings and Metagame share takes the enter motion's pace and its own slide. Where no Foundation Token fills its role, such as Card Spotlight's zoom, whose pace matches no Foundation motion, it defaults to a literal; a composite default's colours still name Foundation Tokens where they can, as the Feature Match Overlay Frame's fill names `surface`. Only its default names a token: a value set for it is a literal. It is set per Screen, as a Screen Theme Override, never in a Theme; unset, it reads its default.
-_Avoid_: component token
 
 **Screen Theme Override**:
 A Screen's own value for one of its mode's Mode Tokens, used by that Screen in place of the token's default, or, on a plain overlay mode, for the `inset` or `alignment` Foundation Token its host places content by, in place of its Theme's value. Every other Foundation Token, Graphic Items' bindings and the logo included, comes from the Theme alone: a write naming one is accepted and the token dropped, and one stored before is read by nothing. Clearing it returns the Screen to what the token inherits.
-_Avoid_: local style, pin
 
 **Screen Settings Group**:
 One element or decision on a Screen's settings page, such as its Table or a card badge, holding the controls for it and, under its heading in its card's "Look", the Screen Theme Overrides of the Mode Tokens that style it. A Screen Mode declares its groups once, on its config contract, each in one of the page's fixed cards (Live, Source, Content, Header, Paging, Background & Placement), so the page opens on the controls an operator uses during a show and closes on Background & Placement, with nothing after it; a config field and a Mode Token each name the group they sit in, and a Mode Token renders nowhere else, so it is hidden while its group is. The Screen's `inset` and `alignment` sit in the closing "Background & Placement" card; no card lists a Foundation Token a Screen takes from its Theme alone (ADR-0072).
 
 **Event Canvas**:
 The pixel coordinate space every overlay Screen of an Event is authored and rendered in, default 1920 × 1080. A Screen Output scales it uniformly to fit its window, so output resolution is not the canvas's to set. Feature Match Controls, an operator surface, fills its window instead (ADR-0051).
-_Avoid_: screen size, resolution
 
 **Event Presentation Settings**:
 What an Event sets once for every Screen it has: its Theme, its Event Canvas, and its on-air wording and formatting, such as the record separator, position format, and Untimed Label. Holding text is not among them: it changes during a show, so it is set in Event Controls with the commentators. Wording stays here rather than in the Theme, so a Theme can serve Events that word things differently.
-_Avoid_: on-air formatting (when naming the whole group)
 
 **Screen Mode Sample Dataset**:
 One fixed canonical set of Event Data per Card Game, chosen by the Event's Card Game, that a Theme preview renders every Screen Mode against, with the card data its cards are drawn with, a Screen Card, and one built-in Theme-bound Broadcast Graphic on air. That graphic is no Broadcast Graphic Template. The One Piece Card Game set holds a Feature Match Slot whose Seats hold Leaders and a Feature Match Deck List, and a Printing as its Screen Card. A Commander Event has a set of its own, which the preview offers as a pick beside the Card Games. A Theme serves Events of every Card Game and has no Event of its own, so its preview shows the Card Game the operator picks. Like the Feature Match Sample Dataset, it never appears on a live Screen Output.
-_Avoid_: dummy data, test data
 
 **Graphic Theme Binding**:
 A Graphic Item property group, or a Broadcast Graphic's enter, update or exit recipe, that names one whole Foundation Token of its type rather than holding its own value: a typography, a text or icon colour, a Graphic Surface Style, a Graphic Fill, a Shape Geometry, a Graphic Animation Recipe, or a Media Graphic Item's picture, from an asset token such as the logo. The compositor paints it from the Screen's resolved Theme. Detaching copies the resolved value in as the property's own; binding replaces it; editing it detaches it.
-_Avoid_: style reference, pin, override, Graphic Input Binding (which maps a Graphic Input to Event Data)
 
 ### Broadcast Graphics
 
@@ -475,7 +393,6 @@ A Screen in Broadcast Graphics mode whose output composes an ordered stack of co
 
 **Broadcast Graphics Background**:
 The one Animation Effect a Broadcast Graphics Screen composes its stack over, with its own enabled state and opacity. It renders in the Overlay and Fill Outputs, never the Key Output.
-_Avoid_: Screen background, backdrop graphic, background layer (a Background Layer stack is what the plain overlay modes carry; a graphics host composes over this instead)
 
 **Broadcast Graphic**:
 An authored visual composition that an operator shows, hides, and controls as one unit on a Broadcast Graphics Screen.
@@ -488,11 +405,9 @@ The continuous playout epoch of a Broadcast Graphics Screen. It survives reloads
 
 **Broadcast Graphics Live State Change**:
 What one accepted command changed about a Broadcast Graphics Live Session's live state, per Broadcast Graphic, carried by the realtime notification instead of the state itself. A peer at the immediately preceding sequence applies it; a peer offered none (too large, a recognised repeat, or indescribable) reloads the authoritative snapshot (ADR-0004).
-_Avoid_: patch, delta, diff, partial state, incremental update.
 
 **Broadcast Graphics Recovery Fault**:
 Why the durable live state behind a Broadcast Graphics Live Session could not be trusted: missing, corrupt (wrong shape), or incompatible (a value this build cannot interpret). It is derived on every read; while it stands, readers act on a state with nothing on air, and the first accepted command — in practice an explicit Take — clears it. A stale animation start time is not a fault.
-_Avoid_: corrupt state flag, live state validation error.
 
 **Graphic Input**:
 A named, required-or-optional presentation value declared by a Broadcast Graphic Template, typed text, number, toggle, choice, color, or media. It may be entered manually or resolved from a type-compatible Event Data field, but never exposes a whole Event Data entity.
@@ -508,7 +423,6 @@ An operator-supplied typed value that takes precedence over a Graphic Input Bind
 
 **Graphic Input Status**:
 What Live Control reports about one Graphic Input's value: manual (no binding), bound (binding agrees with program), overridden, pending (would-go-on-air differs from on-air), unavailable (nothing valid could go on air), superseded (this operator's edit lost a field-scoped race and was refreshed), or stale (on air holding a value its binding no longer provides). When several apply, the first in order superseded, stale, unavailable, overridden, pending, bound, manual is reported. Command rejection codes are a separate vocabulary describing a command's fate.
-_Avoid_: stale-input-edit, command rejection codes when naming a value's status.
 
 **Live Control**:
 The operator-facing controls generated for a placed Broadcast Graphic from its Graphic Source Selections and Graphic Inputs. It selects sources, edits values and overrides, stages updates, and controls playout without authoring bindings, custom controls, queries, or expressions.
@@ -518,11 +432,9 @@ Whether a Graphic Input change is staged for operator confirmation or applied im
 
 **Graphic Playout State**:
 The operator-visible lifecycle status of a placed Broadcast Graphic: off, waiting, entering, on-air, updating, or exiting. Waiting means selected by an Out then in Graphic Channel handoff but off every program output until the outgoing graphic finishes.
-_Avoid_: Visibility when referring to lifecycle or transition status
 
 **Graphic Channel**:
 An optional playout lane on a Broadcast Graphics Screen allowing at most one of its Broadcast Graphics on air at a time. Graphics in different channels may be on air concurrently.
-_Avoid_: Layer when referring to mutual-exclusion behaviour
 
 **Graphic Channel Handoff Policy**:
 The per-Graphic Channel rule for replacing its selected Broadcast Graphic: Overlap starts the outgoing exit and incoming enter together; Out then in waits for the outgoing exit to complete.
@@ -549,14 +461,12 @@ The synchronized visual change between profiles in a Social Profile Rotation: Cu
 
 **Template Package**:
 A single-template portable artifact transferring one Broadcast Graphic Template or one Feature Match Layout Template. Both kinds share the envelope, asset handling, validation, migration, conflict, and atomic installation contract while keeping separate payloads, libraries, and workflows.
-_Avoid_: Mixed template package, Event-wide template package
 
 **Template Package Preflight**:
 The complete inspection a received Template Package passes before anything may be installed, run as a Graphics Ingestion Operation over staged archive bytes: archive safety and envelope limits, deterministic schema migration, revalidation under the receiver's current Graphic Asset Compatibility Profile, local derivative regeneration, and one Template Package Preflight Report. Preflight never installs anything.
 
 **Template Package Preflight Report**:
 The one immutable result of Template Package Preflight, carrying migrations, revalidation outcomes, mapping proposals, quota impact, and every issue with a stable code and remediation. Package errors terminate the operation; exhausted local capacity is retryable. Warnings pause it once for a confirmation bound to its Preflight Report Fingerprint.
-_Avoid_: Import preview, dry-run result
 
 **Preflight Report Fingerprint**:
 The identity of one exact preflight proposal — archive bytes, compatibility profiles, proposed mappings, and issues, but not the clock. A confirmation is valid only for the fingerprint it names.
@@ -569,7 +479,6 @@ The one atomic act turning a confirmed Template Package Preflight Report into lo
 
 **Installed Graphics Template**:
 The independent local copy of the single Template a Template Package carried, with its own identity and managed revision. Its Graphic Asset References already point at exact local revisions and protect them; the source identity is provenance only. It is never revised, but any signed-in User may remove it, which releases its references and keeps its record as provenance (ADR-0068).
-_Avoid_: Imported template, template installation record.
 
 ### Graphics Asset Library
 
@@ -578,7 +487,6 @@ The shared graphics-specific module that ingests, validates, stores, resolves, d
 
 **Library Workspace**:
 The author-facing surface over the Graphics Asset Library for discovering, ingesting, renaming, re-associating, and moving Graphic Assets through Retire, Trash, and Restore, working as the signed-in User.
-_Avoid_: Graphics Asset Library Workspace, asset manager, library page
 
 **Graphics Asset Library Capacity**:
 The installation-wide storage envelope comprising the Canonical Graphics Quota and Graphics Staging Allowance.
@@ -680,7 +588,6 @@ The operational vocabulary the Evidence Ledger is filtered by — ingestion, lif
 
 **Operations Cockpit**:
 The administrator-only surface answering, in one reading, whether the Graphics Asset Library is safe and what needs attention. It composes Library Component Condition, Storage Health Alerts, capacity, unfinished ingestion, the discrepancy backlog, deadlines, and recent Evidence, holding no state of its own.
-_Avoid_: dashboard, storage admin panel.
 
 **Library Component Condition**:
 Whether one library component can answer and agrees with the other side: healthy, degraded, or unavailable. The catalogue and the byte store are always judged separately.
@@ -693,7 +600,6 @@ What an unfinished Graphics Ingestion Operation needs now: expired staged input,
 
 **Operational Queue**:
 One risk-ordered list of Graphics Asset Library work grouped by what is wrong with it, holding a complete count and a deadline-ordered sample. One queue per operational state — Critical Integrity Incident, Unavailable Graphic Asset Content, missing Graphics Derivative, retryable ingestion, expired staged input, unreleased staged input, Trashed Graphic Asset, superseded Graphic Asset Revision, quarantined object, Retired Graphic Asset — kept distinct because the valid action differs.
-_Avoid_: work list, task list, incident bucket.
 
 **Queue Inspector**:
 The administrator detail surface for one Operational Queue item: identity, state, deadline, affected usage, catalogue expectation beside byte evidence, filtered Evidence, and only the valid actions. Its selection lives in the address and every reading is composed afresh.
@@ -701,9 +607,9 @@ The administrator detail surface for one Operational Queue item: identity, state
 **Queue Action Outcome**:
 The vocabulary every Operational Queue action reports in: completed, already-in-state, reference-blocked, retryable-unavailable, or integrity-conflict. Already-in-state means the subject already was how the action asks, never that it ran and fixed nothing.
 
-### Shared Graphics Foundation
+### Graphics Composition Model
 
-**Shared Graphics Foundation**:
+**Graphics Composition Model**:
 The Graphic Item, geometry, styling, grouping, animation, definition, and rendering vocabulary used by both Broadcast Graphics and Feature Match Overlay, unifying their composition model without merging their Screen Modes, live context, or template artifacts.
 
 **Host Contract**:
@@ -711,7 +617,6 @@ The declaration a graphics Screen Mode supplies when embedding the shared compos
 
 **Graphic Item**:
 A visual part within a Broadcast Graphic or Feature Match Layout, such as text, media, or a shape. Items are edited individually but never taken on or off air independently of their composition; an item whose live data is empty renders nothing while remaining on air.
-_Avoid_: Element, Widget
 
 **Graphic Item Definition**:
 The application-owned contract for one Graphic Item kind: identifier and configuration version, schema and defaults, editor controls, renderer behaviour, migration, and asset-reference discovery. Definitions ship with Stream Keepr; templates never provide executable ones, and an import referencing an unsupported one fails atomically. A Definition may require a host or data context.
@@ -721,14 +626,12 @@ A Graphic Item that renders literal text or a Graphic Text Template.
 
 **Graphic Text Template**:
 A string combining literal text with `{inputKey}` placeholders for Graphic Inputs, rendered by a Text Graphic Item. A Broadcast Graphic may also reference a Social Profile Projection as `{projectionKey.networkLabel}`, `{projectionKey.handle}`, or `{projectionKey.profileUrl}`. No other property access, formatting, fallbacks, conditionals, or expressions exist.
-_Avoid_: Expression when referring to placeholder substitution
 
 **Graphic Placeholder Style**:
 An optional typography-only override for one placeholder or projection reference in a Text Graphic Item. Literal text uses the item's base typography.
 
 **Graphic Font Selection**:
 Which font a Graphic Item's typography or Graphic Placeholder Style paints with: one application font shipped with Stream Keepr, or one exact font Graphic Asset Revision referenced like any other Graphic Asset.
-_Avoid_: Font family, font stack
 
 **Text Overflow Policy**:
 The behaviour when the text of a Text Graphic Item, Clock Graphic Item, or Player Life Graphic Item exceeds its bounds: clip, ellipsis, or shrink to an author-set minimum size and then ellipsis. Text never visibly overflows. A live string can be longer than the author ever saw, which is why the Clock and Player Life carry one too; whether a kind has one is its Graphic Item Definition's to declare.
@@ -738,7 +641,6 @@ A Graphic Item rendering an image or silent video with a Media Fit, focal positi
 
 **Media Fit**:
 How an image or video fills the box it is drawn in: cover, contain, or fill. One vocabulary shared by Media Graphic Items, image and video Background Layers, and the Feature Match Overlay Frame's image and video.
-_Avoid_: object fit, scaling mode
 
 **Shape Graphic Item**:
 A Graphic Item that renders a bounded Shape Geometry.
@@ -747,7 +649,7 @@ A Graphic Item that renders a bounded Shape Geometry.
 A feature-match-context Graphic Item rendering one Seat's Sideboard as cards or a text list within its bounds, with no framing, labels, or board choice of its own. An empty Sideboard renders nothing.
 
 **Clock Graphic Item**:
-A context-gated Graphic Item that renders the active Feature Match Session clock, the Untimed Label for an Untimed Match, or nothing at all while that label is blank.
+A context-gated Graphic Item that renders the active Feature Match Session Clock, the Untimed Label for an Untimed Match, or nothing at all while that label is blank.
 
 **Player Life Graphic Item**:
 A context-gated Graphic Item that renders one Seat's life total.
@@ -772,29 +674,24 @@ The shared visual treatment for the Graphic Items that paint a surface (Text, Sh
 
 **Graphic Fill**:
 A solid colour or a linear gradient with an angle and two to four positioned stops with opacity. Complex surfaces are Media Graphic Items. A gradient Background Layer holds the gradient form.
-_Avoid_: Raw CSS gradient
 
 **Graphic Layer Order**:
 The back-to-front order of sibling Graphic Items within a Broadcast Graphic or Graphic Group; a group is one layer among its siblings.
-_Avoid_: Author-editable z-index
 
 **Graphic Anchor Point**:
 One of nine points on a canvas-positioned Graphic Item that fixes its displayed position during resize. Stored geometry stays a top-left rectangle; it is not a responsive constraint or animation origin.
 
 **Geometry Unit**:
 An authoring projection of canonical pixel geometry or motion distance as pixels, a percentage of the containing canvas or Graphic Group, or a centred 32-unit grid. It serves Graphic Items and Source Items alike and changes display and entry only.
-_Avoid_: Graphic Geometry Unit, ±16 unit
 
 **Editor Focus Mode**:
 A per-browser authoring preference that gives a graphics Edit workspace — the Feature Match Overlay editor's or the Broadcast Graphics Screen's — the whole page by hiding the app sidebar and the Screen-level cards around it. One setting serves both editors; it is entered and left only through the editor's own toggle, and never applies to the Broadcast Graphics Live workspace. It changes layout only.
-_Avoid_: Fullscreen (the browser's own mode), zen mode
 
 **Graphic Rotation**:
 The optional static rotation of a canvas-positioned Graphic Item around its Graphic Anchor Point. Row and column items do not rotate; skew, perspective, and raw transforms are not exposed.
 
 **Graphic Animation**:
 The recipe-based motion owned independently by a Broadcast Graphic or Graphic Item through enter, on-screen, update, and exit phases. Whole-graphic and item motion compose; there are no arbitrary keyframes.
-_Avoid_: Keyframe timeline, motion path, animated effect stack
 
 **Graphic Animation Recipe**:
 A bounded combination of at most one fade, slide, scale, and reveal channel, running simultaneously with shared timing and easing.
@@ -812,51 +709,37 @@ Deterministic editor-only playback of one lifecycle phase or a full lifecycle, o
 
 **Feature Match Overlay**:
 A Screen Mode rendering a production-ready Feature Match Layout for a Feature Match Slot, including external video source areas, Graphic Items, frame graphics, and fill/key outputs.
-_Avoid_: Generic overlay editor
 
 **Feature Match Layout**:
 The authored arrangement a Feature Match Overlay renders: the Frame, its Source Items, and one composition of ordered Graphic Items. The Frame and Source Items are host-owned. It is portable so it can be saved as a Feature Match Layout Template.
-_Avoid_: Overlay config
 
 **Feature Match Overlay Frame**:
 The continuous graphic area of a Feature Match Layout behind and around its Layout Items. Its fill, border, glow, Animation Effect and the media its Theme adds beneath its own are the Feature Match Overlay's Mode Tokens; the layout holds its opacity, its own image and video, and which edges its border runs along.
-_Avoid_: Panel area, background panel
 
 **Feature Match Layout Item**:
 A Graphic Item placed in a Feature Match Layout; layouts use the shared Graphic Item hierarchy.
-_Avoid_: Region
 
 **Source Item**:
 A host-owned Feature Match Overlay element placing an external video source, with optional Frame cutout and source framing: its corner radii, border sides and glow position. Its fill, border and glow are the Feature Match Overlay's Source Item surface Mode Token. It is not a Graphic Item and lives in the layout's own Source Item list.
-_Avoid_: Source Region, camera box, Source Graphic Item
 
 **Layer Lock**:
 An author's lock on one layer of a Feature Match Layout or a Broadcast Graphic, a Graphic Item or a Source Item, against canvas edits: the canvas neither moves, resizes nor rotates it, arrow nudges skip it, and a click on it falls through to the layer beneath. It stays selectable from the layer list and editable in its property panel. Locking a Graphic Group locks its children. It is stored on the layer itself, so every operator of the Screen sees it and it travels with a Feature Match Layout Template or a Broadcast Graphic Template; a copy of a locked layer arrives unlocked (ADR-0063).
-_Avoid_: Frozen layer, pinned layer
-
-**Feature Match Overlay Preset**:
-Former term. The built-in starting layouts are built-in **Feature Match Layout Templates** now, and a Screen records none of them.
-_Avoid_: Preset for a built-in layout; say built-in Feature Match Layout Template.
 
 **Feature Match Layout Template**:
 A reusable Feature Match Layout that can be copied into a Screen's Feature Match Overlay configuration: one an author saved, one a Template Package installed, or a built-in one the application ships. It carries no Feature Match Slot assignment, and placing one replaces the Screen's whole layout as an unlinked copy. A built-in one is marked as such, is placed like any other, and cannot be revised, removed or exported. A template naming a third or fourth Seat, or anything only a Commander Event holds, is a four-Seat template, offered to Commander Events alone; every other template is offered to every other Event. Its content decides which, and nothing declares it.
-_Avoid_: Preset
 
 **Feature Match Layout Host Vocabulary**:
 The terms a Feature Match Layout uses whose meaning the installation supplies: Source Roles, naming the main source or one Seat's, and Feature Match tokens a Graphic Text Template binds. On a Commander Event a Seat's deck token names its Commanders, its colours token their colour identity, and an image token each Commander's card. Each is closed and pinned by the layout format version, so a package naming an unimplemented term is refused. The Frame's Animation Effect was one until it became a Mode Token; its identity is still recognised.
-_Avoid_: Free-form role, camera name
 
 **Feature Match Sample Dataset**:
 One fixed canonical set of Feature Match values per Card Game, chosen by the Event's Card Game, that a preview resolves a Feature Match Layout against when no Feature Match Slot is bound; a Theme preview, which has no Event, uses the Card Game the operator picks, or Commander, a pick beside them. The One Piece Card Game set names each Seat's Leader, and a Commander Event has a set of its own, seating four. It never appears on a live Screen Output.
-_Avoid_: Dummy data, test data
 
 **Feature Match Stress Dataset**:
 One fixed set of the longest plausible Feature Match values per Card Game, chosen as the Feature Match Sample Dataset is, live state included: life totals, Sideboards and their card names, and the clock, or the longest Untimed Label for an Untimed Match. The Feature Match Overlay editor's preview resolves a Feature Match Layout against it while its author asks it to, over a bound Feature Match Slot's live data too (ADR-0062). Asking is editor state and is never saved. It never appears on a live Screen Output.
-_Avoid_: worst-case data, overflow data
 
 ## Relationships
 
-### Tournament and Feature Match production
+### Event and Feature Match production
 
 - An **Event** has exactly one **Card Game**, fixed at creation
 - A One Piece Card Game **Deck List** has exactly one **Leader** and a 50-card **Mainboard**, and no **Sideboard**
@@ -895,13 +778,13 @@ _Avoid_: worst-case data, overflow data
 - A **Screen Output** whose realtime link is disconnected holds its last accepted rendering rather than blanking
 - A client that cannot mint a realtime token for its **Event** re-attempts, and reports a persistent failure where an operator can see it
 - A **Realtime Subscription** outlives any token or transport failure until its consumer disposes it; once its **Event** recovers, the original handler receives again — and a held presence entry enters — without a remount (ADR-0023)
-- Only a **Screen Output** enters its **Screen**'s presence and answers its **Screen**'s commands; a **Program monitor** or preview joins neither, so every count of what is watching a **Screen** counts outputs alone
-- A **Screen Output** or **Program monitor** hears only its **Screen**'s own channel and nothing of its Event's; a preview, which renders configuration not yet saved, stays in its Event's room
+- Only a **Screen Output** enters its **Screen**'s presence and answers its **Screen**'s commands; a **Program Monitor** or preview joins neither, so every count of what is watching a **Screen** counts outputs alone
+- A **Screen Output** or **Program Monitor** hears only its **Screen**'s own channel and nothing of its Event's; a preview, which renders configuration not yet saved, stays in its Event's room
 - A **Screen Output**'s presence entry reports the realtime protocol it follows; one reporting none was loaded before outputs followed their **Screen**'s channel, and a control surface says so until it is reloaded
 - A **Screen Output** carries its **Screen Output Asset Capability** in its URL; every surface handing an operator such a URL obtains one at that moment or hands out nothing
 - A **Screen Output** holding no capability renders nothing at all (ADR-0010)
 - A **Screen Output** reads everything it renders through its **Screen**, never through an operator's Event reads, and never changes live state by reading it (ADR-0022)
-- A **Program monitor** or preview without a capability renders everything but media, is admitted by its operator's **Session**, and reports its missing asset access so a control surface states the loss
+- A **Program Monitor** or preview without a capability renders everything but media, is admitted by its operator's **Session**, and reports its missing asset access so a control surface states the loss
 - **Screen Outputs** and authoring run on Chromium, the only engine transparent video is supported on; another browser may flatten its alpha, and nothing detects or refuses it (ADR-0020)
 - **Broadcast Graphics Screen** and **Feature Match Overlay** previews are one preview shell: output selection, zoom and pan, item selection (a ⌘-click adds an item or takes it out), canvas handles for what the editor may move, guides that skip a locked layer, and advisory action-safe (5%) and title-safe (10%) guides; guides never appear in live **Screen Outputs** and never clip items. Zoom and pan are view state: they never write, need no **Graphics Authoring Lease**, and start at Fit on every visit
 
@@ -940,9 +823,9 @@ _Avoid_: worst-case data, overflow data
 - A **Broadcast Graphic** contains one or more **Graphic Items**
 - A **Broadcast Graphic** that is on a program output, or may be while playout cannot be known, is not edited in the Edit workspace, and undo leaves it as it is; **Live Control** still acts on it
 
-### Shared Graphics Foundation
+### Graphics Composition Model
 
-- A **Broadcast Graphic** and a **Feature Match Layout** use the **Shared Graphics Foundation**
+- A **Broadcast Graphic** and a **Feature Match Layout** use the **Graphics Composition Model**
 - Every **Graphic Item** is interpreted by one application-owned **Graphic Item Definition**
 - The shared base **Graphic Item** kinds are **Text Graphic Item**, **Media Graphic Item**, **Shape Graphic Item**, and **Graphic Group**
 - A **Graphic Group** may contain any context-available **Graphic Item** except another **Graphic Group**

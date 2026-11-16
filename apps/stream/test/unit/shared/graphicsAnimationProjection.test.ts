@@ -603,7 +603,7 @@ describe('a settled phase is indistinguishable from the Graphic Resting State', 
 
 describe('on-screen easing', () => {
 	// An author picks an easing, the editor persists it, and the schema validates it,
-	// so it has to be applied. CONTEXT.md states that a recipe's channels run with
+	// so it has to be applied. RULES.md states that a recipe's channels run with
 	// shared timing *and easing*, with no exception for the phase that cycles.
 	const easeIn: GraphicOnScreenAnimationRecipe = {
 		duration: 1000,

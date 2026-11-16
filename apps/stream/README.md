@@ -16,7 +16,8 @@ operating Stream Keepr. The other docs:
 
 | File           | Holds                                                                |
 | -------------- | -------------------------------------------------------------------- |
-| `CONTEXT.md`   | The domain glossary. Use its terms in code, tests, issues, and docs. |
+| `GLOSSARY.md`  | The domain glossary. Use its terms in code, tests, issues, and docs. |
+| `RULES.md`     | What each glossary term must do, and how the terms hold together.    |
 | `DECISIONS.md` | Settled architecture decisions and why (cited as ADR-NNNN).          |
 | `AGENTS.md`    | Rules for coding agents working in this app.                         |
 
@@ -77,7 +78,7 @@ here, is auto-imported the same way, and is named in an import as
 
 ## Subsystem map
 
-Where each subsystem is operated here, named in `CONTEXT.md`, and decided in
+Where each subsystem is operated here, named in `GLOSSARY.md`, and decided in
 `DECISIONS.md`. The linked sections are the sources of truth; this map only
 points at them.
 
@@ -88,8 +89,8 @@ points at them.
     [Session cookies](#session-cookies),
     [First admin account](#first-admin-account),
     [Other accounts](#other-accounts), [Access model](#access-model).
-  - Terms: [Identity and access](CONTEXT.md#identity-and-access),
-    [Access](CONTEXT.md#access).
+  - Terms: [Identity and access](GLOSSARY.md#identity-and-access),
+    [Access](RULES.md#access).
   - Decisions:
     [ADR-0010](DECISIONS.md#adr-0010-authentication-replaces-the-anonymous-author-session),
     [ADR-0012](DECISIONS.md#adr-0012-environment-dependent-library-behaviour-is-stated-tested-or-recorded),
@@ -103,7 +104,7 @@ points at them.
     [Local configuration](#local-configuration) (`NUXT_ABLY_API_KEY`),
     [Testing](#testing) (realtime integration tests run only locally).
   - Terms:
-    [Client and live-state infrastructure](CONTEXT.md#client-and-live-state-infrastructure).
+    [Client and live-state infrastructure](GLOSSARY.md#client-and-live-state-infrastructure).
   - Decisions:
     [ADR-0004](DECISIONS.md#adr-0004-a-live-session-notification-carries-the-difference),
     [ADR-0023](DECISIONS.md#adr-0023-a-realtime-subscription-is-held-until-disposed-and-its-events-recovery-re-attempts-while-one-waits),
@@ -121,8 +122,8 @@ points at them.
     [Transparent video is Chromium-only](#transparent-video-is-chromium-only),
     [Worker secrets](#worker-secrets) (the capability signing key),
     [Testing](#testing) (`animation-effects`, `key-matte`).
-  - Terms: [Screens](CONTEXT.md#screens),
-    [Screens and outputs](CONTEXT.md#screens-and-outputs).
+  - Terms: [Screens](GLOSSARY.md#screens),
+    [Screens and outputs](RULES.md#screens-and-outputs).
   - Decisions:
     [ADR-0009](DECISIONS.md#adr-0009-the-current-page-of-a-page-rotation-is-a-clock-projection-not-persisted-state),
     [ADR-0016](DECISIONS.md#adr-0016-one-polymorphic-background-screen-replaces-idle),
@@ -142,8 +143,8 @@ points at them.
   - Operate: [Local configuration](#local-configuration),
     [Worker secrets](#worker-secrets) (Melee credential keys and rotation) and
     [Melee Live Results](#melee-live-results).
-  - Terms: [Tournament](CONTEXT.md#tournament),
-    [Tournament and Feature Match production](CONTEXT.md#tournament-and-feature-match-production).
+  - Terms: [Event](GLOSSARY.md#event),
+    [Event and Feature Match production](RULES.md#event-and-feature-match-production).
   - Decisions:
     [ADR-0031](DECISIONS.md#adr-0031-a-resolved-unresolved-deck-card-announces-the-deck-lists-it-rewrote-and-re-projects-nothing),
     [ADR-0032](DECISIONS.md#adr-0032-deleting-a-player-releases-every-deck-source-that-selects-them),
@@ -153,8 +154,8 @@ points at them.
   Assignments, Feature Match Sessions and Feature Match Slot Promotion, shown by
   the Feature Match Overlay.
   - Operate: [Graphics notes](#graphics-notes).
-  - Terms: [Feature Match production](CONTEXT.md#feature-match-production),
-    [Feature Match Overlay](CONTEXT.md#feature-match-overlay).
+  - Terms: [Feature Match production](GLOSSARY.md#feature-match-production),
+    [Feature Match Overlay](GLOSSARY.md#feature-match-overlay).
   - Decisions:
     [ADR-0015](DECISIONS.md#adr-0015-live-overlay-showhide-rides-feature-match-session-state),
     [ADR-0033](DECISIONS.md#adr-0033-a-feature-match-slot-promotion-decides-its-outcome-purely-then-publishes-once).
@@ -168,8 +169,8 @@ points at them.
     [Graphics Asset Library operations](#graphics-asset-library-operations),
     [Silent-video validator](#silent-video-validator),
     [Deploy day](#deploy-day) (the deployed gates).
-  - Terms: [Graphics Asset Library](CONTEXT.md#graphics-asset-library),
-    [Library operations](CONTEXT.md#library-operations).
+  - Terms: [Graphics Asset Library](GLOSSARY.md#graphics-asset-library),
+    [Library operations](GLOSSARY.md#library-operations).
   - Decisions:
     [ADR-0005](DECISIONS.md#adr-0005-static-font-v1s-server-side-checks-are-a-floor-the-browser-is-the-gate),
     [ADR-0021](DECISIONS.md#adr-0021-a-screen-media-source-is-for-a-screens-own-media-graphics-content-stays-library-only),
@@ -1381,7 +1382,7 @@ only through the `SILENT_VIDEO_PLAYBACK_VALIDATOR` service binding (no
   `pnpm worker:dry-run` (so `pnpm verify` and CI) then holds the build to every
   declared weight and style, and to no remote or `local()` font source
   ([ADR-0086](DECISIONS.md#adr-0086-application-fonts-are-packaged-by-nuxt-fonts-from-pinned-static-fontsource-packages-with-no-remote-provider-at-build)).
-- **Feature Match Overlay runs on the Shared Graphics Foundation.** The legacy
+- **Feature Match Overlay runs on the Graphics Composition Model.** The legacy
   widget / widget-group / z-index model was deleted without a migration.
   `test/unit/shared/builtInFeatureMatchLayoutTemplates.test.ts` pins the invariants of
   the built-in Feature Match Layout Templates (`full-table`,

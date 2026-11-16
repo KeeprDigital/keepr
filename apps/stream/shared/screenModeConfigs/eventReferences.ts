@@ -4,7 +4,7 @@ import type { DeckSource } from './deck';
 /**
  * What a field declared as each kind of Event Reference holds. A kind is what
  * the field names: a Phase, a Round, a Player, a Player List, a Feature Match
- * Slot, an Archetype or a Talent by id, a Talent lineup as an ordered list of
+ * Slot, an Archetype or a Talent by id, a Talent Lineup as an ordered list of
  * Talent ids, a whole Deck Source, which names a Player or a Broadcast Deck
  * List, or a whole Manual Bracket, whose entrants may each name a Player.
  * A config contract field names its kind (`reference`, ADR-0038).

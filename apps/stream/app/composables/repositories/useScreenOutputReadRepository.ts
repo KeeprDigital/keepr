@@ -33,7 +33,7 @@ export interface ScreenOutputReadScope {
  * The Screen Output read family (#604, ADR-0022): everything a rendering of a
  * Screen reads, addressed through that Screen.
  *
- * Every rendering of a Screen — Screen Output, Program monitor, editor preview —
+ * Every rendering of a Screen — Screen Output, Program Monitor, editor preview —
  * reads here rather than through the operator's Event Data paths, whatever
  * credential it holds. The server admits the capability or a Session alike, so
  * no caller ever chooses a path by credential.

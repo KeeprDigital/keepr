@@ -3,7 +3,7 @@
  * current page from its Rotation Anchor and server time.
  *
  * Owned by no client and computed identically by every rendering (Screen
- * Output, Program monitor, operator settings), the same discipline the
+ * Output, Program Monitor, operator settings), the same discipline the
  * broadcast-graphics phase projection follows: current state is a pure
  * function of persisted state and the synchronized server instant, so
  * renderings agree by construction and nothing writes as the rotation runs.

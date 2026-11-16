@@ -50,7 +50,7 @@ export interface FeatureMatchOutcome {
 }
 
 /**
- * A Feature Match Session clock as its Session state stores it and its reads and
+ * A Feature Match Session Clock as its Session state stores it and its reads and
  * realtime messages carry it. Code that reasons about a clock reads it with
  * `readStoredClock` into a `FeatureMatchClock`, which cannot hold the
  * combinations this shape can: running with no start, or stopped with one.

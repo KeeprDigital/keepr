@@ -25,7 +25,7 @@ export const useEventStore = defineStore('event', () => {
 	/**
 	 * The Event context a Screen Output renders with, in place of `event` (#604).
 	 *
-	 * A rendering of a Screen — output, Program monitor or preview — never loads
+	 * A rendering of a Screen — output, Program Monitor or preview — never loads
 	 * the operator's Event; it holds the narrow context its Screen's read answers,
 	 * so nothing operator-only can be read off it, and `eventId` still names the
 	 * Event its reads are scoped to.
@@ -96,7 +96,7 @@ export const useEventStore = defineStore('event', () => {
 
 	/**
 	 * The Event whose realtime room this client joins: the operator's, or an
-	 * editor preview's. A Screen Output or Program monitor joins none, because it
+	 * editor preview's. A Screen Output or Program Monitor joins none, because it
 	 * follows only its own Screen's channel.
 	 */
 	const roomEventId = computed(

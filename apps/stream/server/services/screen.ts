@@ -137,7 +137,7 @@ export type ReleasedEventReferenceKind = keyof typeof RELEASED_EVENT_REFERENCE_T
  * Screen in the Event, as a new Screen version (ADR-0060). Batch it after the
  * delete, so it also releases what the delete cascaded away and what an
  * imported structure removal decided to delete as it ran. A list of ids, such
- * as a Talent lineup, loses only the missing ids, the rest in order (ADR-0070).
+ * as a Talent Lineup, loses only the missing ids, the rest in order (ADR-0070).
  * A Feature Match Slot reference is set to null, the field kept.
  */
 export function buildReleaseScreenEventReferencesQuery(

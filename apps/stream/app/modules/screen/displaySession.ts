@@ -141,7 +141,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	 *
 	 * ## Why the two roles are one selection
 	 *
-	 * A Program monitor and an editor preview overlap in exactly one thing: neither is
+	 * A Program Monitor and an editor preview overlap in exactly one thing: neither is
 	 * a Screen Output, so neither joins its Screen's presence. Everything else about
 	 * them is opposed. A preview composes the stack its embedder pushes in and
 	 * resolves media as the author; a monitor loads playout and resolves media through
@@ -158,7 +158,7 @@ export function useScreenDisplaySession(options: ScreenDisplaySessionOptions = {
 	const isPreview = computed(() => embed.value === 'preview');
 	/**
 	 * Whether this is a live rendering of the Screen as saved: a Screen Output, a
-	 * Program monitor, or the same page opened with a Session. It hears only its
+	 * Program Monitor, or the same page opened with a Session. It hears only its
 	 * Screen's own channel, which the server tells of exactly what the Screen
 	 * shows. A preview renders configuration its editor has not saved, which the
 	 * server can derive nothing from, so it alone stays in its Event's room.

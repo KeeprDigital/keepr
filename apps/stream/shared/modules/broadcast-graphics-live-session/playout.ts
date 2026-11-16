@@ -2868,7 +2868,7 @@ function cyclesFrom(
  * The lifecycle phases and elapsed times one Broadcast Graphic's Screen Output should
  * render, in the order they compose: innermost first.
  *
- * This is the seam a Screen Output and the Program monitor project animation
+ * This is the seam a Screen Output and the Program Monitor project animation
  * through — every phase derived, so a late-loading or reconnected output catches up
  * to the current authoritative phase instead of replaying it from the beginning.
  *

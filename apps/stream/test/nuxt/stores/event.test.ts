@@ -313,7 +313,7 @@ describe('useEventStore', () => {
 				room: 5,
 			},
 			{
-				client: 'a Screen Output or Program monitor',
+				client: 'a Screen Output or Program Monitor',
 				event: null,
 				context: 7,
 				preview: false,

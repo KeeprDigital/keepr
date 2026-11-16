@@ -162,7 +162,7 @@ function mountSource(deckSource: Record<string, unknown>, { live = false } = {})
 				eventId: computed(() => 7),
 				interactive: ref(false),
 				overlayContainer: ref(null),
-				// A Screen Output or Program monitor: it hears its Screen's own channel.
+				// A Screen Output or Program Monitor: it hears its Screen's own channel.
 				followsScreenChannel: ref(live),
 			});
 			return () => h(OpDisplay);

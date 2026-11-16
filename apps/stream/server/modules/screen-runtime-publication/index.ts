@@ -4,7 +4,7 @@ import { publishMessage } from '~~/server/utils/ably';
 interface PublicationInput {
 	eventId: number;
 	screenId: number;
-	/** The Card revision the write committed, which every holder orders by (#734). */
+	/** The Card Revision the write committed, which every holder orders by (#734). */
 	revision: number;
 	originConnectionId?: string;
 }

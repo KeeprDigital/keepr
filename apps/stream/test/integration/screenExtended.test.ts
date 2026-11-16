@@ -303,7 +303,7 @@ describe('screens extended API', () => {
 
 	// The Card's rules are held in `test/unit/server/api/cardExpiry.sqlite.test.ts`;
 	// this is one pass through its three routes on a real server.
-	it('sets, reads and clears the Card on the screen, answering each Card revision', async () => {
+	it('sets, reads and clears the Card on the screen, answering each Card Revision', async () => {
 		const saved = await $fetch(`/api/events/${eventId}/screens/${screenId}/card`, {
 			method: 'PUT',
 			body: sampleCard,

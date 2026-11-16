@@ -36,7 +36,7 @@ import { SEAT_VALUES } from './enums';
 /**
  * A Screen's media background, a Feature Match Overlay Frame's animation, and a
  * Broadcast Graphics Background take their starting values from their own module,
- * so the Feature Match Overlay Presets can build a Frame without importing this
+ * so the built-in Feature Match Layout Templates can build a Frame without importing this
  * one back. They are re-exported here because this is where every other mode
  * default lives.
  */
@@ -495,7 +495,7 @@ export function toModeConfigPatch<M extends ScreenMode>(
  *   as a Broadcast Graphics Screen's stack of Broadcast Graphics, and every
  *   declaring mode's own `backgroundLayers` stack. Neither is listed here: see
  *   `getDisplayDefaultsForMode`. Resetting a Feature Match Layout restores a
- *   Feature Match Overlay Preset, a non-empty design the author can keep
+ *   built-in Feature Match Layout Template, a non-empty design the author can keep
  *   editing, whereas resetting the Broadcast Graphics stack would empty it, and
  *   there is no undo. The two are not the same action.
  */

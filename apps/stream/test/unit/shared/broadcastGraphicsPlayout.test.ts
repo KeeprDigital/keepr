@@ -798,7 +798,7 @@ describe('the update phase, and the renderings it cross-transitions', () => {
 
 	it('lets the transition still crossing finish beneath the exit, keeping its accepted values', () => {
 		// Exit discards the pending update but lets the running one finish beneath it, so both
-		// phases are in play at once (CONTEXT.md, Broadcast Graphic exit).
+		// phases are in play at once (RULES.md, Broadcast Graphic exit).
 		let state = settledOnAir('first');
 		state = edit(state, 'second', T0 + 2000);
 		state = accept(state, T0 + 2000);

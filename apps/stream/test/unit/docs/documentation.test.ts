@@ -9,7 +9,7 @@ function readDocument(name: string): string {
 }
 
 /** The documents agents and maintainers navigate between. CHANGELOG.md is generated. */
-const NAVIGATED_DOCUMENTS = ['README.md', 'CONTEXT.md', 'DECISIONS.md', 'AGENTS.md'];
+const NAVIGATED_DOCUMENTS = ['README.md', 'GLOSSARY.md', 'RULES.md', 'DECISIONS.md', 'AGENTS.md'];
 
 /** Markdown without its fenced code blocks, which hold no heading or link. */
 function withoutFences(markdown: string): string {

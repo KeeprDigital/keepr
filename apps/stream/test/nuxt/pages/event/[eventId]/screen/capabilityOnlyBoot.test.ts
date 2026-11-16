@@ -406,7 +406,7 @@ describe('a capability-only Screen Output', () => {
 			listens: [SCREEN_CHANNEL],
 		},
 		{
-			rendering: 'a Program monitor',
+			rendering: 'a Program Monitor',
 			query: '?embed=monitor',
 			room: null,
 			listens: [SCREEN_CHANNEL],
@@ -835,7 +835,7 @@ describe('a capability-only Screen Output', () => {
 			shouldAdvanceTime: true,
 		});
 		api.screen = screen({ currentMode: 'card', modeConfigs: {} });
-		// The Card read answers the Card with its Card revision (#734).
+		// The Card read answers the Card with its Card Revision (#734).
 		api.answers.set('/api/screen-output/events/42/screens/7/card', () => ({
 			card: spotlightCard('expiring-card', {
 				timeoutStartTimestamp: Date.now(),

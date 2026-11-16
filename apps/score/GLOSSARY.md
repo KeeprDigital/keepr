@@ -4,7 +4,11 @@ Three engines for running tournaments. One decides who plays whom, one works out
 
 Everyday words defined here, such as tournament, round, table and game, are written without a capital in the other documents.
 
+Who a person is and what they may use (User, Session, Organisation, App role) is in the root `GLOSSARY.md`. How these words meet Stream Keepr's is in the root `GLOSSARY-MAP.md`.
+
 ## Language
+
+### Engines
 
 **Pairing Engine**:
 The component that turns facts about a tournament into the pairings for its next round.
@@ -24,15 +28,13 @@ _Avoid_: Client, host, app
 
 **Device**:
 One running copy of the Consumer that records Actions, such as a laptop or a phone's browser.
-_Avoid_: Client, node, replica, peer
+_Avoid_: Client, node, replica, peer, Session (a signed-in browser, which a Device may or may not hold)
+
+### The tournament's record
 
 **Tournament**:
 One competition, from its first Entrant to its Final Placings, recorded in one Log.
-_Avoid_: Event, competition, meet
-
-**Organiser**:
-A person running a tournament.
-_Avoid_: Operator, judge, scorekeeper, admin
+_Avoid_: Event (Stream Keepr's production of one), competition, meet
 
 **Action**:
 One thing somebody did in a tournament, recorded once and never changed.
@@ -49,6 +51,26 @@ _Avoid_: Conflict, collision, race
 **Flag**:
 Something the Tournament Engine asks an Organiser to look at. It never blocks anything.
 _Avoid_: Warning, error, Violation (a broken Constraint), conflict
+
+### People
+
+**Organiser**:
+A person running a tournament. In the app it is the Score Keepr App role a User holds to do so.
+_Avoid_: Operator (Stream Keepr's App role, for running a broadcast), judge, scorekeeper, admin
+
+**Entrant**:
+The unit that is paired and ranked in a tournament: one Player or one Team. It is what every engine sees.
+_Avoid_: Participant, competitor, contestant
+
+**Player**:
+One person who plays.
+_Avoid_: Entrant (the unit paired and ranked), user, member
+
+**Team**:
+Several Players competing as one Entrant.
+_Avoid_: Squad, club (a Group Label), side
+
+### Structure
 
 **Phase**:
 One part of a tournament with its own Pairing System and its own Entrants, such as a Swiss Phase or a Top Cut.
@@ -70,18 +92,6 @@ _Avoid_: Turn, heat, wave
 The numbered place where a Pairing is played.
 _Avoid_: Board, seat, station
 
-**Entrant**:
-The unit that is paired and ranked in a tournament: one Player or one Team. It is what every engine sees.
-_Avoid_: Participant, competitor, contestant
-
-**Player**:
-One person who plays.
-_Avoid_: Entrant (the unit paired and ranked), user, member
-
-**Team**:
-Several Players competing as one Entrant.
-_Avoid_: Squad, club (a Group Label), side
-
 **Late Entry**:
 An Entrant added after the first round of a Phase was paired.
 _Avoid_: Late registration, walk-in
@@ -93,6 +103,8 @@ _Avoid_: Withdrawal, retirement
 **Removal**:
 An Entrant taken out of a tournament by an Organiser. They have no Rank.
 _Avoid_: Disqualification (one reason for it), ban
+
+### Pairing
 
 **Pairing System**:
 A named set of rules for producing pairings, such as one variety of Swiss or one kind of bracket.
@@ -130,6 +142,50 @@ _Avoid_: Float, pair-up, cross-pairing
 A named kind of tie between Entrants, such as club, family or region, and an Entrant's value for it.
 _Avoid_: Group (means Score Group), affiliation, tag
 
+**Constraint**:
+A rule a round's Pairings should satisfy, chosen from the Pairing Engine's catalogue and given a priority by the Consumer.
+_Avoid_: Rule, restriction, criterion
+
+**Violation**:
+A yes-or-no Constraint broken by the returned Pairings, together with the Entrants affected. A Pair-down is not a Violation.
+_Avoid_: Error, warning, conflict
+
+**Random Seed**:
+A value supplied by the Consumer that fixes every random choice a Pairing System makes.
+_Avoid_: Seed (ambiguous with a bracket seeding position)
+
+**Shuffle Position**:
+The place the Random Seed gives an Entrant in a round's random order. Among Pairings the Constraints rate as equal, Entrants with nearby Shuffle Positions are paired.
+_Avoid_: Tiebreak (means Standings tiebreakers), random number, key
+
+### Pairing Systems
+
+**Round-by-Round System**:
+A Pairing System that decides one round at a time, because each round depends on what has happened so far. Swiss is the main example.
+_Avoid_: Dynamic system, Swiss-style
+
+**Swiss**:
+The Round-by-Round System in which nobody is eliminated and each round's Pairings are driven by a Configuration.
+_Avoid_: Swiss-system, Swiss rounds
+
+**Fixed-Structure System**:
+A Pairing System whose whole shape is known before play starts, such as an elimination bracket or a round robin.
+_Avoid_: Bracket system, static system, strict system
+
+**Single Elimination**:
+The Fixed-Structure System in which the loser of each Pairing is out and winners meet along a path set by Rank before play starts.
+_Avoid_: Knockout, bracket, playoff
+
+**Slot**:
+One side of a Pairing in a Fixed-Structure System: either a named Entrant or the winner of an earlier Pairing.
+_Avoid_: Seat, position, placeholder
+
+**Top Cut**:
+A Single Elimination Phase entered by the best-ranked Entrants of the Phases before it.
+_Avoid_: Playoffs, finals, cut
+
+### Standings
+
 **Standings**:
 The ordering of Entrants by Score and tiebreakers, worked out from match results by the Standings Engine.
 _Avoid_: Rankings, leaderboard, table
@@ -158,6 +214,20 @@ _Avoid_: Score (an Entrant's standing number), points, margin
 A measure from the Standings Engine's catalogue that orders Entrants who are level on Score.
 _Avoid_: Tiebreak, resistance, secondary score
 
+**Rank**:
+An Entrant's position in the Standings, produced by the Standings Engine or supplied by the Consumer.
+_Avoid_: Seed (Stream Keepr's word for a Rank entering a Top Cut), placement, standing
+
+**Final Placing**:
+An Entrant's finishing position in the tournament, once its last Phase has been played.
+_Avoid_: Final rank, final standing
+
+### Configuration
+
+**Configuration**:
+The choices made for one call to an engine. For pairing, the Constraints in priority order. For standings, the point values and the Tiebreakers in order.
+_Avoid_: Ruleset, settings, options
+
 **Starting Configuration**:
 A generic Configuration shipped as data for the Consumer to pass in or adapt. An engine never applies it on its own.
 _Avoid_: Default, default Configuration
@@ -165,55 +235,3 @@ _Avoid_: Default, default Configuration
 **Preset**:
 A named, dated piece of Configuration shipped with an engine and tied to one rules document.
 _Avoid_: Ruleset, template, profile
-
-**Final Placing**:
-An Entrant's finishing position in the tournament, once its last Phase has been played.
-_Avoid_: Final rank, final standing
-
-**Rank**:
-An Entrant's position in the Standings, produced by the Standings Engine or supplied by the Consumer.
-_Avoid_: Seed, placement, standing
-
-**Constraint**:
-A rule a round's Pairings should satisfy, chosen from the Pairing Engine's catalogue and given a priority by the Consumer.
-_Avoid_: Rule, restriction, criterion
-
-**Violation**:
-A yes-or-no Constraint broken by the returned Pairings, together with the Entrants affected. A Pair-down is not a Violation.
-_Avoid_: Error, warning, conflict
-
-**Configuration**:
-The choices made for one call to an engine. For pairing, the Constraints in priority order. For standings, the point values and the Tiebreakers in order.
-_Avoid_: Ruleset, settings, options
-
-**Round-by-Round System**:
-A Pairing System that decides one round at a time, because each round depends on what has happened so far. Swiss is the main example.
-_Avoid_: Dynamic system, Swiss-style
-
-**Swiss**:
-The Round-by-Round System in which nobody is eliminated and each round's Pairings are driven by a Configuration.
-_Avoid_: Swiss-system, Swiss rounds
-
-**Fixed-Structure System**:
-A Pairing System whose whole shape is known before play starts, such as an elimination bracket or a round robin.
-_Avoid_: Bracket system, static system, strict system
-
-**Single Elimination**:
-The Fixed-Structure System in which the loser of each Pairing is out and winners meet along a path set by Rank before play starts.
-_Avoid_: Knockout, bracket, playoff
-
-**Slot**:
-One side of a Pairing in a Fixed-Structure System: either a named Entrant or the winner of an earlier Pairing.
-_Avoid_: Seat, position, placeholder
-
-**Top Cut**:
-A Single Elimination Phase entered by the best-ranked Entrants of the Phases before it.
-_Avoid_: Playoffs, finals, cut
-
-**Random Seed**:
-A value supplied by the Consumer that fixes every random choice a Pairing System makes.
-_Avoid_: Seed (ambiguous with a bracket seeding position)
-
-**Shuffle Position**:
-The place the Random Seed gives an Entrant in a round's random order. Among Pairings the Constraints rate as equal, Entrants with nearby Shuffle Positions are paired.
-_Avoid_: Tiebreak (means Standings tiebreakers), random number, key

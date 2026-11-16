@@ -30,7 +30,7 @@ const CLOCK_STATE_COLOR_CLASS: Record<Exclude<FeatureMatchClockState, 'untimed'>
 };
 
 /**
- * How the control surface draws a Feature Match Session clock: its colour,
+ * How the control surface draws a Feature Match Session Clock: its colour,
  * whether it pulses (run out and still running, with no count-up time to show),
  * and whether it is marked as showing count-up time. An Untimed Match's clock
  * has no state of its own to colour, so it takes the colour of whether it runs

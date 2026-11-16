@@ -19,8 +19,8 @@ import { roundedShapeGeometry, squareShapeGeometry } from './modules/graphics/sh
 /**
  * Constructors for the built-in Feature Match Layouts.
  *
- * A Feature Match Overlay Preset is now an authored composition in the Shared
- * Graphics Foundation vocabulary rather than a legacy widget list, and that
+ * A built-in Feature Match Layout Template is an authored composition in the Graphics
+ * Composition Model vocabulary rather than a legacy widget list, and that
  * vocabulary is deliberately explicit: a Text Graphic Item carries a whole
  * `GraphicTypography`, a painted surface carries a whole `GraphicSurfaceStyle`,
  * and a Shape Graphic Item carries a whole `ShapeGeometry`. Written out three
